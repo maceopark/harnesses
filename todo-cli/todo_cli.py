@@ -19,8 +19,31 @@ class StoreError(Exception):
     """The store file cannot be used; it must never be modified in this state."""
 
 
+class TaskNotFoundError(Exception):
+    """Raised by mark_done when no task has the requested id."""
+
+    def __init__(self, task_id: int) -> None:
+        self.task_id = task_id
+        super().__init__(f"no task with id {task_id}")
+
+
+class TaskAlreadyDoneError(Exception):
+    """Raised by mark_done when the task is already marked done."""
+
+    def __init__(self, task_id: int, title: str) -> None:
+        self.task_id = task_id
+        self.title = title
+        super().__init__(f"task {task_id} is already done ({title})")
+
+
 def store_path() -> Path:
-    return Path.home() / ".todo.json"
+    """Return the fixed storage path, independent of the current working directory.
+
+    Using Path.home() (which resolves the HOME environment variable to an
+    absolute path) ensures the same file is used regardless of which directory
+    the `todo` command is invoked from.
+    """
+    return Path.home() / ".config" / "todo" / "todos.json"
 
 
 def _now() -> str:
@@ -37,7 +60,7 @@ def _validate(raw: object, path: Path) -> list[dict]:
             not isinstance(item, dict)
             or not isinstance(item.get("id"), int)
             or not isinstance(item.get("title"), str)
-            or item.get("status") not in ("open", "done")
+            or not isinstance(item.get("done"), bool)
             or not isinstance(item.get("created_at"), str)
         ):
             raise StoreError(f"{path}: item {item!r} is malformed — refusing to touch it")
@@ -54,8 +77,14 @@ def load_items(path: Path) -> list[dict]:
     return _validate(raw, path)
 
 
+SCHEMA_VERSION = 1
+
+
 def save_items(path: Path, items: list[dict]) -> None:
-    data = json.dumps({"items": items}, indent=2, ensure_ascii=False) + "\n"
+    data = json.dumps({"schema_version": SCHEMA_VERSION, "items": items}, indent=2, ensure_ascii=False) + "\n"
+    # Create ~/.config/todo/ (and any intermediate dirs) on first write.
+    # mkdir(parents=True, exist_ok=True) is idempotent — safe to call every time.
+    path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=path.name, suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
@@ -78,7 +107,7 @@ def cmd_add(args: argparse.Namespace) -> int:
         {
             "id": next_id,
             "title": title,
-            "status": "open",
+            "done": False,
             "created_at": _now(),
             "completed_at": None,
         }
@@ -89,30 +118,48 @@ def cmd_add(args: argparse.Namespace) -> int:
 
 
 def cmd_list(_args: argparse.Namespace) -> int:
-    open_items = [i for i in load_items(store_path()) if i["status"] == "open"]
-    if not open_items:
-        print("nothing to do")
-        return 0
+    open_items = [i for i in load_items(store_path()) if not i["done"]]
     for item in sorted(open_items, key=lambda i: i["id"]):
-        print(f'{item["id"]:>4}  {item["title"]}')
+        print(f'{item["id"]} {item["title"]}')
     return 0
+
+
+def mark_done(task_id: int, path: Path | None = None) -> dict:
+    """Set the task's done flag and atomically persist the change to the store.
+
+    Returns the updated task dict on success.
+
+    Raises TaskNotFoundError  — if no task has the given id.
+    Raises TaskAlreadyDoneError — if the task is already marked done.
+
+    The file is never written on error, so the store is always left intact.
+    """
+    if path is None:
+        path = store_path()
+    items = load_items(path)
+    match = next((i for i in items if i["id"] == task_id), None)
+    if match is None:
+        raise TaskNotFoundError(task_id)
+    if match["done"]:
+        raise TaskAlreadyDoneError(task_id, match["title"])
+    match["done"] = True
+    match["completed_at"] = _now()
+    save_items(path, items)
+    return match
 
 
 def cmd_done(args: argparse.Namespace) -> int:
     path = store_path()
-    items = load_items(path)
-    match = next((i for i in items if i["id"] == args.id), None)
-    if match is None:
-        print(f"error: no task with id {args.id}", file=sys.stderr)
+    try:
+        task = mark_done(args.id, path)
+        print(f'done #{args.id}: {task["title"]}')
+        return 0
+    except TaskNotFoundError as exc:
+        print(f"error: {exc}", file=sys.stderr)
         return 1
-    if match["status"] == "done":
-        print(f'error: task {args.id} is already done ({match["title"]})', file=sys.stderr)
+    except TaskAlreadyDoneError as exc:
+        print(f"error: {exc}", file=sys.stderr)
         return 1
-    match["status"] = "done"
-    match["completed_at"] = _now()
-    save_items(path, items)
-    print(f'done #{args.id}: {match["title"]}')
-    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
