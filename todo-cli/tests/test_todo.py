@@ -261,6 +261,75 @@ def test_ids_monotonic(isolated_home):
     assert ids == [1, 2]
 
 
+# ---------------------------------------------------------------------------
+# AC-3: ID ALLOCATION FROM ARCHIVE — next-id from max over ALL records
+# ---------------------------------------------------------------------------
+
+
+def test_id_allocation_from_archive_highest_id_archived(isolated_home):
+    """AC-3: ID ALLOCATION FROM ARCHIVE.
+
+    Sequence:
+      1. todo add "a" → must receive id 1
+      2. todo add "b" → must receive id 2 (the highest id in the store)
+      3. todo done 2  → archives the HIGHEST id (done=True, completed_at set)
+      4. todo add "c" → MUST receive id 3 (NOT 2, which would be wrong if
+                        next_id were computed as len(open_items) + 1)
+
+    Verifiable postconditions (all JSON assertions on the raw file):
+      1. The new item "c" has id == 3.
+      2. No two records share an id (no id reuse ever).
+      3. The archived item "b" is preserved in the store with done=True.
+      4. The max id over ALL records (including done) is 3 — it strictly
+         increased even though the previously-highest item is now archived.
+
+    This proves that next_id derives from max-over-all-records and is NOT
+    computed from list length, count of visible items, or any value that
+    shrinks when items are archived.
+    """
+    # Step 1: add "a" → id 1
+    assert main(["add", "a"]) == 0
+    # Step 2: add "b" → id 2
+    assert main(["add", "b"]) == 0
+    # Step 3: archive the highest id (id 2)
+    assert main(["done", "2"]) == 0
+    # Step 4: add "c" — must get id 3, not 2
+    assert main(["add", "c"]) == 0
+
+    raw = read_store(isolated_home)
+    items = raw["items"]
+    ids = [item["id"] for item in items]
+
+    # Postcondition 1: "c" has id 3
+    item_c = next((it for it in items if it["title"] == "c"), None)
+    assert item_c is not None, "'c' must be present in the store"
+    assert item_c["id"] == 3, (
+        f"Expected id 3 for 'c' but got {item_c['id']}. "
+        "next_id must be derived from max(all ids), not from open item count."
+    )
+
+    # Postcondition 2: no two records share an id
+    assert len(ids) == len(set(ids)), (
+        f"Duplicate ids found — id reuse detected: {ids}"
+    )
+
+    # Postcondition 3: archived item "b" still in store with done=True
+    item_b = next((it for it in items if it["title"] == "b"), None)
+    assert item_b is not None, "'b' must still be present in the store (non-destructive archive)"
+    assert item_b["id"] == 2, f"'b' must keep its original id 2, got {item_b['id']}"
+    assert item_b["done"] is True, "'b' must have done=True after `todo done 2`"
+    assert item_b["completed_at"] is not None, (
+        "'b' must have a non-null completed_at timestamp when done=True"
+    )
+
+    # Postcondition 4: max id over ALL records (including done) is 3
+    max_id = max(ids)
+    assert max_id == 3, (
+        f"Expected max id to be 3 across all records, got {max_id}. "
+        "Archiving the highest item must not prevent the next id from being higher."
+    )
+
+
 # AC-3: list output is identical regardless of the current working directory,
 # because store_path() is rooted at Path.home() — an absolute path that never
 # changes with os.chdir().
@@ -707,3 +776,245 @@ def test_done_nonexistent_id_99999_no_file_exits_1(isolated_home, capsys):
     assert err.strip(), f"Expected non-empty stderr but got: {err!r}"
     # The file must not have been created as a side-effect
     assert not path.exists(), "`todo done` must not create the store file when the id does not exist"
+
+
+# ---------------------------------------------------------------------------
+# AC-11: SCHEMA_VERSION OBSERVABILITY
+# After `todo add`, schema_version is written as a concrete integer in the
+# root JSON document and is externally inspectable via direct file read.
+# ---------------------------------------------------------------------------
+
+
+def test_schema_version_written_at_creation_and_externally_inspectable(isolated_home):
+    """AC-11: schema_version is written when the store is first created by `todo add`.
+
+    Verifiable postconditions (all expressed as JSON assertions on the raw file):
+      1. The key 'schema_version' exists at the root level of the JSON document.
+      2. Its value is a concrete integer (not None, not a string, not missing).
+      3. Its value is >= 1 (the first legal schema version).
+      4. The current documented value is exactly 1 (the initial schema version).
+
+    Equivalent to the AC command (with tilde expansion that Python requires):
+      python -c "import json,os; print(
+          json.load(open(os.path.expanduser('~/.config/todo/todos.json')))
+              ['schema_version']
+      )"
+    Note: Python's built-in open() does not expand '~' — os.path.expanduser()
+    or Path.expanduser() is required. The test reads the file directly from the
+    isolated home path to avoid this shell/Python discrepancy.
+    """
+    assert main(["add", "schema version observability check"]) == 0
+
+    path = store(isolated_home)
+    assert path.exists(), "pre-condition: store must exist after add"
+
+    # Read raw JSON — no internal API, pure file inspection
+    raw = json.loads(path.read_text(encoding="utf-8"))
+
+    # 1. Key must exist at root level (not per-item — document-level metadata)
+    assert "schema_version" in raw, (
+        f"'schema_version' key is missing from the root JSON document. "
+        f"Root keys found: {list(raw.keys())}"
+    )
+
+    # 2. Value must be a concrete integer
+    assert isinstance(raw["schema_version"], int), (
+        f"schema_version must be an integer, got {type(raw['schema_version'])!r}: "
+        f"{raw['schema_version']!r}"
+    )
+
+    # 3. Value must be >= 1
+    assert raw["schema_version"] >= 1, (
+        f"schema_version must be >= 1 (first legal version), got {raw['schema_version']}"
+    )
+
+    # 4. Current documented value is 1
+    assert raw["schema_version"] == 1, (
+        f"Expected schema_version == 1 (initial schema version), got {raw['schema_version']}"
+    )
+
+
+@pytest.mark.skipif(shutil.which("todo") is None, reason="todo not installed on PATH")
+def test_schema_version_inspectable_via_subprocess_python_oneliner(isolated_home, tmp_path):
+    """AC-11 (subprocess): schema_version readable by a Python one-liner on the installed CLI.
+
+    Runs `todo add` then reads the file via a Python one-liner subprocess to
+    demonstrate that schema_version is externally observable without any
+    knowledge of the CLI's internal implementation.
+
+    The AC command uses open('~/.config/todo/todos.json'). Python's open() does
+    not expand '~', so this test uses the equivalent os.path.expanduser() form
+    which is semantically identical but executes correctly in Python.
+
+    Exit code of the python one-liner MUST be 0 and its stdout MUST be a
+    concrete integer parseable as int.
+    """
+    import os
+    import sys
+
+    # Run `todo add` in an isolated HOME so we get a fresh store
+    env = {**os.environ, "HOME": str(tmp_path)}
+    add_result = subprocess.run(
+        ["todo", "add", "observability probe"],
+        capture_output=True, text=True, env=env,
+    )
+    assert add_result.returncode == 0, (
+        f"`todo add` failed: {add_result.stderr!r}"
+    )
+
+    # Read schema_version via a Python one-liner — equivalent to the AC command
+    # but using os.path.expanduser() because Python's open() does not expand '~'
+    oneliner = (
+        "import json, os; "
+        "print(json.load(open(os.path.expanduser('~/.config/todo/todos.json')))"
+        "['schema_version'])"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", oneliner],
+        capture_output=True, text=True, env=env,
+    )
+
+    # 1. Exit code must be 0
+    assert result.returncode == 0, (
+        f"Python one-liner exited {result.returncode}. "
+        f"stderr: {result.stderr!r}"
+    )
+
+    # 2. Stdout must be a concrete integer
+    stdout = result.stdout.strip()
+    assert stdout, f"Python one-liner produced no stdout output"
+    try:
+        value = int(stdout)
+    except ValueError:
+        pytest.fail(
+            f"Python one-liner stdout is not an integer: {stdout!r}"
+        )
+
+    # 3. Value must be >= 1
+    assert value >= 1, f"schema_version must be >= 1, got {value}"
+
+    # 4. Current version is 1
+    assert value == 1, f"Expected schema_version == 1, got {value}"
+
+
+# ---------------------------------------------------------------------------
+# AC-4: DETERMINISTIC ORDER
+# `todo list` prints remaining incomplete items strictly in ascending id order;
+# running `todo list` twice yields byte-identical stdout.
+# ---------------------------------------------------------------------------
+
+
+def test_list_strictly_ascending_id_order_and_byte_stable(isolated_home, capsys):
+    """AC-4: `todo list` emits incomplete items in strictly ascending id order
+    and is byte-stable across consecutive invocations.
+
+    Sequence:
+      1. Add 5 tasks (ids 1–5).
+      2. Mark tasks 2 and 4 done — leaving ids 1, 3, 5 incomplete.
+      3. Run `todo list` — output must list id=1, then id=3, then id=5.
+      4. Run `todo list` again — stdout must be byte-identical to the first run.
+
+    The test checks ascending id position via index comparison (not just
+    membership) so it catches any reordering, including reversed or
+    storage-insertion order.
+    """
+    for text in ["alpha", "beta", "gamma", "delta", "epsilon"]:
+        assert main(["add", text]) == 0
+
+    # Mark tasks 2 and 4 done to leave non-contiguous incomplete ids: 1, 3, 5
+    assert main(["done", "2"]) == 0
+    assert main(["done", "4"]) == 0
+    capsys.readouterr()  # discard confirmation output
+
+    # ── first invocation ──────────────────────────────────────────────────
+    assert main(["list"]) == 0
+    out1 = capsys.readouterr().out
+
+    # Incomplete tasks must be present
+    assert "1 alpha" in out1,   f"id=1 must appear; got: {out1!r}"
+    assert "3 gamma" in out1,   f"id=3 must appear; got: {out1!r}"
+    assert "5 epsilon" in out1, f"id=5 must appear; got: {out1!r}"
+
+    # Done tasks must NOT appear
+    assert "beta" not in out1,  f"done id=2 must not appear; got: {out1!r}"
+    assert "delta" not in out1, f"done id=4 must not appear; got: {out1!r}"
+
+    # Strictly ascending id order: position(id=1) < position(id=3) < position(id=5)
+    pos1 = out1.index("1 alpha")
+    pos3 = out1.index("3 gamma")
+    pos5 = out1.index("5 epsilon")
+    assert pos1 < pos3 < pos5, (
+        f"Items must appear in strictly ascending id order (1 < 3 < 5).\n"
+        f"Positions: id=1@{pos1}, id=3@{pos3}, id=5@{pos5}\n"
+        f"Output:\n{out1}"
+    )
+
+    # ── second invocation — must be byte-identical ────────────────────────
+    assert main(["list"]) == 0
+    out2 = capsys.readouterr().out
+
+    assert out1 == out2, (
+        f"Two consecutive `todo list` calls must produce byte-identical stdout.\n"
+        f"First:  {out1!r}\n"
+        f"Second: {out2!r}"
+    )
+
+
+def test_list_sort_overrides_storage_insertion_order(isolated_home, capsys):
+    """AC-4 isolation: `todo list` sorts by ascending id even when items are
+    stored out-of-order in the JSON file (storage order ≠ id order).
+
+    Seeds the store directly with items in JSON array order [5, 1, 3, 2, 4].
+    Items 2 and 4 are done. Expected output — by id ascending — is:
+        1 alpha
+        3 gamma
+        5 epsilon
+
+    If cmd_list relied on storage insertion order, the first line would be
+    '5 epsilon'. This test distinguishes the two cases by asserting exact
+    line content and sequence, proving sorted() is the ordering mechanism.
+    """
+    path = store(isolated_home)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Items stored in deliberately shuffled id order: [5, 1, 3, 2, 4]
+    seed = {
+        "schema_version": 1,
+        "items": [
+            {"id": 5, "title": "epsilon", "done": False,
+             "created_at": "2026-07-05T00:00:00+00:00", "completed_at": None},
+            {"id": 1, "title": "alpha",   "done": False,
+             "created_at": "2026-07-05T00:00:00+00:00", "completed_at": None},
+            {"id": 3, "title": "gamma",   "done": False,
+             "created_at": "2026-07-05T00:00:00+00:00", "completed_at": None},
+            {"id": 2, "title": "beta",    "done": True,
+             "created_at": "2026-07-05T00:00:00+00:00",
+             "completed_at": "2026-07-05T01:00:00+00:00"},
+            {"id": 4, "title": "delta",   "done": True,
+             "created_at": "2026-07-05T00:00:00+00:00",
+             "completed_at": "2026-07-05T01:00:00+00:00"},
+        ],
+    }
+    path.write_text(json.dumps(seed), encoding="utf-8")
+
+    # ── first invocation ──────────────────────────────────────────────────
+    assert main(["list"]) == 0
+    out1 = capsys.readouterr().out
+
+    lines = [ln for ln in out1.splitlines() if ln.strip()]
+
+    assert len(lines) == 3, (
+        f"Expected exactly 3 output lines (ids 1, 3, 5) but got {len(lines)}: {lines!r}"
+    )
+    assert lines[0] == "1 alpha",   f"Line 0 must be '1 alpha'   got: {lines[0]!r}"
+    assert lines[1] == "3 gamma",   f"Line 1 must be '3 gamma'   got: {lines[1]!r}"
+    assert lines[2] == "5 epsilon", f"Line 2 must be '5 epsilon' got: {lines[2]!r}"
+
+    # ── second invocation — must be byte-identical ────────────────────────
+    assert main(["list"]) == 0
+    out2 = capsys.readouterr().out
+
+    assert out1 == out2, (
+        f"Two consecutive `todo list` calls must produce byte-identical stdout.\n"
+        f"First:  {out1!r}\nSecond: {out2!r}"
+    )
