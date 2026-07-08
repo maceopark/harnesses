@@ -1,0 +1,290 @@
+{
+  "entries": [
+    {
+      "id": "k1",
+      "requirement": "Artifact class is a command-line todo application (CLI)",
+      "ambiguity_score": 0,
+      "impact_weight": 3,
+      "status": "Accepted",
+      "evidence_channels": [
+        "from-user"
+      ],
+      "origin": "orientation",
+      "reason": "stated directly in request"
+    },
+    {
+      "id": "g1",
+      "requirement": "Storage: single JSON file at ~/.todos.json (home dir). Writes are atomic: write temp file + rename over target.",
+      "ambiguity_score": 0,
+      "impact_weight": 3,
+      "status": "Accepted",
+      "evidence_channels": [
+        "assumption",
+        "from-user",
+        "from-docs"
+      ],
+      "origin": "orientation",
+      "reason": "lesson-triggered: file-based store; unknown format/path; user picked single JSON file; atomic temp+rename per durability lesson"
+    },
+    {
+      "id": "g2",
+      "requirement": "Operation set (closed): add, list (open tasks only), complete, undo (done->open), delete (permanent removal), and view-completed/all. No edit.",
+      "ambiguity_score": 1,
+      "impact_weight": 3,
+      "status": "Accepted",
+      "evidence_channels": [
+        "assumption",
+        "from-user"
+      ],
+      "origin": "orientation",
+      "reason": "lesson-triggered: closed op set undefined; op set now must include: add, list(open), complete, and view-completed/all; delete & edit still open; user selected undo + delete beyond the core 4; edit excluded; [pressure: exempt:direct user selection from an evidenced operation menu]; [checkpoint-corroborated: from-user]"
+    },
+    {
+      "id": "g3",
+      "requirement": "Unknown/illegal operation branch: exit code + usage text",
+      "ambiguity_score": 1,
+      "impact_weight": 2,
+      "status": "Accepted",
+      "evidence_channels": [
+        "assumption",
+        "from-user",
+        "from-docs"
+      ],
+      "origin": "orientation",
+      "reason": "lesson-triggered: unknown-command branch; accepted default: unknown/missing/extra arg + no-args -> usage to stderr, exit 2"
+    },
+    {
+      "id": "g4",
+      "requirement": "Title validation: trim whitespace; reject empty-after-trim (exit 1); reject titles containing newline/CR/NUL/other control chars (would break one-line-per-task output); cap length (e.g. 1024 chars)",
+      "ambiguity_score": 1,
+      "impact_weight": 2,
+      "status": "Accepted",
+      "evidence_channels": [
+        "assumption",
+        "from-user"
+      ],
+      "origin": "orientation",
+      "reason": "lesson-triggered: degenerate free-text inputs; scout: control chars break output contract; oversized abuse; accepted: trim, reject empty(exit1), reject newline/control/NUL, cap 1024 chars"
+    },
+    {
+      "id": "g5",
+      "requirement": "Task carries a status (open/done). No date concept. Default list shows only OPEN tasks. Completing sets status=done; the item is retained in the store (never auto-deleted) and hidden from the default list but viewable via a separate command. Day-boundary is a no-op.",
+      "ambiguity_score": 0,
+      "impact_weight": 3,
+      "status": "Accepted",
+      "evidence_channels": [
+        "assumption",
+        "from-user"
+      ],
+      "origin": "orientation",
+      "reason": "lesson-triggered: temporal words in todo domain; daily morning ritual CONFIRMED (from-user): check open tasks each morning, complete when done; day-boundary semantics still unknown -> now critical-path; chose model A (dateless persistent list); pressure-pending on completed-item disposition (deleted vs archived); pressure survived: completed items kept (status change), not deleted; viewable via separate command; [pressure: survived]"
+    },
+    {
+      "id": "g6",
+      "requirement": "Write durability: every mutation writes via temp-file + atomic rename; a crash/interrupt mid-write leaves the prior store intact and loadable (contract row).",
+      "ambiguity_score": 0,
+      "impact_weight": 2,
+      "status": "Accepted",
+      "evidence_channels": [
+        "assumption",
+        "from-user",
+        "from-docs"
+      ],
+      "origin": "orientation",
+      "reason": "lesson-triggered: file-store durability; explicitly chosen with storage option"
+    },
+    {
+      "id": "g7",
+      "requirement": "Implementation stack: Python 3 + uv (project layout with pyproject.toml), per workspace norm",
+      "ambiguity_score": 1,
+      "impact_weight": 2,
+      "status": "Accepted",
+      "evidence_channels": [
+        "assumption",
+        "from-user"
+      ],
+      "origin": "orientation",
+      "reason": "workspace norm is Python+uv; unconfirmed for this build; confirmed at checkpoint; [checkpoint-corroborated: from-user]"
+    },
+    {
+      "id": "g8",
+      "requirement": "List output: human-readable, one line per task showing numeric ID + status marker + title.",
+      "ambiguity_score": 1,
+      "impact_weight": 2,
+      "status": "Accepted",
+      "evidence_channels": [
+        "assumption",
+        "from-user"
+      ],
+      "origin": "orientation",
+      "reason": "unspecified; user picked human-readable ID+status+title"
+    },
+    {
+      "id": "g9",
+      "requirement": "Verification: pytest. (a) Normal paths: subprocess-drive built `todo` with TODO_FILE=temp, assert exit code + stdout/stderr + persisted JSON. (b) Durability: STORAGE-LAYER unit test - monkeypatch os.replace to raise after temp written+fsynced; assert target still loads pre-write state (NO production crash hook added). Anti-gaming: acceptance is bound to the real installed entrypoint + raw store bytes, not test-suite internals.",
+      "ambiguity_score": 1,
+      "impact_weight": 2,
+      "status": "Accepted",
+      "evidence_channels": [
+        "assumption",
+        "from-user",
+        "from-code"
+      ],
+      "origin": "orientation",
+      "reason": "unspecified; scout: tests must not touch real ~/.todos.json - need a store-path test seam (TODO_FILE env or temp HOME); pin verification style (subprocess vs unit); accepted: subprocess pytest + TODO_FILE seam; fresh-impl test: durability seam resolved via storage-unit test, not a subprocess crash hook"
+    },
+    {
+      "id": "n1",
+      "requirement": "Multi-user, sync, network sharing are out of scope (personal local single-user tool)",
+      "ambiguity_score": 0,
+      "impact_weight": 1,
+      "status": "Accepted",
+      "evidence_channels": [
+        "assumption",
+        "from-user"
+      ],
+      "origin": "orientation",
+      "reason": "scope boundary undefined; confirmed: I will use it myself"
+    },
+    {
+      "id": "k2",
+      "requirement": "Single-user personal tool; the user is the sole actor",
+      "ambiguity_score": 0,
+      "impact_weight": 2,
+      "status": "Accepted",
+      "evidence_channels": [
+        "from-user"
+      ],
+      "origin": "dump",
+      "reason": "\"I will use it myself\""
+    },
+    {
+      "id": "k3",
+      "requirement": "Core workflow: in the morning view open tasks (list), then mark tasks complete when finished",
+      "ambiguity_score": 1,
+      "impact_weight": 2,
+      "status": "Draft",
+      "evidence_channels": [
+        "from-user"
+      ],
+      "origin": "dump",
+      "reason": "narrated workflow; how tasks get ADDED and full op set still open (see g2)"
+    },
+    {
+      "id": "n2",
+      "requirement": "Recurring tasks, reminders, deadlines/due-dates: OUT of scope (no date concept)",
+      "ambiguity_score": 0,
+      "impact_weight": 1,
+      "status": "Accepted",
+      "evidence_channels": [
+        "assumption",
+        "from-user"
+      ],
+      "origin": "dump",
+      "reason": "not mentioned; likely out of scope but unconfirmed; model A implies no dates at all"
+    },
+    {
+      "id": "g10",
+      "requirement": "delete: by explicit ID, executes immediately, no interactive confirmation (completed items retained limits accidental loss)",
+      "ambiguity_score": 1,
+      "impact_weight": 2,
+      "status": "Accepted",
+      "evidence_channels": [
+        "assumption",
+        "from-user"
+      ],
+      "origin": "lens:misuse",
+      "reason": "destructive-action branch surfaced by delete selection; user chose immediate delete by ID"
+    },
+    {
+      "id": "g11",
+      "requirement": "ID model: immutable positive-integer IDs stored per task, monotonic next_id, never reused or renumbered after complete/delete; all commands reference IDs not row positions",
+      "ambiguity_score": 1,
+      "impact_weight": 3,
+      "status": "Accepted",
+      "evidence_channels": [
+        "assumption",
+        "from-user"
+      ],
+      "origin": "fold-back",
+      "reason": "scout: row-number vs immutable-ID is a real UX+schema branch; accepted: immutable monotonic IDs, never reused/renumbered; [pressure: exempt:accepted standard-convention default from evidenced scout menu]"
+    },
+    {
+      "id": "g12",
+      "requirement": "ID reference + state-transition errors: complete/undo/delete on nonexistent ID = domain error (exit 1, no write); complete requires open, undo requires done (wrong-state = exit 1, no write); delete allowed on any status",
+      "ambiguity_score": 1,
+      "impact_weight": 2,
+      "status": "Accepted",
+      "evidence_channels": [
+        "assumption",
+        "from-user"
+      ],
+      "origin": "fold-back",
+      "reason": "scout: idempotency vs error semantics undefined; accepted: nonexistent ID + wrong-state transition = exit1 no write; delete any status"
+    },
+    {
+      "id": "g13",
+      "requirement": "Missing store on first run = empty valid store (read commands do not create file); corrupt/invalid JSON or schema = fail closed (storage error, nonzero exit, never overwrite/repair)",
+      "ambiguity_score": 1,
+      "impact_weight": 3,
+      "status": "Accepted",
+      "evidence_channels": [
+        "assumption",
+        "from-user"
+      ],
+      "origin": "fold-back",
+      "reason": "scout: data-safety branch, load path for every command; accepted: missing=empty store no create; corrupt=fail closed exit3 no overwrite; [pressure: exempt:accepted fail-closed data-safety default]"
+    },
+    {
+      "id": "g14",
+      "requirement": "Exit code taxonomy: 0 success; 2 usage error (unknown/missing/extra arg, no-args); 1 domain error (no such task, bad transition, empty title); 3 storage error (corrupt/permission/write failure)",
+      "ambiguity_score": 1,
+      "impact_weight": 2,
+      "status": "Accepted",
+      "evidence_channels": [
+        "assumption",
+        "from-user"
+      ],
+      "origin": "fold-back",
+      "reason": "scout: tests cannot distinguish failure classes without this; accepted: exit 0/2/1/3 taxonomy"
+    },
+    {
+      "id": "g15",
+      "requirement": "Output contract: list/completed/all sort by ID ascending, one line per task = ID + status marker + title; empty view prints nothing exit 0; mutations print concise confirmation incl assigned ID (added <id>, completed <id>, ...); errors to stderr, success to stdout",
+      "ambiguity_score": 1,
+      "impact_weight": 2,
+      "status": "Accepted",
+      "evidence_channels": [
+        "assumption",
+        "from-user"
+      ],
+      "origin": "fold-back",
+      "reason": "scout: human-readable is not testable without exact format; accepted: ID-asc sort, one-line ID+marker+title, empty=nothing exit0, mutations print confirmation incl id, errors stderr"
+    },
+    {
+      "id": "g16",
+      "requirement": "Concurrency: two simultaneous invocations - lock/serialize or undefined?",
+      "ambiguity_score": 1,
+      "impact_weight": 1,
+      "status": "Accepted",
+      "evidence_channels": [
+        "assumption",
+        "from-user"
+      ],
+      "origin": "fold-back",
+      "reason": "scout: atomic rename prevents torn files but not lost updates; likely out of scope for personal tool; accepted: concurrency undefined/non-goal; atomic write prevents torn files"
+    },
+    {
+      "id": "g17",
+      "requirement": "Anti-gaming verification clauses (fresh-impl test): (1) ID no-reuse row = delete highest ID then add -> new id == next_id (not max+1); (2) corrupt-store row covers BOTH syntactically-bad JSON AND schema-invalid (wrong shape/dup ids/bad status) -> both exit 3 no overwrite; (3) usage-error rows assert store bytes unchanged AND usage error detected before store read (corrupt TODO_FILE + bad args still exits 2); (4) matrix rows assert raw store/no-write, not only exit+stdout; (5) pyproject project.dependencies == [] and no third-party runtime imports",
+      "ambiguity_score": 1,
+      "impact_weight": 2,
+      "status": "Accepted",
+      "evidence_channels": [
+        "from-code"
+      ],
+      "origin": "fold-back",
+      "reason": "fresh-impl test gameable-criteria hardening; evidence-only, no new user-facing behavior"
+    }
+  ]
+}
