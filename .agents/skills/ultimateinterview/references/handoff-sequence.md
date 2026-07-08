@@ -80,7 +80,7 @@ Do not declare the spec implementation-ready until the core gates pass:
 - if the readiness gate was triggered, the seed-readiness audit has either passed, produced follow-up questions, or been explicitly deferred
 - `scripts/protocol_state.py` reports `protocol_ready: yes` - it enforces the framing challenge, brain-dump intake (or waiver), sweep/probe/checkpoint minimums, completion of every triggered lens, and the fresh-implementer test on the Build Contract from `protocol.json`, not from your memory of having done them
 - `scripts/handoff_coverage.py <session-dir>` reports `coverage_ok: yes` - every settled weight-`2`-or-higher non-deferred ledger entry id is cited in Part 1 (traceability floor against synthesis-loss); an uncovered entry either belongs in a Part-1 row that was never written or was dropped during Build-Contract drafting
-- `scripts/verification_lint.py <session-dir>` reports `executable_ok: yes` - every command head in Part-1 command/verification columns resolves on this host's PATH (the build host in this workflow); swap in the invocation the host has, or annotate the row and run with `--advisory` only when the build host is genuinely a different machine
+- `scripts/verification_lint.py <session-dir>` reports `executable_ok` - every command head in Part-1 command/verification columns resolves on this host's PATH (the build host in this workflow). Advisory by default (the head heuristic has false positives on prose-heavy cells); investigate any `MISSING` head and swap in the invocation the host actually has. `--strict` makes it block, safe only when the build host is identical to this one
 
 For triggered lenses, also apply the per-lens gate checks in `references/audit-checklists.md` - read them when the gates run.
 

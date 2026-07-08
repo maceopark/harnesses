@@ -61,6 +61,12 @@ SUBSHELL: Final[re.Pattern[str]] = re.compile(r"\$\(([^()]*)\)")
 ASSIGNMENT: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 COMMAND_HEAD: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9][A-Za-z0-9._+-]*$")
 SOURCE_TAG: Final[re.Pattern[str]] = re.compile(r"\(source:[^)]*\)")
+REDIRECTION: Final[frozenset[str]] = frozenset({">", ">>", "<", "<<", "2>", "&>", "|&"})
+SCRIPT_SUFFIXES: Final[tuple[str, ...]] = (".py", ".sh", ".js", ".ts", ".rb", ".pl", ".ps1")
+# A path-looking argument: leading /, ./, ../ or ~/ with real content after.
+# Deliberately NOT a bare mid-token "/" - prose uses slashes ("before/after",
+# "stdout/stderr", "and/or") and those are not command signals.
+PATH_TOKEN: Final[re.Pattern[str]] = re.compile(r"^(?:\.{0,2}/|~/)\S")
 # English function words that start prose fragments inside command cells
 # ("no third-party runtime deps", "or inspect pyproject") - never binaries.
 PROSE_HEADS: Final[frozenset[str]] = frozenset(
@@ -99,6 +105,25 @@ def looks_like_prose(segment: str) -> bool:
     return stripped.endswith(".") or ", " in stripped
 
 
+def is_command_like(tokens: list[str], had_assignment: bool) -> bool:
+    """A segment is a shell command (not a prose fragment) only when it carries
+    an affirmative command signal: a leading env-assignment, a flag, a path or
+    script-suffix argument, or a redirection. A bare lowercase word followed by
+    prose ("assert exit code", "checksum store file", "user runs ...") carries
+    none and is skipped - the false-positive class the app-2/app-4 handoffs hit.
+    """
+    if had_assignment:
+        return True
+    for token in tokens[1:]:
+        if token.startswith("-") and len(token) > 1:
+            return True
+        if token in REDIRECTION:
+            return True
+        if token.endswith(SCRIPT_SUFFIXES) or PATH_TOKEN.match(token):
+            return True
+    return False
+
+
 def command_heads(cell_text: str) -> list[str]:
     """Extract the command-head tokens of every shell segment in one cell."""
     text = SOURCE_TAG.sub("", cell_text.replace("`", ""))
@@ -112,6 +137,7 @@ def command_heads(cell_text: str) -> list[str]:
             tokens = shlex.split(segment, posix=True)
         except ValueError:
             continue  # unbalanced quotes: prose, not a command
+        had_assignment = bool(tokens) and bool(ASSIGNMENT.match(tokens[0]))
         while tokens and ASSIGNMENT.match(tokens[0]):
             tokens = tokens[1:]
         if not tokens:
@@ -121,6 +147,8 @@ def command_heads(cell_text: str) -> list[str]:
             continue
         if not COMMAND_HEAD.match(head):
             continue  # capitalized/prose head ("Run", "Exercise")
+        if not is_command_like(tokens, had_assignment):
+            continue  # bare word + prose, no flag/path/redirection/assignment signal
         heads.append(head)
     return heads
 
@@ -150,8 +178,14 @@ def main(
     session_dir: Annotated[
         Path, typer.Argument(help="Session dir containing handoff.md")
     ],
-    advisory: Annotated[
-        bool, typer.Option(help="Report only; never exit non-zero.")
+    strict: Annotated[
+        bool,
+        typer.Option(
+            "--strict",
+            help="Exit non-zero on a missing head. Default is advisory (report only) - "
+            "the head heuristic has false positives on prose-heavy cells, so blocking "
+            "is opt-in and only safe on a build host identical to this one.",
+        ),
     ] = False,
 ) -> None:
     handoff_path = session_dir / "handoff.md"
@@ -186,7 +220,7 @@ def main(
             "  Swap in the invocation this host actually has (the interview host validated "
             "it), or annotate the row when the build host is genuinely a different machine."
         )
-        if not advisory:
+        if strict:
             raise typer.Exit(1)
     else:
         typer.echo("\n- executable_ok: yes")
