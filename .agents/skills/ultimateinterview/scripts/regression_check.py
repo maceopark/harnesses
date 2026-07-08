@@ -20,9 +20,9 @@
 # TOOLING: every deterministic script must still run without crashing against
 # every prior session, and its host-independent verdict must not move.
 #
-# This harness runs handoff_coverage.py, verification_lint.py, and
-# postmortem_lint.py against a captured fixture set (real prior sessions, minus
-# the parts that don't affect these checks) and asserts:
+# This harness runs handoff_coverage.py, verification_lint.py, predicate_lint.py,
+# and postmortem_lint.py against a captured fixture set (real prior sessions,
+# minus the parts that don't affect these checks) and asserts:
 #
 #   1. NO CRASH  — no Python traceback, the process produced parseable output.
 #   2. handoff_coverage.coverage_ok matches the recorded expectation
@@ -56,6 +56,7 @@ LIVE_DIR = SELF_DIR.parents[3] / ".ultimateinterview"  # repo-root/.ultimateinte
 
 HANDOFF_COVERAGE = SELF_DIR / "handoff_coverage.py"
 VERIFICATION_LINT = SELF_DIR / "verification_lint.py"
+PREDICATE_LINT = SELF_DIR / "predicate_lint.py"
 POSTMORTEM_LINT = (
     SELF_DIR.parent.parent / "ultimateinterview-postmortem" / "scripts" / "postmortem_lint.py"
 )
@@ -137,6 +138,18 @@ def check_session(slug: str, session_dir: Path, expected: dict) -> dict:
         findings.append(f"verification_lint: advisory run exited {rc} (expected 0)")
     if "executable_ok" not in out:
         findings.append("verification_lint: report missing 'executable_ok' line")
+
+    # 2b. predicate_lint — runs cleanly, well-formed report. The specific
+    # flagged set is a heuristic value (bare-category detection has FPs, which is
+    # why it is advisory), so we assert STRUCTURE not value, exactly like
+    # verification_lint's MISSING-head set. Precise fire/clean assertions live in
+    # test_predicate_lint.py against the crafted regression_fixtures/predicate_cases.
+    rc, out = _run(PREDICATE_LINT, session_dir, [])
+    findings += _no_crash(out, "predicate_lint")
+    if rc != 0:
+        findings.append(f"predicate_lint: advisory run exited {rc} (expected 0)")
+    if "predicate_ok" not in out:
+        findings.append("predicate_lint: report missing 'predicate_ok' line")
 
     # 3. postmortem_lint — verdict class (only if a postmortem exists)
     pm_expected = expected["postmortem"]

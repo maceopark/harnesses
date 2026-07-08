@@ -45,6 +45,6 @@ Lens triggers:
 - `goal/obstacle`: unclear outcome, brittle assumptions, missing exception paths, or contested priorities
 - `misuse`: security, privacy, fraud, destructive actions, unauthorized access, irreversible data changes, abuse potential, or any command/API surface accepting free-text or user-supplied values (degenerate-input enumeration in `references/lenses.md` §6 is then mandatory)
 - `quality`: vague words such as fast, reliable, scalable, compatible, simple, usable, safe, robust, or architecture-significant quality attributes
-- `controlled-language`: fuzzy acceptance criteria, missing trigger/condition/response, prose that admits multiple interpretations, or a validity/reject category (invalid, malformed, corrupt) named without its deciding predicate
+- `controlled-language`: fuzzy acceptance criteria, missing trigger/condition/response, prose that admits multiple interpretations, a validity/reject category (invalid, malformed, corrupt) named without its deciding predicate, or a persisted/loaded field named only by type (integer, boolean, count, version) whose coercion boundary is unstated (does a JSON boolean count as the integer? a numeric string? a float? — claudeplan wrote `true` into an `isinstance(int)` field)
 
 For each untriggered heavy lens, record a short skip reason in the ledger or final spec when the omission could surprise the implementation agent.
