@@ -34,6 +34,29 @@ import pack_evidence
 
 runner = CliRunner()
 
+LESSONS_MD = """# Lessons
+
+| Signal | Lens to trigger | Failure class | Evidence | Date | Fired/Caught |
+| --- | --- | --- | --- | --- | --- |
+| free-text input | misuse | enumeration-miss | e | 2026-07-01 | 4/4 |
+| temporal word | domain/state | trigger-too-narrow | e | 2026-07-01 | 3/3 |
+
+## Retired
+
+| Signal | Lens to trigger | Retired date | Reason |
+| --- | --- | --- | --- |
+"""
+
+
+@pytest.fixture(autouse=True)
+def _isolate_default_lessons(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the real global lessons store out of every bundle test; tests that
+    exercise snapshotting pass their own --lessons paths."""
+    monkeypatch.setattr(
+        pack_evidence, "GLOBAL_LESSONS_PATH", tmp_path / "no-such-global-lessons.md"
+    )
+
+
 VALID_LEDGER = {
     "entries": [
         {
@@ -118,7 +141,8 @@ def test_full_bundle_packs_all_sections(tmp_path: Path) -> None:
     )
     assert result.exit_code == 0, result.output
     bundle = read_bundle(session)
-    assert bundle["schema_version"] == 2
+    assert bundle["schema_version"] == 3
+    assert bundle["lessons"]["stores"] == []  # default paths absent in tmp (global isolated)
     assert bundle["spec"]["interview_ledger"][0]["id"] == "g1"
     assert bundle["decisions"][0]["self_class"] == "spec_gap"
     assert bundle["execution"]["present"] is True
@@ -446,6 +470,44 @@ def test_oversized_bundle_appends_size_warning(
     assert result.exit_code == 0, result.output
     bundle = read_bundle(session)
     assert any("too large for its consumer" in note for note in bundle["warnings"])
+
+
+def test_lessons_snapshot_captures_active_rows(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    store = tmp_path / "lessons.md"
+    store.write_text(LESSONS_MD, encoding="utf-8")
+    result = runner.invoke(pack_evidence.app, [str(session), "--lessons", str(store)])
+    assert result.exit_code == 0, result.output
+    stores = read_bundle(session)["lessons"]["stores"]
+    assert len(stores) == 1
+    assert stores[0]["name"] == "lessons.md"
+    assert stores[0]["active_count"] == 2
+    signals = [row["signal"] for row in stores[0]["active"]]
+    assert "free-text input" in signals and "temporal word" in signals
+    assert stores[0]["active"][0]["fired"] == 4
+
+
+def test_explicit_missing_lessons_store_is_recorded(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    result = runner.invoke(
+        pack_evidence.app, [str(session), "--lessons", str(tmp_path / "gone.md")]
+    )
+    assert result.exit_code == 0, result.output
+    bundle = read_bundle(session)
+    assert bundle["lessons"]["stores"] == []
+    assert any("gone.md" in note for note in bundle["missing_evidence"])
+
+
+def test_default_paths_snapshot_repo_docs_store(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "ultimateinterview-lessons.md").write_text(LESSONS_MD, encoding="utf-8")
+    result = runner.invoke(pack_evidence.app, [str(session), "--repo-root", str(tmp_path)])
+    assert result.exit_code == 0, result.output
+    stores = read_bundle(session)["lessons"]["stores"]
+    assert [s["name"] for s in stores] == ["ultimateinterview-lessons.md"]
+    assert stores[0]["active_count"] == 2
 
 
 def test_diff_range_and_file_are_mutually_exclusive(tmp_path: Path) -> None:

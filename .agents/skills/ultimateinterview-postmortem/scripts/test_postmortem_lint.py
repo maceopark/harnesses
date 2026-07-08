@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -130,6 +131,16 @@ def make_session(tmp_path: Path, report: str) -> Path:
     return session
 
 
+def write_bundle(session: Path, stores: list[dict]) -> None:
+    """Minimal evidence_bundle.json holding the audit-start lessons snapshot."""
+    (session / "evidence_bundle.json").write_text(
+        json.dumps({"lessons": {"stores": stores}}), encoding="utf-8"
+    )
+
+
+TWO_ROW_SNAPSHOT = [{"name": "lessons.md", "active_count": 2}]
+
+
 def lint(session: Path, *extra: str) -> tuple[int, str]:
     result = runner.invoke(postmortem_lint.app, [str(session), *extra])
     return result.exit_code, result.output
@@ -137,9 +148,8 @@ def lint(session: Path, *extra: str) -> tuple[int, str]:
 
 def test_conforming_report_passes(tmp_path: Path) -> None:
     session = make_session(tmp_path, conforming_report())
-    lessons = tmp_path / "lessons.md"
-    lessons.write_text(LESSONS, encoding="utf-8")
-    code, output = lint(session, "--lessons", str(lessons))
+    write_bundle(session, TWO_ROW_SNAPSHOT)
+    code, output = lint(session)
     assert code == 0, output
     assert "ok" in output
 
@@ -228,25 +238,55 @@ def test_missing_fire_tracking_row_fails(tmp_path: Path) -> None:
         "| lessons.md | 2 | temporal word | no-signal | - |\n", ""
     )
     session = make_session(tmp_path, report)
-    lessons = tmp_path / "lessons.md"
-    lessons.write_text(LESSONS, encoding="utf-8")
-    code, output = lint(session, "--lessons", str(lessons))
+    write_bundle(session, TWO_ROW_SNAPSHOT)
+    code, output = lint(session)
     assert code == 1
     assert "active lesson #2" in output
 
 
-def test_empty_lessons_store_requires_nothing(tmp_path: Path) -> None:
+def test_empty_snapshot_requires_nothing(tmp_path: Path) -> None:
     session = make_session(tmp_path, conforming_report())
-    lessons = tmp_path / "empty-lessons.md"
-    lessons.write_text(
-        LESSONS.replace(
-            "| free-text input | misuse | enumeration-miss | e | 2026-07-01 | 1/1 |\n"
-            "| temporal word | domain/state | trigger-too-narrow | e | 2026-07-01 | 2/2 |\n",
-            "",
-        ),
+    write_bundle(session, [{"name": "lessons.md", "active_count": 0}])
+    code, output = lint(session)
+    assert code == 0, output
+
+
+def test_bundle_snapshot_anchors_when_live_store_emptied(tmp_path: Path) -> None:
+    """The blind-spot fix: even when the LIVE store is empty, the audit-start
+    snapshot (2 rows) is enforced, so a report missing a fire-tracking row fails."""
+    report = conforming_report().replace(
+        "| lessons.md | 2 | temporal word | no-signal | - |\n", ""
+    )
+    session = make_session(tmp_path, report)
+    write_bundle(session, TWO_ROW_SNAPSHOT)  # audit-start = 2
+    emptied = tmp_path / "lessons.md"  # live store now has 0 active rows
+    emptied.write_text(
+        "# Lessons\n\n| Signal | Lens to trigger | Failure class | Evidence | Date | Fired/Caught |\n"
+        "| --- | --- | --- | --- | --- | --- |\n\n## Retired\n\n"
+        "| Signal | Lens to trigger | Retired date | Reason |\n| --- | --- | --- | --- |\n",
         encoding="utf-8",
     )
+    code, output = lint(session, "--lessons", str(emptied))
+    assert code == 1  # snapshot wins over the emptied live store
+    assert "active lesson #2" in output
+
+
+def test_no_bundle_fallback_warns_about_live_store(tmp_path: Path) -> None:
+    session = make_session(tmp_path, conforming_report())  # no bundle written
+    lessons = tmp_path / "lessons.md"
+    lessons.write_text(LESSONS, encoding="utf-8")
     code, output = lint(session, "--lessons", str(lessons))
+    assert code == 1  # fallback anchor is unreliable -> flagged
+    assert "LIVE lessons store" in output
+
+
+def test_bolded_divergence_class_is_accepted(tmp_path: Path) -> None:
+    report = conforming_report().replace(
+        "| REQ-001 | fulfilled | h | i | |", "| REQ-001 | **fulfilled** | h | i | |"
+    )
+    session = make_session(tmp_path, report)
+    write_bundle(session, TWO_ROW_SNAPSHOT)
+    code, output = lint(session)
     assert code == 0, output
 
 

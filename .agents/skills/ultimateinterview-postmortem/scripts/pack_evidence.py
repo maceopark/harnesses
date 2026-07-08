@@ -49,17 +49,21 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 # The interview ledger parser lives in the sibling ultimateinterview skill;
 # import the module directly (not as a `scripts` package) so this skill's own
 # scripts/ dir never shadows it.
-sys.path.insert(
-    0, str(Path(__file__).resolve().parents[2] / "ultimateinterview" / "scripts")
+_INTERVIEW_SCRIPTS: Final[Path] = (
+    Path(__file__).resolve().parents[2] / "ultimateinterview" / "scripts"
 )
+sys.path.insert(0, str(_INTERVIEW_SCRIPTS))
 
+import lessons as lessons_store  # noqa: E402
 from ambiguity_ledger import parse_entries  # noqa: E402
 
-BUNDLE_SCHEMA_VERSION: Final[int] = 2
+BUNDLE_SCHEMA_VERSION: Final[int] = 3
 BUNDLE_FILENAME: Final[str] = "evidence_bundle.json"
 DECISIONS_FILENAME: Final[str] = "decisions.jsonl"
 DEFAULT_ULW_RELPATH: Final[str] = ".omo/ulw-loop"
 DEFAULT_EVIDENCE_RELPATH: Final[str] = ".omo/evidence"
+DEFAULT_REPO_LESSONS_RELPATH: Final[str] = "docs/ultimateinterview-lessons.md"
+GLOBAL_LESSONS_PATH: Final[Path] = _INTERVIEW_SCRIPTS.parent / "lessons.md"
 MAX_ARTIFACT_TEXT_BYTES: Final[int] = 128_000
 # The bundle is consumed by a model context, not replayed by a machine; these
 # bounds keep it readable end-to-end. Raw executor state stays on disk at
@@ -201,6 +205,63 @@ def compact_goals(goals: Any) -> Any:
         else:
             compacted[key] = compact_field(value)
     return compacted
+
+
+def snapshot_lessons(
+    lessons_paths: list[Path] | None,
+    repo_root: Path,
+    missing: list[str],
+    warnings: list[str],
+) -> dict[str, Any]:
+    """Snapshot each lessons store's ACTIVE rows at pack time (= audit start).
+
+    postmortem_lint validates the report's fire-tracking table against THIS
+    snapshot, not the live store: a bulk-absorption run empties the active
+    table before the lint sees it, so validating against the live file would
+    pass vacuously - the exact blind spot the app-5 run exposed. Pack runs
+    first in the audit, so the snapshot is the audit-start truth.
+    """
+    explicit = lessons_paths is not None
+    candidates = (
+        list(lessons_paths)
+        if explicit
+        else [repo_root / DEFAULT_REPO_LESSONS_RELPATH, GLOBAL_LESSONS_PATH]
+    )
+    stores: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for path in candidates:
+        resolved = str(path.resolve())
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        if not path.is_file():
+            if explicit:
+                missing.append(
+                    f"lessons store {path} not found - fire-tracking cannot be anchored to it"
+                )
+            continue
+        try:
+            parsed = lessons_store.parse_file(path)
+        except Exception as error:  # noqa: BLE001 - degrade, don't abort the whole bundle
+            warnings.append(f"lessons store {path} did not parse ({error}) - snapshot skipped")
+            continue
+        stores.append(
+            {
+                "path": resolved,
+                "name": path.name,
+                "active_count": len(parsed.rows),
+                "active": [
+                    {
+                        "signal": row.signal[:120],
+                        "lens": row.lens,
+                        "fired": row.fired,
+                        "caught": row.caught,
+                    }
+                    for row in parsed.rows
+                ],
+            }
+        )
+    return {"stores": stores}
 
 
 def has_ulw_state(directory: Path) -> bool:
@@ -541,6 +602,14 @@ def main(
         Path | None,
         typer.Option("--repo-root", help="repo for git diff; default session-dir/../.."),
     ] = None,
+    lessons: Annotated[
+        list[Path] | None,
+        typer.Option(
+            "--lessons",
+            help="lessons store(s) to snapshot as the audit-start fire-tracking anchor "
+            f"(repeatable); default: <repo-root>/{DEFAULT_REPO_LESSONS_RELPATH} + the global store",
+        ),
+    ] = None,
     out: Annotated[
         Path | None,
         typer.Option("--out", help=f"output path; default <session-dir>/{BUNDLE_FILENAME}"),
@@ -574,6 +643,7 @@ def main(
         evidence_dir, resolved_root, session_dir.resolve().name, missing
     )
     artifacts = collect_evidence_artifacts(resolved_evidence_dir, resolved_root, execution, warnings)
+    lessons_snapshot = snapshot_lessons(lessons, resolved_root, missing, warnings)
 
     bundle: dict[str, Any] = {
         "schema_version": BUNDLE_SCHEMA_VERSION,
@@ -590,6 +660,7 @@ def main(
         "decisions": decisions,
         "execution": execution,
         "artifacts": artifacts,
+        "lessons": lessons_snapshot,
         "diff": diff,
         "warnings": warnings,
         "missing_evidence": missing,
@@ -614,6 +685,8 @@ def main(
         f"ledger entries {len(entries)} | decisions {len(decisions)} | "
         f"execution events {len(execution['ledger_events'])} | "
         f"artifacts {len(artifacts['files'])} | "
+        f"lessons {sum(s['active_count'] for s in lessons_snapshot['stores'])} active "
+        f"in {len(lessons_snapshot['stores'])} store(s) | "
         f"warnings {len(warnings)} | missing {len(missing)}"
     )
     for note in warnings:

@@ -75,6 +75,18 @@ Run packing after implementation, QA, and sign-off evidence are complete.
 Earlier runs are only diagnostic snapshots; the postmortem should use the
 final regenerated bundle.
 
+## Lessons snapshot (schema_version 3)
+
+Pack runs first in the audit, so the bundle also snapshots each lessons store's
+ACTIVE rows at that moment - the audit-start truth. `postmortem_lint` validates
+the report's `### Lessons Fire-Tracking` table against this snapshot, never
+against the live store: a bulk-absorption run empties the active table before
+the lint sees it, so a live count would let the fire-tracking check pass
+vacuously (the blind spot the app-5 run exposed). `--lessons <path>` overrides
+the snapshot targets; the default is `<repo-root>/docs/ultimateinterview-lessons.md`
+plus the global store beside the interview skill. A store named explicitly but
+absent lands in `missing_evidence`; an unparseable one lands in `warnings`.
+
 ## Size discipline (schema_version 2)
 
 The bundle's consumer is a model context, so the adapter bounds everything it
@@ -99,11 +111,11 @@ unreadable by the very thing it exists to feed. Bounds (constants in
   executor input is dwarfing the digest bounds and the adapter needs a new
   bound, not the postmortem a bigger context.
 
-## Bundle shape (schema_version 2)
+## Bundle shape (schema_version 3)
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "sources": {
     "session_dir": "...",
     "ulw_dir": "... | null",
@@ -145,6 +157,16 @@ unreadable by the very thing it exists to feed. Bounds (constants in
       }
     ]
   },
+  "lessons": {
+    "stores": [
+      {
+        "path": ".../ultimateinterview/lessons.md",
+        "name": "lessons.md",
+        "active_count": 3,
+        "active": [ {"signal": "<=120 chars", "lens": "domain/state", "fired": 1, "caught": 1} ]
+      }
+    ]
+  },
   "diff": {"source": "git diff main..HEAD", "text": "..."},
   "warnings": [],
   "missing_evidence": []
@@ -159,6 +181,7 @@ carries no schema version):
 - `revisions`: kind `criteria_revised` - note upstream records no original-spec citation, so revision provenance still needs the interview ledger side
 - `user_decision_blockers`: kind `goal_needs_user_decision` - fires only for auth/credential-style blockers upstream, so its absence proves nothing about other external decisions
 - `ledger_events` keeps every event with size-bounded fields (see Size discipline above); `event_kind_counts` shows what the projections did not consume
+- `lessons.stores[]` is the audit-start snapshot of each lessons store's active rows (schema v3+); `postmortem_lint` anchors fire-tracking to `active_count` here, not to the live store
 
 ## How the postmortem uses it
 

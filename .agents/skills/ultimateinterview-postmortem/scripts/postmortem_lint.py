@@ -32,6 +32,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -62,6 +63,7 @@ FAILURE_CLASSES: Final[tuple[str, ...]] = (
     "synthesis-loss",
 )
 ESCAPE_WEIGHTS: Final[frozenset[int]] = frozenset({1, 2, 3, 5})
+BUNDLE_FILENAME: Final[str] = "evidence_bundle.json"
 REQUIRED_SECTIONS: Final[tuple[str, ...]] = (
     "implementation evidence",
     "divergence table",
@@ -148,8 +150,14 @@ def whole_token(needle: str, haystack: str) -> bool:
     return pattern.search(haystack) is not None
 
 
+def strip_md(value: str) -> str:
+    """Drop leading markdown emphasis/backticks so a bolded class cell
+    (`**escaped-requirement**`) still matches its class token."""
+    return value.strip().lstrip("*_`~ ").lower()
+
+
 def leading_class(value: str, vocabulary: tuple[str, ...]) -> str | None:
-    lowered = value.strip().lower()
+    lowered = strip_md(value)
     for token in vocabulary:
         if lowered.startswith(token):
             return token
@@ -300,37 +308,80 @@ def check_calibration(
             )
 
 
-def check_fire_tracking(
-    body: str | None, lessons_paths: list[Path], violations: list[str]
-) -> None:
-    if not lessons_paths:
-        return
-    table = first_table(body) if body is not None else None
+def load_bundle_lessons(bundle_path: Path) -> list[dict] | None:
+    """The bundle's audit-start lessons snapshot (schema v3+), or None when the
+    bundle is absent/old/unparseable - the caller then falls back to the live store."""
+    if not bundle_path.is_file():
+        return None
+    try:
+        bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    lessons = bundle.get("lessons")
+    if not isinstance(lessons, dict):
+        return None
+    stores = lessons.get("stores")
+    return stores if isinstance(stores, list) else None
+
+
+def lessons_anchors(
+    bundle_stores: list[dict] | None,
+    lessons_paths: list[Path],
+    violations: list[str],
+) -> list[tuple[str, int]]:
+    """(store-name, audit-start-active-count) pairs to enforce fire-tracking against.
+
+    Prefer the bundle's audit-start snapshot: the run may empty the live store
+    before the lint sees it (bulk absorption), so counting the live file would
+    make the check pass vacuously - the app-5 blind spot. Fall back to the live
+    file only when no snapshot exists, and say so.
+    """
+    if bundle_stores is not None:
+        return [(s.get("name", ""), int(s.get("active_count", 0))) for s in bundle_stores]
+    anchors: list[tuple[str, int]] = []
     for path in lessons_paths:
         try:
-            active_rows = len(lessons_store.parse_file(path).rows)
+            anchors.append((path.name, len(lessons_store.parse_file(path).rows)))
         except typer.BadParameter as error:
             violations.append(f"lessons store {path} did not parse: {error}")
-            continue
-        if active_rows == 0:
+    if anchors:
+        violations.append(
+            "fire-tracking validated against the LIVE lessons store(s), not an "
+            "audit-start snapshot - unreliable if this run mutated the store; pass "
+            "--bundle (or run pack_evidence first) so the count is anchored to audit start"
+        )
+    return anchors
+
+
+def check_fire_tracking(
+    body: str | None,
+    bundle_stores: list[dict] | None,
+    lessons_paths: list[Path],
+    violations: list[str],
+) -> None:
+    if bundle_stores is None and not lessons_paths:
+        return
+    anchors = lessons_anchors(bundle_stores, lessons_paths, violations)
+    table = first_table(body) if body is not None else None
+    for name, active_count in anchors:
+        if active_count == 0:
             continue
         if table is None:
             violations.append(
-                f"Lessons Fire-Tracking has no table but {path.name} has "
-                f"{active_rows} active row(s) to walk"
+                f"Lessons Fire-Tracking has no table but {name} had "
+                f"{active_count} active row(s) at audit start to walk"
             )
             continue
         _, rows = table
-        for index in range(1, active_rows + 1):
+        for index in range(1, active_count + 1):
             hit = any(
-                whole_token(path.name, cell(row, 0))
-                and whole_token(str(index), cell(row, 1))
+                whole_token(name, cell(row, 0)) and whole_token(str(index), cell(row, 1))
                 for row in rows
             )
             if not hit:
                 violations.append(
-                    f"Lessons Fire-Tracking is missing a row for {path.name} "
-                    f"active lesson #{index} - every active lesson gets a "
+                    f"Lessons Fire-Tracking is missing a row for {name} "
+                    f"active lesson #{index} - every lesson active at audit start gets a "
                     "fired/no-signal verdict, every run"
                 )
 
@@ -344,7 +395,17 @@ def main(
         list[Path] | None,
         typer.Option(
             "--lessons",
-            help="Lessons store to enforce fire-tracking against (repeatable).",
+            help="Lessons store to enforce fire-tracking against (repeatable). "
+            "Used only as a fallback when the bundle carries no lessons snapshot.",
+        ),
+    ] = None,
+    bundle: Annotated[
+        Path | None,
+        typer.Option(
+            "--bundle",
+            help="evidence_bundle.json holding the audit-start lessons snapshot; "
+            f"default <session-dir>/{BUNDLE_FILENAME}. The snapshot is the reliable "
+            "fire-tracking anchor (the live store may have been emptied this run).",
         ),
     ] = None,
     advisory: Annotated[
@@ -361,6 +422,8 @@ def main(
     report = report_path.read_text(encoding="utf-8")
     part1 = extract_part1(handoff_path.read_text(encoding="utf-8"))
     sections = split_sections(report)
+
+    bundle_stores = load_bundle_lessons(bundle or (session_dir / BUNDLE_FILENAME))
 
     violations: list[str] = []
     for key in REQUIRED_SECTIONS:
@@ -380,7 +443,10 @@ def main(
         section_body(sections, "calibration summary"), counts, synthesis, violations
     )
     check_fire_tracking(
-        section_body(sections, "lessons fire-tracking"), list(lessons or []), violations
+        section_body(sections, "lessons fire-tracking"),
+        bundle_stores,
+        list(lessons or []),
+        violations,
     )
 
     if violations:

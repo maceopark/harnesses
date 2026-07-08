@@ -60,7 +60,7 @@ Whether the spec's Verification Commands actually ran and passed - run them when
 
 ### Lessons Fire-Tracking
 
-One row per active lesson per store, every run - `no-signal` is a verdict, not a reason to skip the row. `postmortem_lint.py --lessons` fails the report on any missing row.
+One row per lesson active AT AUDIT START per store, every run - `no-signal` is a verdict, not a reason to skip the row. `postmortem_lint.py` validates this table against the bundle's audit-start lessons snapshot (not the live store, which the run may have emptied) and fails the report on any missing row.
 
 | Store | Row | Signal (truncated) | Fired this run? | Caught? |
 | --- | --- | --- | --- | --- |
