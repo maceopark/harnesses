@@ -4,7 +4,7 @@ Use this template when the user asks for a persistent or copy-ready spec. Copy t
 
 # Spec: <feature/change name>
 
-> **To the implementing agent:** Build from Part 1 only; Part 2 is evidence, read it only on dispute. Deferred Risks are decisions reserved to their owners - never resolve one silently; if your implementation needs an answer to one, stop and ask. Append every decision this spec did not force to `.ultimateinterview/<slug>/decisions.jsonl` as you make it. When the implementation lands, STOP - the requester runs the `ultimateinterview-postmortem` skill in a fresh context to diff this spec against the actual change. Do not audit your own implementation; if you write a self-review anyway, save it as `postmortem.self.md`, never `postmortem.md`.
+> **To the implementing agent:** Build from Part 1 only; Part 2 is evidence, read it only on dispute. Deferred Risks are decisions reserved to their owners - never resolve one silently; if your implementation needs an answer to one, stop and ask. Append every decision this spec did not force to `.ultimateinterview/<slug>/decisions.jsonl` as you make it. Name each acceptance test after the requirement it verifies (`test_req001_*`, or cite `REQ-001` in the test name or docstring) so requirement→test coverage is mechanical for the postmortem. When the implementation lands, STOP - the requester runs the `ultimateinterview-postmortem` skill in a fresh context to diff this spec against the actual change. Do not audit your own implementation; if you write a self-review anyway, save it as `postmortem.self.md`, never `postmortem.md`.
 
 # Part 1 — Build Contract
 
@@ -54,7 +54,9 @@ Structural detail is delegable; a data-domain invariant is never - its row pins 
 
 ## Out Of Scope / Non-Goals
 
-- 
+Each non-goal carries a checkable negative assertion where feasible — the observable proof it was NOT built (the forbidden flag/subcommand exits as unknown, the capability's import/dependency is absent, the endpoint is unserved). This lets the postmortem scan for scope creep instead of eyeballing it. (Experimental, adopted from a plan-mode benchmark's Must-NOT block.)
+
+- <non-goal> — negative: <checkable proof it is absent, e.g. `todo --priority` exits 2; no `priority` field in the store schema>
 
 ## Implementation Constraints
 
@@ -65,7 +67,7 @@ Structural detail is delegable; a data-domain invariant is never - its row pins 
 
 ## Verification Commands
 
-The exact tests/commands/observations that prove the change works. At least one check exercises the real artifact surface (installed command, running service, endpoint) - not test-suite-only. For command-style artifacts, the checks cover the operation × data-state matrix including the unknown/illegal-operation row (no undefined branch). Every command must be copy-paste executable on this host - `scripts/verification_lint.py` validates each command head against PATH; prose action rows are allowed but never replace the executable rows.
+The exact tests/commands/observations that prove the change works. At least one check exercises the real artifact surface (installed command, running service, endpoint) - not test-suite-only. For command-style artifacts, the checks cover the operation × data-state matrix including the unknown/illegal-operation row (no undefined branch). Every command must be copy-paste executable on this host - `scripts/verification_lint.py` validates each command head against PATH; prose action rows are allowed but never replace the executable rows. Ask the implementer to name each acceptance test after the REQ it covers (`test_req001_*` or a `REQ-001` reference) so the postmortem maps requirements to tests mechanically instead of by hand.
 
 | Check | Command / action | Pass condition |
 | --- | --- | --- |
