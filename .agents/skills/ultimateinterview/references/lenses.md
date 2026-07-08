@@ -64,6 +64,7 @@ Ask:
 - What happens if this event arrives while the entity is pending, failed, retried, or already completed?
 - Which rule is an invariant, which is validation, and which is a preference?
 - Who owns mutation, audit, retention, deletion, and recovery?
+- When the goal carries a temporal word (today, daily, weekly, due): walk one concrete boundary crossing as a scenario - what happens AT the boundary to unfinished work (carryover?), to completed work (still visible?), and is the data date-scoped at all? Two blind-rebuild experiments showed this single walk to be the biggest product-variation driver in time-worded requests.
 
 Skip this lens for straightforward CRUD, reporting, simple form validation, pure transformations, stable vocabulary, or low-risk changes with no meaningful lifecycle.
 
@@ -104,6 +105,8 @@ Escalate:
 ```
 
 Do this even for non-security work when abuse, privacy, fraud, destructive actions, or irreversible data changes are plausible.
+
+For every operation accepting free-text or user-supplied values, enumerate the degenerate inputs as explicit ledger entries - empty/whitespace-only, oversized, control/newline characters - and decide each at input time AND on load when the value is persisted (input-time-only validation lets a hand-edited store violate an output invariant). Name the predicate, not just the category: "control characters" without a defined set (C0 only? C1? DEL? Unicode Cc?) leaves the data rule to the implementer.
 
 ## 7. Quality Attribute Scenarios (`quality` lens)
 

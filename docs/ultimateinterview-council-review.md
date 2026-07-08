@@ -41,7 +41,7 @@ gap을 criticality로 라우팅한다. `critical-path`(weight 3/5, score-3 붕�
 
 ### 5. Protocol state 스크립트화 (`scripts/protocol_state.py`)
 
-council의 2위 결함(prose-gate drift)에 대한 직접 응답. `.ultrainterview/<slug>/protocol.json`이 프로토콜 실행 사실을 기록하고 — depth, budget 사용량, 6개 lens 결정(triggered/done/skipped+이유), sweep/probe/checkpoint 카운터, brain-dump/framing 상태, residual history — 새 스크립트가 ledger와 같은 fail-closed 검증으로 판정한다: 모르는 lens 이름 거부, 6개 전부 명시적 결정 강제, 이유 없는 skip 거부. 산출은 두 층: `Due Now` interview obligations(sweep 지연, 예산 소진, 정체 → 다음 scored question을 선점)와 handoff blockers(framing/brain-dump/sweep/probe/checkpoint/미완 lens/미검증 build contract). handoff 정지 조건이 `handoff_ready`(ledger) + `protocol_ready`(protocol) 양 헬퍼 공동 판정이 됐다. "기록되지 않은 프로토콜 단계는 일어나지 않은 것이다."
+council의 2위 결함(prose-gate drift)에 대한 직접 응답. `.ultimateinterview/<slug>/protocol.json`이 프로토콜 실행 사실을 기록하고 — depth, budget 사용량, 6개 lens 결정(triggered/done/skipped+이유), sweep/probe/checkpoint 카운터, brain-dump/framing 상태, residual history — 새 스크립트가 ledger와 같은 fail-closed 검증으로 판정한다: 모르는 lens 이름 거부, 6개 전부 명시적 결정 강제, 이유 없는 skip 거부. 산출은 두 층: `Due Now` interview obligations(sweep 지연, 예산 소진, 정체 → 다음 scored question을 선점)와 handoff blockers(framing/brain-dump/sweep/probe/checkpoint/미완 lens/미검증 build contract). handoff 정지 조건이 `handoff_ready`(ledger) + `protocol_ready`(protocol) 양 헬퍼 공동 판정이 됐다. "기록되지 않은 프로토콜 단계는 일어나지 않은 것이다."
 
 테스트는 13 → 31개(protocol_state 18개 신규: ready/blocker 판정, 경계값, 정체 감지, fail-closed 거부 6종). 구현 중 잡힌 버그 1건: `is_stagnant`의 `zip(strict=True)`가 의도적으로 길이가 다른 window 쌍에서 ValueError — 테스트가 즉시 잡았다.
 

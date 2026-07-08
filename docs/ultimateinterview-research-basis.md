@@ -2,7 +2,7 @@
 
 Date: 2026-07-07
 
-이 문서는 `ultrainterview`와 postmortem closed loop 설계가 "더 좋은 스펙을 만든다"는 목표에 대해 연구적으로 타당한지 검토한 요약이다. 대상 설계는 다음을 포함한다.
+이 문서는 `ultimateinterview`와 postmortem closed loop 설계가 "더 좋은 스펙을 만든다"는 목표에 대해 연구적으로 타당한지 검토한 요약이다. 대상 설계는 다음을 포함한다.
 
 - 인터뷰를 통해 구현 가능한 spec을 만든다.
 - code fact와 human decision을 분리한다.
@@ -12,7 +12,7 @@ Date: 2026-07-07
 
 ## Executive Summary
 
-접근 방향은 타당하다. 요구사항공학 연구와 표준은 오래전부터 좋은 스펙의 핵심을 `unambiguous`, `complete`, `verifiable`, `traceable`, rationale/assumption 명시로 봐 왔다. `ultrainterview + evidence ledger + postmortem` 구조는 이 축들과 잘 맞는다.
+접근 방향은 타당하다. 요구사항공학 연구와 표준은 오래전부터 좋은 스펙의 핵심을 `unambiguous`, `complete`, `verifiable`, `traceable`, rationale/assumption 명시로 봐 왔다. `ultimateinterview + evidence ledger + postmortem` 구조는 이 축들과 잘 맞는다.
 
 다만 "모든 요청에 multi-agent question consensus + multi-model semantic judge + golden-set promotion loop"를 기본 적용하는 것은 연구 근거보다 앞서간다. 연구가 강하게 지지하는 것은 더 좁다.
 
@@ -37,7 +37,7 @@ URL: https://www.cs.toronto.edu/~sme/papers/2000/ICSE2000.pdf
 - validation, negotiation, ambiguity, traceability가 RE의 핵심 문제다.
 - 요구사항은 refutable해야 하며, vague한 요구사항은 validation이 어렵다.
 
-`ultrainterview` 관련성:
+`ultimateinterview` 관련성:
 
 - code fact와 human decision을 분리해야 한다.
 - ambiguity ledger와 verification surface를 두는 방향이 타당하다.
@@ -54,10 +54,10 @@ Accessible PDF mirror: https://git.rehounou.ca/remi/MDAF/raw/commit/89bf06da6ccb
 - SRS 품질 속성으로 unambiguous, complete, correct, understandable, verifiable, internally/externally consistent, achievable, concise, design independent, traceable, modifiable 등을 다룬다.
 - 좋은 스펙은 단순히 길거나 자세한 문서가 아니라 측정 가능한 품질 속성을 가진 문서다.
 
-`ultrainterview` 관련성:
+`ultimateinterview` 관련성:
 
 - "좋은 스펙"을 개선 대상으로 삼으려면 평가 기준이 필요하다.
-- `ultrainterview`의 출력은 intent뿐 아니라 verifiability, traceability, assumption, right level of detail을 포함해야 한다.
+- `ultimateinterview`의 출력은 intent뿐 아니라 verifiability, traceability, assumption, right level of detail을 포함해야 한다.
 
 ### An Analysis Of The Requirements Traceability Problem
 
@@ -70,7 +70,7 @@ URL: https://discovery.ucl.ac.uk/749/1/2.2_rtprob.pdf
 - 많은 traceability 문제는 요구사항이 SRS에 들어가기 전의 출처, rationale, stakeholder context가 약해서 발생한다.
 - 연구는 100명 이상의 practitioner를 포함한 empirical study, focus group, questionnaire, interview, observation에 기반한다.
 
-`ultrainterview` 관련성:
+`ultimateinterview` 관련성:
 
 - answer provenance, requirement source, rationale, assumption을 남기는 evidence ledger는 pre-RS traceability 문제에 대한 현대적 대응이다.
 - 구현 후 drift를 분석하려면 requirement가 어디서 왔는지 추적 가능해야 한다.
@@ -89,7 +89,7 @@ URL: https://www.nasa.gov/reference/appendix-c-how-to-write-a-good-requirement/
 - requirement는 higher-level requirement나 mission/system scope와 traceable해야 한다.
 - rationale에는 assumptions가 포함되어야 한다.
 
-`ultrainterview` 관련성:
+`ultimateinterview` 관련성:
 
 - final handoff에 assumptions, unresolved deferred risks, verification expectations를 넣는 설계가 타당하다.
 - "질문하지 않고 assumption으로 둔 것"을 명시하는 규칙은 NASA식 requirement validation과 잘 맞는다.
@@ -105,7 +105,7 @@ URL: https://www.incose.org/docs/default-source/working-groups/requirements-wg/g
 - requirement set은 필요한 capabilities, constraints, interactions, safety, security, resilience, quality factors를 충분히 설명해야 한다.
 - 최소 attribute로 rationale, trace to parent, trace to source, owner, verification status, validation status, priority 등을 둔다.
 
-`ultrainterview` 관련성:
+`ultimateinterview` 관련성:
 
 - requirement source와 rationale을 ledger에 남기는 설계가 직접 지지된다.
 - verification status와 validation status를 postmortem에서 확인하는 것도 자연스럽다.
@@ -122,7 +122,7 @@ URL: https://arxiv.org/abs/1611.08847
 - automatic detection은 평균 precision 59%, recall 82%였고 variation이 컸다.
 - smell detection은 traditional review나 team discussion의 보조 수단으로 유용하다.
 
-`ultrainterview` 관련성:
+`ultimateinterview` 관련성:
 
 - lightweight quality gate는 타당하다.
 - 자동 judge/checker는 truth source가 아니라 review aid로 사용해야 한다.
@@ -139,7 +139,7 @@ URL: https://arxiv.org/abs/2005.01355
 - 금융 도메인 15개 SRS, 3215개 requirement statement를 기반으로 Rimay를 만들었다.
 - unseen SRS의 requirement 중 평균 88%를 표현할 수 있었다.
 
-`ultrainterview` 관련성:
+`ultimateinterview` 관련성:
 
 - EARS나 controlled-language style을 final spec/handoff에 조건부로 적용하는 것은 타당하다.
 - 다만 모든 요구사항을 formal language로 밀어붙이는 것은 과할 수 있다.
@@ -155,9 +155,9 @@ URL: https://arxiv.org/abs/1709.08481
 - project, people, process dimension이 technique 선택에 영향을 준다.
 - case study로 적용 가능성을 보인다.
 
-`ultrainterview` 관련성:
+`ultimateinterview` 관련성:
 
-- `ultrainterview`는 모든 lens를 항상 실행하면 안 된다.
+- `ultimateinterview`는 모든 lens를 항상 실행하면 안 된다.
 - risk-routed conditional lens가 더 연구 근거에 맞다.
 
 ### Requirements Elicitation Follow-Up Question Generation
@@ -172,7 +172,7 @@ URL: https://arxiv.org/abs/2507.02858
 - LLM-generated questions는 clarity, relevancy, informativeness에서 사람 질문보다 나쁘지 않았다.
 - common interviewer mistake types로 guide하면 LLM 질문이 human-authored question보다 더 좋았다.
 
-`ultrainterview` 관련성:
+`ultimateinterview` 관련성:
 
 - LLM을 question generator/reviewer로 쓰는 방향은 타당하다.
 - 다만 9개 subagent role을 매 라운드 항상 돌려야 한다는 근거는 아니다.
@@ -190,7 +190,7 @@ URL: https://arxiv.org/abs/2404.17842
 - GPT-4는 requirements document의 문제를 식별하고 수정 피드백을 줄 수 있었다.
 - LLM은 SRS generation, validation, rectification에서 생산성 향상을 줄 수 있다.
 
-`ultrainterview` 관련성:
+`ultimateinterview` 관련성:
 
 - LLM은 spec generation/review에 유용하다.
 - 하지만 expert replacement보다는 productivity assistant나 reviewer에 가깝다.
@@ -207,7 +207,7 @@ URL: https://arxiv.org/abs/2509.11446
 - 대부분 GPT-based model과 zero-shot/few-shot prompting에 의존한다.
 - 산업 setting과 complex workflow 통합은 제한적이다.
 
-`ultrainterview` 관련성:
+`ultimateinterview` 관련성:
 
 - LLM 기반 RE 도구의 방향성은 유망하다.
 - 하지만 full closed-loop workflow는 아직 충분히 검증된 산업 표준이 아니다.
@@ -225,7 +225,7 @@ URL: https://arxiv.org/abs/2306.05685
 - 하지만 position bias, verbosity bias, self-enhancement bias, limited reasoning ability가 있다.
 - LLM-as-a-judge는 scalable/explainable approximation이지 truth source가 아니다.
 
-`ultrainterview` 관련성:
+`ultimateinterview` 관련성:
 
 - semantic evaluator는 drift와 AC compliance를 평가하는 보조 judge로는 타당하다.
 - disagreement는 majority vote 대상이 아니라 uncertainty signal로 다루는 것이 맞다.
@@ -241,7 +241,7 @@ URL: https://arxiv.org/abs/2306.05685
 - 요구사항의 source, rationale, assumption이 추적 가능하다.
 - scope, constraints, non-goals가 구현 분기를 줄인다.
 
-따라서 `ultrainterview`의 목표는 긴 handoff가 아니라 구현 분기와 검증 불확실성을 줄이는 스펙이어야 한다.
+따라서 `ultimateinterview`의 목표는 긴 handoff가 아니라 구현 분기와 검증 불확실성을 줄이는 스펙이어야 한다.
 
 ### 인터뷰는 불확실성 감소 과정이다
 
@@ -249,7 +249,7 @@ Requirements elicitation은 사용자의 요구를 단순 수집하는 일이 �
 
 따라서 좋은 질문은 "흥미로운 질문"이 아니라 "답을 들으면 구현 분기가 가장 많이 사라지는 질문"이다.
 
-이 관점은 `ultrainterview`의 ambiguity ledger, one-highest-impact-question-at-a-time, code fact vs human decision routing과 잘 맞는다.
+이 관점은 `ultimateinterview`의 ambiguity ledger, one-highest-impact-question-at-a-time, code fact vs human decision routing과 잘 맞는다.
 
 ### Ledger는 강한 아이디어다
 
@@ -409,11 +409,11 @@ Escalation trigger:
 
 ## Bottom Line
 
-`ultrainterview`의 연구적으로 방어 가능한 핵심 가설은 다음이다.
+`ultimateinterview`의 연구적으로 방어 가능한 핵심 가설은 다음이다.
 
 좋은 스펙은 implementation drift를 완전히 없애지 않는다. 대신 drift가 생겼을 때 그것이 스펙의 빈틈인지, 구현자의 이탈인지, 평가 증거 부족인지 구분 가능하게 만든다.
 
-이 구분 가능성이 `ultrainterview`와 postmortem closed loop 설계의 진짜 가치다.
+이 구분 가능성이 `ultimateinterview`와 postmortem closed loop 설계의 진짜 가치다.
 
 따라서 최종 판단은 다음과 같다.
 

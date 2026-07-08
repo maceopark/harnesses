@@ -2,7 +2,7 @@
 
 ## Summary
 
-`ultrainterview` should not become a workflow that runs every requirements method with equal weight on every task. A better design is a two-pass requirements pipeline:
+`ultimateinterview` should not become a workflow that runs every requirements method with equal weight on every task. A better design is a two-pass requirements pipeline:
 
 1. Structure the user's intent into a draft spec.
 2. Audit that draft as if it were about to become an implementation seed.
@@ -13,7 +13,7 @@ This matches the workflow that has produced good results in practice:
 deep-interview -> ouroboros interview -> seed generation
 ```
 
-The improvement is to encode that pipeline directly into `ultrainterview`, while treating requirement-gap methods as conditional lenses rather than mandatory ceremony.
+The improvement is to encode that pipeline directly into `ultimateinterview`, while treating requirement-gap methods as conditional lenses rather than mandatory ceremony.
 
 ## Why The Current Combination Works
 
@@ -42,7 +42,7 @@ The two tools work well together because their failure modes are complementary. 
 
 ## Proposed Ultrainterview Shape
 
-`ultrainterview` should become:
+`ultimateinterview` should become:
 
 ```text
 Pass 1: Draft Spec Structuring
@@ -109,7 +109,7 @@ Then ask for explicit approval before generating the final spec or seed-like han
 
 ## Conditional Lenses
 
-The current `ultrainterview` includes many useful methods, but they should not all be mandatory for every task. Use them as conditional lenses.
+The current `ultimateinterview` includes many useful methods, but they should not all be mandatory for every task. Use them as conditional lenses.
 
 Always apply:
 
@@ -199,7 +199,7 @@ permissions, invariants, or recovery behavior.
 
 ## Expected Benefit
 
-This keeps the strongest part of the previous `ultrainterview` design: broad requirements-gap discovery.
+This keeps the strongest part of the previous `ultimateinterview` design: broad requirements-gap discovery.
 
 It also fixes the main risk: overloading every task with every methodology.
 
@@ -217,7 +217,7 @@ deep-interview style structuring
 
 The right improvement is not to add more methods. The right improvement is to improve routing and gates.
 
-`ultrainterview` should ask:
+`ultimateinterview` should ask:
 
 ```text
 What kind of implementation risk does this request create?

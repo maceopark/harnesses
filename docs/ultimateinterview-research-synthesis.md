@@ -2,11 +2,11 @@
 
 작성일: 2026-07-05
 
-이 문서는 `ultrainterview` 스킬에 DDD, 상태 모델링, 뉴로-심볼릭/월드모델, 수학적 질문 선택, fresh-context gating을 어떻게 반영할지 정리한 재사용 가능한 판단 근거다.
+이 문서는 `ultimateinterview` 스킬에 DDD, 상태 모델링, 뉴로-심볼릭/월드모델, 수학적 질문 선택, fresh-context gating을 어떻게 반영할지 정리한 재사용 가능한 판단 근거다.
 
 ## 결론
 
-`ultrainterview`는 더 많은 방법론을 항상 실행하는 스킬이 되면 안 된다. 좋은 구조는 다음 세 가지다.
+`ultimateinterview`는 더 많은 방법론을 항상 실행하는 스킬이 되면 안 된다. 좋은 구조는 다음 세 가지다.
 
 1. 항상 켜지는 작은 core.
 2. 위험 신호가 있을 때만 켜지는 conditional lenses.
@@ -70,7 +70,7 @@ score(q) = impact(q) * branch_split(q) * uncertainty_reduction(q) * coverage(q)
 
 ## Readiness / Fresh-Context Gate
 
-`docs/ultrainterview-improvement-proposal.md`의 좋은 아이디어는 draft spec을 바로 seed로 보지 않고, seed-readiness audit을 거치게 하는 것이다. 다만 이것도 항상 켜면 다시 과잉 절차가 된다.
+`docs/ultimateinterview-improvement-proposal.md`의 좋은 아이디어는 draft spec을 바로 seed로 보지 않고, seed-readiness audit을 거치게 하는 것이다. 다만 이것도 항상 켜면 다시 과잉 절차가 된다.
 
 Fresh-context gate는 다음 경우에만 켠다.
 
@@ -88,7 +88,7 @@ fresh-context reviewer에게는 전체 대화가 아니라 draft spec, evidence 
 - Ouroboros interview는 Socratic question generation과 seed readiness에 강하지만, requirement-gap lenses를 risk-routed spec artifact로 묶지는 않는다.
 - oh-my-codex deep-interview는 intent structuring과 ambiguity thresholds에 강하지만, DDD/state/misuse/quality/formalization 렌즈를 통합하지는 않는다.
 - grill-me는 one-question-at-a-time pressure testing에 강하지만 stateless이고 durable evidence ledger나 final spec contract가 없다.
-- `ultrainterview`는 이 셋을 모두 대체하려는 것이 아니라, brownfield 개발자가 coding 전에 spec을 만들기 위한 orchestration layer가 된다.
+- `ultimateinterview`는 이 셋을 모두 대체하려는 것이 아니라, brownfield 개발자가 coding 전에 spec을 만들기 위한 orchestration layer가 된다.
 
 ## Sources
 

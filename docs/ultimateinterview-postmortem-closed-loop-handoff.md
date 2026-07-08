@@ -1,8 +1,8 @@
-# Ultrainterview Postmortem Closed Loop Handoff
+# Ultimateinterview Postmortem Closed Loop Handoff
 
 Date: 2026-07-07
 
-이 문서는 지금까지의 토론을 시간 흐름 순으로 정리한 handoff 문서다. 목적은 `ultrainterview`가 만든 스펙, 구현 결과, 실행 ledger, semantic evaluation을 연결해서 인터뷰 스킬을 개선하는 closed loop 설계를 이어받을 수 있게 하는 것이다.
+이 문서는 지금까지의 토론을 시간 흐름 순으로 정리한 handoff 문서다. 목적은 `ultimateinterview`가 만든 스펙, 구현 결과, 실행 ledger, semantic evaluation을 연결해서 인터뷰 스킬을 개선하는 closed loop 설계를 이어받을 수 있게 하는 것이다.
 
 ## 1. Ouroboros Evaluate의 역할 확인
 
@@ -25,9 +25,9 @@ Date: 2026-07-07
 관련 문서:
 
 - `docs/ouroboros-evaluate-skill-and-mcp.md`
-- `/Users/jpark/gitrepos/harnesses/ouroboros/src/ouroboros/evaluation/semantic.py`
-- `/Users/jpark/gitrepos/harnesses/ouroboros/src/ouroboros/evaluation/pipeline.py`
-- `/Users/jpark/gitrepos/harnesses/ouroboros/src/ouroboros/evaluation/models.py`
+- `/Users/jpark/IdeaProjects/harnesses/ouroboros/src/ouroboros/evaluation/semantic.py`
+- `/Users/jpark/IdeaProjects/harnesses/ouroboros/src/ouroboros/evaluation/pipeline.py`
+- `/Users/jpark/IdeaProjects/harnesses/ouroboros/src/ouroboros/evaluation/models.py`
 
 ## 2. Semantic Evaluation의 한계 정리
 
@@ -148,7 +148,7 @@ ultragoal은 goal/objective 보호와 final quality gate가 강하다.
 
 관련 코드:
 
-- `/Users/jpark/gitrepos/harnesses/oh-my-codex/src/ultragoal/artifacts.ts`
+- `/Users/jpark/IdeaProjects/harnesses/oh-my-codex/src/ultragoal/artifacts.ts`
 
 ### ulw-loop
 
@@ -167,9 +167,9 @@ ulw-loop는 goal 안에 success criteria를 두고, criterion별 evidence를 남
 
 관련 코드:
 
-- `/Users/jpark/gitrepos/harnesses/lazycodex/plugins/omo/components/ulw-loop/src/constants.ts`
-- `/Users/jpark/gitrepos/harnesses/lazycodex/plugins/omo/components/ulw-loop/src/evidence.ts`
-- `/Users/jpark/gitrepos/harnesses/lazycodex/plugins/omo/components/ulw-loop/src/checkpoint.ts`
+- `/Users/jpark/IdeaProjects/harnesses/lazycodex/plugins/omo/components/ulw-loop/src/constants.ts`
+- `/Users/jpark/IdeaProjects/harnesses/lazycodex/plugins/omo/components/ulw-loop/src/evidence.ts`
+- `/Users/jpark/IdeaProjects/harnesses/lazycodex/plugins/omo/components/ulw-loop/src/checkpoint.ts`
 
 핵심 결론:
 
@@ -189,12 +189,14 @@ LazyCodex ulw-loop에서는 checkpoint가 failed/blocked일 때 evidence를 검�
 
 관련 코드:
 
-- `/Users/jpark/gitrepos/harnesses/lazycodex/plugins/omo/components/ulw-loop/src/checkpoint.ts`
-- `/Users/jpark/gitrepos/harnesses/lazycodex/plugins/omo/components/ulw-loop/src/quality-gate-blockers.ts`
+- `/Users/jpark/IdeaProjects/harnesses/lazycodex/plugins/omo/components/ulw-loop/src/checkpoint.ts`
+- `/Users/jpark/IdeaProjects/harnesses/lazycodex/plugins/omo/components/ulw-loop/src/quality-gate-blockers.ts`
 
 핵심 결론:
 
 `goal_needs_user_decision`은 spec gap 일반 신호가 아니라, 반복된 외부 결정/권한 blocker를 멈추는 안전장치다. 다만 postmortem에서는 "인터뷰가 미리 물었어야 했던 외부 결정인가"를 분석하는 재료가 될 수 있다.
+
+> **정정 (2026-07-07 round-2 코드 검증):** 이 절의 서술은 실제보다 넓다. `classifyExternalAuthorizationBlocker`는 auth/credential/401/403/GHCR 정규식 전용이다 (`quality-gate-blockers.ts:7-13,25`). 인증성 blocker가 아닌 "외부 결정" blocker는 signature가 `null`이 되어 (`checkpoint.ts:102`) 이 circuit breaker가 절대 발화하지 않는다. §14 참고.
 
 ## 8. Drift Detection 방식 비교
 
@@ -209,8 +211,8 @@ Ouroboros evaluate는 semantic evaluator가 `drift_score`를 명시적으로 산
 
 관련 코드:
 
-- `/Users/jpark/gitrepos/harnesses/ouroboros/src/ouroboros/evaluation/semantic.py`
-- `/Users/jpark/gitrepos/harnesses/ouroboros/src/ouroboros/evaluation/trigger.py`
+- `/Users/jpark/IdeaProjects/harnesses/ouroboros/src/ouroboros/evaluation/semantic.py`
+- `/Users/jpark/IdeaProjects/harnesses/ouroboros/src/ouroboros/evaluation/trigger.py`
 
 ### ulw-loop
 
@@ -225,15 +227,17 @@ ulw-loop는 drift를 직접 점수화하지 않는다.
 
 Codex goal objective 비교는 LLM도 테스트도 아니다. `get_goal` snapshot에서 objective/status를 뽑고, ulw-loop plan이 기대하는 objective와 whitespace-normalized exact match로 비교한다.
 
+> **정정 (2026-07-07 round-2 코드 검증):** exact match는 코어 함수(`codex-goal-snapshot.ts:47-48,109-119`) 수준에서만 참이다. checkpoint 레벨에는 mismatch된 objective를 brief/artifact 매핑 휴리스틱으로 통과시키는 escape hatch가 있다 (`checkpoint.ts:184`, `checkpoint-reconciliation.ts:37`). "정확 일치 강제"로 신뢰하면 안 된다. §14 참고.
+
 중요한 한계:
 
 `get_goal.status === complete`는 Codex가 자동 검증한 사실이 아니라, 에이전트가 `update_goal({ status: "complete" })`로 기록한 완료 선언이다. 따라서 coordination signal일 뿐 품질 보증은 아니다.
 
 관련 코드:
 
-- `/Users/jpark/gitrepos/harnesses/lazycodex/plugins/omo/components/ulw-loop/src/codex-goal-snapshot.ts`
-- `/Users/jpark/gitrepos/harnesses/lazycodex/plugins/omo/components/ulw-loop/src/goal-status.ts`
-- `/Users/jpark/gitrepos/harnesses/lazycodex/plugins/omo/components/ulw-loop/src/checkpoint.ts`
+- `/Users/jpark/IdeaProjects/harnesses/lazycodex/plugins/omo/components/ulw-loop/src/codex-goal-snapshot.ts`
+- `/Users/jpark/IdeaProjects/harnesses/lazycodex/plugins/omo/components/ulw-loop/src/goal-status.ts`
+- `/Users/jpark/IdeaProjects/harnesses/lazycodex/plugins/omo/components/ulw-loop/src/checkpoint.ts`
 
 ### ultragoal
 
@@ -318,7 +322,7 @@ ultragoal도 drift를 직접 점수화하지 않는다. goal/objective reconcili
 
 추가 토론에서 중요한 방향 전환이 있었다.
 
-처음에는 `ultrainterview`가 만든 interview spec을 oh-my-codex의 `ralplan`으로 돌리면 무엇이 확정되는지 검토했다. 결론은 다음과 같다.
+처음에는 `ultimateinterview`가 만든 interview spec을 oh-my-codex의 `ralplan`으로 돌리면 무엇이 확정되는지 검토했다. 결론은 다음과 같다.
 
 `ralplan`이 확정하는 것은 "사용자 의도" 자체가 아니다. `ralplan`은 Planning artifact가 Planner -> Architect -> Critic consensus gate를 통과했는지를 확정한다. 즉 "이 계획은 실행 가능한가", "Architect와 Critic이 승인했는가"는 확인하지만, 스펙의 빈틈을 반드시 사용자에게 되묻는 장치는 아니다.
 
@@ -331,10 +335,10 @@ ultragoal도 drift를 직접 점수화하지 않는다. goal/objective reconcili
 
 관련 코드:
 
-- `/Users/jpark/gitrepos/harnesses/oh-my-codex/plugins/oh-my-codex/skills/ralplan/SKILL.md`
-- `/Users/jpark/gitrepos/harnesses/oh-my-codex/src/ralplan/runtime.ts`
-- `/Users/jpark/gitrepos/harnesses/oh-my-codex/src/ralplan/consensus-gate.ts`
-- `/Users/jpark/gitrepos/harnesses/oh-my-codex/docs/contracts/ralplan-consensus-gate.md`
+- `/Users/jpark/IdeaProjects/harnesses/oh-my-codex/plugins/oh-my-codex/skills/ralplan/SKILL.md`
+- `/Users/jpark/IdeaProjects/harnesses/oh-my-codex/src/ralplan/runtime.ts`
+- `/Users/jpark/IdeaProjects/harnesses/oh-my-codex/src/ralplan/consensus-gate.ts`
+- `/Users/jpark/IdeaProjects/harnesses/oh-my-codex/docs/contracts/ralplan-consensus-gate.md`
 
 핵심 판단:
 
@@ -399,7 +403,7 @@ flowchart TD
   K -- "yes" --> L["Write seed-like handoff spec"]
 ```
 
-### Aggressive Ultrainterview Rules
+### Aggressive Ultimateinterview Rules
 
 추천하는 강화 규칙:
 
@@ -423,7 +427,7 @@ priority = (impact * uncertainty_reduction * divergence_risk * risk_boost) / use
 
 핵심 결론:
 
-`ralplan`은 plan consensus에 강하다. `ultrainterview`에 필요한 것은 plan consensus가 아니라 question consensus다. 즉 승인 기준을 "이 plan을 실행할 수 있는가"가 아니라 "이 질문을 안 물어도 두 명의 유능한 구현자가 materially same thing을 만들 것인가"로 바꿔야 한다.
+`ralplan`은 plan consensus에 강하다. `ultimateinterview`에 필요한 것은 plan consensus가 아니라 question consensus다. 즉 승인 기준을 "이 plan을 실행할 수 있는가"가 아니라 "이 질문을 안 물어도 두 명의 유능한 구현자가 materially same thing을 만들 것인가"로 바꿔야 한다.
 
 ## 11. 최종 권장 아키텍처
 
@@ -431,7 +435,7 @@ priority = (impact * uncertainty_reduction * divergence_risk * risk_boost) / use
 
 ```mermaid
 flowchart TD
-  A["ultrainterview question-generation consensus"] --> B["ultrainterview produces frozen spec"]
+  A["ultimateinterview question-generation consensus"] --> B["ultimateinterview produces frozen spec"]
   B --> C["ulw-loop creates goals and criteria"]
   C --> D["implementation runs with evidence capture"]
   D --> E["ledger records criteria, blockers, assumptions, decisions"]
@@ -448,7 +452,7 @@ flowchart TD
 
 Recommended split:
 
-- `ultrainterview`: question-generation consensus and frozen spec production.
+- `ultimateinterview`: question-generation consensus and frozen spec production.
 - `ulw-loop`: execution substrate and evidence ledger.
 - `ultragoal`: governance ideas for protected objective/quality gate.
 - `ouroboros evaluate`: semantic drift and AC compliance judge.
@@ -460,7 +464,7 @@ Recommended split:
 
 1. `implementation_decision` event를 ulw-loop ledger에 추가할지, postmortem 전용 artifact로 둘지.
 2. criteria revision을 허용할 때 original spec과의 관계를 어떤 schema로 강제할지.
-3. semantic evaluator를 Ouroboros MCP 그대로 사용할지, ultrainterview-postmortem 전용 judge prompt를 따로 만들지.
+3. semantic evaluator를 Ouroboros MCP 그대로 사용할지, ultimateinterview-postmortem 전용 judge prompt를 따로 만들지.
 4. multi-model consensus의 promotion threshold를 어떻게 정할지.
 5. golden set을 어떤 사례들로 시작할지.
 6. `spec_gap`과 `legitimate_spec_evolution`의 경계를 어떻게 human-reviewable하게 만들지.
@@ -486,3 +490,39 @@ Recommended split:
 - 사용자 결정이 필요했는가.
 
 이 분리가 가능해지면 postmortem이 인터뷰 스킬을 실제로 학습시킬 수 있다.
+
+## 14. Agent Council 검증 결과 (2026-07-07, 2 라운드)
+
+이 문서의 설계를 agent council(멤버: codex, agy + 의장 독립 검증)이 두 라운드로 심사했다. Round 1은 문서만으로, round 2는 lazycodex v4.16.0이 git submodule로 추가된 뒤 ulw-loop 실코드를 라인 단위로 대조했다. 코드 경로는 `lazycodex/plugins/omo/components/ulw-loop/src/` 기준.
+
+### 14.1 사실 검증 결과
+
+| 이 문서의 주장 | 판정 | 근거 |
+| --- | --- | --- |
+| ledger에 `evidence_captured`/`criterion_failed`/`criterion_blocked`/`criteria_revised` 이벤트 존재 (§6) | 정확 | `constants.ts:59-62`; pass/fail/blocked 매핑은 `evidence.ts:20` |
+| `goal_needs_user_decision` = 동일 signature 3회 반복 시 circuit break (§7) | 과장 | 3회 차단기는 실재하나 (`checkpoint.ts:101-104`) 분류기가 auth/credential/401/403/GHCR 정규식 전용 (`quality-gate-blockers.ts:7-13`). 비인증성 외부 결정 blocker에는 절대 발화하지 않음 |
+| objective 비교 = whitespace-normalized exact match (§8) | 절반만 참 | 코어 함수는 맞음 (`codex-goal-snapshot.ts:47-48`). checkpoint 레벨에 mismatch를 통과시키는 escape hatch 존재 (`checkpoint.ts:184`, `checkpoint-reconciliation.ts:37`) |
+| `get_goal.status === complete`는 자기 선언 coordination signal (§8) | 정확 | `codex-goal-snapshot.ts:127`의 에러 문구가 `update_goal({status:"complete"})` 호출을 직접 지시 |
+
+추가 발견 2건:
+
+- `criteria_revised`에 이 문서 §9가 요구한 "original spec citation 강제"가 실제로는 없다. reset 경로는 generic 메시지 + before/after 상태뿐 (`evidence.ts:119`), steering의 `revise_criterion`도 evidence/rationale까지만 (`steering.ts:106,147,261`). 즉 §9의 필수 보강 요구는 정당하며 아직 미충족.
+- ledger 엔트리에는 스키마 버전이 없다 (plan은 `version: 1`이 있으나 ledger는 `appendLedger`로 임의 JSONL append — `plan-io.ts:105`). 직접 결합 시 버전 드리프트 위험의 직접 증거.
+
+### 14.2 컴포넌트 판정 (양 라운드 수렴)
+
+| 컴포넌트 | 판정 | 요지 |
+| --- | --- | --- |
+| `implementation_decision` 로깅 (§4) | 채택 | 단 ulw-loop ledger 패치가 아니라 `.ultimateinterview/<slug>/decisions.jsonl` 사이드카로. 서브모듈 포크는 업데이트 추적성을 깨고, `annotate_ledger`는 steering 모양이라 부적합 (`constants.ts:19`). 필드 안정화 후 upstream 후보 |
+| 5축 실패 분류 (§3) | 채택(수정) | 기존 postmortem의 `synthesis-loss` 클래스와 lens attribution은 5축이 대체하지 못하므로 하위 레이어로 보존 |
+| 9-role 질문 생성 합의 (§10) | 기각 | 현행 스킬의 scoring/pruning/advisory lanes와 중복. 임계값 트리거(weight-5 터치, score-3 gap 2라운드 지속, irreversible 경계)로 스카우트 1개만 승격 |
+| 4-judge 스키마 (§9) | 채택(수정) | 단일 다차원 judge로 병합. multi-model consensus는 uncertainty 높을 때만 escalation. evidence 완결성 검사는 LLM 이전의 결정적 패스로 |
+| ulw-loop 실행 기반 (§6, §9) | 채택(수정) | 하드 결합은 기각 유지 — ledger가 5축 분류에 필요한 의미(왜 실패했나)를 안 담고, 스키마 버전이 없으며, escape hatch가 있음. 대신 ulw-loop를 `ExecutionEvidenceBundle`의 기본 생산자로 채택 |
+| golden-set + 승격 게이트 (§11) | 채택(경량) | 자동 승격 파이프라인은 제외. 스킬 텍스트 변경 전 기존 실측 postmortem 케이스(3+) 재실행으로 raw/가중 발견율 비교만 |
+
+### 14.3 확정된 최소 통합 플랜
+
+1. **어댑터**: `.ultimateinterview/<slug>/{handoff.md,ledger.json}` + `.omo/ulw-loop/{brief.md,goals.json,ledger.jsonl}` + quality-gate 페이로드 + git diff + `decisions.jsonl`을 하나의 `ExecutionEvidenceBundle` JSON으로 투영하는 스크립트. ulw-loop 내부 포맷을 아는 유일한 코드.
+2. **실행 중 사이드카**: 구현자가 `decisions.jsonl`에 `{decision, specCitation, reason, alternatives, impact, postmortemClass}` append.
+3. **postmortem 확장**: 번들 + 사이드카를 기존 divergence 테이블 위에 얹어 5축 분류. `synthesis-loss`·lens attribution 보존.
+4. **골든 재실행**: 스킬 패치 전 기존 실측 케이스 재실행, 개선된 규칙만 반영.

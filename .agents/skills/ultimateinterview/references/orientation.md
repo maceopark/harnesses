@@ -41,10 +41,10 @@ Depth and question budget (interaction costing and the budget-exhaustion rule ar
 Lens triggers:
 
 - `viewpoint`: multiple stakeholders, operations/support impact, compliance, billing, external systems, or ownership conflict
-- `domain/state`: long-lived domain concepts, identity, lifecycle states, legal/illegal transitions, guards, invariants, overloaded vocabulary, consistency, concurrency, or cross-context boundaries
+- `domain/state`: long-lived domain concepts, identity, lifecycle states, legal/illegal transitions, guards, invariants, overloaded vocabulary, consistency, concurrency, cross-context boundaries, or a temporal word in the goal or request (today, daily, morning, weekly, due, per-day - the boundary-crossing walk in `references/lenses.md` §4 is then mandatory)
 - `goal/obstacle`: unclear outcome, brittle assumptions, missing exception paths, or contested priorities
-- `misuse`: security, privacy, fraud, destructive actions, unauthorized access, irreversible data changes, or abuse potential
+- `misuse`: security, privacy, fraud, destructive actions, unauthorized access, irreversible data changes, abuse potential, or any command/API surface accepting free-text or user-supplied values (degenerate-input enumeration in `references/lenses.md` §6 is then mandatory)
 - `quality`: vague words such as fast, reliable, scalable, compatible, simple, usable, safe, robust, or architecture-significant quality attributes
-- `controlled-language`: fuzzy acceptance criteria, missing trigger/condition/response, or prose that admits multiple interpretations
+- `controlled-language`: fuzzy acceptance criteria, missing trigger/condition/response, prose that admits multiple interpretations, or a validity/reject category (invalid, malformed, corrupt) named without its deciding predicate
 
 For each untriggered heavy lens, record a short skip reason in the ledger or final spec when the omission could surprise the implementation agent.

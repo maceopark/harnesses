@@ -2,11 +2,11 @@
 
 작성일: 2026-07-05
 
-이 문서는 `docs/requirements-gap-discovery.md` → `docs/ultrainterview-improvement-proposal.md` → `docs/ultrainterview-research-synthesis.md`에 이어지는 네 번째 개발 히스토리다. 스킬의 선언된 목적(unknown unknowns 발견)에 비추어 세 로컬 레퍼런스 구현 — Ouroboros interview(hardening RFC 포함), oh-my-codex deep-interview(ambiguity 모델·QA 검증 포함), grill 계열(grilling/grill-me/grill-with-docs) — 과 비교 리뷰를 수행했고, 발견된 개선점 전부를 같은 날 스킬에 반영했다.
+이 문서는 `docs/requirements-gap-discovery.md` → `docs/ultimateinterview-improvement-proposal.md` → `docs/ultimateinterview-research-synthesis.md`에 이어지는 네 번째 개발 히스토리다. 스킬의 선언된 목적(unknown unknowns 발견)에 비추어 세 로컬 레퍼런스 구현 — Ouroboros interview(hardening RFC 포함), oh-my-codex deep-interview(ambiguity 모델·QA 검증 포함), grill 계열(grilling/grill-me/grill-with-docs) — 과 비교 리뷰를 수행했고, 발견된 개선점 전부를 같은 날 스킬에 반영했다.
 
 ## 리뷰 방법
 
-- `ultrainterview` 본체(SKILL.md, scripts, references)와 기존 이론 문서 3편을 직접 정독.
+- `ultimateinterview` 본체(SKILL.md, scripts, references)와 기존 이론 문서 3편을 직접 정독.
 - 병렬 분석 에이전트 3개로 레퍼런스 시스템의 메커니즘 전수 조사:
   - Ouroboros: SKILL.md, socratic-interviewer agent, interview-hardening / inverted-interview / context-first / milestone-lateral RFC, convergence contract, auto driver
   - deep-interview: SKILL.md, ambiguity 모델(TS 구현), autopilot gate, QA 검증 문서, autoresearch UX 리뷰
@@ -19,13 +19,13 @@
 
 세 레퍼런스는 서로 다른 방향에서 같은 발견 인식론으로 수렴한다: grill의 recommended answer, Ouroboros의 inverted interview, deep-interview의 evidence-backed confirmation은 모두 같은 수다 — **구체적이고 반증 가능한 것을 단언한 뒤 수정(충돌)을 수확하는 것**. unknown unknowns는 더 좋은 질문이 아니라, 제시한 모델이 코드·문서·사용자와 충돌할 때 드러난다.
 
-기존 ultrainterview는 lens 카탈로그(열거 장치)로는 최강이었지만 메인 루프가 질문 중심이었다:
+기존 ultimateinterview는 lens 카탈로그(열거 장치)로는 최강이었지만 메인 루프가 질문 중심이었다:
 
 - divergence가 단발성: lens 1회 실행 후 converge는 알려진 gap 목록만 줄임. re-diverge 트리거와 saturation 기준(연속 sweep에서 새 gap 없음) 부재.
 - 문제 프레이밍 자체에 대한 도전 부재: 모든 lens가 현재 프레이밍을 전제로 동작. "잘못된 문제" 부류의 unknown unknown에 대응하는 수가 없음.
 - 순수 exploitation 질문 정책: 스코어 공식에 exploration 항이 없어 미방문 차원을 찔러보는 질문에 보상이 없음.
 
-### 2. 레퍼런스에는 있고 ultrainterview에 없던 메커니즘
+### 2. 레퍼런스에는 있고 ultimateinterview에 없던 메커니즘
 
 | 출처 | 메커니즘 | 방어하는 실패 모드 |
 | --- | --- | --- |
@@ -59,8 +59,8 @@
 ## 사용자 결정 (2026-07-05)
 
 1. **판정 gate**: blocker 기반 채택. `handoff_ready` = active score 2/3 gap 없음. 퍼센트는 진행 표시로 강등, 절대 잔여치(`residual = sum(w×s)`) 병기. 5% 임계값과 `--threshold` 옵션 제거.
-2. **상태 폴더**: `.ultrainterview/<slug>/` 슬러그별 하위폴더 + `.gitignore` 자동 추가. 파일: `ledger.json`(source of truth), `questions.json`, `transcript.md`(append-only Q&A).
-3. **handoff 위치**: `docs/`가 아닌 `.ultrainterview/<slug>/handoff.md`. durable 커밋 산출물을 원하면 `docs/<slug>-handoff.md` 복사를 handoff 시점에 1회 제안.
+2. **상태 폴더**: `.ultimateinterview/<slug>/` 슬러그별 하위폴더 + `.gitignore` 자동 추가. 파일: `ledger.json`(source of truth), `questions.json`, `transcript.md`(append-only Q&A).
+3. **handoff 위치**: `docs/`가 아닌 `.ultimateinterview/<slug>/handoff.md`. durable 커밋 산출물을 원하면 `docs/<slug>-handoff.md` 복사를 handoff 시점에 1회 제안.
 
 ## 반영된 변경
 
@@ -72,7 +72,7 @@
 
 ### SKILL.md (전면 개정, lens 카탈로그는 보존)
 
-- `Session State` 신설: `.ultrainterview/<slug>/` 영속화, gitignore 자동화, context 요약 후 파일 재로드 의무("대화 기억의 ledger는 신뢰하지 않는다").
+- `Session State` 신설: `.ultimateinterview/<slug>/` 영속화, gitignore 자동화, context 요약 후 파일 재로드 의무("대화 기억의 ledger는 신뢰하지 않는다").
 - `Challenge The Framing` 신설: 첫 질문 전 증상 vs 근본원인 / do-nothing / 더 단순한 대안 / artifact class 확인. 결과를 ledger에 기록.
 - `Answer Handling` 신설: pressure-before-settling(답변은 압박 후속 1회를 견디거나 제2 증거 채널로 교차 확인되기 전까지 score 2 아래로 못 내림), stay-deep, 뉘앙스 분해(decision/reasoning/constraints/non-goals 분리), 증거 충돌 시 양쪽 제시 + `Contested`, weight-5 triangulation 의무, scope-reduction 옵션 recommended 금지(intent guard). ledger status 6종 채택.
 - `Falsification Checkpoints` 신설: 번호 매긴 반증 가능 진술 제시, 사용자는 틀린 줄만 수정. 트리거: 무거운 사전 작업의 context-first 진입, 저점수 질문 다수 대기 시, 정체 에스컬레이션 시, handoff 전 필수 1회. "확정으로 믿었던 진술에 대한 수정 = unknown unknown 표면화 → 해당 lens 재실행".
@@ -112,4 +112,4 @@
 
 미반영으로 남은 것: question_score 공식 무변경(계약 유지), 질문 스코어 exploration 항(상시 breadth sweep이 대체).
 
-**spec postmortem 피드백 루프는 같은 날 3차로 별도 스킬 `ultrainterview-postmortem`으로 구현했다.** 설계 근거·divergence 분류·failure class 귀속·lessons 루프의 전체 기록은 다섯 번째 개발 히스토리인 `docs/ultrainterview-postmortem-design.md`를 보라.
+**spec postmortem 피드백 루프는 같은 날 3차로 별도 스킬 `ultimateinterview-postmortem`으로 구현했다.** 설계 근거·divergence 분류·failure class 귀속·lessons 루프의 전체 기록은 다섯 번째 개발 히스토리인 `docs/ultimateinterview-postmortem-design.md`를 보라.

@@ -6,19 +6,19 @@ Self-sufficiency rule: an implementer with no access to this interview reads onl
 
 ## Goal
 
-Make it impossible for the ultrainterview skill to report `handoff_ready`/`protocol_ready` on a spec that is actually incomplete (the "false-ready" failure), then prove it by running one synthetic rehearsal interview end-to-end.
+Make it impossible for the ultimateinterview skill to report `handoff_ready`/`protocol_ready` on a spec that is actually incomplete (the "false-ready" failure), then prove it by running one synthetic rehearsal interview end-to-end.
 
 ## Target Surface
 
 | File / module | Expected change |
 | --- | --- |
-| `~/.agents/skills/ultrainterview/scripts/ambiguity_ledger.py` | Add `extra="forbid"` to `LedgerDocument`; error when a parsed document normalizes to zero entries (zero-entry check takes precedence over the multi-section check when all sections are empty); error when more than one section (`requirements`/`gaps`/`entries`/`ledger`) is non-empty; validate `status` (case-insensitive) against exactly: the six documented values `draft`, `triangulated`, `contested`, `blocked`, `accepted`, `deferred`, plus the existing synonym sets `DEFERRED_STATUSES` and `accepted-single-source`; keep the `Accepted` single-source waiver but require ≥1 non-`assumption` channel for it (the existing one-`from-user`-channel test case keeps passing; zero-channel or assumption-only `Accepted` weight-5 at score 0 becomes an untriangulated blocker); add a report-only `contested` list (entry ids with status `contested`) as a `contested` key in JSON output and a `### Contested` section in markdown; wrap parse/read in try/except → clean `typer.BadParameter` (no raw traceback); reject a directory path (`is_file()`); reject duplicate entry ids |
-| `~/.agents/skills/ultrainterview/scripts/protocol_state.py` | Add validator `stagnation_escalated_at <= len(residual_history)`; add depth→budget cap check (error when `question_budget` strictly exceeds minimal=3 / focused=12 / full=20) unless a new `budget_extension_reason: str` field is non-empty (add the field to the schema, default `""`); add new field `gap_count_history: tuple[int, ...]` (active-gap count appended alongside each residual) and redefine `is_stagnant` to fire only when residual is non-decreasing AND gap count is non-increasing across the window (a round that adds gaps never counts as stagnant); add obligation when `interactions_used - len(residual_history) >= 2` ("residual_history lags interactions - stagnation detection degrading"); wrap parse/read like the ledger script; reject a directory path |
-| `~/.agents/skills/ultrainterview/scripts/question_score.py` | Add `extra="forbid"` to `QuestionDocument`; error on dual-populated sections; error when a document normalizes to zero candidates (covers both well-keyed-but-empty `{"questions": []}` and the post-`forbid` residue); clean error UX; reject a directory path and duplicate ids |
-| `~/.agents/skills/ultrainterview/scripts/test_deterministic_helpers.py` | Add coverage for every new rejection above + the untested behaviors listed in finding A9 (mixed/unknown sections, empty ledger, Accepted-zero-channels, escalated_at overflow, rising-residual, depth↔budget, CLI layer, status vocabulary) |
-| `~/.agents/skills/ultrainterview/SKILL.md` | Fix B2 (restate the stop condition as "handoff_ready AND protocol blockers ⊆ {build-contract}" at all 4 occurrences); fix B11 (make the six Orientation ledger sections a conceptual taxonomy expressed inside one recognized container key, or delete them — must not produce a document the hardened script rejects); fix B1 by documenting the new `gap_count_history` field and the revised stagnation rule (fires only when residual non-decreasing AND gap count non-increasing) plus `budget_extension_reason`; delete prose promises the scripts now enforce (net non-increase in size per principle G7) |
-| `~/.agents/skills/ultrainterview/references/example-session.md` (new) | The rehearsal's four session files + final Build Contract, as the worked example (D2) |
-| `~/.agents/skills/ultrainterview/references/` (transcript format) | A ~15-line transcript convention (D1): one heading per interaction with a typed marker (`[scored-question]`/`[batch]`/`[checkpoint]`/`[pressure-followup]`/`[sweep]`) and an `interaction: N` counter |
+| `~/.agents/skills/ultimateinterview/scripts/ambiguity_ledger.py` | Add `extra="forbid"` to `LedgerDocument`; error when a parsed document normalizes to zero entries (zero-entry check takes precedence over the multi-section check when all sections are empty); error when more than one section (`requirements`/`gaps`/`entries`/`ledger`) is non-empty; validate `status` (case-insensitive) against exactly: the six documented values `draft`, `triangulated`, `contested`, `blocked`, `accepted`, `deferred`, plus the existing synonym sets `DEFERRED_STATUSES` and `accepted-single-source`; keep the `Accepted` single-source waiver but require ≥1 non-`assumption` channel for it (the existing one-`from-user`-channel test case keeps passing; zero-channel or assumption-only `Accepted` weight-5 at score 0 becomes an untriangulated blocker); add a report-only `contested` list (entry ids with status `contested`) as a `contested` key in JSON output and a `### Contested` section in markdown; wrap parse/read in try/except → clean `typer.BadParameter` (no raw traceback); reject a directory path (`is_file()`); reject duplicate entry ids |
+| `~/.agents/skills/ultimateinterview/scripts/protocol_state.py` | Add validator `stagnation_escalated_at <= len(residual_history)`; add depth→budget cap check (error when `question_budget` strictly exceeds minimal=3 / focused=12 / full=20) unless a new `budget_extension_reason: str` field is non-empty (add the field to the schema, default `""`); add new field `gap_count_history: tuple[int, ...]` (active-gap count appended alongside each residual) and redefine `is_stagnant` to fire only when residual is non-decreasing AND gap count is non-increasing across the window (a round that adds gaps never counts as stagnant); add obligation when `interactions_used - len(residual_history) >= 2` ("residual_history lags interactions - stagnation detection degrading"); wrap parse/read like the ledger script; reject a directory path |
+| `~/.agents/skills/ultimateinterview/scripts/question_score.py` | Add `extra="forbid"` to `QuestionDocument`; error on dual-populated sections; error when a document normalizes to zero candidates (covers both well-keyed-but-empty `{"questions": []}` and the post-`forbid` residue); clean error UX; reject a directory path and duplicate ids |
+| `~/.agents/skills/ultimateinterview/scripts/test_deterministic_helpers.py` | Add coverage for every new rejection above + the untested behaviors listed in finding A9 (mixed/unknown sections, empty ledger, Accepted-zero-channels, escalated_at overflow, rising-residual, depth↔budget, CLI layer, status vocabulary) |
+| `~/.agents/skills/ultimateinterview/SKILL.md` | Fix B2 (restate the stop condition as "handoff_ready AND protocol blockers ⊆ {build-contract}" at all 4 occurrences); fix B11 (make the six Orientation ledger sections a conceptual taxonomy expressed inside one recognized container key, or delete them — must not produce a document the hardened script rejects); fix B1 by documenting the new `gap_count_history` field and the revised stagnation rule (fires only when residual non-decreasing AND gap count non-increasing) plus `budget_extension_reason`; delete prose promises the scripts now enforce (net non-increase in size per principle G7) |
+| `~/.agents/skills/ultimateinterview/references/example-session.md` (new) | The rehearsal's four session files + final Build Contract, as the worked example (D2) |
+| `~/.agents/skills/ultimateinterview/references/` (transcript format) | A ~15-line transcript convention (D1): one heading per interaction with a typed marker (`[scored-question]`/`[batch]`/`[checkpoint]`/`[pressure-followup]`/`[sweep]`) and an `interaction: N` counter |
 
 ## Behavior Contract
 
@@ -65,9 +65,9 @@ Make it impossible for the ultrainterview skill to report `handoff_ready`/`proto
 
 | Check | Command / action | Pass condition |
 | --- | --- | --- |
-| Existing suite still green | `cd ~/.agents/skills/ultrainterview && uv run scripts/test_deterministic_helpers.py` | all prior + new tests pass |
+| Existing suite still green | `cd ~/.agents/skills/ultimateinterview && uv run scripts/test_deterministic_helpers.py` | all prior + new tests pass |
 | False-ready repros now rejected | synthesize one input per REQ-1..REQ-10 from the behavior contract (the reviewer's original repro catalogue is in Part 2 / findings.md §Cluster A, available on dispute) and run each against the hardened scripts | every one exits non-zero with an actionable message (no `handoff_ready: yes`) |
-| This session regresses clean | run both helpers against `.ultrainterview/ultrainterview-refine/{ledger,protocol}.json` | same ready/blocker verdicts as today |
+| This session regresses clean | run both helpers against `.ultimateinterview/ultimateinterview-refine/{ledger,protocol}.json` | same ready/blocker verdicts as today |
 | Rehearsal produces a real handoff | run the synthetic interview end-to-end | `references/example-session.md` exists with a non-empty ledger and a handoff reached only via both-helpers-ready |
 | SKILL.md did not grow | `wc -c SKILL.md` before/after | after ≤ before |
 
@@ -89,7 +89,7 @@ Make it impossible for the ultrainterview skill to report `handoff_ready`/`proto
 
 ## Problem
 
-A solo developer built ultrainterview and, after 6 static-review rounds, feels general anxiety that specs it produces could be weak. The skill has never run a real interview. Root-cause reframe (accepted at checkpoint): the fear is concretely **false-ready** — the skill declaring completion on an incomplete spec — and the deeper gap is zero field data.
+A solo developer built ultimateinterview and, after 6 static-review rounds, feels general anxiety that specs it produces could be weak. The skill has never run a real interview. Root-cause reframe (accepted at checkpoint): the fear is concretely **false-ready** — the skill declaring completion on an incomplete spec — and the deeper gap is zero field data.
 
 ## Framing Challenge Outcome
 
@@ -122,7 +122,7 @@ A solo developer built ultrainterview and, after 6 static-review rounds, feels g
 
 ## Requirements Ledger
 
-Source of truth: `.ultrainterview/ultrainterview-refine/ledger.json`. Settled: F1-F9 (facts), G1 (dimension=false-ready), G5 (vehicle=rehearsal), G6 (staging), G2 (scope), G4 (rejections), G7 (principle). Deferred: G3 (council ideas).
+Source of truth: `.ultimateinterview/ultimateinterview-refine/ledger.json`. Settled: F1-F9 (facts), G1 (dimension=false-ready), G5 (vehicle=rehearsal), G6 (staging), G2 (scope), G4 (rejections), G7 (principle). Deferred: G3 (council ideas).
 
 ## Ambiguity Dashboard
 
@@ -134,7 +134,7 @@ Depth full, 3/20 interactions used. Only outstanding blocker before this test: b
 
 ## Q&A Record
 
-Condensed in `.ultrainterview/ultrainterview-refine/transcript.md`: dump (I1) → pressure+vehicle (I2) → falsification checkpoint "다 맞음" (I3) → sweep (nothing new) → contrarian probe (model survived, escaped-requirements risk recorded) → lens completion.
+Condensed in `.ultimateinterview/ultimateinterview-refine/transcript.md`: dump (I1) → pressure+vehicle (I2) → falsification checkpoint "다 맞음" (I3) → sweep (nothing new) → contrarian probe (model survived, escaped-requirements risk recorded) → lens completion.
 
 ## Contested Log
 

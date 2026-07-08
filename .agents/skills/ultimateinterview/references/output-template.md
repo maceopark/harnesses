@@ -1,10 +1,10 @@
-# Ultrainterview Output Template
+# Ultimateinterview Output Template
 
 Use this template when the user asks for a persistent or copy-ready spec. Copy the sections, then fill them with the interview ledger. The order is a contract: Part 1 (Build Contract) is what an implementation agent reads and builds from; Part 2 (Audit Trail) is why Part 1 is true. Never bury a build decision in Part 2.
 
 # Spec: <feature/change name>
 
-> **To the implementing agent:** Build from Part 1 only; Part 2 is evidence, read it only on dispute. Deferred Risks are decisions reserved to their owners - never resolve one silently; if your implementation needs an answer to one, stop and ask. After the implementation lands, run the `ultimateinterview-postmortem` skill to diff this spec against the actual change.
+> **To the implementing agent:** Build from Part 1 only; Part 2 is evidence, read it only on dispute. Deferred Risks are decisions reserved to their owners - never resolve one silently; if your implementation needs an answer to one, stop and ask. Append every decision this spec did not force to `.ultimateinterview/<slug>/decisions.jsonl` as you make it. When the implementation lands, STOP - the requester runs the `ultimateinterview-postmortem` skill in a fresh context to diff this spec against the actual change. Do not audit your own implementation; if you write a self-review anyway, save it as `postmortem.self.md`, never `postmortem.md`.
 
 # Part 1 — Build Contract
 
@@ -65,7 +65,7 @@ Structural detail is delegable; a data-domain invariant is never - its row pins 
 
 ## Verification Commands
 
-The exact tests/commands/observations that prove the change works. At least one check exercises the real artifact surface (installed command, running service, endpoint) - not test-suite-only. For command-style artifacts, the checks cover the operation × data-state matrix including the unknown/illegal-operation row (no undefined branch).
+The exact tests/commands/observations that prove the change works. At least one check exercises the real artifact surface (installed command, running service, endpoint) - not test-suite-only. For command-style artifacts, the checks cover the operation × data-state matrix including the unknown/illegal-operation row (no undefined branch). Every command must be copy-paste executable on this host - `scripts/verification_lint.py` validates each command head against PATH; prose action rows are allowed but never replace the executable rows.
 
 | Check | Command / action | Pass condition |
 | --- | --- | --- |

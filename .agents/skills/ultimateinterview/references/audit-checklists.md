@@ -29,10 +29,13 @@ Read the relevant checklist at the moment it runs; `references/handoff-sequence.
 - `domain/state` (transitions): every meaningful state transition has an owner, trigger, guard, effect, and illegal-transition rule
 - `domain/state` (invariants): every invariant or consistency boundary is stated as a rule with evidence or an owner
 - `quality` (integration): every external dependency has timeout, retry, fallback, and failure visibility rules
-- `domain/state` + `misuse` (data/schema): every relevant data object has ownership, retention, deletion, durability (crash/interrupt mid-write), privacy, and audit rules
+- `domain/state` + `misuse` (data/schema): every relevant data object has ownership, retention, deletion, durability (crash/interrupt mid-write, plus what residue a failed write may leave behind), privacy, and audit rules
+- `domain/state` (store trust): every tool-owned store additionally pins three decisions - whether values loaded from the store are revalidated or trusted (input-time-only validation lets a hand-edited store break an output invariant); the store-access error surface beyond corrupt content (missing parent directory, permission-denied/unreadable, undecodable bytes, and the path/override seam's own edge values), each with a defined exit class; and the unknown/extra-field policy (reject vs ignore-and-preserve - strict exact-key rejection makes every future schema addition a breaking change)
 - `domain/state` (operation surface): every user-facing operation has a defined observable outcome for every legal data/store state (absent, valid, invalid), and the unknown/illegal-operation branch has a defined outcome too - no undefined branch
 - `quality`: every vague quality word has a measurable quality attribute scenario
 - `misuse` (security/privacy): every security-sensitive flow has misuse or abuse cases
+- `misuse` (input surface): every operation accepting free-text or user-supplied values has explicit degenerate-input outcomes - empty/whitespace-only, oversized, control/newline characters - at input time and on load when persisted
+- `controlled-language` (predicates): every acceptance criterion that names a validity/reject category (invalid, malformed, corrupt, unsafe) states the predicate that decides membership, or explicitly delegates that predicate as a decision-boundary row - a bare category makes the implementer invent the data rule (an `invalid next_id` reject case with no rule forced the app-5 implementer to define next_id > max existing id on its own)
 - `viewpoint`: every affected stakeholder viewpoint has either a settled requirement or a recorded non-applicability note
 - `domain/state` (formal-modeling escalation): every modelled property has a clear reason, expected payoff, and stop condition
 
