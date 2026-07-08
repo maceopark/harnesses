@@ -42,7 +42,8 @@ Use `0.5`, not `0`, for negligible-but-nonzero numerator dimensions: the product
 - Batch 3-5 low-risk gaps into one message. Each item states the proposed default and its evidence (`Based on <code/doc evidence>, default: <X>`), and the user can reply per-item or accept all remaining defaults in one line.
 - Accepted defaults settle at score `1` with their evidence channels recorded (the deriving channel plus `from-user` for the confirmation); a corrected item is a normal answer and goes through Answer Handling.
 - Defaults are scope-neutral: a default may settle HOW something already in scope behaves, never silently add a capability. A candidate default that would add one is a `scope addition` and needs its own explicit opt-in question, outside the batch.
-- Routing (what is critical-path, when to bundle, the flush rule) is in SKILL.md Per-Round Loop.
+- Multi-question round-trip (distinct from a smart-default batch, which carries low-risk gaps only): up to three critical-path gaps MAY share ONE structured multi-question round-trip (costs 1 interaction) when ALL hold - mutually independent (answers cannot constrain each other), each option space evidenced, each with a recommended default; never bundle gaps whose answers could interact.
+- Routing (critical-path definition, never-batch-a-critical-path-gap, the flush rule) is in SKILL.md Per-Round Loop.
 
 ## Question shaping
 
@@ -59,6 +60,10 @@ Shape the answer as a low-friction choice: deliver scored questions through the 
 - When the harness has a native structured-question tool (e.g. AskUserQuestion), prefer it for every interaction whose answer space is enumerable - scored choice questions, smart-default batches, and the falsification checkpoint: respect its option ceiling (trim to the 3-4 highest-value options plus its built-in Other), put the recommendation and reason in the option description. Render a falsification checkpoint as a structured question: list the tagged statements in the question body, offer an explicit `all correct` option (recommended only when evidence supports it) and, where the statement set fits the ceiling, the highest-risk statement(s) as discrete flag-if-wrong options; the built-in Other carries the specific correction, so the user still articulates why a statement is wrong and nothing is truncated. If the statement set exceeds the option ceiling and per-statement flagging matters, keep the statements in the body with an `all correct` / `some wrong -> Other` pick, or split into more than one structured round. Keep it UI-less only where the step is inherently open narration: the brain-dump invitation, and a pressure or checkpoint follow-up that needs a story (concrete example, walkthrough, evidence). Pressure follow-ups route by answer shape: an enumerable boundary/branch pick goes through the UI (suggestion-labeled options unless evidenced); only a follow-up that needs a story stays UI-less.
 
 Prefer a scenario question over an abstract one: `I found <evidence>. In scenario <stress case>, should the system <A> or <B>? I recommend <A/B> because <evidence>.` A real shaped prompt is in `references/example-session.md`.
+
+## Pressure follow-ups
+
+Triggers, the free-follow-up cap, and the script `pressure` token live in SKILL.md Answer Handling §Pressure where it pays. The follow-up itself uses one of these techniques: ask for a concrete example or evidence; probe the assumption that makes the answer true; force a boundary ("what would you explicitly NOT do?"); or stress it with one scenario. Corroboration by a second evidence channel counts instead of a follow-up. UI routing for the follow-up (enumerable pick through the structured UI, story-eliciting follow-up UI-less) is in §Question shaping.
 
 ## Advisory lanes (background, while the user answers)
 

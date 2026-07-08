@@ -66,8 +66,8 @@ Audit trail (Part 2): the full section list, order, and per-section shapes are i
 
 Do not declare the spec implementation-ready until the core gates pass:
 
-- no active score `2` or `3` gap remains (blocker-based readiness from the helper)
-- every weight-5 settlement passes the helper's triangulation check; weight-5 gaps still open at score `1` are your responsibility to triangulate before settling them; the helper surfaces exactly these as report-only Triangulation Warnings
+- no active score `2` or `3` gap remains, and every weight-5 settlement is triangulated (two distinct channels) or explicitly `Accepted` on a non-`assumption` channel - together these are the helper's blocker-based `handoff_ready` verdict (its semantics; do not re-derive them, and never gate on the informational percentage)
+- weight-5 gaps still open at score `1` are your responsibility to triangulate before settling them; the helper surfaces exactly these as report-only Triangulation Warnings
 - every `Contested` entry is resolved or explicitly deferred with an owner, and every deferral carries the structured `{"owner", "decision_date"}` form - `session_status.py --gate` enforces both mechanically (exit 1 blocks)
 - a falsification checkpoint has run since the last material ledger change; the checkpoint's own corrections (user-authored) and evidence-only build-contract fold-backs (see Handoff) do not re-arm it - a correction that opens a score `2`/`3` gap blocks through readiness instead, and its settling answers re-arm as usual
 - at least one breadth sweep and one contrarian probe have run at every depth (cadence-driven or pre-handoff)
@@ -101,3 +101,7 @@ Write the handoff to `.ultimateinterview/<slug>/handoff.md` (gitignored working 
 The handoff document must open with the Build Contract (Part 1, fresh-implementer tested) and follow with the audit trail: the final ambiguity and protocol dashboards, the requirements ledger, the condensed Q&A record with pressure-test findings and checkpoint corrections (referencing `transcript.md`), and the contested-resolution log. When the repo keeps a glossary (`CONTEXT.md` or equivalent), also propose glossary updates from this interview's ubiquitous-language findings so the next interview inherits them.
 
 The handoff opens with the consumer preamble (verbatim block in `references/output-template.md`): build from Part 1 only, never silently resolve a deferred risk, log every unforced decision to `decisions.jsonl`, and stop after implementation - the requester runs `ultimateinterview-postmortem` in a fresh context; the implementer never audits its own escapes (an executor once wrote its own `postmortem.md` scoring itself 17/17 - preserved as a self-report, not an audit).
+
+## Abandonment
+
+If the user abandons the interview at any phase ("enough, just build it"), do not exit empty-handed: write `handoff.md` marked `DRAFT - abandoned at interaction N` carrying the current Build Contract (Part-1 shape in §Output Contract), every open score `2`/`3` gap listed under deferred risks as unresolved, and a one-line list of the gates that were skipped. This is a degraded handoff, not a silent stop - the requester still gets the partial contract and an explicit risk list.

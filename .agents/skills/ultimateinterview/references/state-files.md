@@ -39,6 +39,10 @@ The initial `protocol.json` written at orientation must already validate: depth,
 
 A list of entries or an object with exactly one populated section among `requirements`, `gaps`, `entries`, or `ledger` - unknown keys, multiple populated sections, duplicate ids, and an empty ledger are rejected. Each entry uses a unique `id`, `ambiguity_score` or `ambiguity`, `impact_weight` or `weight`, `status` (case-insensitive; anything outside the SKILL.md status vocabulary is rejected, apart from script-recognized aliases such as `accepted-single-source` and `explicitly-deferred`; `Contested` entries are surfaced in the summary), `evidence_channels` (or `channels`), optional `requirement`, optional `reason`, optional `deferred` (either a bool or - required at the gates - the structured form `{"owner": "...", "decision_date": "..."}`; `session_status.py --gate` fails boolean-only deferrals), and optional `origin` (for postmortem attribution). Short channel forms like `code` are normalized; any value outside the six-channel vocabulary is rejected with an error - fix the ledger instead of inventing channel names.
 
+Channel semantics (the SKILL.md invariant names the closed vocabulary; these are its edge cases): a channel names the evidence *source*, not the elicitation - a user answer is `from-user` even when a scenario question prompted it, so two user statements are one channel and never a triangulation pair; `from-scenario` means a scenario was actually walked against the repo or a running system, constraining the entry independently of the user's judgment (a hypothetical the user narrates is still `from-user`); `assumption` is never an evidence channel and can never triangulate.
+
+`origin` value set (the surfacing mechanism, for postmortem attribution): `orientation`, `dump`, `scored-question`, `pressure`, `batch`, `checkpoint`, `sweep`, `contrarian`, `lens:<name>`, `fold-back`.
+
 ## Question JSON
 
 A list of candidates or an object with `questions` or `candidates`. Each candidate uses `id`, `question`, `impact`, `branch_split`, `uncertainty_reduction`, `coverage`, `user_cost`, and `redundancy`.
