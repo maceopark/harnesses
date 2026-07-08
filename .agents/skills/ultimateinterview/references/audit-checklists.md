@@ -26,6 +26,7 @@ Read the relevant checklist at the moment it runs; `references/handoff-sequence.
 ## Per-Lens Gate Checks (each named by its owning protocol lens; parenthetical = concern area)
 
 - `goal/obstacle` (workflows): every important workflow has a normal path, exception path, and recovery path
+- `domain/state` (boundary-qualified scenarios): when a requirement crosses multiple surfaces, actors, channels, time steps, systems, queues, approvals, or handoffs, every meaningful happy/negative scenario is classified by traversal depth: intended boundary reached, first valid stop/fail boundary, whether later boundaries should run, and terminal evidence. A scenario meant to stop early is not end-to-end coverage; a scenario meant to pass early boundaries and fail later must be verified at that later boundary
 - `domain/state` (transitions): every meaningful state transition has an owner, trigger, guard, effect, and illegal-transition rule
 - `domain/state` (invariants): every invariant or consistency boundary is stated as a rule with evidence or an owner
 - `quality` (integration): every external dependency has timeout, retry, fallback, and failure visibility rules

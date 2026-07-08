@@ -81,6 +81,12 @@ Prompt-injection boundary: product-level prompt injection stays in the misuse/se
 
 The exact tests/commands/observations that prove the change works. At least one check exercises the real artifact surface (installed command, running service, endpoint) - not test-suite-only. For command-style artifacts, the checks cover the operation × data-state matrix including the unknown/illegal-operation row (no undefined branch). Every command must be copy-paste executable on this host - `scripts/verification_lint.py` validates each command head against PATH; prose action rows are allowed but never replace the executable rows. Ask the implementer to name each acceptance test after the REQ it covers (`test_req001_*` or a `REQ-001` reference) so the postmortem maps requirements to tests mechanically instead of by hand.
 
+For boundary-spanning work, include this matrix before the command table. Use domain words for the boundaries (screen, click, submit, API admission, queue, workflow branch, review handoff, email, report, terminal status, etc.). Omit only when the work has a single meaningful boundary.
+
+| Scenario | Intended traversal depth | First valid stop/fail boundary | Later boundaries should run? | Terminal evidence |
+| --- | --- | --- | --- | --- |
+|  |  |  | yes/no |  |
+
 | Check | Command / action | Pass condition |
 | --- | --- | --- |
 |  |  |  |
