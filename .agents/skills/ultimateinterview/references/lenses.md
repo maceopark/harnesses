@@ -2,6 +2,23 @@
 
 Full methods for the Diverge techniques. Read the section for a lens when it is triggered (or looks plausibly triggerable); the one-liners in `references/interview-loop.md` §Diverge are routing, not the method.
 
+## Lens output contract
+
+Each triggered lens must leave one typed artifact or a documented skip reason in `lenses.<name>.reason` and, when the artifact settles requirements, in ledger entries with `origin: "lens:<name>"`. The output contract matters more than the method label: it gives the implementer something checkable without exposing the user to protocol choices.
+
+| Lens | Required artifact | Minimum fields |
+| --- | --- | --- |
+| `viewpoint` | `ViewpointMatrix` | viewpoint, provenance, goal, constraint, failure fear, acceptance evidence, open question |
+| `domain/state` | `StateModel` | terms, lifecycle states, events, guards, invariants, illegal transitions, recovery |
+| `goal/obstacle` | `GoalObstacleMap` | goal, assumptions, obstacles, derived requirements, residual risk |
+| `misuse` | `MisuseCaseSet` | actor, misuse goal, damage, prevent/detect/log/recover/escalate |
+| `quality` | `QualityScenarioSet` | source, stimulus, environment, artifact, response, response measure |
+| `controlled-language` | `ControlledAcceptanceCriteria` | trigger, condition, response, exception, measurable predicate |
+
+Every trigger reason should include both why it fired and `reverse-evidence=<observation that would make this lens unnecessary or complete>`. A lens with no remaining reverse-evidence should be marked `done` with `artifact=<ArtifactName>` or `skipped` with a concrete `skip=<reason>`; do not keep asking visible questions just because a hidden method tag exists.
+
+This is a handoff/audit contract, not a new `protocol_state.py` schema gate. The current protocol-state helper enforces known lens names, lens state, and skip reasons; it does not inspect artifact completeness. For no-schema-change sessions, put the artifact marker and evidence summary in `lenses.<name>.reason` and ledger entries. Existing fixtures that only say `"state": "done"` remain parse-compatible, but new or updated sessions should carry the artifact reason so reviewers and implementers can audit it.
+
 ## 1. Contextual Observation (core path)
 
 Use observed behavior, tests, logs, support tickets, screenshots, CLI output, or current workflows to identify tacit requirements and exceptions.
@@ -17,7 +34,7 @@ Ask:
 
 Build a Viewpoint matrix for affected viewpoints: end user, admin/operator, support, security/privacy, compliance/legal, finance/billing, engineering/maintainer, and external API/system.
 
-For each viewpoint, capture:
+For each `ViewpointMatrix` row, capture:
 
 - goal
 - constraint
@@ -47,7 +64,7 @@ Look for:
 
 Use this DDD, state-model, and neuro-symbolic world-model lens only when `domain/state` is triggered. The goal is a compact model of the software world being changed, not ceremony.
 
-Capture:
+In the `StateModel`, capture:
 
 - ubiquitous language: user term, repo term, bounded context, and meaning drift
 - concept type: entity, value object, aggregate/root, domain event, external actor, or plain DTO
@@ -74,7 +91,7 @@ Escalate to a decision table, statechart, TLA+, Alloy, or another formalism only
 
 Turn the desired outcome into goals, assumptions, obstacle lists, derived requirements, and residual risks.
 
-Use this shape:
+Use this `GoalObstacleMap` shape:
 
 ```text
 Goal:
@@ -90,7 +107,7 @@ For each goal, ask what can prevent it through user behavior, dependency failure
 
 Add hostile, careless, overloaded, and unauthorized actors.
 
-For each core flow, capture:
+For each core flow, capture a `MisuseCaseSet` row:
 
 ```text
 Misuse actor:
@@ -110,7 +127,7 @@ For every operation accepting free-text or user-supplied values, enumerate the d
 
 ## 7. Quality Attribute Scenarios (`quality` lens)
 
-Convert vague quality claims into quality attribute scenarios.
+Convert vague quality claims into `QualityScenarioSet` rows.
 
 ```text
 Quality attribute:
@@ -126,7 +143,7 @@ Cover performance, availability, security, modifiability, observability, recover
 
 ## 8. Controlled Language (`controlled-language` lens)
 
-Rewrite candidate requirements in EARS or Given/When/Then. If the trigger, actor, condition, response, exception, or measurement cannot be written, the requirement is still ambiguous.
+Rewrite candidate requirements into `ControlledAcceptanceCriteria` with EARS or Given/When/Then. If the trigger, actor, condition, response, exception, or measurement cannot be written, the requirement is still ambiguous.
 
 EARS patterns:
 

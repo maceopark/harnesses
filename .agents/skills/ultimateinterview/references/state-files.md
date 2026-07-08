@@ -43,6 +43,15 @@ Channel semantics (the SKILL.md invariant names the closed vocabulary; these are
 
 `origin` value set (the surfacing mechanism, for postmortem attribution): `orientation`, `dump`, `scored-question`, `pressure`, `batch`, `checkpoint`, `sweep`, `contrarian`, `lens:<name>`, `fold-back`.
 
+Hidden methodology tags live in existing text fields, not new schema fields. Use compact ASCII tags in `reason` values when they help replay the interview:
+
+- `deficit=<class>` for hidden ORIENT deficit recognition, such as `deficit=context-insufficient` or `deficit=execution-blind`.
+- `reverse-evidence=<condition>` for the observation that would shrink, falsify, or complete a hypothesis or lens.
+- `artifact=<ViewpointMatrix|StateModel|GoalObstacleMap|MisuseCaseSet|QualityScenarioSet|ControlledAcceptanceCriteria>` when a triggered lens has produced its required output.
+- `skip=<reason>` when a lens is skipped or marked done because no reverse-evidence remains.
+
+These tags are conventions for auditability. They do not extend `protocol.json`, `ledger.json`, or `questions.json`. Do not rely on unmodeled structured fields being preserved, ranked, emitted, or enforced by helpers; any future structured field needs an explicit model, helper behavior, and test update in the same change.
+
 ## Question JSON
 
 A list of candidates or an object with `questions` or `candidates`. Each candidate uses `id`, `question`, `impact`, `branch_split`, `uncertainty_reduction`, `coverage`, `user_cost`, and `redundancy`.

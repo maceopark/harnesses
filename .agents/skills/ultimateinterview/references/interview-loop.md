@@ -17,7 +17,7 @@ Generate candidate gaps through the core path and triggered lenses. When a techn
 
 ## Question generation, pruning, and scoring
 
-Generate candidate questions from open gaps, goals, obstacles, state/domain models, controlled-language failures, and branch points. Prune questions that the repo can answer, duplicate prior questions, do not affect implementation, or would ask the user to validate low-confidence speculation.
+Generate candidate questions from open gaps, goals, obstacles, state/domain models, controlled-language failures, hidden deficit hypotheses, and branch points. Each candidate must say what answer or observation would falsify the current model, not only what blank it fills. Keep this as prose in the candidate question or ledger reason. Do not add an ad hoc `would_falsify` key to `questions.json`: the current scorer does not rank or emit candidate-level extras. If you deliberately add that structured field, update `question_score.py`, schema behavior, and tests in the same change. Prune questions that the repo can answer, duplicate prior questions, do not affect implementation, or would ask the user to validate low-confidence speculation.
 
 Score the shortlist with `scripts/question_score.py` when the candidates can be represented as JSON. The script is authoritative for ranking; the formula is:
 
@@ -36,6 +36,8 @@ Anchor the estimates (0-5) instead of inventing them fresh each round:
 - `redundancy`: 5 = near-duplicate of a prior question; 0 = new
 
 Use `0.5`, not `0`, for negligible-but-nonzero numerator dimensions: the product zeroes out on any true `0`; keep the estimates honest and anchored.
+
+Falsification value is part of candidate quality even when it is not a numeric field. Prefer the question that can prove a model wrong with one correction, scenario, or repo observation over a question that merely asks for more narration. In `questions.json`, encode that value in the `question` text as `would falsify: <condition>` unless the schema has been explicitly extended; outside the scored JSON, record the same rationale in the adjacent ledger reason.
 
 ## Smart-default batches
 
@@ -59,7 +61,9 @@ Shape the answer as a low-friction choice: deliver scored questions through the 
 - When the gap is deferrable (it does not block the current artifact), include an explicit `Defer - decide later` option; choosing it settles the entry as `Deferred` with owner and decision date recorded in the same bookkeeping pass, and the gap moves to Deferred Risks instead of returning to the queue.
 - When the harness has a native structured-question tool (e.g. AskUserQuestion), prefer it for every interaction whose answer space is enumerable - scored choice questions, smart-default batches, and the falsification checkpoint: respect its option ceiling (trim to the 3-4 highest-value options plus its built-in Other), put the recommendation and reason in the option description. Render a falsification checkpoint as a structured question: list the tagged statements in the question body, offer an explicit `all correct` option (recommended only when evidence supports it) and, where the statement set fits the ceiling, the highest-risk statement(s) as discrete flag-if-wrong options; the built-in Other carries the specific correction, so the user still articulates why a statement is wrong and nothing is truncated. If the statement set exceeds the option ceiling and per-statement flagging matters, keep the statements in the body with an `all correct` / `some wrong -> Other` pick, or split into more than one structured round. Keep it UI-less only where the step is inherently open narration: the brain-dump invitation, and a pressure or checkpoint follow-up that needs a story (concrete example, walkthrough, evidence). Pressure follow-ups route by answer shape: an enumerable boundary/branch pick goes through the UI (suggestion-labeled options unless evidenced); only a follow-up that needs a story stays UI-less.
 
-Prefer a scenario question over an abstract one: `I found <evidence>. In scenario <stress case>, should the system <A> or <B>? I recommend <A/B> because <evidence>.` A real shaped prompt is in `references/example-session.md`.
+Prefer a scenario question over an abstract one: `I found <evidence>. In scenario <stress case>, should the system <A> or <B>? I recommend <A/B> because <evidence>. This would falsify my current model if <condition>.` A real shaped prompt is in `references/example-session.md`.
+
+Prefer recognition checkpoints when they can replace multiple open-ended questions: show the current model as short, falsifiable lines and ask the user to correct wrong or incomplete lines. Do not turn hidden deficit tags into visible ceremony; use them to decide which lines need reverse-evidence, which lens output is missing, and which default would be scope-neutral.
 
 ## Pressure follow-ups
 
@@ -79,7 +83,7 @@ Rules: lanes are read-only and budget-free (repo-only work); instruct each lane 
 
 ## Falsification checkpoints
 
-At a checkpoint, present the current world model as numbered falsifiable statements - locked facts, inferred assumptions, artifact class, scope boundaries, non-goals - and ask the user to correct only the wrong or incomplete lines. Triggers are in SKILL.md Per-Round Loop step 5; the corroboration-crediting rule is in SKILL.md Checkpoint Invariants - book the confirmation with the `checkpoint_confirm` delta (`{ids, fatigue}`) so counters and crediting apply mechanically.
+At a checkpoint, present the current world model as numbered falsifiable statements - locked facts, inferred assumptions, artifact class, scope boundaries, non-goals, and any live hidden deficit reading whose reverse-evidence matters. Ask the user to correct only the wrong or incomplete lines. Triggers are in SKILL.md Per-Round Loop step 5; the corroboration-crediting rule is in SKILL.md Checkpoint Invariants - book the confirmation with the `checkpoint_confirm` delta (`{ids, fatigue}`) so counters and crediting apply mechanically.
 
 Pattern:
 
@@ -88,7 +92,8 @@ Current model - correct only what is wrong:
 1. <locked fact> [from-code] (k2, g15)
 2. <inferred assumption> [assumption] (g7)
 3. Artifact class: <what will be built>
-4. Non-goal: <what will not be built>
+4. Hidden reading: <deficit tag in plain language> would be wrong if <reverse-evidence>
+5. Non-goal: <what will not be built>
 Reply with line numbers and corrections, or "all correct".
 ```
 

@@ -4,6 +4,34 @@ A synthetic but fully executed `focused` interview, kept small on purpose. Every
 
 > Vintage note: this rehearsal predates typed-event bookkeeping, so its deltas set protocol counters manually. In a live session that pattern is now forbidden - pass `event` (and `transcript`/`checkpoint_confirm`) in the delta and let the script compute the counters (`references/state-files.md` §Typed events). The dashboards and file shapes shown remain accurate.
 
+## Epistemic hardening rehearsal
+
+This compact rehearsal shows the hidden methodology layer without adding visible protocol ceremony:
+
+- ORIENT records two candidate readings in ordinary reasons: `deficit=boundary-undefined` for "which sessions die?" and `deficit=execution-blind` for "what proves the handoff is safe to execute?", each with `reverse-evidence=<specific repo fact or user correction that would make the reading unnecessary>`.
+- The `domain/state` lens fires with `reverse-evidence=repo already has one deactivation lifecycle covering sessions/tokens`; once the lifecycle is settled, its reason becomes `artifact=StateModel`.
+- The `misuse` lens records `artifact=MisuseCaseSet` for compromised-account and accidental-lockout cases, while `controlled-language` records `artifact=ControlledAcceptanceCriteria` for the command/test predicates.
+- The checkpoint stays recognition-style: "Current model - correct only what is wrong" includes one hidden-reading line ("Execution risk is stop-time-checkable except permission prompts; wrong if destructive commands are needed before verification"). The user corrects lines rather than selecting a protocol.
+- The Build Contract includes a `Guardrail Compile` table: a stop-time predicate (`uv run scripts/test_deterministic_helpers.py` exits 0), an accepted residual (discovery-rate improvement needs a later postmortem), and a fast/pre-action risk (destructive command blocking belongs to the harness permission substrate).
+
+The visible user path is still brain dump, dashboard, highest-leverage question, checkpoint, handoff. No prompt asks for `/probe`, `/attend`, protocol names, or methodology labels.
+
+Fresh-implementer proof for this hardening change:
+
+| Part 1 only review question | Result | Re-bound evidence |
+| --- | --- | --- |
+| What would a fresh implementer still need to ask before applying this method? | Nothing blocking for the no-schema path: storage location is existing `ledger.reason`, `ledger.origin`, and `lenses.<name>.reason`; structured `questions.json` fields remain out of scope unless scripts/tests change. | `references/state-files.md` hidden-tag conventions plus helper tests. |
+| Which criterion could be gamed without the behavior? | A grep-only check could find `deficit=` and `Guardrail Compile` without proving the flow stays low-friction. | This rehearsal binds the terms to the actual user path, and helper tests/protocol-state smoke prove schema compatibility. |
+| Does `SKILL.md` need method detail? | No; it needs only routing-level protection that the method is hidden. | `SKILL.md` Core Rule points to the reference files and forbids user protocol choice. |
+
+Guardrail Compile inventory for the rehearsal:
+
+| Risk | Class | Predicate / residual / substrate owner | Evidence |
+| --- | --- | --- | --- |
+| Hidden tags accidentally loosen helper schemas. | Stop-time predicate | `uv run scripts/test_deterministic_helpers.py` and `uv run scripts/protocol_state.py --format markdown scripts/regression_fixtures/todo-cli-app-5/protocol.json` both exit 0. | Helper/schema compatibility remains executable. |
+| Discovery-rate improvement cannot be proven by static docs alone. | Accepted residual | owner: requester; decision date: after first real postmortem; mitigation: run `ultimateinterview-postmortem` on the next implementation seeded by this hardened method. | This is outcome measurement, not an implementer precondition. |
+| Destructive command blocking, permission prompts, and agent/tool prompt-injection interception. | Fast/pre-action | substrate: harness permission system and tool-level approvals; do not simulate as stop-time predicates. Product-level prompt injection remains a misuse/security requirement when the product consumes untrusted text. | Guardrail compile surfaces harness-owned pre-action risk without hiding product security controls. |
+
 **Request:** "Add a deactivate-account toggle for admins."
 
 ## Orientation (repo-only, cost 0)
@@ -235,12 +263,12 @@ from-code, from-docs, from-research, from-scenario, from-user (+1 more)   [exit 
   "brain_dump_done": true,
   "build_contract_tested": true,
   "lenses": {
-    "viewpoint": {"state": "done"},
-    "domain/state": {"state": "done"},
-    "goal/obstacle": {"state": "done"},
-    "misuse": {"state": "done"},
+    "viewpoint": {"state": "done", "reason": "artifact=ViewpointMatrix; admin/user/support/security viewpoints covered; reverse-evidence cleared by checkpoint"},
+    "domain/state": {"state": "done", "reason": "artifact=StateModel; active/inactive lifecycle, revocation events, and illegal transitions settled"},
+    "goal/obstacle": {"state": "done", "reason": "artifact=GoalObstacleMap; reversible no-delete deactivation goal and revocation obstacles settled"},
+    "misuse": {"state": "done", "reason": "artifact=MisuseCaseSet; unauthorized/reactivated access and accidental bulk-action paths enumerated"},
     "quality": {"state": "skipped", "reason": "UI toggle; no architecture-significant quality attribute survived the controlled-language pass"},
-    "controlled-language": {"state": "done"}
+    "controlled-language": {"state": "done", "reason": "artifact=ControlledAcceptanceCriteria; revocation, login rejection, reactivation, and audit predicates written"}
   },
   "residual_history": [29, 2, 6, 6],
   "gap_count_history": [6, 6, 9, 10],
@@ -296,5 +324,11 @@ The combined runner reported ready, gates pass -> the Handoff sequence ran in th
 - **Out of scope / non-goals**: no deletion or purge (N1); no bulk deactivate (D1, deferred to jpark); no auto-expiry (explicit user decision R3).
 - **Verification commands**: auth test - login rejected while inactive; revocation test - live session + api token + refresh token all dead after flip; reactivation test - login works, no reset; audit rows present for both flips.
 - **Deferred risks**: D1 bulk deactivate (owner jpark - do not build).
+
+## Guardrail Compile
+
+| Stop-time predicate | Accepted residual | Fast/pre-action substrate risk |
+| --- | --- | --- |
+| Revocation test proves live session, api token, and refresh token fail on the first request after the deactivation transaction commits. | Password-reset email blocking is resolved from R2/R4 for this build; future notification-policy changes need a new interview. | Destructive command blocking and agent/tool prompt-injection interception belong to the harness permission substrate, not this product build contract. Product-level prompt injection remains a misuse/security requirement whenever untrusted text is consumed. |
 
 Fresh-implementer test: self-audited (no subagent in the rehearsal harness); two "would have to ask" items found (does deactivation block password-reset emails? is the toggle idempotent under double-click?) - both folded back and settled from R2/R4 evidence; anti-gaming pass found no gameable criterion (the revocation and login checks run against live sessions and the real endpoint, not test doubles) - then `build_contract_tested` was set. The exit-check line closed the transcript.

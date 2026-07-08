@@ -65,6 +65,18 @@ Each non-goal carries a checkable negative assertion where feasible — the obse
 - Migration:
 - Rollout:
 
+## Guardrail Compile
+
+Split execution risks by what can be checked at stop time. A predicate must have a determinate pass/fail observable; natural-language "done" or "be careful" does not count. Fast/pre-action risks are surfaced as substrate-owned instead of simulated as stop-time checks.
+
+Prompt-injection boundary: product-level prompt injection stays in the misuse/security requirements with trust boundaries and verifiable controls. Only agent/tool prompt-injection interception against the execution harness itself belongs in the fast/pre-action substrate row.
+
+| Risk | Class | Predicate / residual / substrate owner | Evidence |
+| --- | --- | --- | --- |
+|  | Stop-time predicate | `<command/test/file-state/endpoint/countable threshold>` |  |
+|  | Accepted residual | owner: `<name>`; decision date: `<date>`; mitigation: `<how it remains visible>` |  |
+|  | Fast/pre-action | substrate: `<permission system/tool guard/human approval>` |  |
+
 ## Verification Commands
 
 The exact tests/commands/observations that prove the change works. At least one check exercises the real artifact surface (installed command, running service, endpoint) - not test-suite-only. For command-style artifacts, the checks cover the operation × data-state matrix including the unknown/illegal-operation row (no undefined branch). Every command must be copy-paste executable on this host - `scripts/verification_lint.py` validates each command head against PATH; prose action rows are allowed but never replace the executable rows. Ask the implementer to name each acceptance test after the REQ it covers (`test_req001_*` or a `REQ-001` reference) so the postmortem maps requirements to tests mechanically instead of by hand.
