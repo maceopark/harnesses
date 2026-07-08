@@ -132,9 +132,78 @@ If a postmortem convinces you to change the interview skill's rules: rerun the p
 
 Two of the three checks are scripted; the third is not (it can't be cheaply):
 
-1. **Tooling regression (scripted, one command).** `cd .agents/skills/ultimateinterview && uv run scripts/regression_check.py`. Runs `handoff_coverage`, `verification_lint`, and `postmortem_lint` against a captured fixture set (`scripts/regression_fixtures/`, checked in so it survives a fresh checkout) and asserts no crash + stable host-independent verdicts. Add `--live` to also sweep the gitignored `.ultimateinterview/` sessions when present. Run this before AND after any script edit.
-2. **Signal-firing check (scripted, static).** `uv run scripts/signal_firing.py "<request text>" [--touched-code "<terms>"]`. Reports which lenses the CURRENT Orientation triggers + active lessons signals would fire on a request — triggers are parsed from `references/orientation.md` and `lessons.md` at runtime, so a trigger you delete stops firing and the canonical cases in `test_signal_firing.py` fail. This catches a trigger that stopped firing; it does NOT prove the escape gets caught.
+1. **Tooling regression** — every deterministic script still runs crash-free with stable verdicts on the prior sessions.
+2. **Signal-firing** — the lenses a request would trigger under the *current* rules (catches a trigger that stopped firing).
 3. **Discovery-rate before/after (NOT scripted — full human loop).** A real rate change needs re-interview → new spec → re-implement → re-postmortem for each measured case (option (c) in the follow-ups handoff). Until that is run for a given rule change, keep the change labeled **experimental** in the memory note and do not claim a discovery-rate improvement from it.
+
+Run checks 1 and 2 before AND after any skill edit — the runbook is the next section.
+
+## Regression harness — how to run
+
+Checks 1 and 2 above are scripts in `.agents/skills/ultimateinterview/scripts/`. Run them from that directory (they are `uv` scripts with inline dependencies — no venv to set up):
+
+```bash
+cd .agents/skills/ultimateinterview
+```
+
+### 1. Tooling regression — `regression_check.py`
+
+One command. Runs `handoff_coverage`, `verification_lint`, and `postmortem_lint` against a captured fixture set and checks nothing broke:
+
+```bash
+uv run scripts/regression_check.py
+```
+
+```text
+## Tooling Regression
+
+session                      coverage_ok  postmortem   status
+--------------------------------------------------------------------
+todo-cli-app-5               True         ok           OK
+todo-cli-app-4               False        missing      OK
+todo-cli-app                 False        missing      OK
+attribute-search-mysql       False        n/a          OK
+
+All 4 session(s) pass: no crash, host-independent verdicts stable.
+```
+
+- **Exit code** is `0` when every row is `OK`, `1` on any `REGRESSION` (so it drops straight into a pre-commit hook or CI).
+- **What it asserts:** (a) no script crashed (no Python traceback); (b) `handoff_coverage.coverage_ok` matches the recorded value; (c) `postmortem_lint` returns the recorded verdict *class* — `ok`, or a specific `missing:<section>` for the older reports that legitimately predate the report contract (that failure is **expected**, and the exact section is pinned so a *new* kind of failure still trips the check).
+- **What it does NOT assert:** `verification_lint`'s specific MISSING-command set. That check resolves command heads against **this host's** PATH, so the set is host-dependent; the harness only requires it to run and emit a well-formed report.
+- **Flags:** `--live` also sweeps the real `.ultimateinterview/<slug>/` sessions when they exist (they are gitignored, so absent on a fresh clone); `--format json` for machine output.
+- **When:** run it **before** a skill/script edit (record the baseline) and **after** (confirm no row moved).
+
+### 2. Signal-firing check — `signal_firing.py`
+
+Given a request's text, report which lenses the **current** Orientation triggers + active lessons signals would fire on:
+
+```bash
+uv run scripts/signal_firing.py "show today's tasks; reject invalid input; must be fast"
+```
+
+```text
+## Signal-firing check
+
+request: "show today's tasks; reject invalid input; must be fast"
+
+triggers parsed from: orientation.md + ['lessons.md']
+
+- `domain/state` FIRES — today [orientation], reject+input [lessons:lessons.md]
+- `quality` FIRES — fast [orientation]
+- `controlled-language` FIRES — invalid [orientation]
+
+not fired: viewpoint, goal/obstacle, misuse
+```
+
+- **Reading it:** each fired lens lists the matched tokens and each token's source — `[orientation]` (parsed from `references/orientation.md`: the parenthetical word-lists, the "such as" quality words, hyphenated tokens, and multi-word trigger phrases), `[lessons:<file>]` (a lessons row fired — it needs ≥2 of its tokens present), or `[heuristic]` (a small curated synonym set for phrasings the prose implies but doesn't spell out).
+- **Why it catches regressions:** the triggers are parsed from `orientation.md` / `lessons.md` at **runtime**, so if you delete a trigger word the matching stops and the canonical cases in `test_signal_firing.py` fail. It answers "would the current rule still fire on this input?" — it does **not** prove the escape gets caught (that needs the postmortem).
+- **Flags:** `--touched-code "latency retries"` also searches terms from the files a change touches; `--orientation PATH` / `--lessons PATH` (repeatable) point at alternative sources; `--format json` for machine output.
+
+### Extending the harness
+
+- **Add a fixture (tooling regression):** copy a session's `handoff.md` + `ledger.json` (+ `postmortem.md` and, for the postmortem-`ok` case, a minimal `evidence_bundle.json` holding just the `lessons` snapshot) into `scripts/regression_fixtures/<slug>/`, then add a row to `EXPECTED` in `regression_check.py` with the observed `coverage_ok` and `postmortem` verdict and a one-line `why`. Keep fixtures small — capture only what the three scripts read.
+- **Add a canonical case (signal-firing):** append a `(request, {lenses that must fire})` tuple to `CANONICAL` in `test_signal_firing.py`. Prefer text that contains a specific trigger word so the case pins that trigger.
+- **Run the tests:** `uv run scripts/test_regression_check.py` and `uv run scripts/test_signal_firing.py` (both join the suite run from the skill dir).
 
 ## Quick reference
 
