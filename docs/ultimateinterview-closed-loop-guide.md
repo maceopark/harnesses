@@ -130,6 +130,12 @@ The next interview reads both during orientation. Each lesson also carries a Fir
 
 If a postmortem convinces you to change the interview skill's rules: rerun the previously measured cases first (the sessions with recorded discovery rates) and compare rates before/after. Patch only what measurably improved. This keeps the loop honest — otherwise "improvements" are just vibes with extra steps.
 
+Two of the three checks are scripted; the third is not (it can't be cheaply):
+
+1. **Tooling regression (scripted, one command).** `cd .agents/skills/ultimateinterview && uv run scripts/regression_check.py`. Runs `handoff_coverage`, `verification_lint`, and `postmortem_lint` against a captured fixture set (`scripts/regression_fixtures/`, checked in so it survives a fresh checkout) and asserts no crash + stable host-independent verdicts. Add `--live` to also sweep the gitignored `.ultimateinterview/` sessions when present. Run this before AND after any script edit.
+2. **Signal-firing check (scripted, static).** `uv run scripts/signal_firing.py "<request text>" [--touched-code "<terms>"]`. Reports which lenses the CURRENT Orientation triggers + active lessons signals would fire on a request — triggers are parsed from `references/orientation.md` and `lessons.md` at runtime, so a trigger you delete stops firing and the canonical cases in `test_signal_firing.py` fail. This catches a trigger that stopped firing; it does NOT prove the escape gets caught.
+3. **Discovery-rate before/after (NOT scripted — full human loop).** A real rate change needs re-interview → new spec → re-implement → re-postmortem for each measured case (option (c) in the follow-ups handoff). Until that is run for a given rule change, keep the change labeled **experimental** in the memory note and do not claim a discovery-rate improvement from it.
+
 ## Quick reference
 
 ```text

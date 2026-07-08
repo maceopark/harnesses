@@ -1,5 +1,11 @@
 # Ultimateinterview — Deferred Follow-ups Handoff
 
+> **STATUS (2026-07-07, round 17): both follow-ups implemented.**
+> - Task 1 — `SKILL.md` trimmed 18,591 → **16,998 bytes** (≤17k), verified by the round-7 adversarial trio (rule-diff **172/172 survive, zero dropped**; cold-start executable; cross-file consistent). Method detail relocated to `references/` (channel semantics + `origin` enum → `state-files.md`; pressure techniques + multi-question bundling → `interview-loop.md`; abandonment + `handoff_ready` definition → `handoff-sequence.md`); frontmatter `description` byte-identical.
+> - Task 2 — halves 1 (tooling regression: `scripts/regression_check.py` + `scripts/regression_fixtures/`) and 2a (signal-firing: `scripts/signal_firing.py`) built and tested (`test_regression_check.py` 8, `test_signal_firing.py` 14; suite now **220 green**). Half 2c (blind-rebuild discovery-rate) intentionally NOT run — the experimental rules stay experimental. See `docs/ultimateinterview-closed-loop-guide.md` §"One rule before editing the skill itself".
+>
+> The remaining prose below is the original cold-start brief.
+
 Two follow-ups were deliberately deferred from the 2026-07-07 agent-council round (commits `6effa51`, `7c155eb` on `master`). This doc is self-contained so a fresh session — possibly a different model, definitely without this conversation — can pick either up cold.
 
 ## Orientation (read first, both tasks)
