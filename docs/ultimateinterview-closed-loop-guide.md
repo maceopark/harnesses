@@ -2,7 +2,7 @@
 
 How to use `ultimateinterview`, `ulw-loop`, and `ultimateinterview-postmortem` together so that every project you build makes the *next* interview better.
 
-This guide assumes no prior knowledge of any of the three tools. Design background and the review that shaped this setup live in `docs/ultimateinterview-postmortem-closed-loop-handoff.md`; you do not need to read it to use the loop.
+This guide assumes no prior knowledge of any of the three tools. Design background and the review that shaped this setup live in `docs/ultimateinterview-postmortem-closed-loop-handoff.md`; the deterministic readiness hardening is summarized in `docs/ultimateinterview-deterministic-readiness-hardening.md`. You do not need either document to use the loop.
 
 ## The idea in one minute
 
@@ -27,19 +27,19 @@ The output of station 3 is not a report you read once. It is a **lessons file** 
 
 | Piece | What it is | Where it lives |
 | --- | --- | --- |
-| `ultimateinterview` | A Claude Code skill that interviews you about a vague request until it becomes an implementation-ready spec. It hunts for questions you didn't know needed asking. | `.claude/skills/ultimateinterview/` |
+| `ultimateinterview` | An agent skill that interviews you about a vague request until its evidence-backed contract passes an implementation gate. It hunts for questions you didn't know needed asking. | `.agents/skills/ultimateinterview/` |
 | `handoff.md` | The spec the interview produces. Part 1 ("Build Contract") is everything an implementer needs; Part 2 is the audit trail. | `.ultimateinterview/<slug>/handoff.md` |
 | `ulw-loop` | A LazyCodex/Codex execution loop that keeps working until completion is *verified*, and — the part this loop cares about — writes an evidence ledger as it goes: which success criterion passed, what failed, what got revised. | `lazycodex/` submodule; state in `.omo/ulw-loop/` |
 | `decisions.jsonl` | A tiny log the implementer appends to whenever they make a call the spec didn't force. One JSON line per decision. This is the single most valuable input to the postmortem. | `.ultimateinterview/<slug>/decisions.jsonl` |
-| `pack_evidence.py` | The adapter. Gathers the spec, the interview ledger, the ulw-loop evidence, the decision log, and the git diff into ONE file so the postmortem never has to understand anyone else's file formats. **The postmortem runs it for you** — you never invoke it by hand. | `.claude/skills/ultimateinterview-postmortem/scripts/` |
-| `ultimateinterview-postmortem` | A Claude Code skill that compares what the spec promised against what the code actually contains, classifies every difference, and writes lessons. | `.claude/skills/ultimateinterview-postmortem/` |
+| `pack_evidence.py` | The adapter. Gathers the spec, the interview ledger, the ulw-loop evidence, the decision log, and the git diff into ONE file so the postmortem never has to understand anyone else's file formats. **The postmortem runs it for you** — you never invoke it by hand. | `.agents/skills/ultimateinterview-postmortem/scripts/` |
+| `ultimateinterview-postmortem` | An agent skill that compares what the spec promised against what the code actually contains, classifies every difference, and writes lessons. | `.agents/skills/ultimateinterview-postmortem/` |
 | lessons files | Durable "next time, ask about X earlier" rules. Repo-specific rules go to `docs/ultimateinterview-lessons.md`; general rules go to the global store next to the skill. | see Output section below |
 
 ## Step by step
 
 ### Step 1 — Interview: turn a vague request into a spec
 
-In Claude Code, describe what you want and invoke the skill (saying "ultimateinterview" or "make a spec" is enough to trigger it):
+In your agent session, describe what you want and invoke the skill (saying "ultimateinterview" or "make a spec" is enough to trigger it):
 
 > "I want a CLI I can run every morning that shows me today's todos. ultimateinterview."
 
@@ -48,9 +48,19 @@ What happens next:
 - The skill inspects your repo first and **never asks you things the code can answer**.
 - It asks one high-leverage question at a time (multiple-choice where possible), pressure-tests answers that carry risk, and keeps a scored ledger of every open ambiguity.
 - **It reads the lessons files during orientation.** If a past postmortem wrote "a time word like *today* in the goal → pin down date-boundary semantics early", and your request contains "morning/today", that question class fires in round one instead of never. This is the loop paying you back.
-- It stops when no dangerous ambiguity remains (a scripted, blocker-based check — not a vibe), runs its gates, and writes `handoff.md`.
+- It persists each answer as one validated, journaled update across the ledger, protocol, question queue, and transcript. Interrupted writes recover before the next status or update command reads the session.
+- It first reaches `interview_converged`: no consequential interview blocker remains except the not-yet-tested contract. It writes and independently tests `handoff.md`, then only the composite gate may report `implementation_ready: yes`.
 
-You get: `.ultimateinterview/<slug>/` containing `handoff.md` (the spec), `ledger.json` (every settled decision with its evidence), and `transcript.md`.
+You get: `.ultimateinterview/<slug>/` containing `handoff.md` (the spec), `ledger.json` (every settled decision with its evidence), `protocol.json` (which interview methods actually ran), `questions.json` (the current scored queue), and `transcript.md`.
+
+The two readiness checks are intentionally different:
+
+```bash
+uv run .agents/skills/ultimateinterview/scripts/session_status.py .ultimateinterview/<slug>
+uv run .agents/skills/ultimateinterview/scripts/session_status.py .ultimateinterview/<slug> --gate
+```
+
+The first is a read-only interview-status view and always exits successfully when state is valid. The second is the implementation gate: it also checks Build Contract sections and traceability, decidable predicates, verification commands, fresh-review evidence tied to the current Part 1 digest, and deferred-risk ownership. It exits `1` when implementation must not start.
 
 ### Step 2 — Build: execute the spec under ulw-loop, and log your decisions
 
@@ -84,7 +94,7 @@ ulw-loop is the preferred substrate because it leaves this evidence trail for fr
 
 ### Step 3 — Postmortem: assign blame correctly
 
-When the implementation is substantially done, in Claude Code, in the same repo:
+When the implementation is substantially done, in a fresh agent context, in the same repo:
 
 > "spec postmortem for todo-cli-app"
 
@@ -95,7 +105,7 @@ Two packing behaviors worth knowing:
 - **It fails loudly on files it owns.** A malformed `decisions.jsonl` line stops everything with the line number — fix it, and the skill reruns the packer.
 - **It degrades gracefully on files it doesn't own.** No ulw-loop run? No decision log? Those are recorded in a `missing_evidence` list inside the bundle instead of blocking. The postmortem will then say "this axis of the audit ran blind" rather than silently guessing.
 
-Full schema reference (and the manual `pack_evidence.py` invocation, if you ever want to inspect a bundle yourself): `.claude/skills/ultimateinterview-postmortem/references/evidence-bundle.md`.
+Full schema reference (and the manual `pack_evidence.py` invocation, if you ever want to inspect a bundle yourself): `.agents/skills/ultimateinterview-postmortem/references/evidence-bundle.md`.
 
 With the bundle in hand, the postmortem walks the spec and the diff in both directions — *every spec requirement: where is it implemented? every substantive code behavior: which requirement asked for it?* — and classifies every mismatch:
 
@@ -148,7 +158,7 @@ cd .agents/skills/ultimateinterview
 
 ### 1. Tooling regression — `regression_check.py`
 
-One command. Runs `handoff_coverage`, `verification_lint`, and `postmortem_lint` against a captured fixture set and checks nothing broke:
+One command. Runs the deterministic coverage, predicate, verification, protocol-status, implementation-gate, and postmortem checks against a captured fixture set:
 
 ```bash
 uv run scripts/regression_check.py
@@ -159,18 +169,19 @@ uv run scripts/regression_check.py
 
 session                      coverage_ok  postmortem   status
 --------------------------------------------------------------------
+ready-minimal                True         n/a          OK
 todo-cli-app-5               True         ok           OK
 todo-cli-app-4               False        missing      OK
 todo-cli-app                 False        missing      OK
 attribute-search-mysql       False        n/a          OK
 
-All 4 session(s) pass: no crash, host-independent verdicts stable.
+All 5 session(s) pass: no crash, host-independent verdicts stable.
 ```
 
 - **Exit code** is `0` when every row is `OK`, `1` on any `REGRESSION` (so it drops straight into a pre-commit hook or CI).
-- **What it asserts:** (a) no script crashed (no Python traceback); (b) `handoff_coverage.coverage_ok` matches the recorded value; (c) `postmortem_lint` returns the recorded verdict *class* — `ok`, or a specific `missing:<section>` for the older reports that legitimately predate the report contract (that failure is **expected**, and the exact section is pinned so a *new* kind of failure still trips the check).
-- **What it does NOT assert:** `verification_lint`'s specific MISSING-command set. That check resolves command heads against **this host's** PATH, so the set is host-dependent; the harness only requires it to run and emit a well-formed report.
-- **Flags:** `--live` also sweeps the real `.ultimateinterview/<slug>/` sessions when they exist (they are gitignored, so absent on a fresh clone); `--format json` for machine output.
+- **What it asserts:** (a) every child finishes within 30 seconds and emits parseable output without a traceback; (b) `handoff_coverage.coverage_ok`, `handoff_ready`, `protocol_ready`, `interview_converged`, and `implementation_ready` match recorded host-independent values; (c) gate exit codes match readiness; (d) `postmortem_lint` returns the recorded verdict *class*. `ready-minimal` is the positive control that prevents an accidentally always-blocked gate from passing the suite.
+- **What it does NOT assert:** the specific findings from `verification_lint` and `predicate_lint`. Command availability depends on the host and predicate lint is advisory, so the harness pins their report structure while focused unit tests pin their deterministic cases.
+- **Flags:** `--live` also sweeps real `.ultimateinterview/<slug>/` sessions. Recorded sessions are checked against recorded verdicts; unrecorded completed sessions get coverage/lint/status smoke checks; unrecorded in-progress sessions get the state-safe status check only. Hidden staging/recovery directories are ignored. Use `--format json` for machine output.
 - **When:** run it **before** a skill/script edit (record the baseline) and **after** (confirm no row moved).
 
 ### 2. Signal-firing check — `signal_firing.py`
@@ -201,19 +212,19 @@ not fired: viewpoint, goal/obstacle, misuse
 
 ### Extending the harness
 
-- **Add a fixture (tooling regression):** copy a session's `handoff.md` + `ledger.json` (+ `postmortem.md` and, for the postmortem-`ok` case, a minimal `evidence_bundle.json` holding just the `lessons` snapshot) into `scripts/regression_fixtures/<slug>/`, then add a row to `EXPECTED` in `regression_check.py` with the observed `coverage_ok` and `postmortem` verdict and a one-line `why`. Keep fixtures small — capture only what the three scripts read.
+- **Add a fixture (tooling regression):** copy the smallest state set the applicable checks read — normally `handoff.md`, `ledger.json`, `protocol.json`, and `questions.json`, plus `postmortem.md` and a minimal `evidence_bundle.json` when postmortem lint applies — into `scripts/regression_fixtures/<slug>/`. Add its coverage, ledger/protocol/convergence/gate, postmortem, and `why` values to `EXPECTED` in `regression_check.py`. A new blocked fixture does not replace the required positive-ready control.
 - **Add a canonical case (signal-firing):** append a `(request, {lenses that must fire})` tuple to `CANONICAL` in `test_signal_firing.py`. Prefer text that contains a specific trigger word so the case pins that trigger.
-- **Run the tests:** `uv run scripts/test_regression_check.py` and `uv run scripts/test_signal_firing.py` (both join the suite run from the skill dir).
+- **Run the tests:** from the skill directory, use `uv run --with pytest --with typer --with pydantic --with rich python -m pytest scripts` for the complete deterministic suite, then run `uv run scripts/regression_check.py --format json` for the captured-session verdicts. The explicit dependencies are required because each standalone test script normally declares its own inline environment.
 
 ## Quick reference
 
 ```text
-Interview        Claude Code: "ultimateinterview: <your request>"
+Interview        Agent session: "ultimateinterview: <your request>"
   → spec         .ultimateinterview/<slug>/handoff.md
 Build            Codex: $ulw-loop "Implement Part 1 of <handoff path>"
   → evidence     .omo/ulw-loop/{goals.json, ledger.jsonl}   (maybe under <session-id>/)
   → decisions    append .ultimateinterview/<slug>/decisions.jsonl as you decide
-Postmortem       Claude Code: "spec postmortem for <slug>"
+Postmortem       Fresh agent context: "spec postmortem for <slug>"
   → bundle       .ultimateinterview/<slug>/evidence_bundle.json   (packed automatically)
   → report       .ultimateinterview/<slug>/postmortem.md
   → lessons      docs/ultimateinterview-lessons.md (+ global store)  ← next interview reads these
@@ -222,6 +233,9 @@ Postmortem       Claude Code: "spec postmortem for <slug>"
 ## Gotchas
 
 - **Don't run the postmortem on half-built work.** In-progress items get misclassified as scope drift. Wait until the implementation is substantially done.
+- **Don't hand-edit interview state.** Use `session_init.py` and one `session_update.py` delta per answer. The writer serializes updates, journals the prior generation, clears stale questions after material ledger changes, and recovers interrupted commits. These helpers currently require POSIX file locking and fail explicitly elsewhere.
+- **`interview_converged` is not permission to code.** It means the interview can enter its endgame. Only `session_status.py --gate` can emit `implementation_ready: yes`, and editing Part 1 after fresh review invalidates that review through its digest.
+- **Pressure follow-ups are bounded per thread, not globally.** A free `pressure-followup` delta must carry a stable `pressure_parent`; the first two are free, and a third must return to the scored queue as a normal interaction.
 - **Don't trust "the loop said it's complete" as quality.** ulw-loop's goal status is a coordination signal the agent itself declares; the criteria evidence and the final quality gate are the real checks, and the postmortem re-checks against the spec anyway.
 - **The implementer and the postmortem runner shouldn't share a head.** If the same session both wrote the code and runs the postmortem, the skill delegates the inventory walk to a fresh-context subagent automatically — an implementer auditing its own code for things it forgot is circular. And if the implementer already wrote a `postmortem.md` of its own, the skill moves it to `postmortem.self.md` and audits independently: a self-report is evidence, not an audit.
 - **Lessons graduate.** A lesson row that keeps catching gets absorbed into the interview skill's own method (a lens trigger, a checklist gate) and retires with an `absorbed:` reason — the lessons file is a staging area for rules earning their way into the methodology, not a permanent pile.
