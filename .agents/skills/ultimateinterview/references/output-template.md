@@ -36,6 +36,14 @@ Then <observable outcome>
 And <measurable or persisted evidence>
 ```
 
+## Change Impact & Preservation
+
+One row per material source carries the end-to-end trace from current evidence to runtime observation.
+
+| Source | Current evidence / behavior | Preserved invariant | Target difference | Code surface | Acceptance check | Runtime signal |
+| --- | --- | --- | --- | --- | --- | --- |
+| g15 |  |  |  |  | REQ-001 |  |
+
 ## Quality Bars
 
 Mandatory slot: at least one measurable bar, or exactly one line: `No measurable quality bar applies - <reason>.` Weight reuses the ledger impact-weight scale (`1`/`2`/`3`/`5`) and orders implementer tradeoffs: when bars conflict, satisfy the higher weight first.
@@ -63,11 +71,22 @@ Each non-goal carries a checkable negative assertion where feasible — the obse
 - Interfaces:
 - Compatibility:
 - Migration:
-- Rollout:
+- Decision core: <pure inputs → outputs, or N/A with reason>
+- Effects boundary: <DB/API/message effects, ordering, atomicity, idempotency/compensation, or N/A with reason>
+
+## Rollout & Recovery
+
+Use `N/A - <reason>` only when activation and rollback are genuinely indistinguishable from the existing local workflow.
+
+| Activation | Compatibility / backfill | Rollback trigger | Rollback action | Observation metric + window | Owner |
+| --- | --- | --- | --- | --- | --- |
+|  |  |  |  |  |  |
 
 ## Guardrail Compile
 
 Split execution risks by what can be checked at stop time. A predicate must have a determinate pass/fail observable; natural-language "done" or "be careful" does not count. Fast/pre-action risks are surfaced as substrate-owned instead of simulated as stop-time checks.
+
+When no row applies, write exactly one reasoned line: `No stop-time or pre-action guardrail applies - <reason>.`
 
 Prompt-injection boundary: product-level prompt injection stays in the misuse/security requirements with trust boundaries and verifiable controls. Only agent/tool prompt-injection interception against the execution harness itself belongs in the fast/pre-action substrate row.
 
@@ -87,9 +106,12 @@ For boundary-spanning work, include this matrix before the command table. Use do
 | --- | --- | --- | --- | --- |
 |  |  |  | yes/no |  |
 
-| Check | Command / action | Pass condition |
-| --- | --- | --- |
-|  |  |  |
+`Kind` is `test` or `real-surface`; at least one complete row of each kind is required.
+
+| Check | Kind | Command / action | Pass condition |
+| --- | --- | --- | --- |
+| REQ-001 unit | test |  |  |
+| REQ-001 surface | real-surface |  |  |
 
 ## Deferred Risks
 
@@ -101,11 +123,11 @@ Accepted ambiguity the implementer must not silently resolve.
 
 ## Fresh-Implementer Test
 
-Records both questions: blocking asks, and acceptance criteria passable without the behavior (verification gaming) with how each was re-bound.
+Records both questions, their disposition, and the deterministic remainder after disposition. Findings may be non-empty when they were folded back or re-bound; `Unresolved after disposition` must be `none` before handoff.
 
-| Reviewer (fresh-context agent / self-audit) | "Would have to ask" items found | Gameable criteria found | Folded back / re-bound? |
-| --- | --- | --- | --- |
-|  |  |  |  |
+| Reviewer (fresh-context agent / self-audit) | "Would have to ask" items found | Gameable criteria found | Folded back / re-bound? | Unresolved after disposition |
+| --- | --- | --- | --- | --- |
+|  |  |  |  |  |
 
 # Part 2 — Audit Trail
 
@@ -142,14 +164,14 @@ Render-by-reference rule: sections that mirror session state files verbatim (Req
 
 States mirror `protocol.json` verbatim (lowercase; the script rejects other spellings). A lens still `triggered` at handoff is a protocol blocker.
 
-| Lens | State | Reason |
-| --- | --- | --- |
-| viewpoint | triggered/done/skipped |  |
-| domain/state | triggered/done/skipped |  |
-| goal/obstacle | triggered/done/skipped |  |
-| misuse | triggered/done/skipped |  |
-| quality | triggered/done/skipped |  |
-| controlled-language | triggered/done/skipped |  |
+| Lens | State | Artifact | Reason |
+| --- | --- | --- | --- |
+| viewpoint | triggered/done/skipped | ViewpointMatrix |  |
+| domain/state | triggered/done/skipped | StateModel |  |
+| goal/obstacle | triggered/done/skipped | GoalObstacleMap |  |
+| misuse | triggered/done/skipped | MisuseCaseSet |  |
+| quality | triggered/done/skipped | QualityScenarioSet |  |
+| controlled-language | triggered/done/skipped | ControlledAcceptanceCriteria |  |
 
 ## Requirements Ledger
 
@@ -161,7 +183,7 @@ Quote entry counts and dashboard numbers from helper output (`ambiguity_ledger.p
 
 ## Ambiguity Dashboard
 
-Deterministic source of truth — prefer the single combined invocation `uv run <ultimateinterview-skill>/scripts/session_status.py <session-dir>` (one call emits both dashboards plus the combined ready line); per-script fallback:
+Deterministic source of truth — prefer the single combined invocation `uv run <ultimateinterview-skill>/scripts/session_status.py <session-dir>` (one call emits both dashboards plus `interview_converged`); per-script fallback:
 
 ```bash
 uv run <ultimateinterview-skill>/scripts/ambiguity_ledger.py --format markdown <repo-root>/.ultimateinterview/<slug>/ledger.json
@@ -171,7 +193,7 @@ uv run <ultimateinterview-skill>/scripts/ambiguity_ledger.py --format markdown <
 residual = sum(impact_weight * ambiguity_score)  over active gaps
 
 Handoff readiness is blocker-based: ready exactly when no active score 2 or 3 gap remains
-and no active weight-5 entry sits at score 0 with fewer than two distinct evidence_channels
+and no active weight-5 entry sits at score 0 or 1 with fewer than two distinct evidence_channels
 (assumption never counts) unless its status records explicit acceptance (Accepted)
 backed by at least one non-assumption channel.
 The percentage (100 * residual / sum(impact_weight * 3)) is the remaining-ambiguity share —
@@ -189,7 +211,7 @@ Deferred gaps are excluded from the residual and listed under Deferred Risks.
 
 ## Protocol Dashboard
 
-Deterministic source of truth — prefer the single combined invocation `uv run <ultimateinterview-skill>/scripts/session_status.py <session-dir>` (one call emits both dashboards plus the combined ready line); per-script fallback:
+Deterministic source of truth — prefer the single combined invocation `uv run <ultimateinterview-skill>/scripts/session_status.py <session-dir>` (one call emits both dashboards plus `interview_converged`); per-script fallback:
 
 ```bash
 uv run <ultimateinterview-skill>/scripts/protocol_state.py --format markdown <repo-root>/.ultimateinterview/<slug>/protocol.json
@@ -199,7 +221,7 @@ uv run <ultimateinterview-skill>/scripts/protocol_state.py --format markdown <re
 | --- | --- | --- | --- |
 | minimal/focused/full |  | yes/no |  |
 
-When `Handoff ready?` and `Protocol ready?` are both `yes` and the Gates in `references/handoff-sequence.md` pass (the gates include checks neither helper enforces: Contested entries resolved, testable acceptance criteria, deferred assumptions with owners), write this document to `.ultimateinterview/<slug>/handoff.md` and offer once to copy it to `docs/<slug>-handoff.md` as a durable committed artifact.
+Draft this document, then run `session_status.py --gate`. Deliver or copy it only when the composite result is `implementation_ready: yes`.
 
 ## Seed-Readiness Audit
 

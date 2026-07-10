@@ -25,11 +25,6 @@
 # column whose header mentions command/verification, extracts command heads,
 # and verifies each against PATH.
 #
-# Prose action rows ("Run malformed id, ...") are legal in these tables; a
-# segment is only treated as a command when its head looks like one (lowercase
-# start or explicit path). Fail-closed: exit 1 on any missing binary unless
-# --advisory; a genuinely cross-host handoff can annotate and override.
-
 from __future__ import annotations
 
 import os
@@ -38,13 +33,14 @@ import shlex
 import shutil
 import sys
 from pathlib import Path
+from collections.abc import Iterable
 from typing import Annotated, Final
 
 import typer
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from handoff_coverage import extract_part1  # noqa: E402
+from scripts.handoff_coverage import extract_part1  # noqa: E402
 
 SHELL_BUILTINS: Final[frozenset[str]] = frozenset(
     {
@@ -78,12 +74,17 @@ app = typer.Typer(add_completion=False, no_args_is_help=True)
 
 
 def tables(text: str) -> list[tuple[list[str], list[list[str]]]]:
-    lines = [line.strip() for line in text.splitlines()]
+    lines = [line.strip() for line in strip_fenced_blocks(text).splitlines()]
     found: list[tuple[list[str], list[list[str]]]] = []
     index = 0
 
     def cells(line: str) -> list[str]:
-        return [cell.strip() for cell in line.strip().strip("|").split("|")]
+        escaped_pipe = "\x00ULTIMATEINTERVIEW_PIPE\x00"
+        protected = line.replace("\\|", escaped_pipe)
+        return [
+            cell.replace(escaped_pipe, "|").strip()
+            for cell in protected.strip().strip("|").split("|")
+        ]
 
     while index < len(lines) - 1:
         if lines[index].startswith("|") and lines[index + 1].startswith("|") and "---" in lines[index + 1]:
@@ -97,6 +98,35 @@ def tables(text: str) -> list[tuple[list[str], list[list[str]]]]:
         else:
             index += 1
     return found
+
+
+def strip_fenced_blocks(text: str) -> str:
+    lines: list[str] = []
+    fence_character: str | None = None
+    fence_length = 0
+    for line in text.splitlines():
+        match = re.match(r"^[ ]{0,3}(`{3,}|~{3,})", line)
+        marker = match.group(1) if match is not None else ""
+        if fence_character is None and marker:
+            fence_character = marker[0]
+            fence_length = len(marker)
+            lines.append("")
+        elif (
+            fence_character is not None
+            and marker
+            and match is not None
+            and marker[0] == fence_character
+            and len(marker) >= fence_length
+            and not line[match.end() :].strip()
+        ):
+            fence_character = None
+            fence_length = 0
+            lines.append("")
+        elif fence_character is None:
+            lines.append(line)
+        else:
+            lines.append("")
+    return "\n".join(lines)
 
 
 def looks_like_prose(segment: str) -> bool:
@@ -124,8 +154,46 @@ def is_command_like(tokens: list[str], had_assignment: bool) -> bool:
     return False
 
 
+def looks_like_shell_cell(cell_text: str) -> bool:
+    if "`" in cell_text or re.search(r"&&|\|\||;|\|", cell_text):
+        return True
+    rough_tokens = cell_text.split()
+    return bool(rough_tokens) and (
+        bool(ASSIGNMENT.match(rough_tokens[0]))
+        or any(
+            (token.startswith("-") and len(token) > 1)
+            or token.endswith(SCRIPT_SUFFIXES)
+            or bool(PATH_TOKEN.match(token))
+            for token in rough_tokens
+        )
+    )
+
+
+def normalize_command_tokens(tokens: list[str]) -> tuple[list[str], tuple[str, ...]]:
+    wrappers: list[str] = []
+    while tokens:
+        while tokens and ASSIGNMENT.match(tokens[0]):
+            tokens = tokens[1:]
+        if not tokens:
+            break
+        if tokens[0] in {"command", "exec"}:
+            tokens = tokens[1:]
+            while tokens and tokens[0].startswith("-"):
+                tokens = tokens[1:]
+            continue
+        if tokens[0] == "env":
+            wrappers.append("env")
+            tokens = tokens[1:]
+            while tokens and (tokens[0].startswith("-") or ASSIGNMENT.match(tokens[0])):
+                tokens = tokens[1:]
+            continue
+        break
+    return tokens, tuple(wrappers)
+
+
 def command_heads(cell_text: str) -> list[str]:
     """Extract the command-head tokens of every shell segment in one cell."""
+    explicit_command = "`" in cell_text
     text = SOURCE_TAG.sub("", cell_text.replace("`", ""))
     segments = [part for part in SEGMENT_SPLIT.split(text) if part.strip()]
     segments.extend(match.group(1) for match in SUBSHELL.finditer(text))
@@ -136,21 +204,49 @@ def command_heads(cell_text: str) -> list[str]:
         try:
             tokens = shlex.split(segment, posix=True)
         except ValueError:
-            continue  # unbalanced quotes: prose, not a command
+            continue
         had_assignment = bool(tokens) and bool(ASSIGNMENT.match(tokens[0]))
-        while tokens and ASSIGNMENT.match(tokens[0]):
-            tokens = tokens[1:]
-        if not tokens:
+        tokens, wrappers = normalize_command_tokens(tokens)
+        heads.extend(wrappers)
+        if not tokens or tokens[0] == "eval":
             continue
         head = tokens[0]
-        if head in SHELL_BUILTINS or head in PROSE_HEADS or head.startswith("$") or "/" in head:
+        if head in SHELL_BUILTINS or head in PROSE_HEADS or head.startswith("$"):
             continue
-        if not COMMAND_HEAD.match(head):
-            continue  # capitalized/prose head ("Run", "Exercise")
-        if not is_command_like(tokens, had_assignment):
-            continue  # bare word + prose, no flag/path/redirection/assignment signal
+        is_path = bool(PATH_TOKEN.match(head) or Path(head).is_absolute())
+        if not is_path and not COMMAND_HEAD.match(head):
+            continue
+        if not is_path and not explicit_command and not is_command_like(tokens, had_assignment):
+            continue
         heads.append(head)
     return heads
+
+
+def lintable_cells(part1: str) -> list[str]:
+    cells: list[str] = []
+    for headers, rows in tables(part1):
+        columns = [index for index, header in enumerate(headers) if LINTABLE_COLUMN.search(header)]
+        for row in rows:
+            cells.extend(row[column] for column in columns if column < len(row))
+    return cells
+
+
+def command_parse_findings(part1: str) -> tuple[str, ...]:
+    findings: list[str] = []
+    for cell in lintable_cells(part1):
+        if not looks_like_shell_cell(cell):
+            continue
+        text = SOURCE_TAG.sub("", cell.replace("`", ""))
+        for segment in (part for part in SEGMENT_SPLIT.split(text) if part.strip()):
+            try:
+                tokens = shlex.split(segment, posix=True)
+            except ValueError as error:
+                findings.append(f"malformed verification command {segment!r}: {error}")
+                continue
+            tokens, _wrappers = normalize_command_tokens(tokens)
+            if tokens and tokens[0] == "eval":
+                findings.append("unsupported dynamic verification wrapper 'eval'; use explicit argv")
+    return tuple(findings)
 
 
 def host_search_path() -> str:
@@ -171,6 +267,35 @@ def host_search_path() -> str:
         if entry and str(Path(entry).resolve()) not in venv_bins
     ]
     return os.pathsep.join(entries)
+
+
+def cell_head_status(
+    cells: Iterable[str],
+    search_path: str | None = None,
+    workdir: Path | None = None,
+) -> dict[str, bool]:
+    resolved_path = host_search_path() if search_path is None else search_path
+    resolved_workdir = Path.cwd() if workdir is None else workdir
+    heads: dict[str, bool] = {}
+    for cell in cells:
+        for head in command_heads(cell):
+            candidate = Path(head).expanduser()
+            if PATH_TOKEN.match(head) or candidate.is_absolute():
+                if not candidate.is_absolute():
+                    candidate = resolved_workdir / candidate
+                present = candidate.is_file() and os.access(candidate, os.X_OK)
+            else:
+                present = shutil.which(head, path=resolved_path) is not None
+            heads.setdefault(head, present)
+    return heads
+
+
+def command_head_status(
+    part1: str,
+    search_path: str | None = None,
+    workdir: Path | None = None,
+) -> dict[str, bool]:
+    return cell_head_status(lintable_cells(part1), search_path, workdir)
 
 
 @app.command()
@@ -194,24 +319,19 @@ def main(
         raise typer.Exit(2)
 
     part1 = extract_part1(handoff_path.read_text(encoding="utf-8"))
-    search_path = host_search_path()
-    heads: dict[str, bool] = {}
-    for headers, rows in tables(part1):
-        columns = [
-            index for index, header in enumerate(headers) if LINTABLE_COLUMN.search(header)
-        ]
-        for row in rows:
-            for column in columns:
-                if column >= len(row):
-                    continue
-                for head in command_heads(row[column]):
-                    heads.setdefault(head, shutil.which(head, path=search_path) is not None)
+    workdir = session_dir.parents[1] if session_dir.parent.name == ".ultimateinterview" else Path.cwd()
+    parse_findings = command_parse_findings(part1)
+    heads = command_head_status(part1, workdir=workdir)
 
     missing = sorted(head for head, present in heads.items() if not present)
     typer.echo("## Verification Command Lint\n")
     typer.echo(f"- Command heads checked (Part-1 command/verification columns): {len(heads)}")
     for head in sorted(heads):
         typer.echo(f"  - {head}: {'ok' if heads[head] else 'MISSING on this host'}")
+    for finding in parse_findings:
+        typer.echo(f"  - {finding}")
+    if parse_findings and strict:
+        raise typer.Exit(1)
     if missing:
         typer.echo(
             f"\n- executable_ok: no - {len(missing)} head(s) not on PATH: {', '.join(missing)}"

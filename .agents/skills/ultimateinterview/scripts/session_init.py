@@ -22,9 +22,11 @@
 from __future__ import annotations
 
 import json
+import os
+import re
 import sys
+import tempfile
 from datetime import datetime
-from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Final
 
@@ -33,20 +35,34 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import typer
 from pydantic import ValidationError
 
-from scripts import ambiguity_ledger, protocol_state, session_status
+from scripts import ambiguity_ledger, atomic_write, protocol_state, session_status
 
 STATE_DIR_NAME: Final[str] = ".ultimateinterview"
 MAX_SUFFIX: Final[int] = 20
+SLUG_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 def resolve_session_dir(root: Path, slug: str) -> tuple[Path, str]:
     """Fresh-suffix rule: a slug whose session already has a handoff gets
     <slug>-2 (then -3, ...); an unfinished session must be resumed, not
     silently re-initialized."""
+    if not SLUG_PATTERN.fullmatch(slug):
+        raise typer.BadParameter("slug must be lowercase kebab-case")
     base = root / STATE_DIR_NAME
+    if base.is_symlink():
+        raise typer.BadParameter(f"state root must not be a symlink: {base}")
+    if base.exists() and not base.is_dir():
+        raise typer.BadParameter(f"state root is not a directory: {base}")
+    resolved_root = root.resolve()
+    if not base.resolve(strict=False).is_relative_to(resolved_root):
+        raise typer.BadParameter(f"state root escapes repository: {base}")
     candidate_slug = slug
     for suffix in range(2, MAX_SUFFIX + 1):
         directory = base / candidate_slug
+        if directory.is_symlink():
+            raise typer.BadParameter(f"session path must not be a symlink: {directory}")
+        if not directory.resolve(strict=False).is_relative_to(resolved_root):
+            raise typer.BadParameter(f"session path escapes repository: {directory}")
         if not directory.exists():
             return directory, candidate_slug
         if (directory / "handoff.md").is_file():
@@ -59,20 +75,24 @@ def resolve_session_dir(root: Path, slug: str) -> tuple[Path, str]:
     raise typer.BadParameter(f"too many suffixed sessions for slug {slug!r}")
 
 
-def initial_protocol(depth: protocol_state.Depth, budget: int | None) -> dict:
+def initial_protocol(depth: protocol_state.Depth, budget: int | None) -> dict[str, object]:
     return {
         "depth": depth.value,
         "question_budget": budget or protocol_state.DEPTH_BUDGET_CAPS[depth],
         "interactions_used": 0,
         "answers_since_sweep": 0,
         "sweeps_run": 0,
+        "dry_sweeps_in_row": 0,
         "contrarian_probes_run": 0,
         "falsification_checkpoints_run": 0,
         "checkpoint_since_last_material_change": False,
         "framing_challenged": False,
         "brain_dump_done": False,
         "build_contract_tested": False,
+        "build_contract_digest": "",
+        "build_contract_reviewer": "",
         "implementer_scout_run": False,
+        "pressure_followups_by_parent": {},
         "due_now_corrections": 0,
         "lenses": {
             name: {"state": "pending", "reason": ""}
@@ -98,11 +118,8 @@ def ensure_gitignore(root: Path) -> str:
     return f"created .gitignore with {STATE_DIR_NAME}"
 
 
-def write_json(path: Path, payload: object) -> None:
-    path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+def json_text(payload: object) -> str:
+    return json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
 
 
 def main(
@@ -153,10 +170,10 @@ def main(
         ) from error
 
     session_dir, final_slug = resolve_session_dir(repo_root, slug)
-    session_dir.mkdir(parents=True)
-    write_json(session_dir / "ledger.json", {"entries": json.loads(raw_entries)})
-    write_json(session_dir / "protocol.json", protocol_doc)
-    write_json(session_dir / "questions.json", {"questions": []})
+    session_dir.parent.mkdir(parents=True, exist_ok=True)
+    staging_dir = Path(
+        tempfile.mkdtemp(prefix=f".{final_slug}.init-", dir=session_dir.parent),
+    )
     stamp = datetime.now().strftime("%Y-%m-%d")
     header = [f"# Interview Transcript — {final_slug}", ""]
     if final_slug != slug:
@@ -166,7 +183,31 @@ def main(
     if classification:
         header.append(f"Classification: {classification}")
     header.extend([f"Session initialized {stamp} (depth: {depth.value}).", ""])
-    (session_dir / "transcript.md").write_text("\n".join(header), encoding="utf-8")
+    canonical_entries = [entry.model_dump(mode="json") for entry in parsed]
+    try:
+        atomic_write.commit_text_files(
+            {
+                staging_dir / "ledger.json": json_text({"entries": canonical_entries}),
+                staging_dir / "protocol.json": json_text(protocol_doc),
+                staging_dir / "questions.json": json_text({"questions": []}),
+                staging_dir / "transcript.md": "\n".join(header),
+            }
+        )
+        os.replace(staging_dir, session_dir)
+        atomic_write.fsync_directory(session_dir.parent)
+    except BaseException:
+        cleanup_dir = staging_dir if staging_dir.exists() else session_dir
+        for name in (
+            "ledger.json",
+            "protocol.json",
+            "questions.json",
+            "transcript.md",
+            atomic_write.JOURNAL_NAME,
+            atomic_write.LOCK_NAME,
+        ):
+            (cleanup_dir / name).unlink(missing_ok=True)
+        cleanup_dir.rmdir()
+        raise
 
     gitignore_note = ensure_gitignore(repo_root)
     ledger_summary = ambiguity_ledger.summarize_ambiguity(parsed)

@@ -38,12 +38,6 @@
 #                      coercion boundary never pinned anywhere in Part 1
 #   version-floor    - a store/schema `version` upper rule with no lower/floor rule
 #
-# It cannot prove a predicate is CORRECT, only surface where one is missing - so
-# it is advisory by default (like verification_lint, whose head heuristic has
-# false positives on prose). `--strict` blocks. The interview-rule side of this
-# (orientation trigger + audit-checklist gate) is experimental: an interview
-# rule cannot be re-measured without a fresh human-in-the-loop cycle.
-
 from __future__ import annotations
 
 import re
@@ -71,7 +65,7 @@ REJECT_WORDS: Final[frozenset[str]] = frozenset(
 # bare category word. Deliberately excludes more category nouns (schema, shape,
 # root) - those restate the category, they do not decide it.
 PREDICATE_SIGNALS: Final[tuple[str, ...]] = (
-    "exactly", "one of", "must be", "must not", "matches", "equals",
+    "exactly", "one of", "matches", "equals",
     "regex", "iff", "if and only if", "non-empty", "nonempty", "positive",
     "negative", "greater", "less than", "at most", "at least", "duplicate",
     "not a", "predicate", "unless", "any of", "none of",
@@ -158,6 +152,14 @@ def version_floor_finding(part1: str) -> str | None:
     return None
 
 
+def findings(part1: str) -> tuple[str, ...]:
+    result = reject_findings(part1)
+    for maybe in (coercion_finding(part1), version_floor_finding(part1)):
+        if maybe is not None:
+            result.append(maybe)
+    return tuple(result)
+
+
 @app.command()
 def main(
     session_dir: Annotated[
@@ -179,15 +181,12 @@ def main(
         raise typer.Exit(2)
 
     part1 = extract_part1(handoff_path.read_text(encoding="utf-8"))
-    findings = reject_findings(part1)
-    for maybe in (coercion_finding(part1), version_floor_finding(part1)):
-        if maybe is not None:
-            findings.append(maybe)
+    lint_findings = findings(part1)
 
     typer.echo("## Decidable-Predicate Lint\n")
-    if findings:
-        typer.echo(f"- predicate_ok: no - {len(findings)} row(s)/field(s) need a deciding predicate:")
-        for note in findings:
+    if lint_findings:
+        typer.echo(f"- predicate_ok: no - {len(lint_findings)} row(s)/field(s) need a deciding predicate:")
+        for note in lint_findings:
             typer.echo(f"  - {note}")
         typer.echo(
             "\n  Add the predicate to the acceptance criterion, or delegate it as an explicit "

@@ -35,7 +35,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import typer
 
-from scripts import ambiguity_ledger, protocol_state
+from scripts import ambiguity_ledger, atomic_write, implementation_gate, protocol_state
 
 # The one protocol blocker that does not veto the stop condition: the Build
 # Contract is drafted and tested inside the Handoff sequence itself.
@@ -77,10 +77,10 @@ def is_ready(
 def ready_line(ready: bool) -> str:
     if ready:
         return (
-            "- ready: yes (stop condition met: handoff_ready, and protocol blockers "
+            "- interview_converged: yes (stop condition met: handoff_ready, and protocol blockers "
             "empty or only the build contract; run the Handoff sequence this turn)"
         )
-    return "- ready: no (see the ledger blockers and protocol handoff blockers above)"
+    return "- interview_converged: no (see the ledger blockers and protocol handoff blockers above)"
 
 
 def render_markdown(
@@ -114,6 +114,14 @@ def next_action(
     then critical-path question vs batch flush. Mechanical approximation only:
     the semantic critical-path arms (branches implementation, contradicts
     evidence, narrows scope) stay with the model."""
+    if ready:
+        return (
+            (
+                "ENDGAME: read references/handoff-sequence.md and run the canonical "
+                "pre-handoff sequence this turn",
+            ),
+            (),
+        )
     queue: list[str] = []
     lag = state.interactions_used - len(state.residual_history)
     if lag >= protocol_state.RESIDUAL_LAG_THRESHOLD:
@@ -141,12 +149,7 @@ def next_action(
     critical = tuple(entry.id for entry in active if entry.is_critical_path_candidate)
     batchable = tuple(entry.id for entry in active if entry.is_batchable)
     if not queue:
-        if ready:
-            queue.append(
-                "ENDGAME: read references/handoff-sequence.md and run the canonical "
-                "pre-handoff sequence this turn",
-            )
-        elif ledger_summary.handoff_ready:
+        if ledger_summary.handoff_ready:
             queue.append(pre_handoff_step(state, batchable))
         elif ledger_summary.triangulation_violations:
             queue.append(
@@ -190,6 +193,8 @@ def pre_handoff_step(
         return f"flush the pending smart-default batch first ({', '.join(batchable)})"
     if state.sweeps_run < 1:
         return "pre-handoff breadth sweep (none has run)"
+    if state.dry_sweeps_in_row < 2:
+        return "pre-handoff breadth sweep until two consecutive sweeps are dry"
     if state.contrarian_probes_run < 1:
         return "contrarian probe (pair it with the mandatory pre-handoff checkpoint)"
     if state.falsification_checkpoints_run < 1 or not state.checkpoint_since_last_material_change:
@@ -223,21 +228,6 @@ def render_next_action(
     return "\n".join(lines)
 
 
-def render_gate_check(
-    entries: tuple[ambiguity_ledger.LedgerEntry, ...],
-) -> tuple[str, bool]:
-    """Gate-time hard checks the readiness helpers only report: unresolved
-    Contested entries and deferrals without owner/decision_date. Returns
-    (markdown, passed)."""
-    failures = ambiguity_ledger.gate_failures(entries)
-    lines = ["## Gate Check", ""]
-    if failures:
-        lines.extend(f"- FAIL: {failure}" for failure in failures)
-    else:
-        lines.append("- pass: no unresolved Contested entries; every deferral carries owner/decision_date")
-    return "\n".join(lines), len(failures) == 0
-
-
 def render_json(
     ledger_summary: ambiguity_ledger.AmbiguitySummary,
     protocol_summary: protocol_state.ProtocolSummary,
@@ -246,7 +236,7 @@ def render_json(
     payload = {
         "ledger": json.loads(ambiguity_ledger.summary_as_json(ledger_summary)),
         "protocol": json.loads(protocol_state.summary_as_json(protocol_summary)),
-        "ready": ready,
+        "interview_converged": ready,
     }
     return json.dumps(payload, indent=2, sort_keys=True)
 
@@ -275,29 +265,58 @@ def main(
     ] = False,
     gate: Annotated[
         bool,
-        typer.Option("--gate", help="Run gate-time hard checks (exit 1 on failure)."),
+        typer.Option("--gate", help="Run the composite implementation gate (exit 1 on failure)."),
     ] = False,
 ) -> None:
     if session_dir is None and (ledger_path is None or protocol_path is None):
         raise typer.BadParameter(
             "pass a session directory, or both --ledger and --protocol",
         )
-    if session_dir is not None and not session_dir.is_dir():
+    if gate and session_dir is None:
+        raise typer.BadParameter("--gate requires a session directory containing handoff.md")
+    if gate and (ledger_path is not None or protocol_path is not None):
+        raise typer.BadParameter("--gate does not accept --ledger or --protocol overrides")
+    if session_dir is not None and (not session_dir.is_dir() or session_dir.is_symlink()):
         raise typer.BadParameter(
             f"session directory not found or not a directory: {session_dir}",
         )
-    resolved_ledger = ledger_path if ledger_path is not None else session_dir / "ledger.json"  # type: ignore[operator]
-    resolved_protocol = protocol_path if protocol_path is not None else session_dir / "protocol.json"  # type: ignore[operator]
-    entries = parse_json_file(
-        resolved_ledger,
-        ambiguity_ledger.parse_entries,
-        ambiguity_ledger.summarize_validation_error,
-    )
-    state = parse_json_file(
-        resolved_protocol,
-        protocol_state.parse_state,
-        protocol_state.summarize_validation_error,
-    )
+    handoff_text: str | None = None
+    if session_dir is None:
+        assert ledger_path is not None and protocol_path is not None
+        resolved_ledger = ledger_path
+        resolved_protocol = protocol_path
+        if resolved_ledger.parent.resolve() != resolved_protocol.parent.resolve():
+            raise typer.BadParameter("--ledger and --protocol must share one session directory")
+        with atomic_write.session_transaction(resolved_ledger.parent):
+            entries = parse_json_file(
+                resolved_ledger,
+                ambiguity_ledger.parse_entries,
+                ambiguity_ledger.summarize_validation_error,
+            )
+            state = parse_json_file(
+                resolved_protocol,
+                protocol_state.parse_state,
+                protocol_state.summarize_validation_error,
+            )
+    else:
+        resolved_ledger = ledger_path if ledger_path is not None else session_dir / "ledger.json"
+        resolved_protocol = protocol_path if protocol_path is not None else session_dir / "protocol.json"
+        with atomic_write.session_transaction(session_dir):
+            entries = parse_json_file(
+                resolved_ledger,
+                ambiguity_ledger.parse_entries,
+                ambiguity_ledger.summarize_validation_error,
+            )
+            state = parse_json_file(
+                resolved_protocol,
+                protocol_state.parse_state,
+                protocol_state.summarize_validation_error,
+            )
+            if gate:
+                handoff_path = session_dir / "handoff.md"
+                if not handoff_path.is_file():
+                    raise typer.BadParameter(f"handoff.md not found: {handoff_path}")
+                handoff_text = handoff_path.read_text(encoding="utf-8")
     ledger_summary = ambiguity_ledger.summarize_ambiguity(entries, top=top)
     protocol_summary = protocol_state.summarize_protocol(state)
     ready = is_ready(ledger_summary, protocol_summary)
@@ -312,17 +331,35 @@ def main(
         OutputFormat.MARKDOWN: render_markdown,
     }
     output = renderers[output_format](ledger_summary, protocol_summary, ready)
-    gate_passed = True
+    gate_result: implementation_gate.GateResult | None = None
+    if gate:
+        assert session_dir is not None
+        assert handoff_text is not None
+        gate_result = implementation_gate.evaluate(
+            entries,
+            ledger_summary,
+            protocol_summary,
+            handoff_text,
+            workdir=(
+                session_dir.parents[1]
+                if session_dir.parent.name == ".ultimateinterview"
+                else session_dir.parent
+            ),
+            protocol=state,
+        )
     if output_format is OutputFormat.MARKDOWN:
         if show_next:
             output += "\n\n" + render_next_action(
                 entries, state, ledger_summary, protocol_summary, ready,
             )
-        if gate:
-            gate_output, gate_passed = render_gate_check(entries)
-            output += "\n\n" + gate_output
+        if gate_result is not None:
+            output += "\n\n" + implementation_gate.as_markdown(gate_result)
+    elif gate_result is not None:
+        payload = json.loads(output)
+        payload["implementation_gate"] = gate_result.as_dict()
+        output = json.dumps(payload, indent=2, sort_keys=True)
     typer.echo(output)
-    if gate and not gate_passed:
+    if gate_result is not None and not gate_result.implementation_ready:
         raise typer.Exit(1)
 
 

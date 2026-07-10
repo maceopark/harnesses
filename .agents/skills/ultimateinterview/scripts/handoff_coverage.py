@@ -53,10 +53,38 @@ app = typer.Typer(add_completion=False, no_args_is_help=True)
 def extract_part1(handoff_text: str) -> str:
     """Return the Build Contract (Part 1) slice, or the whole doc when the
     Part 1 / Part 2 markers are absent (a single-part handoff is all contract)."""
-    start_match = PART1_START.search(handoff_text)
-    start = start_match.start() if start_match else 0
-    end_match = PART2_START.search(handoff_text, start)
-    end = end_match.start() if end_match else len(handoff_text)
+    visible_offsets: list[tuple[int, str]] = []
+    fence_character: str | None = None
+    fence_length = 0
+    offset = 0
+    for line in handoff_text.splitlines(keepends=True):
+        match = re.match(r"^[ ]{0,3}(`{3,}|~{3,})", line)
+        marker = match.group(1) if match is not None else ""
+        if fence_character is None and marker:
+            fence_character = marker[0]
+            fence_length = len(marker)
+        elif (
+            fence_character is not None
+            and marker
+            and match is not None
+            and marker[0] == fence_character
+            and len(marker) >= fence_length
+            and not line[match.end() :].strip()
+        ):
+            fence_character = None
+            fence_length = 0
+        elif fence_character is None:
+            visible_offsets.append((offset, line))
+        offset += len(line)
+
+    part1_offsets = [offset for offset, line in visible_offsets if PART1_START.match(line)]
+    start = part1_offsets[0] if part1_offsets else 0
+    part2_offsets = [
+        offset
+        for offset, line in visible_offsets
+        if offset >= start and PART2_START.match(line)
+    ]
+    end = part2_offsets[0] if part2_offsets else len(handoff_text)
     return handoff_text[start:end]
 
 

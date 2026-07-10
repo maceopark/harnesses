@@ -112,11 +112,6 @@ def test_missing_handoff_exits_two(tmp_path: Path) -> None:
 
 
 def test_reject_signal_not_over_suppressed_by_boilerplate() -> None:
-    part1 = (
-        "| REQ-1 | Invalid readable store data is a storage error and is not "
-        "overwritten | Given a corrupt shape, exit 3 | g1 |\n"
-        "| --- | --- | --- | --- |\n"
-    )
     # 'is not overwritten' must NOT count as a predicate signal.
     part1_table = (
         "| ID | Req | Crit | Src |\n"
@@ -126,6 +121,16 @@ def test_reject_signal_not_over_suppressed_by_boilerplate() -> None:
     )
     findings = predicate_lint.reject_findings(part1_table)
     assert any("reject-category" in f for f in findings)
+
+
+def test_modal_rejection_does_not_define_category_membership() -> None:
+    part1_table = (
+        "| ID | Requirement | Acceptance | Source |\n"
+        "| --- | --- | --- | --- |\n"
+        "| REQ-1 | invalid identifier must be rejected | exits 2 | g1 |\n"
+    )
+    findings = predicate_lint.reject_findings(part1_table)
+    assert any("reject-category" in finding for finding in findings)
 
 
 def test_coercion_suppressed_when_boundary_discussed() -> None:

@@ -101,7 +101,7 @@ Fatigue signal: when answers shorten or hedge across consecutive rounds, or a se
 
 ## Breadth sweep
 
-Every 4 human-decision interactions (`answers_since_sweep`; a batch counts once - the `Due Now` obligation fires this), run a breadth sweep before the next scored question: list unvisited tracks from the original request, check whether any lens trigger has appeared since orientation, and ask the user "which unresolved tracks besides the one we just discussed matter to you?" only if the ledger cannot answer it. Log the sweep outcome (new gaps, or `nothing new`) in the transcript. The sweep is always-on at every depth: if the cadence never fires before the interview ends, run one breadth sweep immediately before the pre-handoff falsification checkpoint. Book it as event `sweep-asked` (asked the user, costs 1) or `sweep-free` (repo-only, costs 0) - both reset the cadence.
+Every 4 human-decision interactions (`answers_since_sweep`; a batch counts once - the `Due Now` obligation fires this), run a breadth sweep before the next scored question: list unvisited tracks from the original request, check whether any lens trigger has appeared since orientation, and ask the user "which unresolved tracks besides the one we just discussed matter to you?" only if the ledger cannot answer it. The sweep is always-on at every depth. Book it as `sweep-asked` (cost 1) or `sweep-free` (cost 0) and pass `sweep_result: dry|new-gaps`; `new-gaps` requires an added ledger entry with `origin: sweep`. Handoff requires two consecutive dry results.
 
 ## Contrarian probe
 

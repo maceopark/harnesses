@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from dataclasses import dataclass
 from enum import StrEnum
@@ -71,6 +72,23 @@ CHANNEL_ALIASES: Final[dict[str, str]] = {
     "user": "from-user",
 }
 NON_EVIDENCE_CHANNELS: Final[frozenset[str]] = frozenset({"assumption"})
+VALID_ORIGINS: Final[frozenset[str]] = frozenset(
+    {
+        "",
+        "orientation",
+        "dump",
+        "scored-question",
+        "pressure",
+        "batch",
+        "checkpoint",
+        "sweep",
+        "contrarian",
+        "fold-back",
+    }
+)
+LENS_ORIGIN: Final[re.Pattern[str]] = re.compile(
+    r"^lens:(?:viewpoint|domain/state|goal/obstacle|misuse|quality|controlled-language)$"
+)
 
 
 class OutputFormat(StrEnum):
@@ -95,7 +113,11 @@ class DeferredRecord(BaseModel):
 
 
 class LedgerEntry(BaseModel):
-    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, populate_by_name=True)
+    model_config: ClassVar[ConfigDict] = ConfigDict(
+        frozen=True,
+        populate_by_name=True,
+        extra="forbid",
+    )
 
     id: str
     requirement: str = ""
@@ -115,6 +137,28 @@ class LedgerEntry(BaseModel):
         default=(),
         validation_alias=AliasChoices("evidence_channels", "channels"),
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_conflicting_aliases(cls, value: object) -> object:
+        if not isinstance(value, dict):
+            return value
+        for canonical, alias in (
+            ("ambiguity_score", "ambiguity"),
+            ("impact_weight", "weight"),
+            ("evidence_channels", "channels"),
+        ):
+            if canonical in value and alias in value:
+                raise ValueError(f"use either {canonical!r} or {alias!r}, not both")
+        return value
+
+    @field_validator("origin")
+    @classmethod
+    def validate_origin(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in VALID_ORIGINS and not LENS_ORIGIN.fullmatch(normalized):
+            raise ValueError("origin is outside the documented closed vocabulary")
+        return normalized
 
     @field_validator("impact_weight")
     @classmethod
@@ -199,7 +243,7 @@ class LedgerEntry(BaseModel):
 
     @property
     def is_untriangulated_critical(self) -> bool:
-        if self.impact_weight != CRITICAL_WEIGHT or self.ambiguity_score != 0:
+        if self.impact_weight != CRITICAL_WEIGHT or self.ambiguity_score > 1:
             return False
         channel_count = len(self.distinct_evidence_channels)
         # The single-source waiver still needs at least one real channel:
@@ -210,9 +254,6 @@ class LedgerEntry(BaseModel):
 
     @property
     def is_thin_critical(self) -> bool:
-        # Report-only cousin of is_untriangulated_critical: a weight-5 entry
-        # parked at score 1 on a single evidence source with no acceptance
-        # recorded ships silently unless surfaced (first real interview: g15).
         return (
             self.impact_weight == CRITICAL_WEIGHT
             and self.ambiguity_score == 1
@@ -361,6 +402,20 @@ def gate_failures(entries: tuple[LedgerEntry, ...]) -> tuple[str, ...]:
     """Hard failures for the endgame gates that the readiness helpers only report:
     unresolved Contested entries, and deferrals without structured owner/date."""
     failures: list[str] = []
+    blocked = [entry.id for entry in entries if entry.status.lower() == "blocked" and not entry.is_deferred]
+    if blocked:
+        failures.append(f"blocked entries unresolved: {', '.join(blocked)}")
+    unevidenced = [
+        entry.id
+        for entry in entries
+        if not entry.is_deferred
+        and entry.ambiguity_score <= 1
+        and not entry.evidence_channels
+    ]
+    if unevidenced:
+        failures.append(
+            f"settled entries without a recorded channel: {', '.join(unevidenced)}",
+        )
     contested = [entry.id for entry in entries if entry.is_contested and not entry.is_deferred]
     if contested:
         failures.append(
@@ -429,7 +484,6 @@ def summary_as_json(summary: AmbiguitySummary) -> str:
             for driver in summary.top_drivers
         ],
     }
-    # Report-only surface; omitted when clean so the output does not grow.
     if len(summary.triangulation_warnings) > 0:
         payload["triangulation_warnings"] = list(summary.triangulation_warnings)
     return json.dumps(payload, indent=2, sort_keys=True)
@@ -455,7 +509,7 @@ def summary_as_markdown(summary: AmbiguitySummary) -> str:
             f"- unresolved evidence conflicts (resolve or defer with owner before the gates): {', '.join(summary.contested)}",
         )
     if len(summary.triangulation_warnings) > 0:
-        lines.extend(["", "### Triangulation Warnings (report-only)"])
+        lines.extend(["", "### Critical Triangulation Findings"])
         lines.extend(f"- {warning}" for warning in summary.triangulation_warnings)
     if len(summary.top_drivers) > 0:
         lines.extend(

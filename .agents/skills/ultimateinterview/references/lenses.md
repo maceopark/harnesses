@@ -4,7 +4,7 @@ Full methods for the Diverge techniques. Read the section for a lens when it is 
 
 ## Lens output contract
 
-Each triggered lens must leave one typed artifact or a documented skip reason in `lenses.<name>.reason` and, when the artifact settles requirements, in ledger entries with `origin: "lens:<name>"`. The output contract matters more than the method label: it gives the implementer something checkable without exposing the user to protocol choices.
+Each triggered lens must leave its exact typed `lenses.<name>.artifact`, or a documented skip reason, and any settled requirements use `origin: "lens:<name>"`. The enum proves artifact presence and type; the per-lens minimum fields below remain an audit/fresh-review check.
 
 | Lens | Required artifact | Minimum fields |
 | --- | --- | --- |
@@ -15,9 +15,9 @@ Each triggered lens must leave one typed artifact or a documented skip reason in
 | `quality` | `QualityScenarioSet` | source, stimulus, environment, artifact, response, response measure |
 | `controlled-language` | `ControlledAcceptanceCriteria` | trigger, condition, response, exception, measurable predicate |
 
-Every trigger reason should include both why it fired and `reverse-evidence=<observation that would make this lens unnecessary or complete>`. A lens with no remaining reverse-evidence should be marked `done` with `artifact=<ArtifactName>` or `skipped` with a concrete `skip=<reason>`; do not keep asking visible questions just because a hidden method tag exists.
+Every trigger reason should include both why it fired and `reverse-evidence=<observation that would make this lens unnecessary or complete>`. Mark it `done` with the typed `artifact` field or `skipped` with a concrete reason.
 
-This is a handoff/audit contract, not a new `protocol_state.py` schema gate. The current protocol-state helper enforces known lens names, lens state, and skip reasons; it does not inspect artifact completeness. For no-schema-change sessions, put the artifact marker and evidence summary in `lenses.<name>.reason` and ledger entries. Existing fixtures that only say `"state": "done"` remain parse-compatible, but new or updated sessions should carry the artifact reason so reviewers and implementers can audit it.
+`protocol_state.py` blocks `done` without the expected artifact enum and rejects stale artifacts on non-done lenses. It does not prove the artifact's internal fields are complete; the fresh reviewer checks those against the table above.
 
 ## 1. Contextual Observation (core path)
 

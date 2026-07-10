@@ -21,7 +21,9 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -31,7 +33,7 @@ import typer
 from pydantic import ValidationError
 from typer.testing import CliRunner
 
-from scripts import ambiguity_ledger, protocol_state, question_score, session_status, session_update
+from scripts import atomic_write, ambiguity_ledger, implementation_gate, protocol_state, question_score, session_status, session_update, verification_lint
 from scripts.ambiguity_ledger import parse_entries, summarize_ambiguity
 from scripts.protocol_state import parse_state, summarize_protocol
 from scripts.question_score import parse_questions, rank_questions
@@ -101,7 +103,7 @@ def test_score_two_blocks_handoff_even_when_aggregate_is_low() -> None:
     assert "active score 2 gaps remain: REQ-risk" in summary.blockers
 
 
-def test_readiness_ignores_percent_dilution() -> None:
+def test_weight_five_score_one_draft_blocks_even_when_no_score_two_or_three_exists() -> None:
     lone_gap = {
         "id": "REQ-lone",
         "requirement": "Accepted assumption, no settled entries around it",
@@ -113,8 +115,8 @@ def test_readiness_ignores_percent_dilution() -> None:
     summary = summarize_ambiguity(parse_entries(json.dumps([lone_gap])))
 
     assert summary.ambiguity_percent > 30
-    assert summary.handoff_ready
-    assert summary.blockers == ()
+    assert not summary.handoff_ready
+    assert summary.triangulation_violations == ("REQ-lone",)
     assert summary.residual == 5
 
 
@@ -202,6 +204,25 @@ def test_explicit_accepted_status_allows_single_source_critical() -> None:
             {
                 "id": "REQ-crit",
                 "ambiguity_score": 0,
+                "impact_weight": 5,
+                "status": "accepted",
+                "evidence_channels": ["from-user"],
+            },
+        ],
+    )
+
+    summary = summarize_ambiguity(parse_entries(raw))
+
+    assert summary.handoff_ready
+    assert summary.triangulation_violations == ()
+
+
+def test_explicit_accepted_status_allows_single_source_score_one_critical() -> None:
+    raw = json.dumps(
+        [
+            {
+                "id": "REQ-crit",
+                "ambiguity_score": 1,
                 "impact_weight": 5,
                 "status": "accepted",
                 "evidence_channels": ["from-user"],
@@ -318,25 +339,28 @@ def test_question_score_formula_and_ranking() -> None:
 
 def make_protocol(**overrides: object) -> str:
     lenses = {
-        "viewpoint": {"state": "done"},
+        "viewpoint": {"state": "done", "artifact": "ViewpointMatrix"},
         "domain/state": {"state": "skipped", "reason": "no lifecycle or vocabulary drift"},
-        "goal/obstacle": {"state": "done"},
+        "goal/obstacle": {"state": "done", "artifact": "GoalObstacleMap"},
         "misuse": {"state": "skipped", "reason": "no destructive or security-sensitive flow"},
-        "quality": {"state": "done"},
-        "controlled-language": {"state": "done"},
+        "quality": {"state": "done", "artifact": "QualityScenarioSet"},
+        "controlled-language": {"state": "done", "artifact": "ControlledAcceptanceCriteria"},
     }
     payload: dict[str, object] = {
         "depth": "focused",
         "question_budget": 12,
         "interactions_used": 3,
         "answers_since_sweep": 1,
-        "sweeps_run": 1,
+        "sweeps_run": 2,
+        "dry_sweeps_in_row": 2,
         "contrarian_probes_run": 1,
         "falsification_checkpoints_run": 1,
         "checkpoint_since_last_material_change": True,
         "framing_challenged": True,
         "brain_dump_done": True,
         "build_contract_tested": True,
+        "build_contract_digest": "test-digest",
+        "build_contract_reviewer": "critic",
         "lenses": lenses,
         "residual_history": [20, 12, 6],
     }
@@ -350,6 +374,14 @@ def test_protocol_ready_when_all_obligations_met() -> None:
     assert summary.protocol_ready
     assert summary.handoff_blockers == ()
     assert summary.interview_obligations == ()
+
+
+def test_tested_contract_requires_digest_and_reviewer() -> None:
+    summary = summarize_protocol(
+        parse_state(make_protocol(build_contract_digest="", build_contract_reviewer="")),
+    )
+    assert not summary.protocol_ready
+    assert any("digest" in blocker for blocker in summary.handoff_blockers)
 
 
 def test_missing_contrarian_probe_blocks_protocol() -> None:
@@ -383,6 +415,50 @@ def test_triggered_but_incomplete_lens_blocks_protocol() -> None:
 
     assert not summary.protocol_ready
     assert any("misuse" in blocker for blocker in summary.handoff_blockers)
+
+
+def test_done_lens_without_typed_artifact_blocks_protocol() -> None:
+    lenses = json.loads(make_protocol())["lenses"]
+    lenses["quality"] = {"state": "done"}
+
+    summary = summarize_protocol(parse_state(make_protocol(lenses=lenses)))
+
+    assert not summary.protocol_ready
+    assert any("quality" in blocker and "QualityScenarioSet" in blocker for blocker in summary.handoff_blockers)
+
+
+def test_done_lens_with_wrong_typed_artifact_blocks_protocol() -> None:
+    lenses = json.loads(make_protocol())["lenses"]
+    lenses["quality"] = {"state": "done", "artifact": "ViewpointMatrix"}
+
+    summary = summarize_protocol(parse_state(make_protocol(lenses=lenses)))
+
+    assert not summary.protocol_ready
+    assert any("quality" in blocker and "QualityScenarioSet" in blocker for blocker in summary.handoff_blockers)
+
+
+def test_non_done_lens_rejects_stale_artifact() -> None:
+    lenses = json.loads(make_protocol())["lenses"]
+    lenses["quality"] = {
+        "state": "skipped",
+        "reason": "not applicable",
+        "artifact": "QualityScenarioSet",
+    }
+
+    with pytest.raises(ValidationError, match="artifact is only valid for a done lens"):
+        parse_state(make_protocol(lenses=lenses))
+
+
+def test_two_consecutive_dry_sweeps_are_required_for_handoff() -> None:
+    summary = summarize_protocol(parse_state(make_protocol(dry_sweeps_in_row=1)))
+
+    assert not summary.protocol_ready
+    assert any("two consecutive dry" in blocker for blocker in summary.handoff_blockers)
+
+
+def test_dry_sweep_streak_cannot_exceed_total_sweeps() -> None:
+    with pytest.raises(ValidationError, match="cannot exceed sweeps_run"):
+        parse_state(make_protocol(sweeps_run=1, dry_sweeps_in_row=2))
 
 
 def test_pending_lens_parses_without_reason_but_blocks_handoff() -> None:
@@ -716,7 +792,7 @@ def test_accepted_critical_with_assumption_only_blocks_handoff() -> None:
     assert summary.triangulation_violations == ("REQ-crit",)
 
 
-def test_contested_entries_are_surfaced_report_only() -> None:
+def test_contested_entries_are_surfaced_before_composite_gate() -> None:
     raw = json.dumps(
         [
             {
@@ -731,7 +807,7 @@ def test_contested_entries_are_surfaced_report_only() -> None:
     summary = summarize_ambiguity(parse_entries(raw))
 
     assert summary.contested == ("REQ-fight",)
-    assert summary.handoff_ready  # report-only, not a readiness blocker
+    assert summary.handoff_ready
 
 
 # ─── Protocol cross-field guards (REQ-7, REQ-8, REQ-13) ───
@@ -891,9 +967,6 @@ def test_cli_valid_ledger_still_renders(tmp_path: Path) -> None:
     assert '"handoff_ready": true' in result.output
 
 
-# ─── Triangulation warnings (P1: report-only thin-critical surface) ───
-
-
 def test_triangulation_warning_fires_on_thin_weight5_score1_draft() -> None:
     # The exact g15 shape from the first real interview: weight-5 hard
     # constraint parked at score 1 on one channel, status Draft.
@@ -914,9 +987,8 @@ def test_triangulation_warning_fires_on_thin_weight5_score1_draft() -> None:
     assert len(summary.triangulation_warnings) == 1
     assert "g15" in summary.triangulation_warnings[0]
     assert "from-code" in summary.triangulation_warnings[0]
-    # Report-only: readiness, blockers, and residual are untouched.
-    assert summary.handoff_ready
-    assert summary.blockers == ()
+    assert not summary.handoff_ready
+    assert summary.triangulation_violations == ("g15",)
     assert summary.residual == 5
 
 
@@ -972,7 +1044,7 @@ def test_triangulation_warnings_render_in_both_formats() -> None:
     markdown = ambiguity_ledger.summary_as_markdown(summary)
     payload = json.loads(ambiguity_ledger.summary_as_json(summary))
 
-    assert "### Triangulation Warnings" in markdown
+    assert "### Critical Triangulation Findings" in markdown
     assert any("g15" in line for line in markdown.splitlines() if line.startswith("- "))
     assert any("g15" in warning for warning in payload["triangulation_warnings"])
 
@@ -1022,7 +1094,7 @@ def write_session(
 def combined_ready_line(output: str) -> str:
     # The dedicated combined line; distinct from "- Handoff ready:" and
     # "- Protocol ready:" so substring assertions cannot false-pass.
-    return next(line for line in output.splitlines() if line.startswith("- ready:"))
+    return next(line for line in output.splitlines() if line.startswith("- interview_converged:"))
 
 
 def test_session_status_happy_path_renders_combined_dashboard(tmp_path: Path) -> None:
@@ -1033,7 +1105,7 @@ def test_session_status_happy_path_renders_combined_dashboard(tmp_path: Path) ->
     assert result.exit_code == 0
     assert "## Ambiguity Dashboard" in result.output
     assert "## Protocol Dashboard" in result.output
-    assert combined_ready_line(result.output).startswith("- ready: yes")
+    assert combined_ready_line(result.output).startswith("- interview_converged: yes")
 
 
 def test_session_status_invalid_ledger_names_the_file(tmp_path: Path) -> None:
@@ -1097,7 +1169,7 @@ def test_session_status_explicit_flags_without_directory(tmp_path: Path) -> None
     )
 
     assert result.exit_code == 0
-    assert combined_ready_line(result.output).startswith("- ready: yes")
+    assert combined_ready_line(result.output).startswith("- interview_converged: yes")
 
 
 def test_session_status_ready_with_only_build_contract_blocker(tmp_path: Path) -> None:
@@ -1108,7 +1180,7 @@ def test_session_status_ready_with_only_build_contract_blocker(tmp_path: Path) -
     result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session)])
 
     assert result.exit_code == 0
-    assert combined_ready_line(result.output).startswith("- ready: yes")
+    assert combined_ready_line(result.output).startswith("- interview_converged: yes")
 
 
 def test_session_status_not_ready_with_other_protocol_blocker(tmp_path: Path) -> None:
@@ -1120,7 +1192,7 @@ def test_session_status_not_ready_with_other_protocol_blocker(tmp_path: Path) ->
     result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session)])
 
     assert result.exit_code == 0
-    assert combined_ready_line(result.output).startswith("- ready: no")
+    assert combined_ready_line(result.output).startswith("- interview_converged: no")
 
 
 def test_session_status_not_ready_when_ledger_blocks(tmp_path: Path) -> None:
@@ -1130,7 +1202,7 @@ def test_session_status_not_ready_when_ledger_blocks(tmp_path: Path) -> None:
     result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session)])
 
     assert result.exit_code == 0
-    assert combined_ready_line(result.output).startswith("- ready: no")
+    assert combined_ready_line(result.output).startswith("- interview_converged: no")
 
 
 def test_session_status_json_format_combines_both_payloads(tmp_path: Path) -> None:
@@ -1142,12 +1214,12 @@ def test_session_status_json_format_combines_both_payloads(tmp_path: Path) -> No
 
     assert result.exit_code == 0
     payload = json.loads(result.output)
-    assert payload["ready"] is True
+    assert payload["interview_converged"] is True
     assert payload["ledger"]["handoff_ready"] is True
     assert payload["protocol"]["protocol_ready"] is True
 
 
-def test_session_status_surfaces_triangulation_warnings(tmp_path: Path) -> None:
+def test_session_status_surfaces_critical_triangulation_findings(tmp_path: Path) -> None:
     thin = json.dumps(
         [
             {"id": "g15", "ambiguity_score": 1, "impact_weight": 5,
@@ -1159,7 +1231,7 @@ def test_session_status_surfaces_triangulation_warnings(tmp_path: Path) -> None:
     result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session)])
 
     assert result.exit_code == 0
-    assert "### Triangulation Warnings" in result.output
+    assert "### Critical Triangulation Findings" in result.output
     assert "g15" in result.output
 
 
@@ -1185,7 +1257,6 @@ def test_session_update_applies_settle_add_and_history(tmp_path: Path) -> None:
     delta = {
         "set": [{"id": "g1", "ambiguity_score": 0, "add_channels": ["from-user"], "append_reason": "pressure survived", "pressure": "survived"}],
         "add": [{"id": "g3", "requirement": "new sweep find", "ambiguity_score": 1, "impact_weight": 2, "status": "draft", "evidence_channels": ["assumption"], "origin": "sweep"}],
-        "protocol": {"interactions_used": 4, "answers_since_sweep": 2},
         "append_history": True,
     }
 
@@ -1201,7 +1272,7 @@ def test_session_update_applies_settle_add_and_history(tmp_path: Path) -> None:
     assert "pressure survived" in g1["reason"]
     assert any(entry["id"] == "g3" for entry in written_ledger["entries"])
     written_protocol = json.loads((session / "protocol.json").read_text(encoding="utf-8"))
-    assert written_protocol["interactions_used"] == 4
+    assert written_protocol["interactions_used"] == 3
     # history appended from the UPDATED ledger: residual = g3 only (1*2) = 2, 3 active entries
     assert written_protocol["residual_history"] == [20, 12, 6, 2]
     assert written_protocol["gap_count_history"][-1] == 3
@@ -1303,32 +1374,146 @@ def test_event_scored_question_computes_costing(tmp_path: Path) -> None:
 
 def test_event_sweep_asked_costs_and_resets_cadence(tmp_path: Path) -> None:
     session = make_session(tmp_path, answers_since_sweep=4)
-    result = run_update(session, {"event": "sweep-asked"})
+    result = run_update(session, {"event": "sweep-asked", "sweep_result": "dry"})
     assert result.exit_code == 0, result.output
     written = read_protocol(session)
     assert written["interactions_used"] == 4
     assert written["answers_since_sweep"] == 0
-    assert written["sweeps_run"] == 2
+    assert written["sweeps_run"] == 3
+    assert written["dry_sweeps_in_row"] == 3
 
 
 def test_event_sweep_free_is_not_budgeted(tmp_path: Path) -> None:
     session = make_session(tmp_path, answers_since_sweep=4)
-    result = run_update(session, {"event": "sweep-free"})
+    result = run_update(
+        session,
+        {
+            "event": "sweep-free",
+            "sweep_result": "new-gaps",
+            "add": [
+                {
+                    "id": "sweep-gap",
+                    "requirement": "newly discovered branch",
+                    "ambiguity_score": 2,
+                    "impact_weight": 2,
+                    "status": "draft",
+                    "evidence_channels": ["from-code"],
+                    "origin": "sweep",
+                },
+            ],
+        },
+    )
     assert result.exit_code == 0, result.output
     written = read_protocol(session)
     assert written["interactions_used"] == 3
     assert written["answers_since_sweep"] == 0
-    assert written["sweeps_run"] == 2
+    assert written["sweeps_run"] == 3
+    assert written["dry_sweeps_in_row"] == 0
 
 
-def test_event_checkpoint_bumps_counters_and_flag(tmp_path: Path) -> None:
+def test_sweep_event_requires_an_explicit_result(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+
+    result = run_update(session, {"event": "sweep-free"})
+
+    assert result.exit_code != 0
+    assert "sweep_result" in result.output
+
+
+def test_sweep_result_is_rejected_for_non_sweep_event(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+
+    result = run_update(session, {"event": "scored-question", "sweep_result": "dry"})
+
+    assert result.exit_code != 0
+    assert "sweep_result" in result.output
+
+
+def test_new_gaps_sweep_requires_a_sweep_origin_entry(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+
+    result = run_update(session, {"event": "sweep-free", "sweep_result": "new-gaps"})
+
+    assert result.exit_code != 0
+    assert "origin" in result.output
+
+
+def test_new_gaps_sweep_requires_an_ambiguous_gap(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    delta = {
+        "event": "sweep-free",
+        "sweep_result": "new-gaps",
+        "add": [
+            {
+                "id": "settled-sweep-fact",
+                "ambiguity_score": 0,
+                "impact_weight": 2,
+                "status": "accepted",
+                "evidence_channels": ["from-code"],
+                "origin": "sweep",
+            },
+        ],
+    }
+
+    result = run_update(session, delta)
+
+    assert result.exit_code != 0
+    assert "ambiguous" in result.output
+
+
+def test_new_gaps_sweep_accepts_an_immediately_deferred_risk(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    delta = {
+        "event": "sweep-free",
+        "sweep_result": "new-gaps",
+        "add": [
+            {
+                "id": "deferred-sweep-risk",
+                "requirement": "bulk operation policy remains deferred",
+                "ambiguity_score": 2,
+                "impact_weight": 2,
+                "status": "deferred",
+                "deferred": {"owner": "service-owner", "decision_date": "2026-10-01"},
+                "evidence_channels": ["from-user"],
+                "origin": "sweep",
+            },
+        ],
+    }
+
+    result = run_update(session, delta)
+
+    assert result.exit_code == 0, result.output
+    assert read_protocol(session)["dry_sweeps_in_row"] == 0
+
+
+def test_dry_sweep_rejects_a_sweep_origin_entry(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    delta = {
+        "event": "sweep-free",
+        "sweep_result": "dry",
+        "add": [
+            {
+                "id": "sweep-gap",
+                "ambiguity_score": 2,
+                "impact_weight": 2,
+                "status": "draft",
+                "evidence_channels": ["from-code"],
+                "origin": "sweep",
+            },
+        ],
+    }
+
+    result = run_update(session, delta)
+
+    assert result.exit_code != 0
+    assert "dry" in result.output
+
+
+def test_bare_checkpoint_event_is_rejected(tmp_path: Path) -> None:
     session = make_session(tmp_path, checkpoint_since_last_material_change=False)
     result = run_update(session, {"event": "checkpoint"})
-    assert result.exit_code == 0, result.output
-    written = read_protocol(session)
-    assert written["falsification_checkpoints_run"] == 2
-    assert written["checkpoint_since_last_material_change"] is True
-    assert written["interactions_used"] == 4
+    assert result.exit_code != 0
+    assert "checkpoint_confirm" in result.output
 
 
 def test_event_contrarian_free_costs_nothing(tmp_path: Path) -> None:
@@ -1350,12 +1535,48 @@ def test_event_brain_dump_and_framing_set_flags(tmp_path: Path) -> None:
     assert written["interactions_used"] == 5
 
 
+def test_checkpoint_can_carry_the_minimal_depth_framing_challenge(tmp_path: Path) -> None:
+    session = make_session(tmp_path, framing_challenged=False)
+
+    result = run_update(
+        session,
+        {"checkpoint_confirm": {"ids": ["g1"], "fatigue": False}},
+    )
+
+    assert result.exit_code == 0, result.output
+    protocol = read_protocol(session)
+    assert protocol["framing_challenged"] is True
+
+
 def test_event_pressure_followup_changes_no_counter(tmp_path: Path) -> None:
     session = make_session(tmp_path)
     before = read_protocol(session)
-    result = run_update(session, {"event": "pressure-followup"})
+    result = run_update(
+        session,
+        {"event": "pressure-followup", "pressure_parent": "thread-1"},
+    )
     assert result.exit_code == 0, result.output
-    assert read_protocol(session) == before
+    after = read_protocol(session)
+    assert after["interactions_used"] == before["interactions_used"]
+    assert after["answers_since_sweep"] == before["answers_since_sweep"]
+    assert after["pressure_followups_by_parent"] == {"thread-1": 1}
+
+
+def test_pressure_followup_rejects_third_turn_per_parent(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    delta = {"event": "pressure-followup", "pressure_parent": "thread-1"}
+
+    assert run_update(session, delta).exit_code == 0
+    assert run_update(session, delta).exit_code == 0
+    third = run_update(session, delta)
+    new_parent = run_update(
+        session,
+        {"event": "pressure-followup", "pressure_parent": "thread-2"},
+    )
+
+    assert third.exit_code != 0
+    assert "scored-question" in third.output
+    assert new_parent.exit_code == 0, new_parent.output
 
 
 def test_event_conflicts_with_manual_counter(tmp_path: Path) -> None:
@@ -1365,8 +1586,57 @@ def test_event_conflicts_with_manual_counter(tmp_path: Path) -> None:
         {"event": "scored-question", "protocol": {"interactions_used": 9}},
     )
     assert result.exit_code != 0
-    assert "computes them" in result.output
+    assert "event-managed" in result.output
     assert read_protocol(session)["interactions_used"] == 3
+
+
+def test_eventless_delta_cannot_forge_managed_readiness_counters(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    result = run_update(
+        session,
+        {"protocol": {"dry_sweeps_in_row": 99, "checkpoint_since_last_material_change": True}},
+    )
+    assert result.exit_code != 0
+    assert "managed" in result.output
+
+
+def test_material_ledger_change_rearms_checkpoint(tmp_path: Path) -> None:
+    session = make_session(tmp_path, checkpoint_since_last_material_change=True)
+    result = run_update(
+        session,
+        {
+            "event": "scored-question",
+            "set": [{"id": "g1", "ambiguity_score": 0, "add_channels": ["from-code"]}],
+        },
+    )
+    assert result.exit_code == 0, result.output
+    assert read_protocol(session)["checkpoint_since_last_material_change"] is False
+
+
+def test_evidence_only_foldback_does_not_rearm_checkpoint(tmp_path: Path) -> None:
+    session = make_session(
+        tmp_path,
+        checkpoint_since_last_material_change=True,
+        dry_sweeps_in_row=2,
+        sweeps_run=2,
+    )
+    result = run_update(
+        session,
+        {
+            "add": [{
+                "id": "folded-evidence",
+                "requirement": "repo-confirmed existing behavior",
+                "ambiguity_score": 0,
+                "impact_weight": 2,
+                "status": "accepted",
+                "evidence_channels": ["from-code"],
+                "origin": "fold-back",
+            }],
+        },
+    )
+    assert result.exit_code == 0, result.output
+    assert read_protocol(session)["checkpoint_since_last_material_change"] is True
+    assert read_protocol(session)["dry_sweeps_in_row"] == 2
 
 
 def test_unknown_event_rejected(tmp_path: Path) -> None:
@@ -1399,7 +1669,11 @@ def test_transcript_heading_uses_computed_interaction_number(tmp_path: Path) -> 
 
 def test_transcript_free_event_appends_sub_bullet(tmp_path: Path) -> None:
     session = make_session_with_transcript(tmp_path)
-    delta = {"event": "pressure-followup", "transcript": {"title": "day boundary probe"}}
+    delta = {
+        "event": "pressure-followup",
+        "pressure_parent": "thread-1",
+        "transcript": {"title": "day boundary probe"},
+    }
     result = run_update(session, delta)
     assert result.exit_code == 0, result.output
     text = (session / "transcript.md").read_text(encoding="utf-8")
@@ -1440,7 +1714,10 @@ def test_answer_bearing_event_resolves_awaiting_marker(tmp_path: Path) -> None:
 def test_pressure_followup_resolves_awaiting_marker(tmp_path: Path) -> None:
     session = make_session_with_transcript(tmp_path)
     run_update(session, {"transcript": {"title": "probe sent", "awaiting": True}})
-    result = run_update(session, {"event": "pressure-followup"})
+    result = run_update(
+        session,
+        {"event": "pressure-followup", "pressure_parent": "thread-1"},
+    )
     assert result.exit_code == 0, result.output
     text = (session / "transcript.md").read_text(encoding="utf-8")
     assert "[awaiting-answer]" not in text
@@ -1450,7 +1727,7 @@ def test_repo_only_event_keeps_awaiting_marker(tmp_path: Path) -> None:
     # sweep-free / contrarian-free are not user answers; an in-flight question stays open.
     session = make_session_with_transcript(tmp_path)
     run_update(session, {"transcript": {"title": "question sent", "awaiting": True}})
-    result = run_update(session, {"event": "sweep-free"})
+    result = run_update(session, {"event": "sweep-free", "sweep_result": "dry"})
     assert result.exit_code == 0, result.output
     text = (session / "transcript.md").read_text(encoding="utf-8")
     assert "question sent [awaiting-answer]" in text
@@ -1638,7 +1915,109 @@ def test_gate_failures_flag_contested_and_unowned_deferrals() -> None:
     assert any("d1" in failure and "owner/decision_date" in failure for failure in failures)
 
 
-def test_session_status_gate_mode_exits_nonzero_on_failures(tmp_path: Path) -> None:
+def test_gate_failures_reject_blocked_and_unevidenced_settlements() -> None:
+    entries = parse_entries(
+        json.dumps(
+            [
+                {
+                    "id": "blocked",
+                    "requirement": "cannot proceed",
+                    "ambiguity_score": 0,
+                    "impact_weight": 1,
+                    "status": "blocked",
+                    "evidence_channels": ["assumption"],
+                },
+                {
+                    "id": "unevidenced",
+                    "requirement": "claimed settlement",
+                    "ambiguity_score": 1,
+                    "impact_weight": 1,
+                    "status": "accepted",
+                },
+            ],
+        ),
+    )
+
+    failures = ambiguity_ledger.gate_failures(entries)
+
+    assert any("blocked entries" in failure for failure in failures)
+    assert any("without a recorded channel" in failure for failure in failures)
+
+
+def make_gate_handoff(
+    source_id: str,
+    *,
+    command: str = "okcmd --version",
+    behavior: str = "identifier must be a non-empty decimal string",
+) -> str:
+    return f"""# Part 1 — Build Contract
+## Goal
+Ship the settled behavior. (source: {source_id})
+## Target Surface
+| File / module | Expected change |
+| --- | --- |
+| command module | add identifier validation |
+## Behavior Contract
+| ID | Requirement | Acceptance criterion (EARS or Given/When/Then) | Source |
+| --- | --- | --- | --- |
+| REQ-001 | validate identifiers | {behavior} | {source_id} |
+## Change Impact & Preservation
+| Source | Current evidence | Preserved invariant | Target difference | Code surface | Acceptance check | Runtime signal |
+| --- | --- | --- | --- | --- | --- | --- |
+| {source_id} | current tests | existing data remains readable | add the settled behavior | command module | REQ-001 | command exit status |
+## Quality Bars
+No measurable quality bar applies - this local validation has no runtime quality target.
+## Decision Boundaries
+No implementation choice may change REQ-001.
+## Out Of Scope / Non-Goals
+No unrelated command changes.
+## Implementation Constraints
+Keep the existing runtime and dependencies.
+Decision core: pure identifier validation input to acceptance result.
+Effects boundary: command exit status only; no DB, API, message, or retry effect.
+## Rollout & Recovery
+| Activation | Compatibility / backfill | Rollback trigger | Rollback action | Observation metric + window | Owner |
+| --- | --- | --- | --- | --- | --- |
+| next local build | no backfill | REQ-001 fails | revert the change | command exit status for one test run | implementer |
+## Guardrail Compile
+No stop-time or pre-action guardrail applies - validation has no external or destructive effects.
+## Verification Commands
+| Check | Kind | Command / action | Pass condition |
+| --- | --- | --- | --- |
+| REQ-001 unit | test | `okcmd --version` | exits 0 |
+| REQ-001 surface | real-surface | `{command}` | exits 0 on the shipped command surface |
+## Deferred Risks
+None.
+## Fresh-Implementer Test
+| Reviewer (fresh-context agent / self-audit) | "Would have to ask" items found | Gameable criteria found | Folded back / re-bound? | Unresolved after disposition |
+| --- | --- | --- | --- | --- |
+| critic | none | none | no fold-back required | none |
+# Part 2 — Audit Trail
+No additional decisions.
+"""
+
+
+def write_gate_handoff(session: Path, handoff: str) -> None:
+    (session / "handoff.md").write_text(handoff, encoding="utf-8")
+    protocol_path = session / "protocol.json"
+    protocol = json.loads(protocol_path.read_text(encoding="utf-8"))
+    protocol["build_contract_digest"] = implementation_gate.contract_digest(handoff)
+    protocol["build_contract_reviewer"] = "critic"
+    protocol_path.write_text(json.dumps(protocol), encoding="utf-8")
+
+
+def install_gate_command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    command = tmp_path / "okcmd"
+    command.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    command.chmod(0o755)
+    monkeypatch.setenv("PATH", str(tmp_path))
+
+
+def test_session_status_gate_mode_exits_nonzero_on_failures(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_gate_command(tmp_path, monkeypatch)
     session = tmp_path / "session"
     session.mkdir()
     ledger = [
@@ -1647,6 +2026,7 @@ def test_session_status_gate_mode_exits_nonzero_on_failures(tmp_path: Path) -> N
     ]
     (session / "ledger.json").write_text(json.dumps(ledger), encoding="utf-8")
     (session / "protocol.json").write_text(make_protocol(), encoding="utf-8")
+    write_gate_handoff(session, make_gate_handoff("ok"))
     result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--gate"])
     assert result.exit_code == 1
     assert "FAIL" in result.output
@@ -1655,9 +2035,339 @@ def test_session_status_gate_mode_exits_nonzero_on_failures(tmp_path: Path) -> N
         ledger[1],
     ]
     (session / "ledger.json").write_text(json.dumps(fixed), encoding="utf-8")
+    handoff = (session / "handoff.md").read_text(encoding="utf-8").replace(
+        "## Deferred Risks\nNone.",
+        "## Deferred Risks\n| Risk | Owner | Decision date | Mitigation |\n"
+        "| --- | --- | --- | --- |\n"
+        "| d1 | jpark | 2026-08-01 | keep visible to implementer |",
+    )
+    write_gate_handoff(session, handoff)
     result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--gate"])
     assert result.exit_code == 0
-    assert "pass:" in result.output
+    assert "implementation_ready: yes" in result.output
+
+
+def test_gate_blocks_predicate_findings(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_gate_command(tmp_path, monkeypatch)
+    session = tmp_path / "session"
+    session.mkdir()
+    write_session(session)
+    write_gate_handoff(session, make_gate_handoff("R1", behavior="invalid identifier"))
+
+    result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--gate"])
+
+    assert result.exit_code == 1
+    assert "implementation_ready: no" in result.output
+    assert "reject-category" in result.output
+
+
+def test_gate_blocks_missing_verification_head(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_gate_command(tmp_path, monkeypatch)
+    session = tmp_path / "session"
+    session.mkdir()
+    write_session(session)
+    write_gate_handoff(session, make_gate_handoff("R1", command="missingcmd --version"))
+
+    result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--gate"])
+
+    assert result.exit_code == 1
+    assert "missingcmd" in result.output
+
+
+def test_gate_blocks_missing_change_trace_row(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_gate_command(tmp_path, monkeypatch)
+    session = tmp_path / "session"
+    session.mkdir()
+    write_session(session)
+    handoff = make_gate_handoff("R1").replace(
+        "| R1 | current tests | existing data remains readable | add the settled behavior | command module | REQ-001 | command exit status |",
+        "",
+    )
+    write_gate_handoff(session, handoff)
+
+    result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--gate"])
+
+    assert result.exit_code == 1
+    assert "Change Impact & Preservation" in result.output
+
+
+def test_gate_blocks_empty_required_section_and_incomplete_behavior_row(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_gate_command(tmp_path, monkeypatch)
+    session = tmp_path / "session"
+    session.mkdir()
+    write_session(session)
+    handoff = make_gate_handoff("R1", behavior="")
+    target_start = handoff.index("## Target Surface")
+    behavior_start = handoff.index("## Behavior Contract", target_start)
+    handoff = handoff[:target_start] + "## Target Surface\n" + handoff[behavior_start:]
+    write_gate_handoff(session, handoff)
+
+    result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--gate"])
+
+    assert result.exit_code == 1
+    assert "empty Build Contract section(s): Target Surface" in result.output
+    assert "Behavior Contract needs at least one complete requirement row" in result.output
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        (
+            "| ID | Requirement | Acceptance criterion (EARS or Given/When/Then) | Source |",
+            "| Source | Acceptance criterion (EARS or Given/When/Then) |",
+            "Behavior Contract",
+        ),
+        (
+            "| Source | Current evidence | Preserved invariant | Target difference | Code surface | Acceptance check | Runtime signal |",
+            "| Source | Preserved invariant | Target difference | Code surface | Acceptance check | Runtime signal |",
+            "Change Impact & Preservation",
+        ),
+    ],
+)
+def test_gate_blocks_reduced_required_table_schemas(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    old: str,
+    new: str,
+    message: str,
+) -> None:
+    install_gate_command(tmp_path, monkeypatch)
+    session = tmp_path / "session"
+    session.mkdir()
+    write_session(session)
+    write_gate_handoff(session, make_gate_handoff("R1").replace(old, new))
+    result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--gate"])
+    assert result.exit_code == 1
+    assert message in result.output
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        (
+            "## Rollout & Recovery\n| Activation",
+            "## Rollout & Recovery\nN/A -\n\n| Activation",
+            "Rollout & Recovery",
+        ),
+        (
+            "Decision core: pure identifier validation input to acceptance result.",
+            "Decision core:",
+            "Decision core",
+        ),
+        (
+            "No measurable quality bar applies - this local validation has no runtime quality target.",
+            "No material quality constraint beyond REQ-001.",
+            "Quality Bars",
+        ),
+        (
+            "No stop-time or pre-action guardrail applies - validation has no external or destructive effects.",
+            "REQ-001 preserves compatibility.",
+            "Guardrail Compile",
+        ),
+        (
+            "| REQ-001 surface | real-surface | `okcmd --version` | exits 0 on the shipped command surface |",
+            "| REQ-001 surface | test | `okcmd --version` | exits 0 |",
+            "real-surface",
+        ),
+    ],
+)
+def test_gate_blocks_blank_or_weak_semantic_slots(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    old: str,
+    new: str,
+    message: str,
+) -> None:
+    install_gate_command(tmp_path, monkeypatch)
+    session = tmp_path / "session"
+    session.mkdir()
+    write_session(session)
+    write_gate_handoff(session, make_gate_handoff("R1").replace(old, new))
+    result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--gate"])
+    assert result.exit_code == 1
+    assert message in result.output
+
+
+def test_gate_ignores_contract_content_inside_fences(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_gate_command(tmp_path, monkeypatch)
+    session = tmp_path / "session"
+    session.mkdir()
+    write_session(session)
+    fenced = "# Part 1 — Build Contract\n```markdown\n" + make_gate_handoff("R1") + "\n```\n# Part 2\n"
+    write_gate_handoff(session, fenced)
+    result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--gate"])
+    assert result.exit_code == 1
+    assert "missing Build Contract section" in result.output
+
+
+def test_gate_rejects_malformed_verification_command(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_gate_command(tmp_path, monkeypatch)
+    session = tmp_path / "session"
+    session.mkdir()
+    write_session(session)
+    handoff = make_gate_handoff("R1").replace("okcmd --version`,", "okcmd --version`,")
+    handoff = handoff.replace("`okcmd --version` | exits 0 on the shipped command surface", "`okcmd -c 'unterminated` | exits 0 on the shipped command surface")
+    write_gate_handoff(session, handoff)
+    result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--gate"])
+    assert result.exit_code == 1
+    assert "malformed verification command" in result.output
+
+
+def test_json_gate_executes_and_reports_failures(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_gate_command(tmp_path, monkeypatch)
+    session = tmp_path / "session"
+    session.mkdir()
+    write_session(session)
+    write_gate_handoff(session, make_gate_handoff("R1", command="missingcmd --version"))
+
+    result = CLI_RUNNER.invoke(
+        make_app(session_status.main), [str(session), "--gate", "--format", "json"],
+    )
+
+    assert result.exit_code == 1
+    assert json.loads(result.output)["implementation_gate"]["implementation_ready"] is False
+
+
+def test_gate_requires_session_directory(tmp_path: Path) -> None:
+    ledger = tmp_path / "ledger.json"
+    protocol = tmp_path / "protocol.json"
+    ledger.write_text(make_ready_ledger(), encoding="utf-8")
+    protocol.write_text(make_protocol(), encoding="utf-8")
+
+    result = CLI_RUNNER.invoke(
+        make_app(session_status.main),
+        ["--ledger", str(ledger), "--protocol", str(protocol), "--gate"],
+    )
+
+    assert result.exit_code != 0
+    assert "session directory" in result.output
+
+
+def test_gate_rejects_external_state_overrides(tmp_path: Path) -> None:
+    session = tmp_path / "session"
+    session.mkdir()
+    write_session(session)
+    write_gate_handoff(session, make_gate_handoff("R1"))
+    result = CLI_RUNNER.invoke(
+        make_app(session_status.main),
+        [str(session), "--gate", "--ledger", str(session / "ledger.json")],
+    )
+    assert result.exit_code != 0
+    assert "does not accept" in result.output
+
+
+def test_gate_rejects_handoff_changed_after_fresh_review(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_gate_command(tmp_path, monkeypatch)
+    session = tmp_path / "session"
+    session.mkdir()
+    write_session(session)
+    write_gate_handoff(session, make_gate_handoff("R1"))
+    handoff_path = session / "handoff.md"
+    handoff_path.write_text(
+        handoff_path.read_text(encoding="utf-8").replace("Ship the settled behavior", "Ship changed behavior"),
+        encoding="utf-8",
+    )
+    result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--gate"])
+    assert result.exit_code == 1
+    assert "digest" in result.output
+
+
+@pytest.mark.parametrize(
+    ("replacement", "message"),
+    [
+        (
+            "| Attribute | Bar (a number an implementer can verify) | Weight | Verification |\n"
+            "| --- | --- | --- | --- |\n"
+            "| speed | fast | high | eyeball it |",
+            "measurable",
+        ),
+        (
+            "| Risk | Class | Predicate / residual / substrate owner | Evidence |\n"
+            "| --- | --- | --- | --- |\n"
+            "| data loss | Stop-time predicate | be careful | trust the implementer |",
+            "Guardrail Compile",
+        ),
+    ],
+)
+def test_gate_rejects_semantically_empty_quality_or_guardrail_rows(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    replacement: str,
+    message: str,
+) -> None:
+    install_gate_command(tmp_path, monkeypatch)
+    session = tmp_path / "session"
+    session.mkdir()
+    write_session(session)
+    handoff = make_gate_handoff("R1")
+    if "Attribute" in replacement:
+        handoff = handoff.replace(
+            "No measurable quality bar applies - this local validation has no runtime quality target.",
+            replacement,
+        )
+    else:
+        handoff = handoff.replace(
+            "No stop-time or pre-action guardrail applies - validation has no external or destructive effects.",
+            replacement,
+        )
+    write_gate_handoff(session, handoff)
+    result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--gate"])
+    assert result.exit_code == 1
+    assert message in result.output
+
+
+def test_gate_requires_structured_fresh_implementer_record(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_gate_command(tmp_path, monkeypatch)
+    session = tmp_path / "session"
+    session.mkdir()
+    write_session(session)
+    handoff = make_gate_handoff("R1")
+    start = handoff.index("## Fresh-Implementer Test")
+    end = handoff.index("# Part 2", start)
+    handoff = handoff[:start] + "## Fresh-Implementer Test\nPassed.\n" + handoff[end:]
+    write_gate_handoff(session, handoff)
+    result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--gate"])
+    assert result.exit_code == 1
+    assert "Fresh-Implementer Test" in result.output
+
+
+def test_session_update_records_fresh_review_evidence(tmp_path: Path) -> None:
+    session = make_session(tmp_path, build_contract_tested=False, build_contract_digest="", build_contract_reviewer="")
+    handoff = make_gate_handoff("g2")
+    (session / "handoff.md").write_text(handoff, encoding="utf-8")
+    result = run_update(session, {"build_contract_test": {"reviewer": "critic"}})
+    assert result.exit_code == 0, result.output
+    protocol = read_protocol(session)
+    assert protocol["build_contract_tested"] is True
+    assert protocol["build_contract_reviewer"] == "critic"
+    assert protocol["build_contract_digest"] == implementation_gate.contract_digest(handoff)
 
 
 # ─── next-action router (B) ───
@@ -1775,6 +2485,7 @@ def test_session_init_creates_valid_session(tmp_path: Path) -> None:
     assert ".ultimateinterview" in (tmp_path / ".gitignore").read_text(encoding="utf-8")
     written = json.loads((session / "protocol.json").read_text(encoding="utf-8"))
     assert written["question_budget"] == 12
+    assert written["dry_sweeps_in_row"] == 0
     assert written["lenses"]["misuse"] == {"state": "pending", "reason": ""}
 
 
@@ -1798,6 +2509,13 @@ def test_session_init_rejects_empty_entries(tmp_path: Path) -> None:
         make_app(session_init.main), [str(tmp_path), "slug", "--entries", "[]"]
     )
     assert result.exit_code != 0
+
+
+@pytest.mark.parametrize("slug", ["../escape", "/tmp/escape", "not_ok"])
+def test_session_init_rejects_unsafe_slug(tmp_path: Path, slug: str) -> None:
+    result = run_init(tmp_path, slug)
+    assert result.exit_code != 0
+    assert "kebab-case" in result.output
 
 
 # ─── lessons.py (E) ───
@@ -1981,6 +2699,23 @@ def test_handoff_coverage_passes_when_every_settled_entry_cited(tmp_path: Path) 
     assert "coverage_ok: yes" in result.output
 
 
+def test_part1_extraction_ignores_part_markers_inside_fenced_examples() -> None:
+    handoff = """# Part 1 — Build Contract
+```markdown
+# Part 2 — example only
+```
+## Goal
+actual contract content
+# Part 2 — Audit Trail
+audit content
+"""
+
+    part1 = handoff_coverage.extract_part1(handoff)
+
+    assert "actual contract content" in part1
+    assert "audit content" not in part1
+
+
 def test_handoff_coverage_exempts_deferred_and_low_weight_and_avoids_substring_match(tmp_path: Path) -> None:
     ledger = {
         "entries": [
@@ -2005,6 +2740,477 @@ def test_handoff_coverage_advisory_never_exits_nonzero(tmp_path: Path) -> None:
     result = CLI_RUNNER.invoke(make_app(handoff_coverage.main), [str(session), "--advisory"])
     assert result.exit_code == 0, result.output
     assert "coverage_ok: no" in result.output
+
+
+def test_contract_digest_binds_fenced_part1_content() -> None:
+    original = make_gate_handoff("R1").replace(
+        "## Change Impact & Preservation",
+        "```json\n{\"schema_version\": 1}\n```\n## Change Impact & Preservation",
+    )
+    changed = original.replace('"schema_version": 1', '"schema_version": 2')
+
+    assert implementation_gate.contract_digest(original) != implementation_gate.contract_digest(changed)
+
+
+def test_ledger_entry_rejects_unknown_keys_and_conflicting_aliases() -> None:
+    with pytest.raises(ValidationError):
+        parse_entries(
+            json.dumps(
+                [
+                    {
+                        "id": "R1",
+                        "ambiguity_score": 0,
+                        "impact_weight": 1,
+                        "statuz": "accepted",
+                    }
+                ]
+            )
+        )
+    with pytest.raises(ValidationError):
+        parse_entries(
+            json.dumps(
+                [
+                    {
+                        "id": "R1",
+                        "ambiguity_score": 0,
+                        "ambiguity": 3,
+                        "impact_weight": 1,
+                    }
+                ]
+            )
+        )
+
+
+def test_session_update_rejects_unknown_add_key(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    result = run_update(
+        session,
+        {
+            "add": [
+                {
+                    "id": "bad",
+                    "requirement": "typo must fail",
+                    "ambiguity_score": 1,
+                    "impact_weight": 1,
+                    "statuz": "accepted",
+                }
+            ]
+        },
+    )
+
+    assert result.exit_code != 0
+    assert "statuz" in result.output
+
+
+@pytest.mark.parametrize("origin", ["lens:quality", "contrarian", "fold-back", "scored-question"])
+def test_material_change_resets_dry_sweep_saturation(tmp_path: Path, origin: str) -> None:
+    session = make_session(tmp_path, dry_sweeps_in_row=2, sweeps_run=2)
+    result = run_update(
+        session,
+        {
+            "add": [
+                {
+                    "id": "quality-gap",
+                    "requirement": "latency target unknown",
+                    "ambiguity_score": 2,
+                    "impact_weight": 2,
+                    "status": "draft",
+                    "evidence_channels": ["assumption"],
+                    "origin": origin,
+                }
+            ]
+        },
+    )
+
+    assert result.exit_code == 0, result.output
+    assert read_protocol(session)["dry_sweeps_in_row"] == 0
+
+
+def test_material_change_in_dry_sweep_delta_does_not_count_as_dry(tmp_path: Path) -> None:
+    session = make_session(tmp_path, dry_sweeps_in_row=2, sweeps_run=2)
+    result = run_update(
+        session,
+        {
+            "set": [{"id": "g1", "requirement": "materially changed requirement"}],
+            "event": "sweep-free",
+            "sweep_result": "dry",
+        },
+    )
+
+    assert result.exit_code == 0, result.output
+    assert read_protocol(session)["dry_sweeps_in_row"] == 0
+
+
+def test_material_change_invalidates_bound_build_contract_review(tmp_path: Path) -> None:
+    session = make_session(
+        tmp_path,
+        build_contract_tested=True,
+        build_contract_digest="reviewed-digest",
+        build_contract_reviewer="critic",
+    )
+
+    result = run_update(
+        session,
+        {"set": [{"id": "g1", "requirement": "materially changed requirement"}]},
+    )
+
+    assert result.exit_code == 0, result.output
+    protocol = read_protocol(session)
+    assert protocol["build_contract_tested"] is False
+    assert protocol["build_contract_digest"] == ""
+    assert protocol["build_contract_reviewer"] == ""
+
+
+def test_checkpoint_requires_at_least_one_covered_id(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    result = run_update(session, {"checkpoint_confirm": {"ids": [], "fatigue": False}})
+
+    assert result.exit_code != 0
+    assert "at least 1" in result.output
+
+
+def test_fatigue_checkpoint_rejects_blank_id(tmp_path: Path) -> None:
+    session = make_session(tmp_path, checkpoint_since_last_material_change=False)
+
+    result = run_update(
+        session,
+        {"checkpoint_confirm": {"ids": ["  "], "fatigue": True}},
+    )
+
+    assert result.exit_code != 0
+    assert read_protocol(session)["checkpoint_since_last_material_change"] is False
+
+
+def test_fatigue_checkpoint_rejects_unknown_id_before_counting(tmp_path: Path) -> None:
+    session = make_session(tmp_path, checkpoint_since_last_material_change=False)
+
+    result = run_update(
+        session,
+        {"checkpoint_confirm": {"ids": ["missing"], "fatigue": True}},
+    )
+
+    assert result.exit_code != 0
+    protocol = read_protocol(session)
+    assert protocol["falsification_checkpoints_run"] == 1
+    assert protocol["checkpoint_since_last_material_change"] is False
+
+
+def test_set_normalizes_legacy_ledger_aliases(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    ledger = json.loads((session / "ledger.json").read_text(encoding="utf-8"))
+    entry = ledger["entries"][0]
+    entry["ambiguity"] = entry.pop("ambiguity_score")
+    entry["weight"] = entry.pop("impact_weight")
+    entry["channels"] = entry.pop("evidence_channels")
+    (session / "ledger.json").write_text(json.dumps(ledger), encoding="utf-8")
+
+    result = run_update(
+        session,
+        {
+            "set": [
+                {
+                    "id": "g1",
+                    "ambiguity_score": 1,
+                    "impact_weight": 3,
+                    "evidence_channels": ["from-user", "from-code"],
+                },
+            ],
+        },
+    )
+
+    assert result.exit_code == 0, result.output
+    written = json.loads((session / "ledger.json").read_text(encoding="utf-8"))["entries"][0]
+    assert "ambiguity" not in written
+    assert "weight" not in written
+    assert "channels" not in written
+
+
+def test_session_update_rejects_direct_history_forgery(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    result = run_update(
+        session,
+        {
+            "protocol": {
+                "residual_history": [1, 1, 1],
+                "gap_count_history": [1, 1, 1],
+                "stagnation_escalated_at": 3,
+            }
+        },
+    )
+
+    assert result.exit_code != 0
+    assert "event-managed" in result.output
+
+
+def test_session_update_replaces_questions_in_same_commit(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    (session / "questions.json").write_text('{"questions": []}\n', encoding="utf-8")
+    candidate = {
+        "id": "Q1",
+        "question": "Which identifier form is valid?",
+        "impact": 3,
+        "branch_split": 3,
+        "uncertainty_reduction": 3,
+        "coverage": 3,
+        "user_cost": 1,
+        "redundancy": 0,
+    }
+    result = run_update(session, {"questions": [candidate]})
+
+    assert result.exit_code == 0, result.output
+    written = json.loads((session / "questions.json").read_text(encoding="utf-8"))
+    assert written == {"questions": [candidate]}
+
+
+def test_material_ledger_change_clears_unreplaced_question_queue(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    (session / "questions.json").write_text(
+        json.dumps({"questions": [{"id": "stale"}]}),
+        encoding="utf-8",
+    )
+
+    result = run_update(
+        session,
+        {"set": [{"id": "g1", "requirement": "changed requirement"}]},
+    )
+
+    assert result.exit_code == 0, result.output
+    assert json.loads((session / "questions.json").read_text(encoding="utf-8")) == {
+        "questions": [],
+    }
+
+
+def test_non_ledger_event_preserves_existing_question_queue(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    queue = {"questions": []}
+    (session / "questions.json").write_text(json.dumps(queue), encoding="utf-8")
+
+    result = run_update(
+        session,
+        {"checkpoint_confirm": {"ids": ["g1"], "fatigue": True}},
+    )
+
+    assert result.exit_code == 0, result.output
+    assert json.loads((session / "questions.json").read_text(encoding="utf-8")) == queue
+
+
+@pytest.mark.parametrize(
+    ("mutator", "expected"),
+    [
+        (
+            lambda text: text.replace(
+                "| REQ-001 unit | test | `okcmd --version` | exits 0 |\n",
+                "",
+            ),
+            "Kind=test",
+        ),
+        (
+            lambda text: text.replace(
+                "| critic | none | none | no fold-back required | none |",
+                "| critic | unresolved API choice | vague success criterion | no | API choice; criterion |",
+            ),
+            "unresolved",
+        ),
+        (
+            lambda text: text.replace("Ship the settled behavior.", "<One sentence.>"),
+            "placeholder",
+        ),
+    ],
+)
+def test_gate_rejects_missing_test_unresolved_review_and_placeholders(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mutator: Callable[[str], str],
+    expected: str,
+) -> None:
+    install_gate_command(tmp_path, monkeypatch)
+    session = tmp_path / "gate-session"
+    session.mkdir()
+    write_session(session)
+    handoff = mutator(make_gate_handoff("R1"))
+    write_gate_handoff(session, handoff)
+    result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--gate"])
+
+    assert result.exit_code == 1
+    assert expected in result.output
+
+
+def test_gate_accepts_fresh_review_findings_that_were_resolved(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_gate_command(tmp_path, monkeypatch)
+    session = tmp_path / "gate-session"
+    session.mkdir()
+    write_session(session)
+    handoff = make_gate_handoff("R1").replace(
+        "| critic | none | none | no fold-back required | none |",
+        "| critic | password reset semantics | test-double escape | "
+        "folded back into REQ-001; verification rebound to live surface | none |",
+    )
+    write_gate_handoff(session, handoff)
+
+    result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--gate"])
+
+    assert result.exit_code == 0, result.output
+    assert "implementation_ready: yes" in result.output
+
+
+def test_gate_rejects_negated_fresh_review_disposition(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_gate_command(tmp_path, monkeypatch)
+    session = tmp_path / "gate-session"
+    session.mkdir()
+    write_session(session)
+    handoff = make_gate_handoff("R1").replace(
+        "| critic | none | none | no fold-back required | none |",
+        "| critic | API ambiguity | none | not folded back; ignored | none |",
+    )
+    write_gate_handoff(session, handoff)
+
+    result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--gate"])
+
+    assert result.exit_code == 1
+    assert "disposition" in result.output
+
+
+def test_gate_allows_literal_html_and_inline_code_markup(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_gate_command(tmp_path, monkeypatch)
+    session = tmp_path / "gate-session"
+    session.mkdir()
+    write_session(session)
+    handoff = (
+        make_gate_handoff("R1")
+        .replace(
+            "Ship the settled behavior.",
+            "Render <button>Save</button> and preserve literal `<identifier>` documentation.",
+        )
+        .replace(
+            "| command module | add identifier validation |",
+            "| command module | render <input> and <br> markup |",
+        )
+    )
+    write_gate_handoff(session, handoff)
+
+    result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--gate"])
+
+    assert result.exit_code == 0, result.output
+
+
+def test_worked_example_passes_the_composite_gate() -> None:
+    example_path = Path(__file__).resolve().parent.parent / "references" / "example-session.md"
+    example = example_path.read_text(encoding="utf-8")
+
+    def embedded_json(heading: str) -> str:
+        match = re.search(
+            rf"^## {re.escape(heading)}.*?^```json\n(.*?)^```$",
+            example,
+            re.MULTILINE | re.DOTALL,
+        )
+        assert match is not None
+        return match.group(1)
+
+    entries = ambiguity_ledger.parse_entries(embedded_json("ledger.json (final)"))
+    protocol = protocol_state.parse_state(embedded_json("protocol.json (final)"))
+    result = implementation_gate.evaluate(
+        entries,
+        ambiguity_ledger.summarize_ambiguity(entries),
+        protocol_state.summarize_protocol(protocol),
+        example,
+        search_path=verification_lint.host_search_path(),
+        workdir=Path.cwd(),
+        protocol=protocol,
+    )
+
+    assert result.implementation_ready, result.failures
+
+
+def test_session_init_rejects_symlinked_state_root(tmp_path: Path) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (tmp_path / ".ultimateinterview").symlink_to(outside, target_is_directory=True)
+
+    result = run_init(tmp_path, "escaped")
+
+    assert result.exit_code != 0
+    assert "symlink" in result.output.lower()
+    assert not (outside / "escaped").exists()
+
+
+def test_session_init_failure_removes_partial_session_for_retry(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_commit(*args: object, **kwargs: object) -> None:
+        del args, kwargs
+        raise OSError("injected init failure")
+
+    monkeypatch.setattr(atomic_write, "commit_text_files", fail_commit)
+
+    result = run_init(tmp_path, "retryable")
+
+    assert result.exit_code != 0
+    assert not (tmp_path / ".ultimateinterview" / "retryable").exists()
+
+
+def test_session_init_ignores_orphaned_hidden_staging_directory(tmp_path: Path) -> None:
+    state_root = tmp_path / ".ultimateinterview"
+    orphan = state_root / ".retryable.init-interrupted"
+    orphan.mkdir(parents=True)
+    (orphan / "ledger.json").write_text("partial", encoding="utf-8")
+
+    result = run_init(tmp_path, "retryable")
+
+    assert result.exit_code == 0, result.output
+    assert (state_root / "retryable" / "ledger.json").is_file()
+
+
+def test_session_status_recovers_interrupted_generation_before_read(tmp_path: Path) -> None:
+    session = write_session(tmp_path)
+    ledger_path = session / "ledger.json"
+    protocol_path = session / "protocol.json"
+    original_ledger = ledger_path.read_text(encoding="utf-8")
+    original_protocol = protocol_path.read_text(encoding="utf-8")
+    atomic_write.write_recovery_journal(
+        {ledger_path: original_ledger, protocol_path: original_protocol},
+        root=session,
+    )
+    ledger_path.write_text("[]", encoding="utf-8")
+
+    result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--format", "json"])
+
+    assert result.exit_code == 0, result.output
+    assert ledger_path.read_text(encoding="utf-8") == original_ledger
+    assert not (session / atomic_write.JOURNAL_NAME).exists()
+
+
+def test_explicit_status_paths_recover_interrupted_generation_before_read(
+    tmp_path: Path,
+) -> None:
+    session = write_session(tmp_path)
+    ledger_path = session / "ledger.json"
+    protocol_path = session / "protocol.json"
+    original_ledger = ledger_path.read_text(encoding="utf-8")
+    original_protocol = protocol_path.read_text(encoding="utf-8")
+    atomic_write.write_recovery_journal(
+        {ledger_path: original_ledger, protocol_path: original_protocol},
+        root=session,
+    )
+    ledger_path.write_text("[]", encoding="utf-8")
+
+    result = CLI_RUNNER.invoke(
+        make_app(session_status.main),
+        ["--ledger", str(ledger_path), "--protocol", str(protocol_path), "--format", "json"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert ledger_path.read_text(encoding="utf-8") == original_ledger
+    assert not (session / atomic_write.JOURNAL_NAME).exists()
 
 
 if __name__ == "__main__":

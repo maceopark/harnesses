@@ -79,17 +79,39 @@ class LensState(StrEnum):
     SKIPPED = "skipped"
 
 
+class LensArtifact(StrEnum):
+    VIEWPOINT_MATRIX = "ViewpointMatrix"
+    STATE_MODEL = "StateModel"
+    GOAL_OBSTACLE_MAP = "GoalObstacleMap"
+    MISUSE_CASE_SET = "MisuseCaseSet"
+    QUALITY_SCENARIO_SET = "QualityScenarioSet"
+    CONTROLLED_ACCEPTANCE_CRITERIA = "ControlledAcceptanceCriteria"
+
+
+EXPECTED_LENS_ARTIFACT: Final[dict[str, LensArtifact]] = {
+    "viewpoint": LensArtifact.VIEWPOINT_MATRIX,
+    "domain/state": LensArtifact.STATE_MODEL,
+    "goal/obstacle": LensArtifact.GOAL_OBSTACLE_MAP,
+    "misuse": LensArtifact.MISUSE_CASE_SET,
+    "quality": LensArtifact.QUALITY_SCENARIO_SET,
+    "controlled-language": LensArtifact.CONTROLLED_ACCEPTANCE_CRITERIA,
+}
+
+
 class LensRecord(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
 
     state: LensState
     reason: str = ""
+    artifact: LensArtifact | None = None
 
     @model_validator(mode="after")
     def skipped_needs_reason(self) -> LensRecord:
         if self.state == LensState.SKIPPED and not self.reason.strip():
             message = "a skipped lens must record a skip reason"
             raise ValueError(message)
+        if self.state != LensState.DONE and self.artifact is not None:
+            raise ValueError("artifact is only valid for a done lens")
         return self
 
 
@@ -101,6 +123,7 @@ class ProtocolState(BaseModel):
     interactions_used: int = Field(ge=0)
     answers_since_sweep: int = Field(ge=0)
     sweeps_run: int = Field(ge=0)
+    dry_sweeps_in_row: int = Field(default=0, ge=0)
     contrarian_probes_run: int = Field(ge=0)
     falsification_checkpoints_run: int = Field(ge=0)
     checkpoint_since_last_material_change: bool = False
@@ -108,7 +131,10 @@ class ProtocolState(BaseModel):
     brain_dump_done: bool = False
     brain_dump_waiver: str = ""
     build_contract_tested: bool = False
+    build_contract_digest: str = ""
+    build_contract_reviewer: str = ""
     implementer_scout_run: bool = False
+    pressure_followups_by_parent: dict[str, int] = Field(default_factory=dict)
     lenses: dict[str, LensRecord]
     residual_history: tuple[int, ...] = ()
     gap_count_history: tuple[int, ...] = ()
@@ -142,6 +168,13 @@ class ProtocolState(BaseModel):
             raise ValueError(message)
         return value
 
+    @field_validator("pressure_followups_by_parent")
+    @classmethod
+    def pressure_counts_are_bounded(cls, value: dict[str, int]) -> dict[str, int]:
+        if any(not parent.strip() or count not in (1, 2) for parent, count in value.items()):
+            raise ValueError("pressure follow-up counts require nonblank parents and values 1 or 2")
+        return value
+
     @model_validator(mode="after")
     def escalation_marker_within_history(self) -> ProtocolState:
         if self.stagnation_escalated_at > len(self.residual_history):
@@ -151,6 +184,12 @@ class ProtocolState(BaseModel):
                 "it must be set to the history length at escalation time"
             )
             raise ValueError(message)
+        return self
+
+    @model_validator(mode="after")
+    def dry_streak_within_sweep_count(self) -> ProtocolState:
+        if self.dry_sweeps_in_row > self.sweeps_run:
+            raise ValueError("dry_sweeps_in_row cannot exceed sweeps_run")
         return self
 
     @model_validator(mode="after")
@@ -245,6 +284,10 @@ def build_handoff_blockers(state: ProtocolState) -> tuple[str, ...]:
         blockers.append("brain-dump intake neither done nor explicitly waived with a reason")
     if state.sweeps_run < 1:
         blockers.append("no breadth sweep has run")
+    if state.dry_sweeps_in_row < 2:
+        blockers.append(
+            "divergence is not saturated: two consecutive dry breadth sweeps are required",
+        )
     if state.contrarian_probes_run < 1:
         blockers.append("no contrarian probe has run")
     if state.falsification_checkpoints_run < 1:
@@ -266,9 +309,25 @@ def build_handoff_blockers(state: ProtocolState) -> tuple[str, ...]:
         blockers.append(
             f"triggered lens(es) not completed: {', '.join(triggered)}",
         )
+    incomplete_artifacts = tuple(
+        sorted(
+            f"{name} (expected {EXPECTED_LENS_ARTIFACT[name].value})"
+            for name, lens in state.lenses.items()
+            if lens.state == LensState.DONE
+            and lens.artifact != EXPECTED_LENS_ARTIFACT[name]
+        ),
+    )
+    if incomplete_artifacts:
+        blockers.append(
+            f"done lens artifact missing or mismatched: {', '.join(incomplete_artifacts)}",
+        )
     if not state.build_contract_tested:
         blockers.append(
             "build contract has not passed a fresh-implementer test (agent or self-audited)",
+        )
+    elif not state.build_contract_digest.strip() or not state.build_contract_reviewer.strip():
+        blockers.append(
+            "build contract test is missing its Part-1 digest or reviewer identity",
         )
     return tuple(blockers)
 

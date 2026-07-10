@@ -9,8 +9,8 @@ A synthetic but fully executed `focused` interview, kept small on purpose. Every
 This compact rehearsal shows the hidden methodology layer without adding visible protocol ceremony:
 
 - ORIENT records two candidate readings in ordinary reasons: `deficit=boundary-undefined` for "which sessions die?" and `deficit=execution-blind` for "what proves the handoff is safe to execute?", each with `reverse-evidence=<specific repo fact or user correction that would make the reading unnecessary>`.
-- The `domain/state` lens fires with `reverse-evidence=repo already has one deactivation lifecycle covering sessions/tokens`; once the lifecycle is settled, its reason becomes `artifact=StateModel`.
-- The `misuse` lens records `artifact=MisuseCaseSet` for compromised-account and accidental-lockout cases, while `controlled-language` records `artifact=ControlledAcceptanceCriteria` for the command/test predicates.
+- The `domain/state` lens fires with `reverse-evidence=repo already has one deactivation lifecycle covering sessions/tokens`; once settled, its typed artifact is `StateModel`.
+- The `misuse` lens records `MisuseCaseSet` for compromised-account and accidental-lockout cases, while `controlled-language` records `ControlledAcceptanceCriteria` for the command/test predicates.
 - The checkpoint stays recognition-style: "Current model - correct only what is wrong" includes one hidden-reading line ("Execution risk is stop-time-checkable except permission prompts; wrong if destructive commands are needed before verification"). The user corrects lines rather than selecting a protocol.
 - The Build Contract includes a `Guardrail Compile` table: a stop-time predicate (`uv run scripts/test_deterministic_helpers.py` exits 0), an accepted residual (discovery-rate improvement needs a later postmortem), and a fast/pre-action risk (destructive command blocking belongs to the harness permission substrate).
 
@@ -90,7 +90,9 @@ A (verbatim): "accept all"
   (nothing left to flush: interaction 3 was the batch); due_now_corrections -> 1
 - [sweep: from-ledger] unvisited track: bulk deactivation for compromise waves -
   dump already said "not now" territory; D1 recorded Deferred (owner: jpark,
-  origin: sweep). Nothing else new.
+  decision date: 2026-10-01, origin: sweep). This is `new-gaps`, so the dry streak resets.
+- [sweep: from-ledger] first follow-up sweep: no new gap (`dry`, streak 1).
+- [sweep: from-ledger] second follow-up sweep: no new gap (`dry`, streak 2).
 - [contrarian: self-run] "what if the real need is temporary suspension with
   auto-expiry, not a manual toggle?" - R3's explicit no-auto-expiry decision
   holds (user chose it under pressure); model survived
@@ -118,7 +120,7 @@ out with the status chip. Rest correct."
 - checkpoint ran after the sweep's D1 and the quality-lens decision, so
   checkpoint_since_last_material_change holds true into the gates
 - exit-check: interactions 4 | due_now_corrections 1 | origins: orientation 2,
-  dump 3, pressure 1, batch 3, checkpoint 1, sweep 1
+  dump 3, pressure 1, batch 3, checkpoint 1, sweep 1 | sweeps: 3 total, 2 dry in a row
 ```
 
 ## Mid-interview dashboard (after interaction 1) - real output
@@ -240,7 +242,8 @@ from-code, from-docs, from-research, from-scenario, from-user (+1 more)   [exit 
      "status": "Accepted", "ambiguity_score": 1, "impact_weight": 2,
      "evidence_channels": ["from-user"], "origin": "dump", "reason": "stated twice in the dump, confirmed at checkpoint"},
     {"id": "D1", "requirement": "Deferred: bulk deactivate for compromise waves",
-     "status": "Deferred", "ambiguity_score": 2, "impact_weight": 3, "deferred": true,
+     "status": "Deferred", "ambiguity_score": 2, "impact_weight": 3,
+     "deferred": {"owner": "jpark", "decision_date": "2026-10-01"},
      "evidence_channels": ["from-user"], "origin": "sweep",
      "reason": "owner: jpark, revisit after first real incident; implementer must not build this"}
   ]
@@ -255,20 +258,23 @@ from-code, from-docs, from-research, from-scenario, from-user (+1 more)   [exit 
   "question_budget": 12,
   "interactions_used": 4,
   "answers_since_sweep": 0,
-  "sweeps_run": 1,
+  "sweeps_run": 3,
+  "dry_sweeps_in_row": 2,
   "contrarian_probes_run": 1,
   "falsification_checkpoints_run": 1,
   "checkpoint_since_last_material_change": true,
   "framing_challenged": true,
   "brain_dump_done": true,
   "build_contract_tested": true,
+  "build_contract_digest": "fef6d0a5a59d4c23c6dba47d3f5bb98bade873ab6115d4ef7048af759bcdf52b",
+  "build_contract_reviewer": "self-audit:rehearsal",
   "lenses": {
-    "viewpoint": {"state": "done", "reason": "artifact=ViewpointMatrix; admin/user/support/security viewpoints covered; reverse-evidence cleared by checkpoint"},
-    "domain/state": {"state": "done", "reason": "artifact=StateModel; active/inactive lifecycle, revocation events, and illegal transitions settled"},
-    "goal/obstacle": {"state": "done", "reason": "artifact=GoalObstacleMap; reversible no-delete deactivation goal and revocation obstacles settled"},
-    "misuse": {"state": "done", "reason": "artifact=MisuseCaseSet; unauthorized/reactivated access and accidental bulk-action paths enumerated"},
+    "viewpoint": {"state": "done", "artifact": "ViewpointMatrix", "reason": "admin/user/support/security viewpoints covered; reverse-evidence cleared by checkpoint"},
+    "domain/state": {"state": "done", "artifact": "StateModel", "reason": "active/inactive lifecycle, revocation events, and illegal transitions settled"},
+    "goal/obstacle": {"state": "done", "artifact": "GoalObstacleMap", "reason": "reversible no-delete deactivation goal and revocation obstacles settled"},
+    "misuse": {"state": "done", "artifact": "MisuseCaseSet", "reason": "unauthorized/reactivated access and accidental bulk-action paths enumerated"},
     "quality": {"state": "skipped", "reason": "UI toggle; no architecture-significant quality attribute survived the controlled-language pass"},
-    "controlled-language": {"state": "done", "reason": "artifact=ControlledAcceptanceCriteria; revocation, login rejection, reactivation, and audit predicates written"}
+    "controlled-language": {"state": "done", "artifact": "ControlledAcceptanceCriteria", "reason": "revocation, login rejection, reactivation, and audit predicates written"}
   },
   "residual_history": [29, 2, 6, 6],
   "gap_count_history": [6, 6, 9, 10],
@@ -307,28 +313,106 @@ One combined invocation, per the Handoff rule: `uv run scripts/session_status.py
 
 ## Combined
 
-- ready: yes (stop condition met: handoff_ready, and protocol blockers empty or only the build contract; run the Handoff sequence this turn)
+- interview_converged: yes (stop condition met: handoff_ready, and protocol blockers empty or only the build contract; run the Handoff sequence this turn)
 ```
 
-The combined runner reported ready, gates pass -> the Handoff sequence ran in the same turn.
+The combined runner reported convergence. After the contract was drafted, reviewed, and digest-bound, `session_status.py --gate` returned `implementation_ready: yes` in the same turn.
 
-## handoff.md - Build Contract (Part 1, after the fresh-implementer test)
+# Part 1 — Build Contract
 
 > **To the implementing agent:** Build from Part 1 only; Part 2 is evidence, read it only on dispute. Deferred Risks are decisions reserved to their owners - never resolve one silently; if your implementation needs an answer to one, stop and ask. After the implementation lands, run the `ultimateinterview-postmortem` skill to diff this spec against the actual change.
 
-- **Goal**: an admin can deactivate/reactivate a user; deactivation instantly revokes all access, reversibly, with nothing deleted.
-- **Target surface**: migration `users.is_active` (bool, default true); `api/auth/login.py` (reject inactive at the row-load point, generic message); `api/routes/admin_users.py` (PATCH deactivate/reactivate); `auth/sessions.py` `revoke_all` + api/refresh token revocation in the same transaction; admin user-detail UI (danger-zone toggle, greyed list rows + "Deactivated" chip); `audit_log` writes.
-- **Behavior contract** (excerpt): `When an admin deactivates a user, the system shall revoke all browser sessions, api_tokens, and refresh tokens in the same transaction.` / `While a user is deactivated, the login endpoint shall reject authentication with the generic failure message.` / `When a user is reactivated, the system shall restore login access without requiring a password reset.`
-- **Quality bars**: (weight 5) already-issued session, api, and refresh credentials are dead on the first request after the deactivation transaction commits (zero grace requests) - verified by the revocation test below.
-- **Decision boundaries**: exact migration mechanics, endpoint shape, and chip styling are the implementer's; anything touching what "deactivated" means is not.
-- **Out of scope / non-goals**: no deletion or purge (N1); no bulk deactivate (D1, deferred to jpark); no auto-expiry (explicit user decision R3).
-- **Verification commands**: auth test - login rejected while inactive; revocation test - live session + api token + refresh token all dead after flip; reactivation test - login works, no reset; audit rows present for both flips.
-- **Deferred risks**: D1 bulk deactivate (owner jpark - do not build).
+## Goal
+
+An admin can deactivate and reactivate one user reversibly; deactivation revokes all access without deleting data. (source: R1, R2, R3, N1)
+
+## Target Surface
+
+| File / module | Expected change |
+| --- | --- |
+| user migration and model | add `users.is_active`, default true |
+| auth and token services | reject inactive login and revoke session/API/refresh credentials atomically |
+| admin route and UI | add single-user toggle, grey inactive rows, show Deactivated chip |
+| audit log | record deactivate/reactivate rows |
+
+## Behavior Contract
+
+| ID | Requirement | Acceptance criterion (EARS or Given/When/Then) | Source |
+| --- | --- | --- | --- |
+| REQ-001 | Deactivation revokes every credential atomically. | When deactivation commits, the current browser session, API token, and refresh token all fail on their first subsequent request. | R1, R2 |
+| REQ-002 | Inactive users cannot log in, but reactivation restores login without reset or expiry. | While inactive login returns the existing generic failure; after reactivation the same password works, with no password reset and no auto-expiry. | R1, R3 |
+| REQ-003 | Support can find inactive users. | When an inactive user appears in the admin list, the row remains present, is greyed, and carries the Deactivated status chip. | R7 |
+| REQ-004 | Every flip is auditable and single-user only. | Each deactivate/reactivate action writes one `audit_log` row and no bulk operation is exposed. | R4, D1 |
+| REQ-005 | Existing UI vocabulary is reused. | The toggle remains in the user-detail danger zone and uses the existing status-chip vocabulary. | R5, R6 |
+
+## Change Impact & Preservation
+
+| Source | Current evidence / behavior | Preserved invariant | Target difference | Code surface | Acceptance check | Runtime signal |
+| --- | --- | --- | --- | --- | --- | --- |
+| F1, F2, R1, R2, R3 | current auth loads a user before issuing credentials and `revoke_all` already exists | generic login failure and password remain unchanged | inactive state gates issuance and revokes existing credentials | auth/token services | REQ-001, REQ-002 | all three live credential probes fail after commit |
+| R4, R5, R6, R7 | admin detail/list and audit patterns already exist | list discoverability and UI vocabulary remain | add toggle, status presentation, and two audit actions | admin API/UI/audit log | REQ-003, REQ-004, REQ-005 | list row and audit rows are observable |
+| N1 | user data is retained today | user record and related data remain | only `is_active` changes | migration/model | negative deletion assertion | row counts and user data remain unchanged |
+
+## Quality Bars
+
+| Attribute | Bar (a number an implementer can verify) | Weight | Verification |
+| --- | --- | --- | --- |
+| Revocation freshness | 0 successful grace requests after the deactivation transaction commits | 5 | live credential surface row below |
+
+## Decision Boundaries
+
+| Decision | Agent may decide? | Boundary |
+| --- | --- | --- |
+| exact migration helper, route shape, and CSS implementation | yes | must preserve every observable in REQ-001 through REQ-005 |
+| meaning of inactive, retained data, revocation set, or auto-expiry | no | use the settled requirements; log any forced deviation |
+
+## Out Of Scope / Non-Goals
+
+- No deletion or purge (source: N1) — negative: user row and related records remain after both flips.
+- No bulk deactivate (source: D1) — negative: no bulk endpoint, command, or UI control exists.
+- No auto-expiry (source: R3) — negative: elapsed time alone never reactivates a user.
+
+## Implementation Constraints
+
+- Interfaces: preserve the current generic login failure and admin status vocabulary.
+- Compatibility: existing users migrate as active; existing clients keep their current fields.
+- Migration: backfill occurs through the default-true column migration.
+- Decision core: `(current_state, requested_flip, credential_set) -> next_state + revocation set + audit action`.
+- Effects boundary: one transaction changes the user state, revokes session/API/refresh credentials, and writes the audit row; rollback leaves all unchanged.
+
+## Rollout & Recovery
+
+| Activation | Compatibility / backfill | Rollback trigger | Rollback action | Observation metric + window | Owner |
+| --- | --- | --- | --- | --- | --- |
+| deploy migration, API, then UI in one release | existing users default active; old clients ignore presentation | any credential remains usable after commit or active login regresses | disable UI/route and roll back application; retain compatible column | credential-probe failures and login error rate for 24 hours | service owner |
 
 ## Guardrail Compile
 
-| Stop-time predicate | Accepted residual | Fast/pre-action substrate risk |
-| --- | --- | --- |
-| Revocation test proves live session, api token, and refresh token fail on the first request after the deactivation transaction commits. | Password-reset email blocking is resolved from R2/R4 for this build; future notification-policy changes need a new interview. | Destructive command blocking and agent/tool prompt-injection interception belong to the harness permission substrate, not this product build contract. Product-level prompt injection remains a misuse/security requirement whenever untrusted text is consumed. |
+| Risk | Class | Predicate / residual / substrate owner | Evidence |
+| --- | --- | --- | --- |
+| stale credential survives | Stop-time predicate | live session, API token, and refresh token all fail on first request after commit | REQ-001 surface command |
+| future notification-policy change | Accepted residual | owner: service owner; decision date: next notification change; mitigation: open a new interview | R2/R4 scope |
+| destructive execution or harness prompt injection | Fast/pre-action | substrate: permission system and tool guard | no product-level control is claimed |
 
-Fresh-implementer test: self-audited (no subagent in the rehearsal harness); two "would have to ask" items found (does deactivation block password-reset emails? is the toggle idempotent under double-click?) - both folded back and settled from R2/R4 evidence; anti-gaming pass found no gameable criterion (the revocation and login checks run against live sessions and the real endpoint, not test doubles) - then `build_contract_tested` was set. The exit-check line closed the transcript.
+## Verification Commands
+
+| Check | Kind | Command / action | Pass condition |
+| --- | --- | --- | --- |
+| REQ-001 through REQ-005 unit/integration | test | `uv run pytest tests/test_admin_user_deactivation.py -q` | all named REQ tests pass |
+| REQ-001 live credential traversal | real-surface | `uv run pytest tests/test_admin_user_deactivation.py -q -m live_surface` | installed service flow revokes all three credentials and preserves the user row |
+
+## Deferred Risks
+
+| Risk | Owner | Decision date | Mitigation |
+| --- | --- | --- | --- |
+| D1 bulk deactivate for compromise waves | jpark | 2026-10-01 | no bulk surface is built; reopen after the first real incident |
+
+## Fresh-Implementer Test
+
+| Reviewer (fresh-context agent / self-audit) | "Would have to ask" items found | Gameable criteria found | Folded back / re-bound? | Unresolved after disposition |
+| --- | --- | --- | --- | --- |
+| self-audit:rehearsal | password-reset email and double-click idempotency | credential checks could target doubles | settled from R2/R4; verification rebound to installed service and live credentials | none |
+
+# Part 2 — Audit Trail
+
+Fresh-implementer evidence is bound to the Part-1 digest in `protocol.json`; the exit-check line closed the transcript.

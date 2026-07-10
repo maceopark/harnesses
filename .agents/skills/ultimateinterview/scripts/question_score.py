@@ -38,7 +38,7 @@ class OutputFormat(StrEnum):
 
 
 class QuestionCandidate(BaseModel):
-    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
 
     id: str
     question: str

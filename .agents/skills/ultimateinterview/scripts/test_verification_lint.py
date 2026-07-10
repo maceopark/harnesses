@@ -177,5 +177,119 @@ def test_missing_handoff_exits_two(tmp_path: Path) -> None:
     assert code == 2
 
 
+def test_explicit_path_heads_resolve_against_repo_root(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    script = root / "scripts" / "check.sh"
+    script.parent.mkdir(parents=True)
+    script.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    script.chmod(0o755)
+    part1 = (
+        "## Verification Commands\n"
+        "| Check | Command |\n"
+        "| --- | --- |\n"
+        "| surface | `./scripts/check.sh --strict` |\n"
+    )
+    assert verification_lint.command_head_status(part1, workdir=root) == {
+        "./scripts/check.sh": True,
+    }
+
+
+def test_env_wrapper_checks_effective_command(tmp_path: Path) -> None:
+    bindir = make_host(tmp_path, ["env"])
+    part1 = (
+        "## Verification Commands\n"
+        "| Check | Command |\n"
+        "| --- | --- |\n"
+        "| surface | `env X=1 definitely_missing_cmd --version` |\n"
+    )
+    status = verification_lint.command_head_status(part1, str(bindir), tmp_path)
+    assert status == {"env": True, "definitely_missing_cmd": False}
+
+
+def test_unbalanced_command_is_reported_as_malformed() -> None:
+    part1 = (
+        "## Verification Commands\n"
+        "| Check | Command |\n"
+        "| --- | --- |\n"
+        "| surface | `python3 -c 'unterminated` |\n"
+    )
+    assert verification_lint.command_parse_findings(part1)
+
+
+def test_four_backtick_fence_is_not_closed_by_three_backticks() -> None:
+    text = (
+        "````markdown\n"
+        "```\n"
+        "## Verification Commands\n"
+        "| Check | Command |\n"
+        "| --- | --- |\n"
+        "| fake | `missing --version` |\n"
+        "````\n"
+    )
+
+    assert verification_lint.tables(text) == []
+
+
+def test_escaped_pipeline_checks_every_effective_head(tmp_path: Path) -> None:
+    bindir = make_host(tmp_path, ["okcmd"])
+    part1 = (
+        "## Verification Commands\n"
+        "| Check | Command |\n"
+        "| --- | --- |\n"
+        "| surface | `okcmd --version \\| missingcmd --version` |\n"
+    )
+
+    assert verification_lint.command_head_status(part1, str(bindir), tmp_path) == {
+        "okcmd": True,
+        "missingcmd": False,
+    }
+
+
+def test_static_wrappers_are_unwrapped_and_eval_is_rejected(tmp_path: Path) -> None:
+    bindir = make_host(tmp_path, ["command", "exec"])
+    command_part1 = (
+        "## Verification Commands\n"
+        "| Check | Command |\n"
+        "| --- | --- |\n"
+        "| surface | `command missingcmd --version` |\n"
+    )
+    eval_part1 = command_part1.replace("command missingcmd", "eval missingcmd")
+
+    assert verification_lint.command_head_status(command_part1, str(bindir), tmp_path) == {
+        "missingcmd": False,
+    }
+    assert any("eval" in finding for finding in verification_lint.command_parse_findings(eval_part1))
+
+
+@pytest.mark.parametrize("wrapper", ["command eval", "exec eval", "command exec eval"])
+def test_nested_eval_wrapper_is_rejected(wrapper: str) -> None:
+    cell = f"`{wrapper} missingcmd --version`"
+    part1 = (
+        "## Verification Commands\n"
+        "| Check | Command |\n"
+        "| --- | --- |\n"
+        f"| surface | {cell} |\n"
+    )
+
+    assert any("eval" in finding for finding in verification_lint.command_parse_findings(part1))
+    assert "missingcmd" not in verification_lint.command_heads(cell)
+
+
+@pytest.mark.parametrize("cell", ["`npm test`", "`pytest`"])
+def test_explicit_bare_commands_are_parsed(cell: str) -> None:
+    assert verification_lint.command_heads(cell) == [cell.strip("`").split()[0]]
+
+
+def test_prose_action_with_apostrophe_is_not_parsed_as_shell() -> None:
+    part1 = (
+        "## Verification Commands\n"
+        "| Check | Command / action |\n"
+        "| --- | --- |\n"
+        "| visual | Inspect user's rendered result |\n"
+    )
+
+    assert verification_lint.command_parse_findings(part1) == ()
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))
