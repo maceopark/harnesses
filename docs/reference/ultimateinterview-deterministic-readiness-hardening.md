@@ -51,6 +51,13 @@ The composite implementation gate rejects a session when any of these remain:
 7. Fresh-implementer findings whose disposition remains unresolved, or a review digest that no longer matches the raw current Part 1, including fenced content.
 
 `session_status.py` reports interview state. `session_status.py --gate` composes all readiness checks, returns exit `1` on any failure, and is the only surface allowed to emit `implementation_ready: yes`.
+## Postmortem evidence model
+
+Postmortem verification is a separate, after-implementation contract. A `pass` claim for an executable test or real-surface verification row requires a matching `CAPTURED-OUTPUT` projection in schema-v4 `evidence_bundle.json`; capture first, then regenerate the final bundle. Missing captures are deterministic `verification-execution:` violations, while old v3 bundles degrade to precise input errors rather than tracebacks.
+
+Reward-hacking checks deliberately split advisory detection from enforceable consistency. `audit_scan.py` may identify test/doc-only changed paths or fulfilled support mappings, but those heuristic candidates never fail `postmortem_lint.py` by themselves. The lint only checks the human-entered Reward-Hacking Review: gaming flags require `confirmed-gaming`, and confirmed gaming must be reported as `divergent-implementation`.
+
+A green `postmortem_lint` therefore proves execution provenance and human-entered self-consistency only. It does not prove that no gaming occurred or that the implementation semantically passed its specification.
 
 ## Enumeration and pressure semantics
 
