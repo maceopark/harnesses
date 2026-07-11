@@ -18,6 +18,28 @@ This file is the runtime: phase map, per-round loop, invariants. Method detail l
 | LOOP | framing recorded | Read `references/interview-loop.md` once, then run the Per-Round Loop below until the stop condition. Lens methods load from `references/lenses.md` as techniques activate. |
 | ENDGAME | stop condition met; a readiness-gate trigger fires (`full` depth; a score `3` near handoff; a behavior/data/security-changing score `2`; the output seeds another agent or team; security/privacy, data/schema, irreversible writes, external integration, performance/reliability, or multi-stakeholder workflow touched); or the user asks for independent gating / seed readiness | Read `references/handoff-sequence.md` and execute its canonical pre-handoff sequence (flush → sweep/probe → checkpoint → audit → build contract → implementation gate → handoff) in the same turn. |
 
+## ENDGAME Assurance Routing
+
+Use these conditional routes only after ENDGAME fires. v0/v1 are historical structural-only results and must not claim v2 verdicts. v2 records five explicit verdicts: abi, trace, property, adequacy, stakeholder. Boundary coverage is conditional ENDGAME coverage, not a seventh mandatory lens.
+
+| Read | Load when |
+| --- | --- |
+| [Assurance boundaries](references/assurance-boundaries.md) | When a v2 assurance result is requested or reported. |
+| [Boundary coverage](references/boundary-coverage.md) | When high-impact or enumerated behavior crosses an actor, system, or handoff boundary. |
+| [Consumer verification](references/consumer-verification.md) | When a downstream consumer receives a contract, grant, or receipt. |
+
+### Explicit assurance-v2 lifecycle
+
+Use this route only when ORIENT recorded an explicit assurance-v2 request and initialized the session with `--schema-version 2`; high-impact work and an ordinary ENDGAME do not silently upgrade v0/v1 state. Finish the normal authored-state and Build Contract lifecycle first. Then follow this exact order: author/update source state → compile `build-contract.json` from `handoff.md` → seal the current authored inputs → receive and import a downstream receipt → check the sealed, current result.
+
+```text
+scripts/session_seal.py <session-dir>
+scripts/receipt_import.py <session-dir> < <receipt.json>
+scripts/session_status.py <session-dir> --format markdown --gate --require-assurance-v2 --require-manifest --require-execution-receipts
+```
+
+The downstream recipient supplies the receipt; this skill only validates and imports it. Any authored-state or contract change requires a fresh compile and seal, and makes the prior receipt stale until a newly bound receipt is imported. A successful receipt check reports only the bounded v2 result; it does not promote adequacy or stakeholder verdicts.
+
 At any phase:
 
 - If the user abandons ("enough, just build it"), do not exit empty-handed: write a `DRAFT - abandoned` handoff carrying the current Build Contract and every open gap as unresolved deferred risk (procedure: `references/handoff-sequence.md` §Abandonment).

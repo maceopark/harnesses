@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from collections.abc import Callable
-from typing import Annotated, ClassVar, Final
+from typing import Annotated, ClassVar, Final, assert_never
 
 import typer
 from pydantic import (
@@ -42,7 +42,7 @@ from pydantic import (
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts import open_world, probe_policy
+from scripts import assurance_schema, evidence_identity, open_world, probe_policy
 
 
 LENS_NAMES: Final[frozenset[str]] = frozenset(
@@ -59,6 +59,14 @@ SWEEP_CADENCE: Final[int] = 4
 STAGNATION_ROUNDS: Final[int] = 2
 RESIDUAL_LAG_THRESHOLD: Final[int] = 2
 LOCALITY_WINDOW: Final[int] = 3
+
+
+@dataclass(frozen=True, slots=True)
+class ProtocolStateValidationError(ValueError):
+    detail: str
+
+    def __str__(self) -> str:
+        return self.detail
 
 
 class OutputFormat(StrEnum):
@@ -160,8 +168,9 @@ class ProtocolState(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
 
     depth: Depth
-    evidence_schema_version: StrictInt = Field(default=0, ge=0, le=1)
-    contract_schema_version: StrictInt = Field(default=0, ge=0, le=1)
+    evidence_schema_version: StrictInt = Field(default=0, ge=0)
+    contract_schema_version: StrictInt = Field(default=0, ge=0)
+    assurance_result: assurance_schema.AssuranceResult | None = None
     material_revision: StrictInt = Field(default=0, ge=0)
     question_budget: StrictInt = Field(gt=0)
     interactions_used: StrictInt = Field(ge=0)
@@ -254,6 +263,32 @@ class ProtocolState(BaseModel):
 
     @model_validator(mode="after")
     def versioned_contract_state_is_coherent(self) -> ProtocolState:
+        match (self.evidence_schema_version, self.contract_schema_version):
+            case (0, 0) | (1, 1):
+                if self.assurance_result is not None:
+                    raise ProtocolStateValidationError(
+                        "schema v0/v1 must not include assurance_result",
+                    )
+            case (2, 2):
+                match self.assurance_result:
+                    case assurance_schema.AssuranceResult() as result:
+                        assurance_schema.validate_protocol_assurance_result(result)
+                    case None:
+                        raise ProtocolStateValidationError(
+                            "schema v2 requires assurance_result",
+                        )
+                    case unreachable:
+                        assert_never(unreachable)
+            case (evidence_version, contract_version) if (
+                evidence_version,
+                contract_version,
+            ) not in ((0, 0), (1, 1), (2, 2)):
+                raise ProtocolStateValidationError(
+                    "unknown schema version pair: "
+                    f"evidence={evidence_version}, contract={contract_version}",
+                )
+            case unreachable:
+                assert_never(unreachable)
         if self.open_world_records:
             open_world.OpenWorldHistory(records=self.open_world_records)
         if self.probe_sequence is not None and self.probe_decision is None:
@@ -280,6 +315,16 @@ class ProtocolSummary:
     protocol_ready: bool
 
 
+def evidence_identity_policy_version(state: ProtocolState) -> str | None:
+    match state.evidence_schema_version:
+        case 2:
+            return evidence_identity.POLICY_VERSION
+        case 0 | 1:
+            return None
+        case unreachable:
+            assert_never(unreachable)
+
+
 def parse_state(raw_json: str) -> ProtocolState:
     return ProtocolState.model_validate_json(raw_json)
 
@@ -292,10 +337,15 @@ def locality_repeated_keys(
         return {}
     window = snapshots[-LOCALITY_WINDOW:]
     repeated: dict[str, tuple[str, ...]] = {}
-    for dimension in ("categories", "domains", "target_files"):
-        common = set(getattr(window[0], dimension))
-        for snapshot in window[1:]:
-            common.intersection_update(getattr(snapshot, dimension))
+    dimensions = {
+        "categories": tuple(snapshot.categories for snapshot in window),
+        "domains": tuple(snapshot.domains for snapshot in window),
+        "target_files": tuple(snapshot.target_files for snapshot in window),
+    }
+    for dimension, values in dimensions.items():
+        common = set(values[0])
+        for value in values[1:]:
+            common.intersection_update(value)
         if common:
             repeated[dimension] = tuple(sorted(common))
     return repeated
@@ -364,39 +414,56 @@ def build_handoff_blockers(state: ProtocolState) -> tuple[str, ...]:
         blockers.append("framing challenge has not run")
     if not state.brain_dump_done and not state.brain_dump_waiver.strip():
         blockers.append("brain-dump intake neither done nor explicitly waived with a reason")
-    if state.evidence_schema_version == 1:
-        orientation = next(
-            (
-                record
+    match state.evidence_schema_version:
+        case 1 | 2:
+            orientation = next(
+                (
+                    record
+                    for record in state.open_world_records
+                    if record.phase is open_world.OpenWorldPhase.ORIENTATION
+                ),
+                None,
+            )
+            if orientation is None:
+                blockers.append("no orientation open-world pass precedes lens selection")
+            elif not orientation.is_fresh(state.material_revision):
+                blockers.append("orientation open-world pass is stale after a material change")
+            fresh_breadth = any(
+                record.phase is open_world.OpenWorldPhase.BREADTH
+                and record.is_fresh(state.material_revision)
                 for record in state.open_world_records
-                if record.phase is open_world.OpenWorldPhase.ORIENTATION
-            ),
-            None,
-        )
-        if orientation is None:
-            blockers.append("no orientation open-world pass precedes lens selection")
-        elif not orientation.is_fresh(state.material_revision):
-            blockers.append("orientation open-world pass is stale after a material change")
-        fresh_breadth = any(
-            record.phase is open_world.OpenWorldPhase.BREADTH
-            and record.is_fresh(state.material_revision)
-            for record in state.open_world_records
-        )
-        if not fresh_breadth:
-            blockers.append("no fresh breadth open-world pass precedes the dry sweep")
+            )
+            if not fresh_breadth:
+                blockers.append("no fresh breadth open-world pass precedes the dry sweep")
+        case 0:
+            pass
+        case unexpected if unexpected not in (0, 1, 2):
+            raise ProtocolStateValidationError(
+                f"unknown evidence schema version {unexpected}",
+            )
+        case unreachable:
+            assert_never(unreachable)
     if state.sweeps_run < 1:
         blockers.append("no breadth sweep has run")
     if state.dry_sweeps_in_row < 2:
         blockers.append(
             "divergence is not saturated: two consecutive dry breadth sweeps are required",
         )
-    if state.evidence_schema_version == 1:
-        if state.probe_decision is None:
-            blockers.append("no typed probe decision has been persisted")
-        elif state.probe_sequence is None:
-            blockers.append("the selected probe obligation has no recorded result")
-    elif state.contrarian_probes_run < 1:
-        blockers.append("no contrarian probe has run")
+    match state.evidence_schema_version:
+        case 1 | 2:
+            if state.probe_decision is None:
+                blockers.append("no typed probe decision has been persisted")
+            elif state.probe_sequence is None:
+                blockers.append("the selected probe obligation has no recorded result")
+        case 0:
+            if state.contrarian_probes_run < 1:
+                blockers.append("no contrarian probe has run")
+        case unexpected if unexpected not in (0, 1, 2):
+            raise ProtocolStateValidationError(
+                f"unknown evidence schema version {unexpected}",
+            )
+        case unreachable:
+            assert_never(unreachable)
     if state.falsification_checkpoints_run < 1:
         blockers.append("no falsification checkpoint has run")
     elif not state.checkpoint_since_last_material_change:

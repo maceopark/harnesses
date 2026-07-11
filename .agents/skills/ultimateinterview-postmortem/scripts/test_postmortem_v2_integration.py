@@ -10,11 +10,13 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import postmortem_lint
+import postmortem_v2_lint
 from test_postmortem_lint import HANDOFF, conforming_report
 
 RUNNER = CliRunner()
@@ -167,3 +169,45 @@ def test_schema_v2_calibration_is_derived_from_escape_rows(tmp_path: Path) -> No
     code, output = _lint(_session(tmp_path, report))
     assert code == 1
     assert "modifier:runtime-only" in output
+
+
+@pytest.mark.parametrize(
+    ("canonical_heading", "archived_heading", "expected_v2_violation"),
+    (
+        (
+            "Divergence Table",
+            "Divergence Table — archived",
+            "v2 divergence: missing table",
+        ),
+        (
+            "Escaped Requirements",
+            "Escaped Requirements — archived",
+            "v2 escapes: missing table",
+        ),
+    ),
+)
+def test_schema_v2_rejects_archived_calibration_evidence_heading_suffix(
+    tmp_path: Path,
+    canonical_heading: str,
+    archived_heading: str,
+    expected_v2_violation: str,
+) -> None:
+    # Given a report whose calibration-evidence heading only contains the canonical name
+    report = _report().replace(
+        f"## {canonical_heading}",
+        f"## {archived_heading}",
+        1,
+    )
+
+    # When evaluated by either v2 or its CLI wrapper, Then both fail closed
+    session = _session(tmp_path, report)
+    evaluation = postmortem_v2_lint.evaluate(
+        report,
+        HANDOFF,
+        session / "evidence_bundle.json",
+    )
+    code, output = _lint(session)
+
+    assert expected_v2_violation in evaluation.violations
+    assert code == 1
+    assert f"required section missing: exact canonical heading {canonical_heading.lower()!r}" in output

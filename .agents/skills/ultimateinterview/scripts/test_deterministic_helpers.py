@@ -3351,7 +3351,7 @@ def test_session_init_ignores_orphaned_hidden_staging_directory(tmp_path: Path) 
     assert (state_root / "retryable" / "ledger.json").is_file()
 
 
-def test_session_status_recovers_interrupted_generation_before_read(tmp_path: Path) -> None:
+def test_session_status_rejects_pending_recovery_without_mutating_session(tmp_path: Path) -> None:
     session = write_session(tmp_path)
     ledger_path = session / "ledger.json"
     protocol_path = session / "protocol.json"
@@ -3362,15 +3362,27 @@ def test_session_status_recovers_interrupted_generation_before_read(tmp_path: Pa
         root=session,
     )
     ledger_path.write_text("[]", encoding="utf-8")
+    before = {
+        path.relative_to(session): path.read_bytes()
+        for path in sorted(session.rglob("*"))
+        if path.is_file()
+    }
 
     result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--format", "json"])
 
-    assert result.exit_code == 0, result.output
-    assert ledger_path.read_text(encoding="utf-8") == original_ledger
-    assert not (session / atomic_write.JOURNAL_NAME).exists()
+    assert result.exit_code == 2, result.output
+    assert "pending recovery journal" in result.output
+    assert ledger_path.read_text(encoding="utf-8") == "[]"
+    assert (session / atomic_write.JOURNAL_NAME).is_file()
+    after = {
+        path.relative_to(session): path.read_bytes()
+        for path in sorted(session.rglob("*"))
+        if path.is_file()
+    }
+    assert after == before
 
 
-def test_explicit_status_paths_recover_interrupted_generation_before_read(
+def test_explicit_status_paths_reject_pending_recovery_without_mutating_session(
     tmp_path: Path,
 ) -> None:
     session = write_session(tmp_path)
@@ -3383,15 +3395,27 @@ def test_explicit_status_paths_recover_interrupted_generation_before_read(
         root=session,
     )
     ledger_path.write_text("[]", encoding="utf-8")
+    before = {
+        path.relative_to(session): path.read_bytes()
+        for path in sorted(session.rglob("*"))
+        if path.is_file()
+    }
 
     result = CLI_RUNNER.invoke(
         make_app(session_status.main),
         ["--ledger", str(ledger_path), "--protocol", str(protocol_path), "--format", "json"],
     )
 
-    assert result.exit_code == 0, result.output
-    assert ledger_path.read_text(encoding="utf-8") == original_ledger
-    assert not (session / atomic_write.JOURNAL_NAME).exists()
+    assert result.exit_code == 2, result.output
+    assert "pending recovery journal" in result.output
+    assert ledger_path.read_text(encoding="utf-8") == "[]"
+    assert (session / atomic_write.JOURNAL_NAME).is_file()
+    after = {
+        path.relative_to(session): path.read_bytes()
+        for path in sorted(session.rglob("*"))
+        if path.is_file()
+    }
+    assert after == before
 
 
 if __name__ == "__main__":

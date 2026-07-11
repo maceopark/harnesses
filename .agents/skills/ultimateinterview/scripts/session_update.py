@@ -39,7 +39,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, ClassVar, Final, cast
+from typing import Annotated, ClassVar, Final, assert_never, cast
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -58,6 +58,7 @@ from pydantic import (
 from scripts import (
     ambiguity_ledger,
     atomic_write,
+    behavior_atoms as atom_contract,
     build_contract,
     claim_evidence,
     implementation_gate,
@@ -239,6 +240,8 @@ class SetOp(BaseModel):
     deferred: StrictBool | dict[str, str] | None = None
     ambiguity_score: StrictInt | None = None
     impact_weight: StrictInt | None = None
+    assurance_class: atom_contract.AssuranceClass | None = None
+    behavior_atoms: tuple[atom_contract.BehaviorAtom, ...] | None = None
     evidence_channels: tuple[str, ...] | None = None
     evidence_records: tuple[claim_evidence.ClaimEvidence, ...] | None = None
     add_channels: tuple[str, ...] = ()
@@ -509,14 +512,20 @@ def pressure_gate_violation(
     )
     if "from-user" not in channels:
         return False
-    if evidence_schema_version == 1:
-        parsed = ambiguity_ledger.LedgerEntry.model_validate_json(json.dumps(entry))
-        return (
-            len(parsed.distinct_evidence_groups) < 2
-            and not parsed.is_single_source_accepted
-        )
-    distinct = frozenset(channels) - ambiguity_ledger.NON_EVIDENCE_CHANNELS
-    return len(distinct) < 2
+    match evidence_schema_version:
+        case 1 | 2:
+            parsed = ambiguity_ledger.LedgerEntry.model_validate_json(json.dumps(entry))
+            return (
+                len(parsed.distinct_evidence_groups) < 2
+                and not parsed.is_single_source_accepted
+            )
+        case 0:
+            distinct = frozenset(channels) - ambiguity_ledger.NON_EVIDENCE_CHANNELS
+            return len(distinct) < 2
+        case unexpected if unexpected < 0 or unexpected > 2:
+            raise typer.BadParameter(f"unknown evidence schema version {unexpected}")
+        case unreachable:
+            assert_never(unreachable)
 
 
 def pressure_gate_message(entry_id: str) -> str:
@@ -531,13 +540,23 @@ def apply_set(entries: LedgerEntries, op: SetOp, evidence_schema_version: int) -
     match = next((entry for entry in entries if entry.get("id") == op.id), None)
     if match is None:
         raise typer.BadParameter(f"delta set: no ledger entry with id {op.id!r}")
-    if evidence_schema_version == 1:
-        if op.add_channels:
-            raise typer.BadParameter("add_channels is legacy-only; v1 uses add_evidence_records")
-        if op.evidence_channels is not None and op.evidence_records is None:
-            raise typer.BadParameter("v1 channel projection requires authoritative evidence_records")
-    elif op.add_evidence_records or op.evidence_records is not None:
-        raise typer.BadParameter("structured evidence updates require evidence schema v1")
+    match evidence_schema_version:
+        case 1 | 2:
+            if op.add_channels:
+                raise typer.BadParameter(
+                    f"add_channels is legacy-only; v{evidence_schema_version} uses add_evidence_records",
+                )
+            if op.evidence_channels is not None and op.evidence_records is None:
+                raise typer.BadParameter(
+                    f"v{evidence_schema_version} channel projection requires authoritative evidence_records",
+                )
+        case 0:
+            if op.add_evidence_records or op.evidence_records is not None:
+                raise typer.BadParameter("structured evidence updates require evidence schema v1 or v2")
+        case unexpected if unexpected < 0 or unexpected > 2:
+            raise typer.BadParameter(f"unknown evidence schema version {unexpected}")
+        case unreachable:
+            assert_never(unreachable)
     old_score = entry_field(match, "ambiguity_score", "ambiguity")
     provided = op.model_dump(
         exclude_none=True,
@@ -595,10 +614,19 @@ def apply_add(
     entry_id = entry.get("id")
     if any(existing.get("id") == entry_id for existing in entries):
         raise typer.BadParameter(f"delta add: duplicate ledger entry id {entry_id!r}")
-    if evidence_schema_version == 1 and entry.get("origin") == "bundle":
-        raise typer.BadParameter("origin 'bundle' is a legacy parsing alias; v1 writes 'batch'")
-    if evidence_schema_version == 0 and "evidence_records" in entry:
-        raise typer.BadParameter("structured evidence updates require evidence schema v1")
+    match evidence_schema_version:
+        case 1 | 2:
+            if entry.get("origin") == "bundle":
+                raise typer.BadParameter(
+                    f"origin 'bundle' is a legacy parsing alias; v{evidence_schema_version} writes 'batch'",
+                )
+        case 0:
+            if "evidence_records" in entry:
+                raise typer.BadParameter("structured evidence updates require evidence schema v1 or v2")
+        case unexpected if unexpected < 0 or unexpected > 2:
+            raise typer.BadParameter(f"unknown evidence schema version {unexpected}")
+        case unreachable:
+            assert_never(unreachable)
     pressure = entry.pop("pressure", None)
     if pressure is not None:
         if not isinstance(pressure, str) or not PRESSURE_TOKEN_PATTERN.match(pressure):
@@ -635,24 +663,29 @@ def apply_checkpoint_confirm(
     if confirm.fatigue:
         return
     for match in matched:
-        if evidence_schema_version == 1:
-            checkpoint = session_contracts.checkpoint_evidence(str(match["id"]))
-            existing_ids = {
-                record.id for record in session_contracts.evidence_records(match)
-            }
-            if checkpoint.id not in existing_ids:
-                session_contracts.merge_evidence_records(match, (checkpoint,))
-            append_to_reason(match, "[checkpoint-corroborated: typed user decision]")
-            continue
-        channels = normalized_channels(
-            entry_field(match, "evidence_channels", "channels"),
-        )
-        distinct = frozenset(channels) - ambiguity_ledger.NON_EVIDENCE_CHANNELS
-        if len(distinct) <= 1 and "from-user" not in distinct:
-            merged = list(dict.fromkeys([*channels, "from-user"]))
-            match.pop("channels", None)
-            match["evidence_channels"] = merged
-            append_to_reason(match, "[checkpoint-corroborated: from-user]")
+        match evidence_schema_version:
+            case 1 | 2:
+                checkpoint = session_contracts.checkpoint_evidence(str(match["id"]))
+                existing_ids = {
+                    record.id for record in session_contracts.evidence_records(match)
+                }
+                if checkpoint.id not in existing_ids:
+                    session_contracts.merge_evidence_records(match, (checkpoint,))
+                append_to_reason(match, "[checkpoint-corroborated: typed user decision]")
+            case 0:
+                channels = normalized_channels(
+                    entry_field(match, "evidence_channels", "channels"),
+                )
+                distinct = frozenset(channels) - ambiguity_ledger.NON_EVIDENCE_CHANNELS
+                if len(distinct) <= 1 and "from-user" not in distinct:
+                    merged = list(dict.fromkeys([*channels, "from-user"]))
+                    match.pop("channels", None)
+                    match["evidence_channels"] = merged
+                    append_to_reason(match, "[checkpoint-corroborated: from-user]")
+            case unexpected if unexpected < 0 or unexpected > 2:
+                raise typer.BadParameter(f"unknown evidence schema version {unexpected}")
+            case unreachable:
+                assert_never(unreachable)
 
 
 def render_transcript_section(
@@ -829,6 +862,7 @@ def apply_delta(
         protocol_doc,
         "evidence_schema_version",
     )
+    session_contracts.validate_evidence_schema_version(evidence_schema_version)
     for op in delta.set:
         apply_set(entries, op, evidence_schema_version)
     for entry in delta.add:
@@ -867,25 +901,33 @@ def apply_delta(
             protocol_doc,
             delta.open_world_sweep,
         )
-    if evidence_schema_version == 1 and delta.event in SWEEP_EVENTS:
-        sweep = delta.open_world_sweep
-        if sweep is None or sweep.phase is not open_world.OpenWorldPhase.BREADTH:
-            raise typer.BadParameter(
-                "v1 dry/new-gap sweeps require a fresh breadth open-world record",
-            )
-    if evidence_schema_version == 1 and LENSES_KEY in delta.protocol:
-        records = protocol_doc.get("open_world_records", [])
-        revision = integer_value(protocol_doc, "material_revision")
-        has_orientation = isinstance(records, list) and any(
-            record.get("phase") == "orientation"
-            and record.get("material_revision_binding") == revision
-            for record in records
-            if isinstance(record, dict)
-        )
-        if not has_orientation:
-            raise typer.BadParameter(
-                "lens decisions require a fresh orientation open-world record first",
-            )
+    match evidence_schema_version:
+        case 1 | 2:
+            if delta.event in SWEEP_EVENTS:
+                sweep = delta.open_world_sweep
+                if sweep is None or sweep.phase is not open_world.OpenWorldPhase.BREADTH:
+                    raise typer.BadParameter(
+                        f"v{evidence_schema_version} dry/new-gap sweeps require a fresh breadth open-world record",
+                    )
+            if LENSES_KEY in delta.protocol:
+                records = protocol_doc.get("open_world_records", [])
+                revision = integer_value(protocol_doc, "material_revision")
+                has_orientation = isinstance(records, list) and any(
+                    record.get("phase") == "orientation"
+                    and record.get("material_revision_binding") == revision
+                    for record in records
+                    if isinstance(record, dict)
+                )
+                if not has_orientation:
+                    raise typer.BadParameter(
+                        "lens decisions require a fresh orientation open-world record first",
+                    )
+        case 0:
+            pass
+        case unexpected if unexpected < 0 or unexpected > 2:
+            raise typer.BadParameter(f"unknown evidence schema version {unexpected}")
+        case unreachable:
+            assert_never(unreachable)
     probe_material_change = False
     if delta.probe_decision is not None:
         session_contracts.record_probe_decision(protocol_doc, delta.probe_decision)
@@ -895,22 +937,50 @@ def apply_delta(
             protocol_doc,
             delta.probe_attempt,
         )
-        if outcome is probe_policy.ProbeOutcome.NO_MATERIAL_DIVERGENCE and (
+        if outcome in {
+            probe_policy.ProbeOutcome.NO_MATERIAL_DIVERGENCE,
+            probe_policy.ProbeOutcome.INCONCLUSIVE,
+        } and (
             delta.set or delta.add
         ):
             raise typer.BadParameter(
-                "no-material-divergence cannot settle, reopen, or credit a ledger entry",
+                "no-material-divergence and inconclusive results cannot settle, reopen, or credit a ledger entry",
             )
         if outcome is probe_policy.ProbeOutcome.MATERIAL_DIVERGENCE:
+            if delta.set:
+                raise typer.BadParameter(
+                    "unverified material divergence may only reopen a probe-origin ledger gap",
+                )
+            if (
+                delta.protocol
+                or delta.append_history
+                or delta.event is not None
+                or delta.sweep_result is not None
+                or delta.checkpoint_confirm is not None
+                or delta.transcript is not None
+                or delta.build_contract_test is not None
+                or delta.open_world_sweep is not None
+                or delta.probe_decision is not None
+                or delta.questions is not None
+                or delta.pressure_parent is not None
+                or delta.asked_question_id is not None
+            ):
+                raise typer.BadParameter(
+                    "unverified material divergence may only reopen a probe-origin ledger gap",
+                )
             discovered = tuple(
                 entry
                 for entry in delta.add
                 if entry.get("origin") == "probe"
                 and entry.get("ambiguity_score", entry.get("ambiguity", 0)) in (1, 2, 3)
             )
-            if not discovered:
+            if (
+                not discovered
+                or len(discovered) != len(delta.add)
+                or any(entry.get("status", "draft") != "draft" for entry in discovered)
+            ):
                 raise typer.BadParameter(
-                    "material divergence requires an ambiguous origin 'probe' ledger entry",
+                    "material divergence may only reopen draft ambiguous origin 'probe' ledger entries",
                 )
             probe_material_change = True
         protocol_doc["contrarian_probes_run"] = (
@@ -979,11 +1049,17 @@ def apply_delta(
     ledger_payload = json.dumps({"entries": entries} if section else entries)
     try:
         parsed_entries = ambiguity_ledger.parse_entries(ledger_payload)
+        atom_contract.validate_entries(
+            parsed_entries,
+            evidence_schema_version=evidence_schema_version,
+        )
     except ValidationError as error:
         raise typer.BadParameter(
             f"delta produced an invalid ledger: "
             f"{ambiguity_ledger.summarize_validation_error(error)}",
         ) from error
+    except atom_contract.BehaviorAtomPolicyError as error:
+        raise typer.BadParameter(f"delta produced an invalid ledger: {error}") from error
     ledger_summary = ambiguity_ledger.summarize_ambiguity(
         parsed_entries,
         evidence_schema_version=evidence_schema_version,
@@ -1059,10 +1135,21 @@ def update_session(session_dir: Path, delta: Delta) -> UpdateResult:
                 cast(JsonObject, raw_protocol),
                 "contract_schema_version",
             )
-            if contract_schema_version == 1:
-                compiled_contract = build_contract.compile_handoff(
-                    handoff_path.read_text(encoding="utf-8"),
-                )
+            match contract_schema_version:
+                case 1 | 2:
+                    compiled_contract = build_contract.compile_handoff(
+                        handoff_path.read_text(encoding="utf-8"),
+                    )
+                    if compiled_contract.schema_version != contract_schema_version:
+                        raise typer.BadParameter(
+                            "compiled BuildContract schema version does not match protocol",
+                        )
+                case 0:
+                    pass
+                case unexpected if unexpected < 0 or unexpected > 2:
+                    raise typer.BadParameter(f"unknown BuildContract schema version {unexpected}")
+                case unreachable:
+                    assert_never(unreachable)
 
         (
             new_ledger,

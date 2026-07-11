@@ -10,7 +10,7 @@ Use this template when the user asks for a persistent or copy-ready spec. Copy t
 
 Self-sufficiency rule: an implementer with no access to the interview reads only this part. It must pass the fresh-implementer test before handoff (record `build_contract_tested` in `protocol.json`).
 Traceability rule: every settled weight-`2`-or-higher, non-deferred ledger entry MUST be cited by id somewhere in Part 1 — the Behavior Contract `Source` cell, or an inline `(source: <id>)` tag in Goal, Quality Bars, Decision Boundaries, Out Of Scope, or Implementation Constraints — or moved to Deferred Risks with owner/date. A cited REQ must reproduce the entry's FULL enumerated behavior (every error class / boundary / state), never a narrowed subset. `scripts/handoff_coverage.py <session-dir>` enforces the id-citation floor (fail-closed); the fresh-implementer test catches behavior narrowing.
-Compilation rule: keep this Markdown as the v1 authoring source. After fresh-review fold-back is complete, use the dedicated `build_contract_test` delta to compile canonical `.ultimateinterview/<slug>/build-contract.json`. The sidecar mirrors every Part-1 section with stable REQ/VER ids, source SHA-256, typed run policies, and a self-excluding digest; never hand-edit it.
+Compilation rule: keep this Markdown as the matching v1 or v2 authoring source. After fresh-review fold-back is complete, use the dedicated `build_contract_test` delta to compile canonical `.ultimateinterview/<slug>/build-contract.json`. The sidecar mirrors every Part-1 section with stable REQ/VER ids, source SHA-256, typed run policies, and a self-excluding digest; never hand-edit it.
 
 ## Goal
 
@@ -29,6 +29,24 @@ Settled behavior-changing requirements with their acceptance criteria. `Source` 
 | ID | Requirement | Acceptance criterion (EARS or Given/When/Then) | Source |
 | --- | --- | --- | --- |
 | REQ-001 |  | `When <trigger>, the <system> shall <response>.` | g15 |
+
+For a schema-v2 session, replace that table with these exact columns, in this order:
+
+| ID | Requirement | Acceptance criterion (EARS or Given/When/Then) | Source | Assurance class | Atom IDs |
+| --- | --- | --- | --- | --- | --- |
+| REQ-001 |  | `When <trigger>, the <system> shall <response>.` | g15 | standard/high | ATOM-001 |
+
+Every v2 ledger entry and requirement declares `standard` or `high`; weight 3/5
+entries are `high`, and every high requirement cites one or more atoms. A
+standard-only contract with no Atom IDs needs no catalog. When any requirement
+cites an atom, follow the requirement table with this exact catalog. Each cited
+atom must have the same assurance class as its requirement and exactly match
+the atom in `ledger.json`; prose similarity is not a substitute for the
+ID/digest binding.
+
+| Source | Assurance class | Atom ID | Condition | Polarity | Observable response | Boundary context | Temporal context | Coercion context |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| g15 | high | ATOM-001 |  | must/must-not |  |  |  |  |
 
 ```text
 Given <precondition>
@@ -119,6 +137,20 @@ For boundary-spanning work, include this matrix before the command table. Use do
 | --- | --- | --- | --- | --- | --- | --- |
 | VER-001 | REQ-001 | focused unit | test |  |  | safe-auto |
 | VER-002 | REQ-001 | real surface | real-surface |  |  | manual |
+
+## Consumer Verification
+
+For schema-v2 handoffs, keep this table in the exact header order. Add one
+`implementation-readiness` row for every `VER-*` verification and a `probe`
+row that matches the persisted `PROBE-*` decision's target and
+environment/scope. The concrete rows below are the minimal compilable shape;
+replace their IDs and scope only with contract-bound values.
+
+| Grant kind | Receipt kind | Required ID | Target | Environment / scope | Outcome | Expected exit | Run policy | Auto execute |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| implementation-readiness | verification | VER-001 | REQ-001 | local | success | 0 | safe-auto | yes |
+| implementation-readiness | verification | VER-002 | REQ-001 | local | success | 0 | manual | no |
+| probe | probe | PROBE-L0-template | REQ-001 | l0:local | success | 0 | manual | no |
 
 ## Deferred Risks
 

@@ -28,18 +28,23 @@ import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated, Final
+from typing import Annotated, Final, cast
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import typer
 from pydantic import ValidationError
 
-from scripts import ambiguity_ledger, atomic_write, protocol_state, session_status
+from scripts import assurance_schema, ambiguity_ledger, atomic_write, behavior_atoms, protocol_state, session_status
 
 STATE_DIR_NAME: Final[str] = ".ultimateinterview"
 MAX_SUFFIX: Final[int] = 20
 SLUG_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+type JsonValue = None | bool | int | float | str | list[JsonValue] | dict[str, JsonValue]
+
+
+class SessionInitError(ValueError):
+    pass
 
 
 def resolve_session_dir(root: Path, slug: str) -> tuple[Path, str]:
@@ -75,11 +80,17 @@ def resolve_session_dir(root: Path, slug: str) -> tuple[Path, str]:
     raise typer.BadParameter(f"too many suffixed sessions for slug {slug!r}")
 
 
-def initial_protocol(depth: protocol_state.Depth, budget: int | None) -> dict[str, object]:
-    return {
+def initial_protocol(
+    depth: protocol_state.Depth,
+    budget: int | None,
+    schema_version: int = 1,
+) -> dict[str, JsonValue]:
+    if schema_version not in {1, 2}:
+        raise SessionInitError("schema_version must be 1 or 2")
+    protocol: dict[str, JsonValue] = {
         "depth": depth.value,
-        "evidence_schema_version": 1,
-        "contract_schema_version": 1,
+        "evidence_schema_version": schema_version,
+        "contract_schema_version": schema_version,
         "material_revision": 0,
         "question_budget": budget or protocol_state.DEPTH_BUDGET_CAPS[depth],
         "interactions_used": 0,
@@ -108,6 +119,18 @@ def initial_protocol(depth: protocol_state.Depth, budget: int | None) -> dict[st
         "probe_decision": None,
         "probe_sequence": None,
     }
+    if schema_version == 2:
+        protocol["assurance_result"] = cast(
+            JsonValue,
+            assurance_schema.AssuranceResult(
+                abi=assurance_schema.AbiVerdict.FAIL,
+                trace=assurance_schema.TraceVerdict.FAIL,
+                property=assurance_schema.PropertyVerdict.NOT_RUN,
+                adequacy=assurance_schema.AdequacyVerdict.NOT_ASSESSED,
+                stakeholder=assurance_schema.StakeholderVerdict.NOT_SOUGHT,
+            ).model_dump(mode="json"),
+        )
+    return protocol
 
 
 def ensure_gitignore(root: Path) -> str:
@@ -125,7 +148,7 @@ def ensure_gitignore(root: Path) -> str:
     return f"created .gitignore with {STATE_DIR_NAME}"
 
 
-def json_text(payload: object) -> str:
+def json_text(payload: JsonValue) -> str:
     return json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
 
 
@@ -155,6 +178,10 @@ def main(
         str,
         typer.Option("--classification", help="One-line work classification for the transcript."),
     ] = "",
+    schema_version: Annotated[
+        int,
+        typer.Option("--schema-version", min=1, max=2, help="Session schema version."),
+    ] = 1,
 ) -> None:
     if not repo_root.is_dir():
         raise typer.BadParameter(f"repo root not found: {repo_root}")
@@ -163,12 +190,16 @@ def main(
         parsed = ambiguity_ledger.parse_entries(
             json.dumps({"entries": json.loads(raw_entries)}),
         )
+        behavior_atoms.validate_entries(
+            parsed,
+            evidence_schema_version=schema_version,
+        )
     except (ValueError, ValidationError) as error:
         raise typer.BadParameter(
             f"invalid --entries: {ambiguity_ledger.summarize_validation_error(error)}",
         ) from error
 
-    protocol_doc = initial_protocol(depth, budget)
+    protocol_doc = initial_protocol(depth, budget, schema_version)
     try:
         state = protocol_state.parse_state(json.dumps(protocol_doc))
     except ValidationError as error:
@@ -190,25 +221,38 @@ def main(
     if classification:
         header.append(f"Classification: {classification}")
     header.extend([f"Session initialized {stamp} (depth: {depth.value}).", ""])
-    canonical_entries = [entry.model_dump(mode="json") for entry in parsed]
+    canonical_entries = []
+    for entry in parsed:
+        payload = entry.model_dump(mode="json")
+        if not entry.evidence_records:
+            payload.pop("evidence_records")
+        if entry.assurance_class is None:
+            payload.pop("assurance_class")
+        if not entry.behavior_atoms:
+            payload.pop("behavior_atoms")
+        canonical_entries.append(payload)
     try:
-        atomic_write.commit_text_files(
-            {
-                staging_dir / "ledger.json": json_text({"entries": canonical_entries}),
-                staging_dir / "protocol.json": json_text(protocol_doc),
-                staging_dir / "questions.json": json_text({"questions": []}),
-                staging_dir / "transcript.md": "\n".join(header),
-            }
-        )
+        staged = {
+            staging_dir / "ledger.json": json_text(
+                cast(JsonValue, {"entries": canonical_entries}),
+            ),
+            staging_dir / "protocol.json": json_text(protocol_doc),
+            staging_dir / "questions.json": json_text({"questions": []}),
+            staging_dir / "transcript.md": "\n".join(header),
+        }
+        if schema_version == 2:
+            staged[staging_dir / "decisions.jsonl"] = ""
+        atomic_write.commit_text_files(staged)
         os.replace(staging_dir, session_dir)
         atomic_write.fsync_directory(session_dir.parent)
-    except BaseException:
+    except (OSError, ValueError):
         cleanup_dir = staging_dir if staging_dir.exists() else session_dir
         for name in (
             "ledger.json",
             "protocol.json",
             "questions.json",
             "transcript.md",
+            "decisions.jsonl",
             atomic_write.JOURNAL_NAME,
             atomic_write.LOCK_NAME,
         ):

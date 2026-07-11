@@ -123,6 +123,31 @@ Rates - recomputed from the Divergence Table by `postmortem_lint.py`; state both
 - handoff-fidelity: `fulfilled / (fulfilled + all escapes + divergent-implementation)` = N%
 - weighted (escape/divergent rows enter the denominator at their impact weight): N% / N%
 
+### Synthetic Calibration (optional and separate)
+
+Use this section only with an immutable local `synthetic-corpus.json`; it is
+not a real postmortem row source. See
+[`synthetic-calibration.md`](synthetic-calibration.md) for the canonical corpus
+digest and denominator definitions.
+
+```text
+Synthetic corpus: synthetic-corpus.json
+Corpus version: <reviewed version>
+Corpus digest: <reviewed SHA-256>
+Promotion: advisory-only; future owner-approved policy required.
+```
+
+| Metric | Value | Denominator |
+| --- | --- | --- |
+| false-accept |  | reviewed-negative-mechanisms:<N> |
+| false-alarm |  | reviewed-accept-mechanisms:<N> |
+| unique-catch |  | reviewed-negatives:<N> |
+| cost-milliseconds |  | cases:<N> |
+| cost-cases |  | records:<N> |
+
+Cost is advisory only. Do not insert synthetic `CAL-NNN` records into
+Divergence Table or Escaped Requirements, and do not auto-promote a label.
+
 ## 2. Lessons File Skeleton
 
 Create as `docs/ultimateinterview-lessons.md` in the repo root (repo-specific signals) or `~/.agents/skills/ultimateinterview/lessons.md` (repo-agnostic signals, compounds across repos) when missing. Append rows; dedupe against both files first.

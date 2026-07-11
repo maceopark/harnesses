@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import assert_never
 
 import pytest
 from pydantic import ValidationError
@@ -84,6 +85,13 @@ def result(
     outcome: str = "no-material-divergence",
 ) -> probe_policy.ProbeResult:
     material = outcome == "material-divergence"
+    match selected.selected_level:
+        case probe_policy.ProbeLevel.L2 | probe_policy.ProbeLevel.L3:
+            evidence_credit = 0
+        case probe_policy.ProbeLevel.L0 | probe_policy.ProbeLevel.L1:
+            evidence_credit = int(material)
+        case unreachable:
+            assert_never(unreachable)
     return probe_policy.ProbeResult.model_validate(
         {
             "result_id": f"RESULT-{selected.probe_id}",
@@ -95,7 +103,7 @@ def result(
             "producer_lineages": lineages(selected.selected_level.value),
             "artifact_refs": [f"artifacts/{selected.probe_id}.json"],
             "outcome": outcome,
-            "evidence_credit": 1 if material else 0,
+            "evidence_credit": evidence_credit,
             "completeness_credit": 0,
             "reopen_required": material,
             "gap_origin": "origin:probe" if material else None,

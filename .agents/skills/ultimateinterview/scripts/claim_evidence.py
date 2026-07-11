@@ -22,9 +22,11 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import Annotated, ClassVar, Final, Never, assert_never
+from typing import Annotated, Final, Never, assert_never
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, StringConstraints, field_validator, model_validator
+from pydantic import Field, StrictInt, StringConstraints, field_validator, model_validator
+
+from scripts import evidence_identity
 
 type NonBlank = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
@@ -106,15 +108,11 @@ class EvidenceContractError(ValueError):
         return self.detail
 
 
-class _StrictModel(BaseModel):
-    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid", strict=True)
-
-
 def _reject(detail: str) -> Never:
     raise ValueError(detail)
 
 
-class Derivation(_StrictModel):
+class Derivation(evidence_identity.StrictModel):
     derived_from: tuple[NonBlank, ...] = Field(min_length=1)
     method: NonBlank
 
@@ -126,7 +124,7 @@ class Derivation(_StrictModel):
         return values
 
 
-class ClaimEvidence(_StrictModel):
+class ClaimEvidence(evidence_identity.StrictModel):
     id: NonBlank
     channel: EvidenceChannel
     claim_kind: ClaimKind
@@ -141,6 +139,7 @@ class ClaimEvidence(_StrictModel):
     counterevidence: tuple[NonBlank, ...] = ()
     epistemic_authority: EpistemicAuthority
     decision_authority: DecisionAuthority = DecisionAuthority.NONE
+    identity_assertion: evidence_identity.ClaimantAssertion | None = None
 
     @field_validator("counterevidence")
     @classmethod
@@ -149,6 +148,8 @@ class ClaimEvidence(_StrictModel):
 
     @model_validator(mode="after")
     def validate_provenance(self) -> ClaimEvidence:
+        if self.channel is EvidenceChannel.FROM_CODE and self.source_actor is SourceActor.USER:
+            _reject("from-code evidence cannot name user as its source actor")
         if self.channel is EvidenceChannel.ASSUMPTION:
             valid_hypothesis = (
                 self.claim_kind is ClaimKind.CAUSAL_HYPOTHESIS
@@ -183,13 +184,20 @@ class ClaimEvidence(_StrictModel):
         return self
 
 
-class ClaimEvidenceSet(_StrictModel):
-    schema_version: int = Field(default=1, ge=1, le=1)
+class ClaimEvidenceSet(evidence_identity.StrictModel):
+    schema_version: StrictInt = Field(default=1, ge=1)
     evidence_records: tuple[ClaimEvidence, ...] = ()
     evidence_channels: tuple[EvidenceChannel, ...] | None = None
 
     @model_validator(mode="after")
     def validate_collection(self) -> ClaimEvidenceSet:
+        match self.schema_version:
+            case 1 | 2:
+                pass
+            case unexpected if unexpected not in (1, 2):
+                _reject(f"unknown evidence schema version {unexpected}")
+            case unreachable:
+                assert_never(unreachable)
         by_id = {record.id: record for record in self.evidence_records}
         if len(by_id) != len(self.evidence_records):
             _reject("duplicate evidence id")
@@ -241,24 +249,28 @@ class ClaimEvidenceSet(_StrictModel):
         return tuple(sorted({record.channel for record in self.evidence_records}, key=str))
 
 
-class EvidenceDelta(_StrictModel):
-    schema_version: StrictInt = Field(ge=0, le=1)
+class EvidenceDelta(evidence_identity.StrictModel):
+    schema_version: StrictInt = Field(ge=0)
     add_channels: tuple[EvidenceChannel, ...] = ()
     add_evidence_records: tuple[ClaimEvidence, ...] = ()
 
     @model_validator(mode="after")
     def enforce_versioned_surface(self) -> EvidenceDelta:
-        if self.schema_version == 0:
-            if self.add_evidence_records:
-                _reject("add_evidence_records requires evidence schema v1")
-        elif self.add_channels:
-            _reject("add_channels is legacy-only; v1 uses add_evidence_records")
+        match self.schema_version:
+            case 0:
+                if self.add_evidence_records:
+                    _reject("add_evidence_records requires evidence schema v1 or v2")
+            case 1 | 2:
+                if self.add_channels:
+                    _reject("add_channels is legacy-only; v1/v2 use add_evidence_records")
+            case unexpected if unexpected < 0 or unexpected > 2:
+                _reject(f"unknown evidence schema version {unexpected}")
+            case unreachable:
+                assert_never(unreachable)
         return self
 
 
-def compatibility_independence_groups(
-    channels: Iterable[str | EvidenceChannel],
-) -> frozenset[str]:
+def compatibility_independence_groups(channels: Iterable[str | EvidenceChannel]) -> frozenset[str]:
     normalized: set[EvidenceChannel] = set()
     for channel in channels:
         key = str(channel).strip().lower()
@@ -296,6 +308,8 @@ def accepts_explicit_single_source(records: Iterable[ClaimEvidence]) -> bool:
         and record.independence_group in eligible_independence_groups((record,))
         for record in materialized
     )
+
+
 
 
 def main() -> None:

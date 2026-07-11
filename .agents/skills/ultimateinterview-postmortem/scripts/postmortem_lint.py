@@ -77,6 +77,9 @@ REQUIRED_SECTIONS: Final[tuple[str, ...]] = (
     "lessons fire-tracking",
     "calibration summary",
 )
+CALIBRATION_EVIDENCE_SECTIONS: Final[frozenset[str]] = frozenset(
+    {"divergence table", "escaped requirements"}
+)
 WONDER_DISPOSITIONS: Final[frozenset[str]] = frozenset(
     {"new", "strengthened", "deduped", "not-routing/synthesis-loss"}
 )
@@ -116,6 +119,13 @@ def split_sections(text: str) -> list[tuple[str, str]]:
 def section_body(sections: list[tuple[str, str]], key: str) -> str | None:
     for heading, body in sections:
         if key in heading:
+            return body
+    return None
+
+
+def exact_section_body(sections: list[tuple[str, str]], key: str) -> str | None:
+    for heading, body in sections:
+        if heading == key:
             return body
     return None
 
@@ -800,20 +810,31 @@ def main(
     bundle_stores = load_bundle_lessons(bundle_path)
 
     violations: list[str] = []
+    synthetic_summary: str | None = None
     for key in REQUIRED_SECTIONS:
         if legacy_v3 and key in {"wonder generalization", "reward-hacking review"}:
             continue
-        if section_body(sections, key) is None:
-            violations.append(f"required section missing: a heading containing {key!r}")
+        body = (
+            exact_section_body(sections, key)
+            if key in CALIBRATION_EVIDENCE_SECTIONS
+            else section_body(sections, key)
+        )
+        if body is None:
+            qualifier = "exact canonical heading" if key in CALIBRATION_EVIDENCE_SECTIONS else "heading containing"
+            violations.append(f"required section missing: {qualifier} {key!r}")
 
-    divergence_body = section_body(sections, "divergence table")
+    divergence_body = exact_section_body(sections, "divergence table")
     if report_schema == 2:
         from postmortem_v2_lint import evaluate as evaluate_v2
+        from postmortem_v2_calibration import evaluate_synthetic_calibration
 
         v2 = evaluate_v2(report, part1, bundle or (session_dir / BUNDLE_FILENAME))
         counts = v2.counts
         synthesis = v2.synthesis_count
         violations.extend(v2.violations)
+        synthetic = evaluate_synthetic_calibration(session_dir, report)
+        violations.extend(synthetic.violations)
+        synthetic_summary = synthetic.summary
     else:
         counts = dict.fromkeys(DIVERGENCE_CLASSES, 0)
         if divergence_body is not None:
@@ -868,6 +889,8 @@ def main(
             "postmortem_lint: ok - sections complete, divergence and reward-hacking "
             "rows well-formed, calibration and verification provenance match"
         )
+        if synthetic_summary is not None:
+            typer.echo(synthetic_summary)
 
 
 if __name__ == "__main__":

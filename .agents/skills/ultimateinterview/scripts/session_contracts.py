@@ -8,13 +8,23 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable
-from typing import TypeAlias
+from typing import TypeAlias, assert_never
 
 import typer
 
 from scripts import claim_evidence, open_world, probe_policy
 
 JsonObject: TypeAlias = dict[str, object]
+
+
+def validate_evidence_schema_version(schema_version: int) -> None:
+    match schema_version:
+        case 0 | 1 | 2:
+            return
+        case unexpected if unexpected < 0 or unexpected > 2:
+            raise typer.BadParameter(f"unknown evidence schema version {unexpected}")
+        case unreachable:
+            assert_never(unreachable)
 
 
 def evidence_records(entry: JsonObject) -> tuple[claim_evidence.ClaimEvidence, ...]:
@@ -34,7 +44,8 @@ def merge_evidence_records(
     merged = (*evidence_records(entry), *additions)
     evidence_set = claim_evidence.ClaimEvidenceSet(evidence_records=merged)
     entry["evidence_records"] = [
-        record.model_dump(mode="json") for record in evidence_set.evidence_records
+        {key: value for key, value in record.model_dump(mode="json").items() if key != "identity_assertion" or value is not None}
+        for record in evidence_set.evidence_records
     ]
     entry.pop("channels", None)
     entry["evidence_channels"] = [
@@ -60,7 +71,8 @@ def replace_evidence_records(
     )
     entry.pop("channels", None)
     entry["evidence_records"] = [
-        record.model_dump(mode="json") for record in evidence_set.evidence_records
+        {key: value for key, value in record.model_dump(mode="json").items() if key != "identity_assertion" or value is not None}
+        for record in evidence_set.evidence_records
     ]
     entry["evidence_channels"] = [
         channel.value for channel in evidence_set.projected_channels
@@ -95,6 +107,8 @@ def material_signature(entry: JsonObject) -> str:
             "impact_weight",
             "weight",
             "evidence_records",
+            "assurance_class",
+            "behavior_atoms",
         )
     }
     return json.dumps(fields, ensure_ascii=False, sort_keys=True)

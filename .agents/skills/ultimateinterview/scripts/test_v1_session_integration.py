@@ -14,8 +14,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pytest
 import typer
+from typer.testing import CliRunner
 
-from scripts import protocol_state, session_init, session_update
+from scripts import protocol_state, session_init, session_status, session_update
 
 type JsonValue = None | bool | int | float | str | list[JsonValue] | dict[str, JsonValue]
 
@@ -67,6 +68,58 @@ def create_session(tmp_path: Path) -> Path:
     (session_dir / "questions.json").write_text('{"questions": []}')
     (session_dir / "transcript.md").write_text("# Transcript\n")
     return session_dir
+
+
+@pytest.mark.parametrize(
+    ("slug", "evidence_channels"),
+    (("v2-init-with-channel", ("from-user",)), ("v2-init-without-channel", ())),
+)
+def test_v2_session_init_is_immediately_status_readable(
+    tmp_path: Path,
+    slug: str,
+    evidence_channels: tuple[str, ...],
+) -> None:
+    # Given
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    entry = {
+        "id": "REQ-001",
+        "requirement": "A bounded behavior",
+        "origin": "orientation",
+        "status": "draft",
+        "ambiguity_score": 3,
+        "impact_weight": 5,
+        "assurance_class": "high",
+        "behavior_atoms": [
+            {
+                "id": "ATOM-001",
+                "condition": "The bounded behavior is invoked.",
+                "polarity": "must",
+                "observable_response": "The bounded behavior is observable.",
+                "boundary_context": None,
+                "temporal_context": None,
+                "coercion_context": None,
+            },
+        ],
+    }
+    if evidence_channels:
+        entry["evidence_channels"] = list(evidence_channels)
+    init_app = typer.Typer()
+    init_app.command()(session_init.main)
+    status_app = typer.Typer()
+    status_app.command()(session_status.main)
+
+    # When
+    init_result = CliRunner().invoke(
+        init_app,
+        [str(repo), slug, "--entries", json.dumps([entry]), "--schema-version", "2"],
+    )
+    session = repo / ".ultimateinterview" / slug
+    status_result = CliRunner().invoke(status_app, ["--format", "json", str(session)])
+
+    # Then
+    assert init_result.exit_code == 0, init_result.output
+    assert status_result.exit_code == 0, status_result.output
 
 
 def test_v1_add_evidence_records_projects_channels_and_invalidates_freshness(

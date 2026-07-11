@@ -73,7 +73,7 @@ def _sections(text: str) -> dict[str, str]:
 
 
 def _section(sections: dict[str, str], needle: str) -> str:
-    return next((body for heading, body in sections.items() if needle in heading), "")
+    return sections.get(needle, "")
 
 
 def _cells(line: str) -> list[str]:

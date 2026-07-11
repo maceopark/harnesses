@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import errno
 import json
 import os
+import stat
 import tempfile
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
@@ -19,6 +21,14 @@ Replace = Callable[[str | Path, str | Path], None]
 Stage = Callable[[Path, str], Path]
 JOURNAL_NAME: Final[str] = ".session-update-journal.json"
 LOCK_NAME: Final[str] = ".session-update.lock"
+
+
+class SessionLockError(ValueError):
+    pass
+
+
+class PendingRecoveryError(SessionLockError):
+    pass
 
 
 def staged_file(path: Path, text: str) -> Path:
@@ -45,14 +55,66 @@ def fsync_directory(directory: Path) -> None:
 
 
 @contextmanager
-def session_lock(directory: Path) -> Iterator[None]:
-    directory.mkdir(parents=True, exist_ok=True)
-    with (directory / LOCK_NAME).open("a+", encoding="utf-8") as handle:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+def session_lock(directory: Path, *, write: bool = True) -> Iterator[None]:
+    if write:
+        directory.mkdir(parents=True, exist_ok=True)
+    try:
+        no_follow = os.O_NOFOLLOW
+        directory_flag = os.O_DIRECTORY
+    except AttributeError as error:
+        raise SessionLockError(
+            "session locking requires POSIX no-follow directory opens",
+        ) from error
+    try:
+        directory_fd = os.open(
+            directory,
+            os.O_RDONLY | directory_flag | no_follow,
+        )
+    except OSError as error:
+        if error.errno in {errno.ELOOP, errno.ENOTDIR}:
+            raise SessionLockError(
+                f"session directory must be a regular directory: {directory}",
+            ) from None
+        raise
+    try:
+        fcntl.flock(
+            directory_fd,
+            fcntl.LOCK_EX if write else fcntl.LOCK_SH,
+        )
         try:
-            yield
+            lock_fd = os.open(
+                LOCK_NAME,
+                (os.O_RDWR if write else os.O_RDONLY)
+                | (os.O_CREAT if write else 0)
+                | no_follow,
+                0o600,
+                dir_fd=directory_fd,
+            )
+        except OSError as error:
+            if error.errno == errno.ENOENT and not write:
+                yield
+                return
+            if error.errno in {errno.EISDIR, errno.ELOOP, errno.ENOTDIR}:
+                raise SessionLockError(
+                    f"session lock must be a regular non-symlink file: {directory / LOCK_NAME}",
+                ) from None
+            raise
+        try:
+            lock_stat = os.fstat(lock_fd)
+            if not stat.S_ISREG(lock_stat.st_mode) or lock_stat.st_nlink != 1:
+                raise SessionLockError(
+                    f"session lock must be one regular file: {directory / LOCK_NAME}",
+                )
+            fcntl.flock(lock_fd, fcntl.LOCK_EX if write else fcntl.LOCK_SH)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock_fd, fcntl.LOCK_UN)
         finally:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            os.close(lock_fd)
+    finally:
+        fcntl.flock(directory_fd, fcntl.LOCK_UN)
+        os.close(directory_fd)
 
 
 def _target_record(path: Path, content: str | None, root: Path) -> dict[str, object]:
@@ -116,6 +178,21 @@ def _recover_text_files(root: Path) -> None:
 def recover_text_files(root: Path) -> None:
     with session_lock(root):
         _recover_text_files(root)
+
+
+@contextmanager
+def session_read_transaction(root: Path) -> Iterator[None]:
+    journal = root / JOURNAL_NAME
+    if journal.exists() or journal.is_symlink():
+        raise PendingRecoveryError(
+            f"session has pending recovery journal: {journal}; writer recovery is required before read-only access",
+        )
+    with session_lock(root, write=False):
+        if journal.exists() or journal.is_symlink():
+            raise PendingRecoveryError(
+                f"session has pending recovery journal: {journal}; writer recovery is required before read-only access",
+            )
+        yield
 
 
 @contextmanager

@@ -24,10 +24,11 @@ import json
 import re
 import sys
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 from collections.abc import Callable
-from typing import Annotated, ClassVar, Final
+from typing import Annotated, ClassVar, Final, assert_never
 
 import typer
 from pydantic import (
@@ -45,7 +46,7 @@ from pydantic import (
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts import claim_evidence
+from scripts import behavior_atoms as atom_contract, claim_evidence, evidence_identity
 
 
 DEFERRED_STATUSES: Final[frozenset[str]] = frozenset(
@@ -203,6 +204,8 @@ class LedgerEntry(BaseModel):
         validation_alias=AliasChoices("evidence_channels", "channels"),
     )
     evidence_records: tuple[claim_evidence.ClaimEvidence, ...] = ()
+    assurance_class: atom_contract.AssuranceClass | None = None
+    behavior_atoms: tuple[atom_contract.BehaviorAtom, ...] = ()
     track: LedgerTrack | None = None
 
     @model_validator(mode="before")
@@ -263,6 +266,25 @@ class LedgerEntry(BaseModel):
             message = "impact_weight must be one of 1, 2, 3, or 5"
             raise ValueError(message)
         return value
+
+    @field_validator("assurance_class", mode="before")
+    @classmethod
+    def parse_assurance_class(
+        cls,
+        value: atom_contract.AssuranceClass | str | None,
+    ) -> atom_contract.AssuranceClass | None:
+        match value:
+            case None:
+                return None
+            case atom_contract.AssuranceClass() as assurance_class:
+                return assurance_class
+            case str() as raw_class:
+                try:
+                    return atom_contract.AssuranceClass(raw_class)
+                except ValueError as error:
+                    raise ValueError("unknown assurance class") from error
+            case unreachable:
+                assert_never(unreachable)
 
     @field_validator("status")
     @classmethod
@@ -331,13 +353,55 @@ class LedgerEntry(BaseModel):
 
     @property
     def distinct_evidence_groups(self) -> frozenset[str]:
+        if any(record.identity_assertion is not None for record in self.evidence_records):
+            return self.settlement_evidence_groups()
         return claim_evidence.eligible_independence_groups(self.evidence_records)
+
+    def settlement_evidence_groups(
+        self,
+        *,
+        adapter: evidence_identity.VerifierAdapter | None = None,
+        now: datetime | None = None,
+    ) -> frozenset[str]:
+        legacy_records = tuple(
+            record for record in self.evidence_records if record.identity_assertion is None
+        )
+        groups = claim_evidence.eligible_independence_groups(legacy_records)
+        if adapter is None:
+            return groups
+        if now is None:
+            raise ValueError("verifier settlement groups require an injected policy clock")
+        return groups | self.verifier_credit(adapter=adapter, now=now).roots
+
+    def verifier_credit(
+        self,
+        *,
+        adapter: evidence_identity.VerifierAdapter,
+        now: datetime,
+    ) -> evidence_identity.VerifierCredit:
+        return evidence_identity.verifier_credit(
+            self.evidence_records,
+            adapter=adapter,
+            now=now,
+            impact_weight=self.impact_weight,
+        )
 
     @property
     def is_single_source_accepted(self) -> bool:
+        return self.is_single_source_accepted_for(evidence_schema_version=1)
+
+    def is_single_source_accepted_for(self, *, evidence_schema_version: int) -> bool:
         if self.status.strip().lower() not in SINGLE_SOURCE_ACCEPTED_STATUSES:
             return False
         if self.evidence_records:
+            if evidence_schema_version == 2:
+                legacy_records = tuple(
+                    record for record in self.evidence_records if record.identity_assertion is None
+                )
+                return (
+                    len(self.settlement_evidence_groups()) == 1
+                    and claim_evidence.accepts_explicit_single_source(legacy_records)
+                )
             return claim_evidence.accepts_explicit_single_source(self.evidence_records)
         return True
 
@@ -432,8 +496,14 @@ def parse_entries(raw_json: str) -> tuple[LedgerEntry, ...]:
     payload: LedgerPayload = LEDGER_PAYLOAD_ADAPTER.validate_json(raw_json)
     match payload:
         case LedgerDocument() as document:
+            sections = {
+                "requirements": document.requirements,
+                "gaps": document.gaps,
+                "entries": document.entries,
+                "ledger": document.ledger,
+            }
             populated = [
-                name for name in SECTION_NAMES if len(getattr(document, name)) > 0
+                name for name in SECTION_NAMES if len(sections[name]) > 0
             ]
             if len(populated) > 1:
                 message = (
@@ -494,12 +564,54 @@ def display_percent(value: float) -> str:
     return f"{value:.0f}%"
 
 
+def uses_structured_evidence(schema_version: int) -> bool:
+    match schema_version:
+        case 0:
+            return False
+        case 1 | 2:
+            return True
+        case unexpected:
+            raise typer.BadParameter(f"unknown evidence schema version {unexpected}")
+
+
+def evidence_groups_for_gate(entry: LedgerEntry, *, evidence_schema_version: int) -> frozenset[str]:
+    match evidence_schema_version:
+        case 0:
+            return entry.distinct_evidence_channels
+        case 1:
+            return entry.distinct_evidence_groups
+        case 2:
+            return entry.settlement_evidence_groups()
+        case unexpected:
+            raise typer.BadParameter(f"unknown evidence schema version {unexpected}")
+
+
+def is_untriangulated_critical_for(entry: LedgerEntry, *, evidence_schema_version: int) -> bool:
+    if entry.impact_weight != CRITICAL_WEIGHT or entry.ambiguity_score > 1:
+        return False
+    source_count = len(evidence_groups_for_gate(entry, evidence_schema_version=evidence_schema_version))
+    if entry.is_single_source_accepted_for(evidence_schema_version=evidence_schema_version):
+        return source_count < 1
+    return source_count < 2
+
+
+def is_thin_critical_for(entry: LedgerEntry, *, evidence_schema_version: int) -> bool:
+    return (
+        entry.impact_weight == CRITICAL_WEIGHT
+        and entry.ambiguity_score == 1
+        and len(evidence_groups_for_gate(entry, evidence_schema_version=evidence_schema_version)) < 2
+        and not entry.is_single_source_accepted_for(evidence_schema_version=evidence_schema_version)
+    )
+
+
 def summarize_ambiguity(
     entries: tuple[LedgerEntry, ...],
     *,
     top: int = 3,
     evidence_schema_version: int = 0,
 ) -> AmbiguitySummary:
+    if evidence_schema_version == 2:
+        atom_contract.validate_entries(entries, evidence_schema_version=2)
     active_entries = tuple(entry for entry in entries if not entry.is_deferred)
     deferred_count = len(entries) - len(active_entries)
     residual = sum(entry.contribution for entry in active_entries)
@@ -509,13 +621,15 @@ def summarize_ambiguity(
     score_3 = tuple(entry.id for entry in active_entries if entry.ambiguity_score == 3)
     score_2 = tuple(entry.id for entry in active_entries if entry.ambiguity_score == 2)
     untriangulated = tuple(
-        entry.id for entry in active_entries if entry.is_untriangulated_critical
+        entry.id
+        for entry in active_entries
+        if is_untriangulated_critical_for(entry, evidence_schema_version=evidence_schema_version)
     )
     contested = tuple(entry.id for entry in active_entries if entry.is_contested)
     warnings = tuple(
-        triangulation_warning_line(entry)
+        triangulation_warning_line(entry, evidence_schema_version=evidence_schema_version)
         for entry in active_entries
-        if entry.is_thin_critical
+        if is_thin_critical_for(entry, evidence_schema_version=evidence_schema_version)
     )
     blockers = list(
         build_blockers(
@@ -525,17 +639,27 @@ def summarize_ambiguity(
             evidence_schema_version=evidence_schema_version,
         ),
     )
-    if evidence_schema_version == 1:
+    if uses_structured_evidence(evidence_schema_version):
         unevidenced = tuple(
             entry.id
             for entry in active_entries
-            if entry.ambiguity_score <= 1 and not entry.distinct_evidence_groups
+            if entry.ambiguity_score <= 1
+            and not evidence_groups_for_gate(entry, evidence_schema_version=evidence_schema_version)
         )
         if unevidenced:
             blockers.append(
-                "v1 settled entries without eligible structured evidence: "
+                f"v{evidence_schema_version} settled entries without eligible structured evidence: "
                 f"{', '.join(unevidenced)}",
             )
+    if evidence_schema_version == 2:
+        untrusted = tuple(
+            entry.id
+            for entry in active_entries
+            if any(record.identity_assertion is not None for record in entry.evidence_records)
+            and not entry.settlement_evidence_groups()
+        )
+        if untrusted:
+            blockers.append(f"v2 untrusted/collapsed provenance: {', '.join(untrusted)}")
     top_drivers = tuple(
         sorted(
             (entry for entry in active_entries if entry.ambiguity_score > 0),
@@ -574,21 +698,22 @@ def gate_failures(
     blocked = [entry.id for entry in entries if entry.status.lower() == "blocked" and not entry.is_deferred]
     if blocked:
         failures.append(f"blocked entries unresolved: {', '.join(blocked)}")
+    structured_evidence = uses_structured_evidence(evidence_schema_version)
     unevidenced = [
         entry.id
         for entry in entries
         if not entry.is_deferred
         and entry.ambiguity_score <= 1
         and (
-            not entry.distinct_evidence_groups
-            if evidence_schema_version == 1
+            not evidence_groups_for_gate(entry, evidence_schema_version=evidence_schema_version)
+            if structured_evidence
             else not entry.evidence_channels
         )
     ]
     if unevidenced:
         label = (
-            "v1 settled entries without eligible structured evidence"
-            if evidence_schema_version == 1
+            f"v{evidence_schema_version} settled entries without eligible structured evidence"
+            if structured_evidence
             else "settled entries without a recorded channel"
         )
         failures.append(f"{label}: {', '.join(unevidenced)}")
@@ -607,12 +732,12 @@ def gate_failures(
     return tuple(failures)
 
 
-def triangulation_warning_line(entry: LedgerEntry) -> str:
-    sources = sorted(
-        entry.distinct_evidence_groups
-        if entry.evidence_records
-        else entry.distinct_evidence_channels
-    )
+def triangulation_warning_line(
+    entry: LedgerEntry,
+    *,
+    evidence_schema_version: int = 0,
+) -> str:
+    sources = sorted(evidence_groups_for_gate(entry, evidence_schema_version=evidence_schema_version))
     source = sources[0] if sources else (
         "no eligible evidence group"
         if entry.evidence_records
@@ -637,9 +762,10 @@ def build_blockers(
     if len(score_2) > 0:
         blockers.append(f"active score 2 gaps remain: {', '.join(score_2)}")
     if len(untriangulated) > 0:
+        structured_evidence = uses_structured_evidence(evidence_schema_version)
         requirement = (
             "need two eligible causal groups or an owner/delegated single-source override"
-            if evidence_schema_version == 1
+            if structured_evidence
             else "need two distinct evidence channels or explicit accepted status"
         )
         blockers.append(

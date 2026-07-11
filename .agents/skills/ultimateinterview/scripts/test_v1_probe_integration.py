@@ -127,6 +127,142 @@ def test_material_probe_divergence_reopens_and_resets_protocol(tmp_path: Path) -
     assert not result.protocol.build_contract_tested
 
 
+def test_unverified_material_divergence_may_only_reopen_a_gap(tmp_path: Path) -> None:
+    # Given
+    session_dir = create_session(tmp_path)
+    session_update.update_session(
+        session_dir,
+        session_update.parse_delta(json.dumps({"probe_decision": probe_decision()})),
+    )
+    before = (session_dir / "protocol.json").read_bytes()
+    delta = session_update.parse_delta(
+        json.dumps(
+            {
+                "probe_attempt": probe_attempt("material-divergence"),
+                "set": [{"id": "R1", "status": "accepted"}],
+                "add": [
+                    {
+                        "id": "P1",
+                        "requirement": "Probe-discovered behavior needs a decision",
+                        "origin": "probe",
+                        "status": "draft",
+                        "ambiguity_score": 3,
+                        "impact_weight": 5,
+                        "evidence_records": [],
+                    },
+                ],
+            },
+        ),
+    )
+
+    # When / Then
+    with pytest.raises(typer.BadParameter, match="may only reopen"):
+        session_update.update_session(session_dir, delta)
+    assert (session_dir / "protocol.json").read_bytes() == before
+
+
+def test_unverified_material_divergence_cannot_add_a_settled_gap(tmp_path: Path) -> None:
+    # Given
+    session_dir = create_session(tmp_path)
+    session_update.update_session(
+        session_dir,
+        session_update.parse_delta(json.dumps({"probe_decision": probe_decision()})),
+    )
+    delta = session_update.parse_delta(
+        json.dumps(
+            {
+                "probe_attempt": probe_attempt("material-divergence"),
+                "add": [
+                    {
+                        "id": "P1",
+                        "requirement": "Probe-discovered behavior needs a decision",
+                        "origin": "probe",
+                        "status": "accepted",
+                        "ambiguity_score": 3,
+                        "impact_weight": 5,
+                        "evidence_records": [],
+                    },
+                ],
+            },
+        ),
+    )
+
+    # When / Then
+    with pytest.raises(typer.BadParameter, match="may only reopen"):
+        session_update.update_session(session_dir, delta)
+
+
+def test_unverified_material_divergence_cannot_apply_protocol_updates(tmp_path: Path) -> None:
+    # Given
+    session_dir = create_session(tmp_path)
+    session_update.update_session(
+        session_dir,
+        session_update.parse_delta(json.dumps({"probe_decision": probe_decision()})),
+    )
+    before = (session_dir / "protocol.json").read_bytes()
+    delta = session_update.parse_delta(
+        json.dumps(
+            {
+                "probe_attempt": probe_attempt("material-divergence"),
+                "add": [
+                    {
+                        "id": "P1",
+                        "requirement": "Probe-discovered behavior needs a decision",
+                        "origin": "probe",
+                        "status": "draft",
+                        "ambiguity_score": 3,
+                        "impact_weight": 5,
+                        "evidence_records": [],
+                    },
+                ],
+                "protocol": {"brain_dump_waiver": "forged alongside probe divergence"},
+            },
+        ),
+    )
+
+    # When / Then
+    with pytest.raises(typer.BadParameter, match="may only reopen"):
+        session_update.update_session(session_dir, delta)
+    assert (session_dir / "protocol.json").read_bytes() == before
+
+
+def test_unverified_material_divergence_cannot_replace_probe_decision(tmp_path: Path) -> None:
+    # Given
+    session_dir = create_session(tmp_path)
+    session_update.update_session(
+        session_dir,
+        session_update.parse_delta(json.dumps({"probe_decision": probe_decision()})),
+    )
+    before = (session_dir / "protocol.json").read_bytes()
+    replacement = probe_decision() | {"predicate": "Replacement predicate."}
+    attempt = probe_attempt("material-divergence")
+    attempt["decision"] = replacement
+    delta = session_update.parse_delta(
+        json.dumps(
+            {
+                "probe_decision": replacement,
+                "probe_attempt": attempt,
+                "add": [
+                    {
+                        "id": "P1",
+                        "requirement": "Probe-discovered behavior needs a decision",
+                        "origin": "probe",
+                        "status": "draft",
+                        "ambiguity_score": 3,
+                        "impact_weight": 5,
+                        "evidence_records": [],
+                    },
+                ],
+            },
+        ),
+    )
+
+    # When / Then
+    with pytest.raises(typer.BadParameter, match="may only reopen"):
+        session_update.update_session(session_dir, delta)
+    assert (session_dir / "protocol.json").read_bytes() == before
+
+
 def test_unauthorized_l3_decision_fails_before_session_writes(tmp_path: Path) -> None:
     # Given
     session_dir = create_session(tmp_path)

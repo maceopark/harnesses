@@ -14,9 +14,8 @@ import json
 import re
 import sys
 from collections.abc import Mapping
-from importlib import import_module
 from pathlib import Path
-from typing import Annotated, Final, Literal, Protocol, runtime_checkable
+from typing import Annotated, Final, Literal
 
 import typer
 
@@ -25,12 +24,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from scripts import (  # noqa: E402
     ambiguity_ledger,
     atomic_write,
+    behavior_atoms,
     handoff_coverage,
+    implementation_gate,  # pyright: ignore[reportImportCycles] -- gate recompiles contracts only after this module loads.
     protocol_state,
     verification_lint,
 )
 from scripts.build_contract_schema import (  # noqa: E402
     BuildContract,
+    BehaviorAtomBinding,
+    ConsumerGrantKind,
+    ConsumerOutcome,
+    ConsumerReceiptKind,
+    CONSUMER_VERIFICATION_HEADERS,
+    ConsumerVerification,
     ContractBody,
     DecisionBoundary,
     DeferredRisk,
@@ -46,6 +53,7 @@ from scripts.build_contract_schema import (  # noqa: E402
     Verification,
     VerificationKind,
     body_digest,
+    canonical_body_payload,
 )
 
 DECISION_LOG: Final[re.Pattern[str]] = re.compile(
@@ -68,34 +76,6 @@ class BuildContractCompileError(Exception):
 
     def __str__(self) -> str:
         return f"cannot compile {self.section}: {self.detail}"
-
-
-class _GateResult(Protocol):
-    @property
-    def failures(self) -> tuple[str, ...]: ...
-
-
-@runtime_checkable
-class _ImplementationGate(Protocol):
-    REQUIRED_SECTIONS: tuple[str, ...]
-
-    def complete_table_records(self, body: str, required_headers: frozenset[str]) -> tuple[Mapping[str, str], ...]: ...
-
-    def section_body(self, part1: str, name: str) -> str: ...
-    def has_reasoned_line(self, body: str, prefix: str) -> bool: ...
-    def contains_unresolved_placeholder(self, part1: str) -> bool: ...
-    def contract_digest(self, handoff_text: str) -> str: ...
-    def evaluate(self, entries: tuple[ambiguity_ledger.LedgerEntry, ...], ledger_summary: ambiguity_ledger.AmbiguitySummary, protocol_summary: protocol_state.ProtocolSummary, handoff_text: str) -> _GateResult: ...
-
-
-def _load_implementation_gate() -> _ImplementationGate:
-    module = import_module("scripts.implementation_gate")
-    if not isinstance(module, _ImplementationGate):
-        raise BuildContractCompileError("Build Contract", "implementation gate contract is unavailable")
-    return module
-
-
-implementation_gate = _load_implementation_gate()
 
 
 def _records(body: str, headers: frozenset[str], section: str) -> tuple[Mapping[str, str], ...]:
@@ -131,10 +111,101 @@ def _section(part1: str, name: str) -> str:
     return body
 
 
-def _behavior(body: str) -> tuple[Requirement, ...]:
+def _v2_behavior_records(body: str) -> tuple[Mapping[str, str], ...] | None:
     acceptance = "acceptance criterion (ears or given/when/then)"
+    headers = ("id", "requirement", acceptance, "source", "assurance class", "atom ids")
+    for table_headers, rows in verification_lint.tables(body):
+        normalized = tuple(header.lower() for header in table_headers)
+        if normalized != headers:
+            if "assurance class" in normalized or "atom ids" in normalized:
+                raise BuildContractCompileError(
+                    "Behavior Contract",
+                    "v2 behavior atom headers must use the canonical order",
+                )
+            continue
+        records: list[Mapping[str, str]] = []
+        for row in rows:
+            if len(row) != len(headers):
+                raise BuildContractCompileError("Behavior Contract", "v2 behavior atom row has wrong column count")
+            record = dict(zip(headers, row, strict=True))
+            if any(not record[header] for header in headers[:-1]):
+                raise BuildContractCompileError("Behavior Contract", "v2 behavior atom row has an empty required field")
+            records.append(record)
+        if not records:
+            raise BuildContractCompileError("Behavior Contract", "v2 behavior atom table needs one requirement")
+        return tuple(records)
+    return None
+
+
+def _v2_atom_bindings(body: str, *, required: bool) -> tuple[BehaviorAtomBinding, ...]:
+    headers = (
+        "source",
+        "assurance class",
+        "atom id",
+        "condition",
+        "polarity",
+        "observable response",
+        "boundary context",
+        "temporal context",
+        "coercion context",
+    )
+    for table_headers, rows in verification_lint.tables(body):
+        normalized = tuple(header.lower() for header in table_headers)
+        if normalized != headers:
+            continue
+        bindings: list[BehaviorAtomBinding] = []
+        for row in rows:
+            if len(row) != len(headers):
+                raise BuildContractCompileError("Behavior Atoms", "atom row has wrong column count")
+            record = dict(zip(headers, row, strict=True))
+            if any(not record[header] for header in headers[:6]):
+                raise BuildContractCompileError("Behavior Atoms", "atom row needs source, id, condition, polarity, and observable response")
+            atom = behavior_atoms.BehaviorAtom(
+                id=record["atom id"],
+                condition=record["condition"],
+                polarity=behavior_atoms.AtomPolarity(record["polarity"]),
+                observable_response=record["observable response"],
+                boundary_context=record["boundary context"] or None,
+                temporal_context=record["temporal context"] or None,
+                coercion_context=record["coercion context"] or None,
+            )
+            bindings.append(
+                BehaviorAtomBinding(
+                    source_id=record["source"],
+                    assurance_class=behavior_atoms.AssuranceClass(record["assurance class"]),
+                    atom=atom,
+                    atom_digest=behavior_atoms.atom_digest(atom),
+                ),
+            )
+        if not bindings:
+            raise BuildContractCompileError("Behavior Atoms", "v2 needs an atom catalog")
+        return tuple(bindings)
+    if required:
+        raise BuildContractCompileError("Behavior Atoms", "v2 requires an explicit behavior atom catalog")
+    return ()
+
+
+def _behavior(body: str) -> tuple[int, tuple[Requirement, ...], tuple[BehaviorAtomBinding, ...]]:
+    acceptance = "acceptance criterion (ears or given/when/then)"
+    v2_records = _v2_behavior_records(body)
+    if v2_records is not None:
+        requirements = tuple(
+            Requirement(
+                id=row["id"],
+                requirement=row["requirement"],
+                acceptance_criterion=row[acceptance],
+                source_ids=_source_ids(row["source"]),
+                assurance_class=behavior_atoms.AssuranceClass(row["assurance class"]),
+                atom_ids=_source_ids(row["atom ids"]),
+            )
+            for row in v2_records
+        )
+        return 2, requirements, _v2_atom_bindings(
+            body,
+            required=any(requirement.atom_ids for requirement in requirements),
+        )
     records = _records(body, frozenset({"id", "requirement", acceptance, "source"}), "Behavior Contract")
-    return tuple(
+    requirements = tuple(
         Requirement(
             id=row["id"],
             requirement=row["requirement"],
@@ -143,6 +214,7 @@ def _behavior(body: str) -> tuple[Requirement, ...]:
         )
         for row in records
     )
+    return 1, requirements, ()
 
 
 def _constraints(body: str) -> ImplementationConstraints:
@@ -156,6 +228,50 @@ def _constraints(body: str) -> ImplementationConstraints:
         migration=labels["migration"],
         decision_core=labels["decision core"],
         effects_boundary=labels["effects boundary"],
+    )
+
+
+def _consumer_verifications(body: str) -> tuple[ConsumerVerification, ...]:
+    consumer_headers = frozenset(CONSUMER_VERIFICATION_HEADERS)
+    records: tuple[Mapping[str, str], ...] | None = None
+    for table_headers, rows in verification_lint.tables(body):
+        normalized = tuple(header.lower() for header in table_headers)
+        if not (consumer_headers & frozenset(normalized)):
+            continue
+        if normalized != CONSUMER_VERIFICATION_HEADERS:
+            raise BuildContractCompileError(
+                "Consumer Verification",
+                "headers must be the exact canonical ordered set",
+            )
+        if any(
+            len(row) != len(CONSUMER_VERIFICATION_HEADERS)
+            or any(not cell.strip() for cell in row)
+            for row in rows
+        ):
+            raise BuildContractCompileError(
+                "Consumer Verification",
+                "row has the wrong column count or an empty required value",
+            )
+        records = tuple(
+            dict(zip(CONSUMER_VERIFICATION_HEADERS, row, strict=True))
+            for row in rows
+        )
+        break
+    if not records:
+        raise BuildContractCompileError("Consumer Verification", "missing or incomplete required table")
+    return tuple(
+        ConsumerVerification(
+            grant_kind=ConsumerGrantKind(row["grant kind"]),
+            receipt_kind=ConsumerReceiptKind(row["receipt kind"]),
+            required_id=row["required id"],
+            target_ids=_source_ids(row["target"]),
+            environment_scope=row["environment / scope"],
+            outcome=ConsumerOutcome(row["outcome"]),
+            expected_exit=int(row["expected exit"]),
+            run_policy=RunPolicy(row["run policy"]),
+            auto_execute=_yes_no(row["auto execute"]),
+        )
+        for row in records
     )
 
 
@@ -256,10 +372,18 @@ def compile_handoff(handoff_text: str) -> BuildContract:
         if line.lstrip().startswith("-") and line.removeprefix("-").strip()
     )
 
+    schema_version, requirements, atom_bindings = _behavior(_section(part1, "Behavior Contract"))
+    consumer_verifications = (
+        ()
+        if schema_version == 1
+        else _consumer_verifications(_section(part1, "Consumer Verification"))
+    )
     body = ContractBody(
+        schema_version=schema_version,
         goal=_section(part1, "Goal"),
         target_surface=tuple(TargetSurface(file_module=row["file / module"], expected_change=row["expected change"]) for row in target),
-        requirements=_behavior(_section(part1, "Behavior Contract")),
+        requirements=requirements,
+        behavior_atoms=atom_bindings,
         change_impact_preservation=tuple(
             ImpactTrace(source_ids=_source_ids(row["source"]), current_evidence_behavior=row["current evidence / behavior"], preserved_invariant=row["preserved invariant"], target_difference=row["target difference"], code_surface=row["code surface"], acceptance_check=row["acceptance check"], runtime_signal=row["runtime signal"])
             for row in impacts
@@ -276,6 +400,7 @@ def compile_handoff(handoff_text: str) -> BuildContract:
         guardrails=tuple(Guardrail(risk=row["risk"], risk_class=row["class"], predicate_residual_owner=row["predicate / residual / substrate owner"], evidence=row["evidence"]) for row in guardrail_records),
         guardrails_none_reason=guardrail_none,
         verifications=tuple(Verification(id=row["id"], requirement_ids=_source_ids(row["covers"]), check=row["check"], kind=VerificationKind(row["kind"]), command_action=row["command / action"], pass_condition=row["pass condition"], run_policy=RunPolicy(row["run policy"])) for row in verification_records),
+        consumer_verifications=consumer_verifications,
         deferred_risks=tuple(DeferredRisk(risk=row["risk"], owner=row["owner"], decision_date=row["decision date"], mitigation=row["mitigation"]) for row in deferred_records),
         deferred_risks_none_reason=deferred_none,
         fresh_review_evidence=tuple(FreshReviewEvidence(reviewer=row["reviewer (fresh-context agent / self-audit)"], ask_items_found=row['"would have to ask" items found'], gameable_criteria_found=row["gameable criteria found"], disposition=row["folded back / re-bound?"], unresolved_after_disposition=row["unresolved after disposition"]) for row in fresh_records),
@@ -289,7 +414,10 @@ def is_current(contract: BuildContract, handoff_text: str) -> bool:
 
 
 def canonical_json(contract: BuildContract) -> str:
-    return json.dumps(contract.model_dump(mode="json"), ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    body = ContractBody.model_validate(contract.model_dump(exclude={"contract_digest"}))
+    payload = canonical_body_payload(body)
+    payload["contract_digest"] = contract.contract_digest
+    return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
 
 
 @app.command()

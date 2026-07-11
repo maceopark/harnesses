@@ -4,13 +4,15 @@ import hashlib
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final
+from typing import Final, assert_never
 
 from scripts import (
     ambiguity_ledger,
+    behavior_atoms,
     build_contract_schema,
     handoff_coverage,
     predicate_lint,
+    probe_policy,
     protocol_state,
 )
 from scripts import verification_lint
@@ -58,16 +60,26 @@ NEGATED_RESOLUTION: Final[re.Pattern[str]] = re.compile(
 @dataclass(frozen=True, slots=True)
 class GateResult:
     failures: tuple[str, ...]
+    snapshot_complete: bool | None = None
+    execution_receipts_current: bool | None = None
+    execution_receipts_creditable: bool | None = None
 
     @property
     def implementation_ready(self) -> bool:
         return not self.failures
 
     def as_dict(self) -> dict[str, object]:
-        return {
+        payload: dict[str, object] = {
             "implementation_ready": self.implementation_ready,
             "failures": list(self.failures),
         }
+        if self.snapshot_complete is not None:
+            payload["snapshot_complete"] = self.snapshot_complete
+        if self.execution_receipts_current is not None:
+            payload["execution_receipts_current"] = self.execution_receipts_current
+        if self.execution_receipts_creditable is not None:
+            payload["execution_receipts_creditable"] = self.execution_receipts_creditable
+        return payload
 
 
 def section_names(part1: str) -> frozenset[str]:
@@ -138,8 +150,17 @@ def has_decision_log_instruction(
     """Part 1 must tell the implementer to log unforced decisions to decisions.jsonl.
     Execution substrates (e.g. lazycodex ulw-loop) do not record it automatically."""
     normalized = " ".join(decision_body.lower().split())
-    if schema_version == 0:
-        return "decisions.jsonl" in normalized
+    match schema_version:
+        case 0:
+            return "decisions.jsonl" in normalized
+        case 1 | 2:
+            pass
+        case unexpected if unexpected < 0 or unexpected > 2:
+            raise build_contract_schema.ContractValidationError(
+                f"unknown BuildContract schema version {unexpected}",
+            )
+        case unreachable:
+            assert_never(unreachable)
     if re.search(r"\b(?:do not|don't|never|must not|shall not)\b", normalized):
         return False
     affirmative = re.search(
@@ -168,6 +189,103 @@ def contains_unresolved_placeholder(part1: str) -> bool:
     return PLACEHOLDER.search(visible) is not None
 
 
+def v2_atom_binding_failures(
+    entries: tuple[ambiguity_ledger.LedgerEntry, ...],
+    contract: build_contract_schema.BuildContract,
+) -> tuple[str, ...]:
+    entries_by_id = {entry.id: entry for entry in entries}
+    contract_atom_ids = {binding.atom.id for binding in contract.behavior_atoms}
+    failures: list[str] = []
+    for binding in contract.behavior_atoms:
+        entry = entries_by_id.get(binding.source_id)
+        if entry is None:
+            failures.append(f"behavior atom {binding.atom.id} source is absent from the ledger")
+            continue
+        if entry.assurance_class is not binding.assurance_class:
+            failures.append(f"behavior atom {binding.atom.id} assurance class does not match its ledger entry")
+            continue
+        ledger_atoms = {atom.id: atom for atom in entry.behavior_atoms}
+        ledger_atom = ledger_atoms.get(binding.atom.id)
+        if ledger_atom is None:
+            failures.append(f"behavior atom {binding.atom.id} is absent from its ledger entry")
+        elif behavior_atoms.atom_digest(ledger_atom) != binding.atom_digest:
+            failures.append(f"behavior atom {binding.atom.id} does not match its ledger atom")
+    ledger_atom_ids = {atom.id for entry in entries for atom in entry.behavior_atoms}
+    if unbound := sorted(ledger_atom_ids - contract_atom_ids):
+        failures.append(
+            f"ledger behavior atom(s) absent from the BuildContract: {', '.join(unbound)}",
+        )
+    return tuple(failures)
+
+
+def _probe_environment_scope(decision: probe_policy.ProbeDecision) -> str:
+    match decision.selected_level:
+        case probe_policy.ProbeLevel.L0:
+            return "l0:local"
+        case probe_policy.ProbeLevel.L1:
+            return "l1:behavioral-stub"
+        case probe_policy.ProbeLevel.L2 | probe_policy.ProbeLevel.L3:
+            if decision.execution_scope is None:
+                raise build_contract_schema.ContractValidationError(
+                    "authorized ProbeDecision requires an execution scope",
+                )
+            return decision.execution_scope.value
+        case unreachable:
+            assert_never(unreachable)
+
+
+def v2_consumer_binding_failures(
+    protocol: protocol_state.ProtocolState,
+    contract: build_contract_schema.BuildContract,
+) -> tuple[str, ...]:
+    decision = protocol.probe_decision
+    if decision is None:
+        return ("Consumer Verification requires a persisted ProbeDecision",)
+    if decision.contract_digest != contract.contract_digest:
+        return ("Consumer Verification ProbeDecision contract digest does not match BuildContract",)
+    probe_rows = tuple(
+        row
+        for row in contract.consumer_verifications
+        if row.grant_kind is build_contract_schema.ConsumerGrantKind.PROBE
+    )
+    matching_rows = tuple(row for row in probe_rows if row.required_id == decision.probe_id)
+    if not matching_rows:
+        return ("Consumer Verification lacks a receipt binding for the persisted ProbeDecision",)
+    failures: list[str] = []
+    expected_scope = _probe_environment_scope(decision)
+    for row in matching_rows:
+        if row.target_ids != decision.target_ledger_ids:
+            failures.append(
+                "Consumer Verification probe target does not match persisted ProbeDecision",
+            )
+        if row.environment_scope != expected_scope:
+            failures.append(
+                "Consumer Verification probe environment/scope does not match persisted ProbeDecision",
+            )
+    return tuple(dict.fromkeys(failures))
+
+
+def v2_consumer_verification_failures(part1: str) -> tuple[str, ...]:
+    body = section_body(part1, "Consumer Verification")
+    if not body:
+        return ("BuildContract v2 requires Consumer Verification",)
+    required_headers = build_contract_schema.CONSUMER_VERIFICATION_HEADERS
+    for headers, rows in verification_lint.tables(body):
+        normalized = tuple(header.lower() for header in headers)
+        if not (frozenset(normalized) & frozenset(required_headers)):
+            continue
+        if normalized != required_headers:
+            return ("Consumer Verification headers must be the exact canonical ordered set",)
+        if any(
+            len(row) != len(required_headers)
+            or any(not cell.strip() or contains_unresolved_placeholder(cell) for cell in row)
+            for row in rows
+        ):
+            return ("Consumer Verification needs a complete required table",)
+        return ()
+    return ("Consumer Verification needs a complete required table",)
+
+
 def evaluate(
     entries: tuple[ambiguity_ledger.LedgerEntry, ...],
     ledger_summary: ambiguity_ledger.AmbiguitySummary,
@@ -178,6 +296,11 @@ def evaluate(
     protocol: protocol_state.ProtocolState | None = None,
     contract_sidecar: build_contract_schema.BuildContract | None = None,
     raw_ledger_text: str | None = None,
+    snapshot_complete: bool | None = None,
+    execution_receipts_current: bool | None = None,
+    execution_receipts_creditable: bool | None = None,
+    require_manifest: bool = False,
+    require_execution_receipts: bool = False,
 ) -> GateResult:
     evidence_schema_version = 0 if protocol is None else protocol.evidence_schema_version
     contract_schema_version = 0 if protocol is None else protocol.contract_schema_version
@@ -187,40 +310,74 @@ def evaluate(
             evidence_schema_version=evidence_schema_version,
         ),
     )
-    if evidence_schema_version == 1:
-        if raw_ledger_text is None:
-            failures.append("v1 composite gate requires the pre-normalization raw ledger")
-        else:
-            bundle_ids = ambiguity_ledger.raw_legacy_bundle_origin_ids(raw_ledger_text)
-            if bundle_ids:
+    match evidence_schema_version:
+        case 0:
+            pass
+        case 1 | 2:
+            if raw_ledger_text is None:
                 failures.append(
-                    "v1 ledger uses legacy-only raw origin 'bundle': "
-                    f"{', '.join(bundle_ids)}",
+                    f"v{evidence_schema_version} composite gate requires the pre-normalization raw ledger",
                 )
+            else:
+                bundle_ids = ambiguity_ledger.raw_legacy_bundle_origin_ids(raw_ledger_text)
+                if bundle_ids:
+                    failures.append(
+                        f"v{evidence_schema_version} ledger uses legacy-only raw origin 'bundle': "
+                        f"{', '.join(bundle_ids)}",
+                    )
+        case unexpected if unexpected < 0 or unexpected > 2:
+            raise build_contract_schema.ContractValidationError(
+                f"unknown evidence schema version {unexpected}",
+            )
+        case unreachable:
+            assert_never(unreachable)
     if not ledger_summary.handoff_ready:
         failures.extend(ledger_summary.blockers)
     if not protocol_summary.protocol_ready:
         failures.extend(protocol_summary.handoff_blockers)
+    if any(entry.assurance_class is not None or entry.behavior_atoms for entry in entries) and evidence_schema_version != 2:
+        failures.append("v2 assurance declarations require evidence schema version 2")
     if protocol is not None and protocol.build_contract_tested:
         if protocol.build_contract_digest != contract_digest(handoff_text):
             failures.append("fresh-implementer evidence does not match the current Part 1 digest")
-    if protocol is not None and protocol.contract_schema_version == 1:
-        if contract_sidecar is None:
-            failures.append("BuildContract v1 sidecar is missing or invalid")
-        elif contract_sidecar.source_part1_sha256 != contract_digest(handoff_text):
-            failures.append("BuildContract v1 sidecar is stale for the current Part 1")
-        else:
-            from scripts import build_contract
+    if protocol is not None:
+        match protocol.contract_schema_version:
+            case 0:
+                pass
+            case 1 | 2:
+                version_label = f"BuildContract v{protocol.contract_schema_version}"
+                if contract_sidecar is None:
+                    failures.append(f"{version_label} sidecar is missing or invalid")
+                elif contract_sidecar.schema_version != protocol.contract_schema_version:
+                    failures.append(f"{version_label} sidecar schema version does not match protocol")
+                elif contract_sidecar.source_part1_sha256 != contract_digest(handoff_text):
+                    failures.append(f"{version_label} sidecar is stale for the current Part 1")
+                else:
+                    from scripts import build_contract
 
-            try:
-                compiled_contract = build_contract.compile_handoff(handoff_text)
-            except ValueError as error:
-                failures.append(f"BuildContract v1 recompilation failed: {error}")
-            else:
-                if contract_sidecar != compiled_contract:
-                    failures.append(
-                        "BuildContract v1 sidecar does not exactly match compiled Part 1",
-                    )
+                    try:
+                        compiled_contract = build_contract.compile_handoff(handoff_text)
+                    except (ValueError, build_contract.BuildContractCompileError) as error:
+                        failures.append(f"{version_label} recompilation failed: {error}")
+                    else:
+                        if contract_sidecar != compiled_contract:
+                            failures.append(
+                                f"{version_label} sidecar does not exactly match compiled Part 1",
+                            )
+                        elif protocol.contract_schema_version == 2:
+                            failures.extend(v2_atom_binding_failures(entries, contract_sidecar))
+                            failures.extend(v2_consumer_binding_failures(protocol, contract_sidecar))
+            case unexpected if unexpected < 0 or unexpected > 2:
+                raise build_contract_schema.ContractValidationError(
+                    f"unknown BuildContract schema version {unexpected}",
+                )
+            case unreachable:
+                assert_never(unreachable)
+    if protocol is not None and protocol.evidence_schema_version == 2:
+        failures.extend(
+            f"atom coverage: {mismatch.describe()}"
+            for mismatch in handoff_coverage.v2_atom_coverage(entries, handoff_text).mismatches
+        )
 
     raw_part1 = handoff_coverage.extract_part1(handoff_text)
     part1 = verification_lint.strip_fenced_blocks(raw_part1)
@@ -231,6 +388,8 @@ def evaluate(
     empty_sections = [name for name in REQUIRED_SECTIONS if name in names and not section_body(part1, name)]
     if empty_sections:
         failures.append(f"empty Build Contract section(s): {', '.join(empty_sections)}")
+    if contract_schema_version == 2:
+        failures.extend(v2_consumer_verification_failures(part1))
     if contains_unresolved_placeholder(raw_part1):
         failures.append("Build Contract contains an unresolved <placeholder>")
 
@@ -250,6 +409,28 @@ def evaluate(
             frozenset({"id", "requirement", "source", acceptance_header}),
         )
         if behavior_rows:
+            break
+    if not behavior_rows:
+        v2_headers = {
+            "id",
+            "requirement",
+            "source",
+            "acceptance criterion (ears or given/when/then)",
+            "assurance class",
+            "atom ids",
+        }
+        for headers, rows in verification_lint.tables(behavior_body):
+            normalized = {header.lower() for header in headers}
+            if not v2_headers <= normalized:
+                continue
+            atom_index = [header.lower() for header in headers].index("atom ids")
+            if any(
+                len(row) != len(headers)
+                or any(cell.strip() == "" for index, cell in enumerate(row) if index != atom_index)
+                for row in rows
+            ):
+                continue
+            behavior_rows = (tuple(),)
             break
     if not behavior_rows:
         failures.append("Behavior Contract needs at least one complete requirement row")
@@ -443,7 +624,16 @@ def evaluate(
     missing_heads = sorted(head for head, present in heads.items() if not present)
     if missing_heads:
         failures.append(f"verification command head(s) missing on this host: {', '.join(missing_heads)}")
-    return GateResult(tuple(dict.fromkeys(failures)))
+    if require_manifest and snapshot_complete is not True:
+        failures.append("current source manifest is required")
+    if require_execution_receipts and execution_receipts_creditable is not True:
+        failures.append("creditable imported execution receipts are required")
+    return GateResult(
+        tuple(dict.fromkeys(failures)),
+        snapshot_complete=snapshot_complete,
+        execution_receipts_current=execution_receipts_current,
+        execution_receipts_creditable=execution_receipts_creditable,
+    )
 
 
 def as_markdown(result: GateResult) -> str:
