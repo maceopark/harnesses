@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "kind": "black-box/test-report",
+  "createdAt": "2026-07-10T00:00:00Z",
+  "scope": "Frozen F3 Wonder Generalization completion-gate red-team",
+  "interpreter": "uv run --python 3.13 --with pytest --with typer --with pydantic --with rich python",
+  "fixtureRoot": ".agents/skills/ultimateinterview-postmortem/artifacts/f3-redteam-mc3aqqhv",
+  "results": [
+    {
+      "id": "G1",
+      "guarantee": "Missing ## Wonder Generalization fails closed with a wonder: violation.",
+      "input": "Conforming two-escape fixture with the Wonder heading renamed to ## Reflection.",
+      "invocation": "uv run --python 3.13 --with pytest --with typer --with pydantic --with rich python .agents/skills/ultimateinterview-postmortem/scripts/postmortem_lint.py .agents/skills/ultimateinterview-postmortem/artifacts/f3-redteam-mc3aqqhv/g1-missing-wonder",
+      "observed": {"exitCode": 1, "output": "postmortem_lint: 1 violation(s)\n- required section missing: a heading containing 'wonder generalization'"},
+      "verdict": "failed",
+      "blocker": "The check fails closed, but it emits the generic required-section error, not the required `wonder:`-prefixed violation. Reproduction is the invocation above."
+    },
+    {
+      "id": "G2",
+      "guarantee": "Every escaped REQ-ID has exactly one Wonder row; missing and duplicate rows fail and exact coverage is clean.",
+      "input": "Two escaped REQ IDs. (a) remove REQ-002 Wonder row; (b) append a contiguous duplicate REQ-001 table row; (c) unmodified exact 1:1 control.",
+      "invocation": "postmortem_lint.py fixtures g2a-missing-row, g2b-duplicate-row-contiguous, g2c-exact-one-to-one using the pinned interpreter.",
+      "observed": [
+        {"case": "missing", "exitCode": 1, "output": "wonder: escaped requirement(s) lack Wonder row(s): REQ-002"},
+        {"case": "duplicate", "exitCode": 1, "output": "wonder: duplicate Wonder row for REQ-001"},
+        {"case": "exact", "exitCode": 0, "output": "postmortem_lint: ok - sections complete, divergence and reward-hacking rows well-formed, calibration and verification provenance match"}
+      ],
+      "verdict": "passed"
+    },
+    {
+      "id": "G3",
+      "guarantee": "new/strengthened Wonder disposition requires a Lessons Appended Or Updated row with the same normalized signal and lens.",
+      "input": "REQ-001 disposition changed to new. First no lesson row; then append `request touches temporary files` / `misuse` row.",
+      "invocation": "postmortem_lint.py fixtures g3a-new-no-lesson and g3b-new-matching-lesson using the pinned interpreter.",
+      "observed": [
+        {"case": "no matching lesson", "exitCode": 1, "output": "wonder: REQ-001 is new but Lessons Appended Or Updated has no row with the same normalized signal and lens"},
+        {"case": "matching lesson", "exitCode": 0, "output": "postmortem_lint: ok - sections complete, divergence and reward-hacking rows well-formed, calibration and verification provenance match"}
+      ],
+      "verdict": "passed"
+    },
+    {
+      "id": "G4",
+      "guarantee": "not-routing/synthesis-loss is rejected for non-synthesis-loss escapes and accepted for a genuine synthesis-loss escape.",
+      "input": "Set enumeration-miss REQ-001 to not-routing/synthesis-loss; control retains synthesis-loss REQ-002's not-routing row.",
+      "invocation": "postmortem_lint.py fixtures g4a-nonsynthesis-marked-synthesis and g4b-genuine-synthesis using the pinned interpreter.",
+      "observed": [
+        {"case": "wrong attribution", "exitCode": 1, "output": "wonder: REQ-001 is not attributed synthesis-loss but is marked not-routing/synthesis-loss"},
+        {"case": "genuine synthesis-loss", "exitCode": 0, "output": "postmortem_lint: ok - sections complete, divergence and reward-hacking rows well-formed, calibration and verification provenance match"}
+      ],
+      "verdict": "passed"
+    },
+    {
+      "id": "G5",
+      "guarantee": "Fresh lessons validate at 0/0; caught fire increments Caught; three dry fires retire the row.",
+      "input": "A real temporary lessons store with `dry signal` and `caught signal`, both 0/0.",
+      "invocation": "uv run --python 3.13 --with pytest --with typer --with pydantic --with rich python .agents/skills/ultimateinterview/scripts/lessons.py validate|fire .agents/skills/ultimateinterview-postmortem/artifacts/f3-redteam-mc3aqqhv/g5-lessons.md <selector> [--caught]",
+      "observed": [
+        {"step": "initial validate", "exitCode": 0, "output": "- valid: 2 active lesson row(s), retired section present"},
+        {"step": "caught fire", "exitCode": 0, "output": "- fired: 1/1 (caught): caught signal"},
+        {"step": "dry fires", "exitCode": 0, "output": "- fired: 1/0 (dry fire): dry signal; - fired: 2/0 (dry fire): dry signal; - RETIRED (dry-fired 3x): dry signal"},
+        {"step": "final validate", "exitCode": 0, "output": "- valid: 1 active lesson row(s), retired section present"}
+      ],
+      "finalStoreEvidence": "caught signal remains active at 1/1; ## Retired contains dry signal with `auto-retired by lessons.py: 3 fires, 0 catches`.",
+      "verdict": "passed"
+    },
+    {
+      "id": "G6",
+      "guarantee": "No LLM/model/similarity/float-threshold token decides the Wonder pass/fail path.",
+      "input": "inspect.getsource(check_wonder, wonder_violation, normalize_lesson_value), casefolded and scanned for llm/model/similarity/float/threshold.",
+      "invocation": "uv run --python 3.13 --with pytest --with typer --with pydantic --with rich python -c '<inspect source scan>'",
+      "observed": {"exitCode": 0, "output": "{'llm': False, 'model': False, 'similarity': False, 'float': False, 'threshold': False}"},
+      "verdict": "passed"
+    },
+    {
+      "id": "G7",
+      "guarantee": "F1 reward-hacking and verification-execution checks, plus absent-bundle live-store fallback, still execute.",
+      "input": "Reuse Phase-1 missing-capture, confirmed-gaming-as-fulfilled, and absent-bundle live-store fixtures.",
+      "invocation": "verification_execution_lint.py phase1-redteam-919xodsk/g1-missing-capture; postmortem_lint.py phase1-redteam-919xodsk/g2-gaming-fulfilled; postmortem_lint.py phase1-redteam-919xodsk/g5-live-fallback --lessons .../lessons.md, all using the pinned interpreter.",
+      "observed": [
+        {"case": "missing capture", "exitCode": 1, "output": "verification-execution: captured-output: Spec row 1 ('Exact capture check') has no matching CAPTURED-OUTPUT for artifact 'capture-1'"},
+        {"case": "reward hacking", "exitCode": 1, "output": "reward-hacking: REQ-001 is confirmed-gaming but not classed divergent-implementation"},
+        {"case": "absent bundle fallback", "exitCode": 1, "output": "fire-tracking validated against the LIVE lessons store(s), not an audit-start snapshot ...; verification-execution: captured-output: Spec row 1 ('Exact capture check') passes but evidence_bundle.json is absent"}
+      ],
+      "verdict": "passed",
+      "note": "The two legacy postmortem fixtures also now report missing Wonder Generalization, as expected after F3; the intended Phase-1 violations remain present."
+    },
+    {
+      "id": "G8",
+      "guarantee": "The real todo-cli-app-5 session remains postmortem:ok with its Wonder section.",
+      "input": "Real .ultimateinterview/todo-cli-app-5 session.",
+      "invocation": "uv run --python 3.13 --with pytest --with typer --with pydantic --with rich python .agents/skills/ultimateinterview-postmortem/scripts/postmortem_lint.py .ultimateinterview/todo-cli-app-5",
+      "observed": {"exitCode": 2, "output": "postmortem_lint: error: verification-execution: evidence_bundle.json requires schema_version >= 4 (found 3)"},
+      "verdict": "failed",
+      "blocker": "The real fixture cannot reach postmortem:ok because its checked-in evidence bundle is schema v3 while the current verifier requires v4. No session artifact was mutated during this red-team run."
+    },
+    {
+      "id": "BYPASS-A",
+      "guarantee": "A blank Wonder signal or evidence cannot bypass row validation.",
+      "input": "One REQ-001 row has a blank signal; a separate row has blank evidence.",
+      "invocation": "postmortem_lint.py fixtures bypass-a-blank-signal and bypass-a-blank-evidence using the pinned interpreter.",
+      "observed": [
+        {"case": "blank signal", "exitCode": 1, "output": "wonder: row 1 has blank interview-time observable signal"},
+        {"case": "blank evidence", "exitCode": 1, "output": "wonder: row 1 has blank evidence"}
+      ],
+      "verdict": "passed"
+    },
+    {
+      "id": "BYPASS-B",
+      "guarantee": "A strengthened row cannot point at a lesson with a different normalized signal.",
+      "input": "REQ-001 is strengthened; the appended lesson shares lens misuse but uses `different observable signal`.",
+      "invocation": "postmortem_lint.py fixture bypass-b-strengthened-wrong-normalized-signal using the pinned interpreter.",
+      "observed": {"exitCode": 1, "output": "wonder: REQ-001 is strengthened but Lessons Appended Or Updated has no row with the same normalized signal and lens"},
+      "verdict": "passed"
+    }
+  ],
+  "e2eStatus": "failed",
+  "redTeamStatus": "failed",
+  "summary": {
+    "guaranteesPassed": 6,
+    "guaranteesFailed": 2,
+    "bypassesRejected": 2,
+    "blockers": [
+      "G1: missing Wonder section does not emit a `wonder:` violation.",
+      "G8: todo-cli-app-5 evidence_bundle.json is schema_version 3; verifier requires >= 4 and exits 2."
+    ]
+  }
+}

@@ -1,0 +1,391 @@
+{
+  "schema_version": 4,
+  "sources": {
+    "session_dir": "/Users/jpark/IdeaProjects/harnesses/.agents/skills/ultimateinterview-postmortem/artifacts/intent-redteam-v57_40tz/g3-absent-no-hunk",
+    "ulw_dir": null,
+    "evidence_dir": null,
+    "repo_root": "/Users/jpark/IdeaProjects/harnesses/.agents/skills/ultimateinterview-postmortem/artifacts/intent-redteam-v57_40tz"
+  },
+  "spec": {
+    "handoff_md": "# Spec: intent fixture\n# Part 1 - Build Contract\n## Behavior Contract\n| ID | Requirement | Acceptance criterion |\n| --- | --- | --- |\n| REQ-001 | The tool supports the required operation. | The operation succeeds. |\n\n## Verification Commands\n| Check | Command / action |\n| --- | --- |\n| Verify REQ-001 capture | `python -m pytest` |\n",
+    "interview_ledger": [
+      {
+        "id": "f1",
+        "requirement": "User requests building a 5th todo CLI app, explicitly for skill validation; must not reference the four prior todo apps/specs (clean-room).",
+        "reason": "Personal real use (not a throwaway demo); primary UX = run each morning at work to see the day's tasks.",
+        "origin": "orientation",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 0,
+        "impact_weight": 2,
+        "evidence_channels": [
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "g1",
+        "requirement": "Core operation set the CLI must support (e.g. add / list / complete / delete / edit) is undefined.",
+        "reason": "No commands specified yet.; User: base 4 only = add, list today (not-done), complete, list completed. No delete/edit/reopen. pressure-pending: without delete, a mis-added task can only be removed by completing it (pollutes completed view).; User adds delete. Final command set = add, list (not-done today view), complete, delete, list-completed. No edit/reopen.; [pressure: survived]; [checkpoint-corroborated: from-user]",
+        "origin": "orientation",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 3,
+        "evidence_channels": [
+          "assumption",
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "g2",
+        "requirement": "Persistence: whether tasks persist across runs, storage medium (file vs in-memory), location, and on-disk format.",
+        "reason": "domain/state lens: store schema/access edges historically under-specified.; Storage = single JSON file at fixed home path ~/.todo-cli-app-5.json; NO env override. Robustness (from-docs lesson corroboration): corrupt/unreadable/non-UTF8 -> error + exit 3, no overwrite; missing parent dir on save -> create it; unknown/extra fields on load -> ignore-and-preserve (forward compat). Test injection seam = override HOME to a temp dir (path is ~-based).; [pressure: second-channel]; [checkpoint-corroborated: from-user]",
+        "origin": "orientation",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 3,
+        "evidence_channels": [
+          "assumption",
+          "from-docs",
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "g3",
+        "requirement": "Free-text title validation: empty/whitespace-only, oversized, control-char/newline inputs at add-time and on load from store.",
+        "reason": "misuse lens (lesson-triggered): degenerate free-text inputs.; User accepted all 4 rules: reject empty/whitespace-only, reject >256-char (default), reject newline/control chars; revalidate on load from store. Invalid input -> error message + non-zero exit, not added. Channels: misuse lesson (from-docs) + user confirmation (from-user).; [checkpoint-corroborated: from-user]",
+        "origin": "lens:misuse",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 2,
+        "evidence_channels": [
+          "assumption",
+          "from-docs",
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "g4",
+        "requirement": "Temporal semantics: do tasks have due dates / a today-view / scheduling, and what happens at a day boundary (carryover, visibility of done items).",
+        "reason": "domain/state lens (lesson-triggered): temporal word likely in a todo domain.; Now CENTRAL: user runs CLI each morning to see the day's todos. Unknown: do tasks carry a date, and what happens at the day boundary (carryover of unfinished, visibility of completed). Lesson-mandated scenario probe required.; User chose A: tasks have NO date; default view = all not-done tasks; unfinished carries over indefinitely; completed leaves the view. pressure-pending on completed-item retention boundary.; Confirmed: dateless model, today-view = not-done tasks, indefinite carryover; completed items retained in store but hidden from default view.; [pressure: survived]",
+        "origin": "lens:domain/state",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 3,
+        "evidence_channels": [
+          "assumption",
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "g5",
+        "requirement": "Implementation language and runtime for the CLI.",
+        "reason": "Assumption pending user confirmation; no target stated.; Python 3, stdlib only (no external deps), single runnable script + pytest tests.",
+        "origin": "orientation",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 2,
+        "evidence_channels": [
+          "assumption",
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "g6",
+        "requirement": "Acceptance/verification surface: what proves the app correct (tests, manual CLI walkthrough).",
+        "reason": "pytest suite over the command x data-state x edge matrix + manual CLI walkthrough.",
+        "origin": "orientation",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 2,
+        "evidence_channels": [
+          "assumption",
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "n1",
+        "requirement": "Candidate non-goals: multi-user, network sync, server/daemon, GUI.",
+        "reason": "Potential non-goal to confirm.; User states single personal use -> multi-user/sync likely non-goals; confirm GUI/server too.; Scope confirmed minimal: no delete/edit/reopen; reinforces multi-user/sync/GUI as non-goals.; Sweep: single-user local tool -> concurrency/simultaneous-run and networked sync are non-goals.; Confirmed non-goals: multi-user, network/sync, GUI/web, edit, reopen/un-complete, due-dates/scheduling.",
+        "origin": "orientation",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 1,
+        "evidence_channels": [
+          "assumption",
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "g7",
+        "requirement": "Primary invocation UX: what running the CLI shows by default (a today/day view vs a full list) and how a task is added/completed in that flow.",
+        "reason": "User: run in the morning -> see the day's tasks; default view is the core surface.; A settles the default view = list of not-done tasks; add/complete command shape still open (ties to g1).; Sweep: display format still open — how each task is rendered and REFERENCED for complete/delete (stable id vs positional line number). Empty-state split out to g10.; Stable monotonically-increasing integer id assigned at add; shown in every list line as <id>. <title>; complete/delete reference by id (positional/reindex rejected).; [pressure: exempt:clear-design-pick, user-confirmed the recommended option, corroborated by implementer-scout, no branch risk]",
+        "origin": "dump",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 3,
+        "evidence_channels": [
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "g8",
+        "requirement": "Completed-task fate: hidden-but-retained in the store (reviewable later) vs deleted immediately. Determines store schema and whether a completed/history view exists.",
+        "reason": "pressure follow-up on option A's 'completed disappears' — retain vs delete boundary.; User: hide completed from view but keep in data; implies a completed/history view command exists.; [pressure: survived]",
+        "origin": "pressure",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 2,
+        "evidence_channels": [
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "g9",
+        "requirement": "A command/flag to list completed (retained-but-hidden) tasks must exist (e.g. a --done/--all view). Part of the command set (g1).",
+        "reason": "Implied by g8 retention decision.; Completed-list view confirmed as one of the base commands.",
+        "origin": "fold-back",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 2,
+        "evidence_channels": [
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "g10",
+        "requirement": "Empty-state behavior: what the today view prints when there are no not-done tasks (message vs blank) and its exit code.",
+        "reason": "Accepted: No tasks. / No completed tasks., exit 0.",
+        "origin": "sweep",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 1,
+        "evidence_channels": [
+          "assumption",
+          "from-research",
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "g11",
+        "requirement": "List ordering: list and list-completed render in creation/insertion order; completing or deleting never reorders remaining records.",
+        "reason": "implementer-scout #2; Accepted: creation-order rendering; no reorder on complete/delete.",
+        "origin": "fold-back",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 2,
+        "evidence_channels": [
+          "assumption",
+          "from-research",
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "g12",
+        "requirement": "CLI grammar: add <title...> (remaining args joined with single spaces); no-arg invocation aliases list; complete <id>; delete <id>; list-completed. Missing/extra args or unknown command = usage error.",
+        "reason": "implementer-scout #3; Accepted CLI grammar as proposed.",
+        "origin": "fold-back",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 2,
+        "evidence_channels": [
+          "assumption",
+          "from-research",
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "g13",
+        "requirement": "Per-command stdout: list/list-completed lines = <id>. <title>; add -> Added <id>. <title>; complete -> Completed <id>. <title>; delete -> Deleted <id>. <title>; single trailing newline.",
+        "reason": "implementer-scout #4; Accepted per-command output format.",
+        "origin": "fold-back",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 2,
+        "evidence_channels": [
+          "assumption",
+          "from-research",
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "g14",
+        "requirement": "Exit-code taxonomy: 0 success; 2 for CLI/validation/user errors (invalid title, unknown command, missing/extra args, nonexistent id, already-completed id, malformed id) with one-line error: ... on stderr and no stdout; 3 for storage errors.",
+        "reason": "implementer-scout #6; only exit 3 was previously specified; Accepted exit-code taxonomy 0/2/3.; [pressure: second-channel]",
+        "origin": "fold-back",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 3,
+        "evidence_channels": [
+          "assumption",
+          "from-research",
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "g15",
+        "requirement": "complete <id> on an already-completed task = user error (exit 2, error: task <id> is already completed); delete <id> allowed on any existing task whether done or not.",
+        "reason": "implementer-scout #9,#10; no-reopen consequence; Accepted: already-completed complete = exit 2 error; delete any existing id.",
+        "origin": "fold-back",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 2,
+        "evidence_channels": [
+          "assumption",
+          "from-research",
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "g16",
+        "requirement": "Duplicate titles are allowed; tasks are disambiguated solely by id.",
+        "reason": "implementer-scout #11; Accepted: duplicate titles allowed, disambiguated by id.",
+        "origin": "fold-back",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 1,
+        "evidence_channels": [
+          "assumption",
+          "from-research",
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "g17",
+        "requirement": "Persisted schema: root object {next_id:int, tasks:[{id:int,title:str,done:bool}]}; unknown root/task keys preserved verbatim on round-trip. A syntactically-readable store with an invalid task record (bad/oversized/control-char title, missing required field, wrong type, duplicate id, or wrong root shape) = store error (exit 3, no overwrite).",
+        "reason": "implementer-scout #7,#8; extends g2/g3 load-time validation; Accepted persisted schema + load-time invalid-record = store error exit 3.; [pressure: second-channel]",
+        "origin": "fold-back",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 3,
+        "evidence_channels": [
+          "assumption",
+          "from-research",
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "g18",
+        "requirement": "Save durability: write atomically (temp file in same dir + rename); on any save failure print stderr + nonzero exit and no success line; never leave a partially-written store.",
+        "reason": "implementer-scout #12; data/schema durability; Accepted atomic temp-file+rename save; failure = stderr + nonzero, no partial store.",
+        "origin": "fold-back",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 1,
+        "impact_weight": 2,
+        "evidence_channels": [
+          "assumption",
+          "from-research",
+          "from-user"
+        ],
+        "track": null
+      },
+      {
+        "id": "d1",
+        "requirement": "divergence marker",
+        "reason": "divergence: dry — sweep #2 found no unvisited track; all original-request tracks (commands, storage, validation, temporal model, display/referencing, verification, non-goals) covered.",
+        "origin": "sweep",
+        "status": "Accepted",
+        "deferred": false,
+        "ambiguity_score": 0,
+        "impact_weight": 1,
+        "evidence_channels": [
+          "assumption"
+        ],
+        "track": null
+      }
+    ]
+  },
+  "decisions": [],
+  "execution": {
+    "present": false,
+    "brief_md": null,
+    "goals": null,
+    "ledger_events": [],
+    "criterion_events": [],
+    "revisions": [],
+    "user_decision_blockers": [],
+    "event_kind_counts": {}
+  },
+  "artifacts": {
+    "present": false,
+    "root": null,
+    "files": [],
+    "captured_outputs": []
+  },
+  "lessons": {
+    "stores": [
+      {
+        "path": "/Users/jpark/IdeaProjects/harnesses/.agents/skills/ultimateinterview/lessons.md",
+        "name": "lessons.md",
+        "active_count": 3,
+        "active": [
+          {
+            "signal": "Spec pins input-validation rules for a store the tool owns (reject empty/oversized/control-char input) - also decide whe",
+            "lens": "domain/state",
+            "fired": 1,
+            "caught": 1
+          },
+          {
+            "signal": "Spec names a file-store path or an env/flag store-path override seam - enumerate the store-ACCESS error surface beyond \"",
+            "lens": "domain/state",
+            "fired": 1,
+            "caught": 1
+          },
+          {
+            "signal": "Spec pins a closed on-disk schema for a store the tool owns AND declares migration a non-goal - decide the unknown/extra",
+            "lens": "domain/state",
+            "fired": 1,
+            "caught": 1
+          }
+        ]
+      }
+    ]
+  },
+  "diff": {
+    "source": "/Users/jpark/IdeaProjects/harnesses/.agents/skills/ultimateinterview-postmortem/artifacts/intent-redteam-v57_40tz/g3-absent-no-hunk/fixture.diff",
+    "text": "diff --git a/pyproject.toml b/pyproject.toml\nindex 1111111..2222222 100644\n--- a/pyproject.toml\n+++ b/pyproject.toml\n@@ -1 +1,2 @@\n +print('ordinary implementation')\n"
+  },
+  "warnings": [],
+  "missing_evidence": [
+    "decisions.jsonl absent - implementer decisions were not logged; spec_gap attribution will lean on the diff alone",
+    "--no-ulw given - execution evidence deliberately excluded",
+    "no evidence artifact root at /Users/jpark/IdeaProjects/harnesses/.agents/skills/ultimateinterview-postmortem/artifacts/intent-redteam-v57_40tz/.omo/evidence - manual/runtime artifacts absent from the bundle"
+  ]
+}

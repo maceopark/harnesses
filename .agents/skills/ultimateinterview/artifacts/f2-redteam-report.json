@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "kind": "black-box/test-report",
+  "title": "F2 deterministic locality-drift red-team report",
+  "runtime": "uv run --python 3.13",
+  "e2eStatus": "passed",
+  "redTeamStatus": "passed",
+  "guarantees": [
+    {
+      "id": "G1",
+      "verdict": "passed",
+      "inputSummary": "A protocol with build_contract_tested=true, a digest derived from a fresh-review handoff, reviewer=fresh-redteam-reviewer, dry_sweeps_in_row=2, and checkpoint_since_last_material_change=true; a settled ledger entry was first given track-only metadata and then booked as a scored question.",
+      "invocation": "session_update.apply_delta(Delta(set=[{id: stable, track: ...}])); session_update.apply_delta(Delta(event='scored-question', asked_question_id='Q-stable'))",
+      "observedResult": {
+        "before": {
+          "implementation_ready": false,
+          "gate_failures": [],
+          "build_contract_tested": true,
+          "build_contract_digest": "90fe34ccc46b57ca530b977a61da5541c5b4223379bba4408179fd88407670b8",
+          "build_contract_reviewer": "fresh-redteam-reviewer",
+          "checkpoint_since_last_material_change": true,
+          "dry_sweeps_in_row": 2,
+          "interview_converged": true
+        },
+        "after": {
+          "implementation_ready": false,
+          "gate_failures": [],
+          "build_contract_tested": true,
+          "build_contract_digest": "90fe34ccc46b57ca530b977a61da5541c5b4223379bba4408179fd88407670b8",
+          "build_contract_reviewer": "fresh-redteam-reviewer",
+          "checkpoint_since_last_material_change": true,
+          "dry_sweeps_in_row": 2,
+          "interview_converged": true
+        },
+        "appendedSnapshot": {
+          "asked_question_id": "Q-stable",
+          "ledger_ids": ["stable"],
+          "categories": ["behavior"],
+          "domains": ["checkout"],
+          "target_files": ["src/checkout.py"]
+        }
+      }
+    },
+    {
+      "id": "G2",
+      "verdict": "passed",
+      "inputSummary": "Three latest snapshots had domain=checkout. Ledger contained an active checkout entry and active unresolved sibling id=sibling with domain=payments.",
+      "invocation": "session_status.locality_drift(ProtocolState, tuple[LedgerEntry, ...])",
+      "observedResult": {
+        "repeated_keys": [["domains", ["checkout"]]],
+        "sibling_ids": ["sibling"]
+      }
+    },
+    {
+      "id": "G3",
+      "verdict": "passed",
+      "inputSummary": "Negative cases: two checkout snapshots; three snapshots with domains a/b/c; three checkout snapshots with only a checkout entry; three checkout snapshots with only a deferred payments sibling; corrupted in-memory score-5 payments sibling. A normal score-5 LedgerEntry input was separately attempted.",
+      "invocation": "session_status.locality_drift(...) and ambiguity_ledger.LedgerEntry.model_validate(...)",
+      "observedResult": {
+        "two_snapshots": null,
+        "no_common_key": null,
+        "no_qualifying_sibling": null,
+        "only_deferred_sibling": null,
+        "corrupted_score5_sibling": null,
+        "typed_score5_input": "ValidationError (ambiguity_score is constrained to 0..3)"
+      }
+    },
+    {
+      "id": "G4",
+      "verdict": "rejected",
+      "inputSummary": "Delta directly patched protocol.recent_question_tracks with a forged snapshot.",
+      "invocation": "session_update.apply_delta(Delta(protocol={recent_question_tracks: [...]})",
+      "observedResult": "delta protocol sets event-managed field(s) ['recent_question_tracks']; use the corresponding typed event"
+    },
+    {
+      "id": "G5",
+      "verdict": "passed",
+      "inputSummary": "Booked Q-deep targeting ledger id deep/domain checkout, then sent a pressure-followup with pressure_parent=Q-deep.",
+      "invocation": "session_update.apply_delta(Delta(event='scored-question', asked_question_id='Q-deep')); session_update.apply_delta(Delta(event='pressure-followup', pressure_parent='Q-deep'))",
+      "observedResult": {
+        "parentSnapshot": {
+          "asked_question_id": "Q-deep",
+          "ledger_ids": ["deep"],
+          "categories": [],
+          "domains": ["checkout"],
+          "target_files": []
+        },
+        "followupSnapshot": {
+          "asked_question_id": "Q-deep",
+          "ledger_ids": ["deep"],
+          "categories": [],
+          "domains": ["checkout"],
+          "target_files": []
+        },
+        "identical": true
+      }
+    },
+    {
+      "id": "G6",
+      "verdict": "passed",
+      "inputSummary": "For each boundary event, first created three Q-deep checkout snapshots and an active payments sibling so locality_drift fired; then applied the boundary event.",
+      "invocation": "session_update.apply_delta(Delta(event='sweep-free', sweep_result='dry')); apply_delta(Delta(checkpoint_confirm={ids:['deep'], fatigue:true})); apply_delta(Delta(event='contrarian-free'))",
+      "observedResult": {
+        "breadth_sweep": {"before_snapshot_count": 3, "after_snapshot_count": 0, "after_drift": null},
+        "checkpoint": {"before_snapshot_count": 3, "after_snapshot_count": 0, "after_drift": null},
+        "contrarian": {"before_snapshot_count": 3, "after_snapshot_count": 0, "after_drift": null}
+      }
+    },
+    {
+      "id": "G7",
+      "verdict": "passed",
+      "inputSummary": "Ranked the same candidate metrics with target_ids omitted and target_ids=['deep']; parsed a protocol JSON after removing recent_question_tracks.",
+      "invocation": "question_score.rank_questions((QuestionCandidate,), top=1); protocol_state.parse_state(legacy_json)",
+      "observedResult": {
+        "without_target_ids": {"rank": 1, "score": 40.0},
+        "with_target_ids": {"rank": 1, "score": 40.0},
+        "legacy_recent_question_tracks": []
+      }
+    },
+    {
+      "id": "G8",
+      "verdict": "passed",
+      "inputSummary": "Inspected the executable source bodies of session_status.locality_drift and protocol_state.locality_repeated_keys, including the ledger sibling check inside locality_drift.",
+      "invocation": "inspect.getsource(session_status.locality_drift); inspect.getsource(protocol_state.locality_repeated_keys)",
+      "observedResult": {
+        "forbidden_tokens_checked": ["llm", "model", "question_score", "float"],
+        "matches": [],
+        "sensor_inputs": "QuestionTrackSnapshot locality sets and typed LedgerEntry deferred/ambiguity/track fields only"
+      }
+    }
+  ],
+  "bypassAttempts": [
+    {
+      "id": "B1-pressure-relabel",
+      "verdict": "rejected",
+      "inputSummary": "A pressure-followup for Q-deep attempted to patch protocol.recent_question_tracks with a forged payments snapshot.",
+      "invocation": "session_update.apply_delta(Delta(event='pressure-followup', pressure_parent='Q-deep', protocol={recent_question_tracks:[forged]}))",
+      "observedResult": "delta protocol sets event-managed field(s) ['recent_question_tracks']; use the corresponding typed event"
+    },
+    {
+      "id": "B2-nonexistent-target-id",
+      "verdict": "rejected",
+      "inputSummary": "Booked a scored question whose target_ids=['does-not-exist'] while the ledger only contained deep.",
+      "invocation": "session_update.apply_delta(Delta(event='scored-question', asked_question_id='Q-ghost'))",
+      "observedResult": "scored-question: target_ids absent from the current ledger: ['does-not-exist']"
+    },
+    {
+      "id": "B3-hostile-track-paths",
+      "verdict": "rejected",
+      "inputSummary": "Validated LedgerTrack target_surfaces containing an absolute path and traversal; also checked safe relative normalization.",
+      "invocation": "ambiguity_ledger.LedgerTrack.model_validate({target_surfaces:[path]})",
+      "observedResult": {
+        "/tmp/escape.py": "ValidationError",
+        "src/../escape.py": "ValidationError",
+        "./SRC/Checkout.py": ["src/checkout.py"]
+      }
+    }
+  ],
+  "cliReplay": {
+    "schemaVersion": 1,
+    "kind": "cli-replay",
+    "replaySafe": true,
+    "argv": [
+      "uv", "run", "--python", "3.13", "scripts/session_status.py", "--next", "artifacts/f2-redteam-locality-state"
+    ],
+    "cwd": ".agents/skills/ultimateinterview",
+    "expectedExitCode": 0,
+    "invariants": [
+      "The first next action contains 'locality zoom-out'.",
+      "The action names repeated domains=checkout across the last 3 scored questions.",
+      "The action names unresolved sibling ledger id sibling-payments.",
+      "The action occurs before the listed stagnation escalation."
+    ],
+    "observedResult": "exit 0; --next emitted locality zoom-out for checkout and sibling-payments before stagnation escalation"
+  }
+}
