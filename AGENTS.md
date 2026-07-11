@@ -6,13 +6,14 @@
 
 ## OVERVIEW
 
-This checkout is a harness workspace, not a single product. It contains six declared submodules plus local todo CLI experiment fixtures and agent workflow artifacts.
+This checkout is a harness workspace, not a single product. It contains seven declared submodules plus local todo CLI experiment fixtures and agent workflow artifacts.
 
 ## STRUCTURE
 
 ```text
 harnesses/
 |-- oh-my-codex/              # OMX TypeScript/Rust orchestration layer
+|-- codex/                    # OpenAI Codex CLI/app-server Rust workspace
 |-- ouroboros/                # Agent OS Python project; has its own AGENTS.md
 |-- skills/                   # Matt Pocock skill catalog and docs source
 |-- SkillOpt/                 # Python skill optimization research + sleep engine
@@ -29,8 +30,9 @@ harnesses/
 
 | Task | Location | Notes |
 |------|----------|-------|
-| Root workspace boundaries | `.gitmodules` | Submodules are `ouroboros`, `oh-my-codex`, `skills`, `SkillOpt`, `lazycodex`, `epistemic-protocols`. |
+| Root workspace boundaries | `.gitmodules` | Submodules are `ouroboros`, `oh-my-codex`, `skills`, `SkillOpt`, `lazycodex`, `epistemic-protocols`, `codex`. |
 | OMX CLI/runtime work | `oh-my-codex/` | Submodule. Use `oh-my-codex/README.md`, `CONTRIBUTING.md`, `package.json`. |
+| OpenAI Codex CLI/runtime work | `codex/` | Submodule. Use `codex/AGENTS.md`, `README.md`, and the relevant `codex-rs/` crate. |
 | Ouroboros commands | `ouroboros/AGENTS.md` | Existing router for `ooo` commands; do not replace casually. |
 | Skill catalog edits | `skills/` | Submodule. Bucket/docs/plugin rules live in `skills/CLAUDE.md` and `CONTEXT.md`. |
 | SkillOpt training/sleep work | `SkillOpt/` | Submodule. Use `SkillOpt/README.md`, `CONTRIBUTING.md`, `pyproject.toml`. |
