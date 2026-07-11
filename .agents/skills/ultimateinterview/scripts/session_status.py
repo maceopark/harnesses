@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import sys
+from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from collections.abc import Callable
@@ -35,7 +36,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import typer
 
-from scripts import ambiguity_ledger, atomic_write, implementation_gate, protocol_state
+from scripts import (
+    ambiguity_ledger,
+    atomic_write,
+    build_contract_schema,
+    implementation_gate,
+    protocol_state,
+)
 
 # The one protocol blocker that does not veto the stop condition: the Build
 # Contract is drafted and tested inside the Handoff sequence itself.
@@ -45,6 +52,12 @@ BUILD_CONTRACT_BLOCKER_PREFIX: Final[str] = "build contract has not passed"
 class OutputFormat(StrEnum):
     JSON = "json"
     MARKDOWN = "markdown"
+
+
+@dataclass(frozen=True, slots=True)
+class LocalityDrift:
+    repeated_keys: tuple[tuple[str, tuple[str, ...]], ...]
+    sibling_ids: tuple[str, ...]
 
 
 def parse_json_file[T](
@@ -101,6 +114,51 @@ def render_markdown(
     )
 
 
+def locality_drift(
+    state: protocol_state.ProtocolState,
+    ledger_entries: tuple[ambiguity_ledger.LedgerEntry, ...],
+) -> LocalityDrift | None:
+    """Return repeated question locality and unresolved ledger siblings, if any."""
+    repeated = protocol_state.locality_repeated_keys(state.recent_question_tracks)
+    if not repeated:
+        return None
+    sibling_ids: list[str] = []
+    for entry in ledger_entries:
+        if entry.is_deferred or entry.ambiguity_score not in {1, 2, 3}:
+            continue
+        track_keys = ambiguity_ledger.entry_track_keys(entry)
+        if any(
+            any(key not in repeated_keys for key in track_keys[dimension])
+            for dimension, repeated_keys in repeated.items()
+        ):
+            sibling_ids.append(entry.id)
+    sibling_ids_tuple = tuple(sorted(sibling_ids))
+    if not sibling_ids_tuple:
+        return None
+    return LocalityDrift(
+        repeated_keys=tuple(
+            (dimension, keys)
+            for dimension, keys in repeated.items()
+        ),
+        sibling_ids=sibling_ids_tuple,
+    )
+
+
+def locality_drift_action(drift: LocalityDrift) -> str:
+    repeated = "; ".join(
+        f"{dimension}={', '.join(keys)}"
+        for dimension, keys in drift.repeated_keys
+    )
+    siblings = ", ".join(drift.sibling_ids)
+    return (
+        f"locality zoom-out: repeated {repeated} across the last "
+        f"{protocol_state.LOCALITY_WINDOW} scored questions; unresolved sibling ledger ids: "
+        f"{siblings}; enumerate/confirm those sibling tracks with a free ledger-derived "
+        "sweep, else ask one breadth question; bypass the raw score queue"
+    )
+
+
+
 def next_action(
     entries: tuple[ambiguity_ledger.LedgerEntry, ...],
     state: protocol_state.ProtocolState,
@@ -110,8 +168,9 @@ def next_action(
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
     """Deterministic routing of the Per-Round Loop: (action queue, advisories).
     Obligations resolve in the SKILL.md order (residual lag -> budget ->
-    sweep -> stagnation), then stop condition, then pre-handoff sequence,
-    then critical-path question vs batch flush. Mechanical approximation only:
+    locality zoom-out -> sweep -> stagnation), then stop condition, then
+    pre-handoff sequence, then critical-path question vs batch flush. Mechanical
+    approximation only:
     the semantic critical-path arms (branches implementation, contradicts
     evidence, narrows scope) stay with the model."""
     if ready:
@@ -134,6 +193,9 @@ def next_action(
             "budget exhausted: stop ordinary questioning; present remaining gaps "
             "and ask the user to defer (owner/date) or explicitly extend the budget",
         )
+    drift = locality_drift(state, entries)
+    if drift is not None:
+        queue.append(locality_drift_action(drift))
     if state.answers_since_sweep >= protocol_state.SWEEP_CADENCE:
         queue.append("breadth sweep (before the next scored question)")
     if protocol_state.is_stagnant(
@@ -281,6 +343,8 @@ def main(
             f"session directory not found or not a directory: {session_dir}",
         )
     handoff_text: str | None = None
+    raw_ledger_text: str | None = None
+    contract_sidecar: build_contract_schema.BuildContract | None = None
     if session_dir is None:
         assert ledger_path is not None and protocol_path is not None
         resolved_ledger = ledger_path
@@ -313,11 +377,23 @@ def main(
                 protocol_state.summarize_validation_error,
             )
             if gate:
+                raw_ledger_text = resolved_ledger.read_text(encoding="utf-8")
                 handoff_path = session_dir / "handoff.md"
                 if not handoff_path.is_file():
                     raise typer.BadParameter(f"handoff.md not found: {handoff_path}")
                 handoff_text = handoff_path.read_text(encoding="utf-8")
-    ledger_summary = ambiguity_ledger.summarize_ambiguity(entries, top=top)
+                sidecar_path = session_dir / "build-contract.json"
+                if state.contract_schema_version == 1 and sidecar_path.is_file():
+                    contract_sidecar = parse_json_file(
+                        sidecar_path,
+                        build_contract_schema.BuildContract.model_validate_json,
+                        lambda error: str(error),
+                    )
+    ledger_summary = ambiguity_ledger.summarize_ambiguity(
+        entries,
+        top=top,
+        evidence_schema_version=state.evidence_schema_version,
+    )
     protocol_summary = protocol_state.summarize_protocol(state)
     ready = is_ready(ledger_summary, protocol_summary)
     renderers: dict[
@@ -346,6 +422,8 @@ def main(
                 else session_dir.parent
             ),
             protocol=state,
+            contract_sidecar=contract_sidecar,
+            raw_ledger_text=raw_ledger_text,
         )
     if output_format is OutputFormat.MARKDOWN:
         if show_next:

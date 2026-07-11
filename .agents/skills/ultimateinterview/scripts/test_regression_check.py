@@ -16,9 +16,13 @@
 
 from __future__ import annotations
 
-import sys
+import json
+import os
+import signal
 import subprocess
+import sys
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
@@ -48,6 +52,7 @@ def test_recorded_verdicts_are_the_observed_ones():
     assert rows["ready-minimal"]["postmortem"] == "n/a"
     assert rows["todo-cli-app-5"]["coverage_ok"] is True
     assert rows["todo-cli-app-5"]["postmortem"] == "ok"
+    assert rows["todo-cli-app-5"]["verification_execution"] == "ok"
     assert rows["todo-cli-app-4"]["coverage_ok"] is False
     assert rows["todo-cli-app-4"]["postmortem"] == "missing"
     assert rows["attribute-search-mysql"]["postmortem"] == "n/a"
@@ -115,7 +120,7 @@ def test_unrecorded_in_progress_session_skips_handoff_only_checks(tmp_path, monk
 
     def status_only(script, _session, _extra):
         calls.append(script)
-        return 0, '{"interview_converged": false}'
+        return 0, '{"interview_converged": false}', ""
 
     monkeypatch.setattr(rc, "_run", status_only)
 
@@ -130,27 +135,35 @@ def test_crash_detector_matches_traceback():
     assert not rc._no_crash("- executable_ok: yes\n", "x")
 
 
-def test_child_timeout_is_reported(monkeypatch, tmp_path):
-    def time_out(*args, **kwargs):
-        del args, kwargs
-        raise subprocess.TimeoutExpired(["uv", "run"], rc.CHILD_TIMEOUT_SECONDS)
+def test_run_returns_valid_stdout_when_stderr_is_empty(tmp_path):
+    # Given: a child that emits valid JSON only on stdout.
+    script = tmp_path / "valid_stdout.py"
+    script.write_text(
+        "print('{\"coverage_ok\": true}')\n",
+        encoding="utf-8",
+    )
 
-    monkeypatch.setattr(rc.subprocess, "run", time_out)
+    # When: the regression harness runs the child.
+    code, stdout, stderr = rc._run(script, tmp_path, [])
 
-    code, output = rc._run(tmp_path / "script.py", tmp_path, [])
+    # Then: the current parseable stdout contract is preserved.
+    assert code == 0
+    assert stdout.strip() == '{"coverage_ok": true}'
+    assert stderr == ""
 
-    assert code == 124
-    assert "timed out" in output
 
-
-def test_missing_coverage_verdict_is_flagged(tmp_path, monkeypatch):
+def test_valid_child_json_is_parseable_when_stderr_has_install_warning(
+    monkeypatch,
+    tmp_path,
+):
+    # Given: JSON-producing children keep stdout valid while uv warns on stderr.
     outputs = iter(
         [
-            (0, "{}"),
-            (0, "- executable_ok: yes\n"),
-            (0, "- predicate_ok: yes\n"),
-            (0, '{"ledger":{"handoff_ready":true},"protocol":{"protocol_ready":true},"interview_converged":true}'),
-            (0, '{"implementation_gate":{"implementation_ready":true}}'),
+            (0, '{"coverage_ok": true}', "warning: installing cold-cache dependencies\n"),
+            (0, "- executable_ok: yes\n", ""),
+            (0, "- predicate_ok: yes\n", ""),
+            (0, '{"ledger":{"handoff_ready":true},"protocol":{"protocol_ready":true},"interview_converged":true}', "warning: reusing cold-cache environment\n"),
+            (0, '{"implementation_gate":{"implementation_ready":true}}', "warning: reusing cold-cache environment\n"),
         ]
     )
     monkeypatch.setattr(rc, "_run", lambda *_args, **_kwargs: next(outputs))
@@ -161,11 +174,165 @@ def test_missing_coverage_verdict_is_flagged(tmp_path, monkeypatch):
         "interview_converged": True,
         "implementation_ready": True,
         "postmortem": None,
+        "verification_execution": None,
+    }
+
+    # When: the harness checks the session.
+    row = rc.check_session("cold-cache", tmp_path, expected)
+
+    # Then: stderr diagnostics do not corrupt stdout JSON parsing.
+    assert row["findings"] == []
+
+
+def test_child_timeout_is_reported(monkeypatch, tmp_path):
+    process = Mock(pid=999_999)
+    process.communicate.side_effect = [
+        subprocess.TimeoutExpired(["uv", "run"], rc.CHILD_TIMEOUT_SECONDS),
+        ("partial-out", "partial-err"),
+    ]
+    monkeypatch.setattr(rc.subprocess, "Popen", lambda *_args, **_kwargs: process)
+    if os.name == "posix":
+        monkeypatch.setattr(rc.os, "killpg", lambda *_args: None)
+
+    code, stdout, stderr = rc._run(tmp_path / "script.py", tmp_path, [])
+
+    assert code == 124
+    assert stdout == "partial-out"
+    assert "partial-err" in stderr
+    assert "timed out" in stderr
+
+
+@pytest.mark.skipif(os.name != "posix", reason="process-group cleanup is POSIX-only")
+def test_timeout_terminates_and_reaps_real_child_group(monkeypatch, tmp_path):
+    # Given: a real Python child that emits both streams, records its PID, and hangs.
+    script = tmp_path / "hung_child.py"
+    marker = tmp_path / "hung-child.json"
+    script.write_text(
+        "from __future__ import annotations\n"
+        "import json\n"
+        "import os\n"
+        "import signal\n"
+        "import sys\n"
+        "import time\n"
+        "from pathlib import Path\n"
+        "marker = Path(sys.argv[1]) / 'hung-child.json'\n"
+        "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+        "marker.write_text(json.dumps({'pid': os.getpid(), 'ppid': os.getppid(), 'pgid': os.getpgid(0)}), encoding='utf-8')\n"
+        "print('started-out', flush=True)\n"
+        "print('started-err', file=sys.stderr, flush=True)\n"
+        "time.sleep(60)\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(rc, "CHILD_TIMEOUT_SECONDS", 1)
+
+    # When: the regression subprocess boundary times out.
+    code, stdout, stderr = rc._run(script, tmp_path, [])
+    child = json.loads(marker.read_text(encoding="utf-8"))
+    child_pid = child["pid"]
+    process_row = subprocess.run(
+        ["ps", "-o", "pid=,ppid=,pgid=,stat=,command=", "-p", str(child_pid)],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+
+    try:
+        # Then: the entire child group is gone, the wrapper is reaped, and output survives.
+        assert code == 124
+        assert process_row == "", f"orphaned child after timeout: {process_row}"
+        assert "started-out" in stdout
+        assert "started-err" in stderr
+        assert "timed out" in stderr
+    finally:
+        if process_row:
+            os.kill(child_pid, signal.SIGKILL)
+
+
+def test_missing_coverage_verdict_is_flagged(tmp_path, monkeypatch):
+    outputs = iter(
+        [
+            (0, "{}", ""),
+            (0, "- executable_ok: yes\n", ""),
+            (0, "- predicate_ok: yes\n", ""),
+            (0, '{"ledger":{"handoff_ready":true},"protocol":{"protocol_ready":true},"interview_converged":true}', ""),
+            (0, '{"implementation_gate":{"implementation_ready":true}}', ""),
+        ]
+    )
+    monkeypatch.setattr(rc, "_run", lambda *_args, **_kwargs: next(outputs))
+    expected = {
+        "coverage_ok": True,
+        "handoff_ready": True,
+        "protocol_ready": True,
+        "interview_converged": True,
+        "implementation_ready": True,
+        "postmortem": None,
+        "verification_execution": None,
     }
 
     row = rc.check_session("shape", tmp_path, expected)
 
     assert any("coverage JSON" in finding for finding in row["findings"])
+
+
+def test_malformed_child_json_reports_stderr_diagnostic(tmp_path, monkeypatch):
+    # Given: a malformed JSON child result with useful stderr context.
+    outputs = iter(
+        [
+            (0, "not-json", "warning: cold-cache install failed\n"),
+            (0, "- executable_ok: yes\n", ""),
+            (0, "- predicate_ok: yes\n", ""),
+            (0, '{"ledger":{"handoff_ready":true},"protocol":{"protocol_ready":true},"interview_converged":true}', ""),
+            (0, '{"implementation_gate":{"implementation_ready":true}}', ""),
+        ]
+    )
+    monkeypatch.setattr(rc, "_run", lambda *_args, **_kwargs: next(outputs))
+    expected = {
+        "coverage_ok": True,
+        "handoff_ready": True,
+        "protocol_ready": True,
+        "interview_converged": True,
+        "implementation_ready": True,
+        "postmortem": None,
+        "verification_execution": None,
+    }
+
+    # When: the harness parses the malformed stdout.
+    row = rc.check_session("malformed", tmp_path, expected)
+
+    # Then: the parse failure retains stderr as diagnostic context.
+    assert any(
+        "coverage JSON" in finding and "cold-cache install failed" in finding
+        for finding in row["findings"]
+    )
+
+
+def test_nonzero_child_exit_is_still_reported(tmp_path, monkeypatch):
+    # Given: valid JSON from a child that exits nonzero.
+    outputs = iter(
+        [
+            (7, '{"coverage_ok": true}', ""),
+            (0, "- executable_ok: yes\n", ""),
+            (0, "- predicate_ok: yes\n", ""),
+            (0, '{"ledger":{"handoff_ready":true},"protocol":{"protocol_ready":true},"interview_converged":true}', ""),
+            (0, '{"implementation_gate":{"implementation_ready":true}}', ""),
+        ]
+    )
+    monkeypatch.setattr(rc, "_run", lambda *_args, **_kwargs: next(outputs))
+    expected = {
+        "coverage_ok": True,
+        "handoff_ready": True,
+        "protocol_ready": True,
+        "interview_converged": True,
+        "implementation_ready": True,
+        "postmortem": None,
+        "verification_execution": None,
+    }
+
+    # When: the harness evaluates the child result.
+    row = rc.check_session("nonzero", tmp_path, expected)
+
+    # Then: the existing exit-code failure semantics remain intact.
+    assert "handoff_coverage: advisory run exited 7 (expected 0)" in row["findings"]
 
 
 if __name__ == "__main__":

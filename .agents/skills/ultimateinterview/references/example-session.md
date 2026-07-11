@@ -2,7 +2,7 @@
 
 A synthetic but fully executed `focused` interview, kept small on purpose. Every dashboard below is real output from the helper scripts run against the files shown - nothing is mocked. Pattern-match against this when unsure what a step's artifacts should look like. (This session exercises the current mechanics: stakes calibration, `pending` lens state, origin instrumentation, obligation precedence (`due_now_corrections`), checkpoint lens re-flip, the combined `session_status.py` final dashboards, and the exit check.)
 
-> Vintage note: this rehearsal predates typed-event bookkeeping, so its deltas set protocol counters manually. In a live session that pattern is now forbidden - pass `event` (and `transcript`/`checkpoint_confirm`) in the delta and let the script compute the counters (`references/state-files.md` §Typed events). The dashboards and file shapes shown remain accurate.
+> Vintage note: this rehearsal is a schema-v0 historical example and predates typed-event bookkeeping. Do not rewrite its channel-only ledger or manual counters as if they were current authoring guidance. New sessions initialize schema v1: persist ClaimEvidence records, orientation/breadth open-world records, typed probe decision/results, and the compiled BuildContract sidecar. The executable positive control is `scripts/integration_fixtures/v1-ready/`; live deltas use `event`, `open_world_sweep`, `probe_decision`/`probe_attempt`, and `checkpoint_confirm` (`references/state-files.md`).
 
 ## Epistemic hardening rehearsal
 
@@ -85,6 +85,8 @@ A (verbatim): "accept all"
   entries - gap count rose with it, so this is divergence, not stagnation)
 
 ## pre-handoff: flush, sweep + probe (cost 0) (17:10)
+
+Schema-v1 replay inserts two records around this vintage narrative: the orientation open-world pass precedes all lens decisions, and each breadth sweep carries a same-delta `phase: breadth` record bound to the current material revision. It also replaces the prose-only contrarian with a persisted least-sufficient L0-L3 decision and bounded result sequence. A neutral result earns no evidence credit; a material divergence creates `origin: probe` and reopens freshness.
 - [due-now] protocol_state.py: "no breadth sweep has run", "no contrarian probe
   has run" - preempted the plan to jump straight to the mandatory checkpoint
   (nothing left to flush: interaction 3 was the batch); due_now_corrections -> 1
@@ -122,6 +124,43 @@ out with the status chip. Rest correct."
 - exit-check: interactions 4 | due_now_corrections 1 | origins: orientation 2,
   dump 3, pressure 1, batch 3, checkpoint 1, sweep 1 | sweeps: 3 total, 2 dry in a row
 ```
+## Locality zoom-out routing excerpt
+
+The following compact state excerpt shows the audit metadata after three same-domain auth questions. `R-notify` is an unresolved sibling, so `--next` zooms out before it permits another ranked question.
+
+```json
+{
+  "ledger": [
+    {"id": "R-session", "ambiguity_score": 2, "track": {"category": "behavior", "domain": "auth", "target_surfaces": ["auth/sessions.py"]}},
+    {"id": "R-notify", "ambiguity_score": 1, "track": {"category": "behavior", "domain": "notifications", "target_surfaces": ["notifications/email.py"]}}
+  ],
+  "questions": [
+    {"id": "Q-sessions", "target_ids": ["R-session"]},
+    {"id": "Q-next", "target_ids": ["R-session"]}
+  ],
+  "protocol": {
+    "recent_question_tracks": [
+      {"asked_question_id": "Q-login", "ledger_ids": ["R-session"], "categories": ["behavior"], "domains": ["auth"], "target_files": ["auth/login.py"]},
+      {"asked_question_id": "Q-sessions", "ledger_ids": ["R-session"], "categories": ["behavior"], "domains": ["auth"], "target_files": ["auth/sessions.py"]},
+      {"asked_question_id": "Q-revoke", "ledger_ids": ["R-session"], "categories": ["behavior"], "domains": ["auth"], "target_files": ["auth/revoke.py"]}
+    ]
+  }
+}
+```
+
+```text
+$ session_status.py --next
+- next: locality zoom-out: repeated categories=behavior; domains=auth across the last 3 scored questions; unresolved sibling ledger ids: R-notify; enumerate/confirm those sibling tracks with a free ledger-derived sweep, else ask one breadth question; bypass the raw score queue
+- then: scored-question targeting a critical-path gap (R-session)
+
+$ session_update.py ... '{"event":"sweep-free","sweep_result":"dry"}'
+# recent_question_tracks is now []
+
+$ session_status.py --next
+- next: scored-question targeting a critical-path gap (R-session)
+```
+
+The sweep checks `R-notify` once, then returns to the necessary deep auth thread; the zoom-out never discards it.
 
 ## Mid-interview dashboard (after interaction 1) - real output
 
@@ -266,7 +305,7 @@ from-code, from-docs, from-research, from-scenario, from-user (+1 more)   [exit 
   "framing_challenged": true,
   "brain_dump_done": true,
   "build_contract_tested": true,
-  "build_contract_digest": "fef6d0a5a59d4c23c6dba47d3f5bb98bade873ab6115d4ef7048af759bcdf52b",
+  "build_contract_digest": "79b44a74d4159818f28786720de9a7fb9156967dea11c6336a28509e9968a4b9",
   "build_contract_reviewer": "self-audit:rehearsal",
   "lenses": {
     "viewpoint": {"state": "done", "artifact": "ViewpointMatrix", "reason": "admin/user/support/security viewpoints covered; reverse-evidence cleared by checkpoint"},
@@ -365,6 +404,7 @@ An admin can deactivate and reactivate one user reversibly; deactivation revokes
 | --- | --- | --- |
 | exact migration helper, route shape, and CSS implementation | yes | must preserve every observable in REQ-001 through REQ-005 |
 | meaning of inactive, retained data, revocation set, or auto-expiry | no | use the settled requirements; log any forced deviation |
+| Post-spec decision logging | no | Append every decision the spec did not force to `.ultimateinterview/<slug>/decisions.jsonl` as you make it (the execution substrate does not auto-log). |
 
 ## Out Of Scope / Non-Goals
 
@@ -415,4 +455,4 @@ An admin can deactivate and reactivate one user reversibly; deactivation revokes
 
 # Part 2 — Audit Trail
 
-Fresh-implementer evidence is bound to the Part-1 digest in `protocol.json`; the exit-check line closed the transcript.
+Fresh-implementer evidence is bound to the Part-1 digest in `protocol.json`; schema v1 additionally compiles canonical `build-contract.json` and requires the sidecar to remain valid and current. The exit-check line closed the transcript.

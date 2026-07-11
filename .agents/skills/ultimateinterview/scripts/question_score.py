@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import json
+import math
 import sys
 from dataclasses import dataclass
 from enum import StrEnum
@@ -29,7 +30,7 @@ from collections.abc import Callable
 from typing import Annotated, ClassVar, Final
 
 import typer
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
+from pydantic import BeforeValidator, BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
 
 class OutputFormat(StrEnum):
@@ -37,17 +38,40 @@ class OutputFormat(StrEnum):
     MARKDOWN = "markdown"
 
 
+type JsonValue = None | bool | int | float | str | list[JsonValue] | dict[str, JsonValue]
+
+
+class _InvalidScoreError(ValueError):
+    pass
+
+
+def finite_score(value: JsonValue) -> int | float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise _InvalidScoreError("question score dimensions must be finite JSON numbers")
+    if isinstance(value, float) and not math.isfinite(value):
+        raise _InvalidScoreError("question score dimensions must be finite JSON numbers")
+    return value
+
+
+type ScoreDimension = Annotated[
+    float,
+    BeforeValidator(finite_score),
+    Field(ge=0, le=5),
+]
+
+
 class QuestionCandidate(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
 
     id: str
     question: str
-    impact: float = Field(ge=0, le=5)
-    branch_split: float = Field(ge=0, le=5)
-    uncertainty_reduction: float = Field(ge=0, le=5)
-    coverage: float = Field(ge=0, le=5)
-    user_cost: float = Field(ge=0, le=5)
-    redundancy: float = Field(ge=0, le=5)
+    impact: ScoreDimension
+    branch_split: ScoreDimension
+    uncertainty_reduction: ScoreDimension
+    coverage: ScoreDimension
+    user_cost: ScoreDimension
+    redundancy: ScoreDimension
+    target_ids: tuple[str, ...] = ()
 
 
 class QuestionDocument(BaseModel):
@@ -79,6 +103,7 @@ class RankedQuestion:
     coverage: float
     user_cost: float
     redundancy: float
+    target_ids: tuple[str, ...] = ()
 
 
 def parse_questions(raw_json: str) -> tuple[QuestionCandidate, ...]:
@@ -145,6 +170,7 @@ def rank_questions(
             coverage=candidate.coverage,
             user_cost=candidate.user_cost,
             redundancy=candidate.redundancy,
+            target_ids=candidate.target_ids,
         )
         for index, candidate in enumerate(scored)
     )
@@ -164,6 +190,7 @@ def rankings_as_json(rankings: tuple[RankedQuestion, ...]) -> str:
                 "coverage": item.coverage,
                 "user_cost": item.user_cost,
                 "redundancy": item.redundancy,
+                "target_ids": list(item.target_ids),
             }
             for item in rankings
         ],
@@ -175,11 +202,11 @@ def rankings_as_markdown(rankings: tuple[RankedQuestion, ...]) -> str:
     lines = [
         "## Question Scores",
         "",
-        "| Rank | ID | Score | Question |",
-        "| --- | --- | --- | --- |",
+        "| Rank | ID | Score | Target IDs | Question |",
+        "| --- | --- | --- | --- | --- |",
     ]
     lines.extend(
-        f"| {item.rank} | {item.id} | {item.score:.2f} | {item.question} |"
+        f"| {item.rank} | {item.id} | {item.score:.2f} | {', '.join(item.target_ids)} | {item.question} |"
         for item in rankings
     )
     return "\n".join(lines)

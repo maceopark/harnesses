@@ -4,12 +4,13 @@ Use this template when the user asks for a persistent or copy-ready spec. Copy t
 
 # Spec: <feature/change name>
 
-> **To the implementing agent:** Build from Part 1 only; Part 2 is evidence, read it only on dispute. Deferred Risks are decisions reserved to their owners - never resolve one silently; if your implementation needs an answer to one, stop and ask. Append every decision this spec did not force to `.ultimateinterview/<slug>/decisions.jsonl` as you make it. Name each acceptance test after the requirement it verifies (`test_req001_*`, or cite `REQ-001` in the test name or docstring) so requirement→test coverage is mechanical for the postmortem. When the implementation lands, STOP - the requester runs the `ultimateinterview-postmortem` skill in a fresh context to diff this spec against the actual change. Do not audit your own implementation; if you write a self-review anyway, save it as `postmortem.self.md`, never `postmortem.md`.
+> **To the implementing agent:** Build from Part 1 only; Part 2 is evidence, read it only on dispute. Deferred Risks are decisions reserved to their owners - never resolve one silently; if your implementation needs an answer to one, stop and ask. Append every decision this spec did not force to `.ultimateinterview/<slug>/decisions.jsonl` as you make it — **your execution substrate (e.g. lazycodex ulw-loop) does NOT record this for you; you write each line yourself.** Name each acceptance test after the requirement it verifies (`test_req001_*`, or cite `REQ-001` in the test name or docstring) so requirement→test coverage is mechanical for the postmortem. When the implementation lands, STOP - the requester runs the `ultimateinterview-postmortem` skill in a fresh context to diff this spec against the actual change. Do not audit your own implementation; if you write a self-review anyway, save it as `postmortem.self.md`, never `postmortem.md`.
 
 # Part 1 — Build Contract
 
 Self-sufficiency rule: an implementer with no access to the interview reads only this part. It must pass the fresh-implementer test before handoff (record `build_contract_tested` in `protocol.json`).
 Traceability rule: every settled weight-`2`-or-higher, non-deferred ledger entry MUST be cited by id somewhere in Part 1 — the Behavior Contract `Source` cell, or an inline `(source: <id>)` tag in Goal, Quality Bars, Decision Boundaries, Out Of Scope, or Implementation Constraints — or moved to Deferred Risks with owner/date. A cited REQ must reproduce the entry's FULL enumerated behavior (every error class / boundary / state), never a narrowed subset. `scripts/handoff_coverage.py <session-dir>` enforces the id-citation floor (fail-closed); the fresh-implementer test catches behavior narrowing.
+Compilation rule: keep this Markdown as the v1 authoring source. After fresh-review fold-back is complete, use the dedicated `build_contract_test` delta to compile canonical `.ultimateinterview/<slug>/build-contract.json`. The sidecar mirrors every Part-1 section with stable REQ/VER ids, source SHA-256, typed run policies, and a self-excluding digest; never hand-edit it.
 
 ## Goal
 
@@ -56,9 +57,15 @@ Mandatory slot: at least one measurable bar, or exactly one line: `No measurable
 
 Structural detail is delegable; a data-domain invariant is never - its row pins the observable outcome (and names its verification) while the mechanism stays the agent's.
 
+**Mandatory standing instruction (must appear in every handoff):** append every decision this spec did not force — a filled gap, a deviation, an assumption — to `.ultimateinterview/<slug>/decisions.jsonl`, one JSON object per line, as you make it. Your execution substrate (e.g. lazycodex ulw-loop) does not record this automatically; the implementer writes each line. Minimal schema (only `decision` and `reason` are required): `{"decision": "<what you chose>", "reason": "<why the spec did not force it>", "spec_citation": "<REQ/section>", "alternatives": ["<other option>"], "impact": "<what it affects>", "self_class": "spec_gap|implementation_deviation|evaluation_uncertainty|execution_process_gap|legitimate_spec_evolution"}`. The postmortem reads this file to separate spec gaps from implementation deviations; if it is absent the postmortem records that axis as run-blind and reconstructs from the diff.
+
+Decision log: `.ultimateinterview/<slug>/decisions.jsonl`
+Probe decision: `<L0|L1|L2|L3> - <why this is the least sufficient level; authorization id when L2/L3>`
+
 | Decision | Agent may decide? | Boundary |
 | --- | --- | --- |
 |  | yes/no |  |
+| Post-spec decision logging | no | Append every decision the spec did not force to `.ultimateinterview/<slug>/decisions.jsonl` as you make it (the execution substrate does not auto-log). |
 
 ## Out Of Scope / Non-Goals
 
@@ -106,12 +113,12 @@ For boundary-spanning work, include this matrix before the command table. Use do
 | --- | --- | --- | --- | --- |
 |  |  |  | yes/no |  |
 
-`Kind` is `test` or `real-surface`; at least one complete row of each kind is required.
+`Kind` is `test` or `real-surface`; at least one complete row of each kind is required. `Run policy` is `safe-auto`, `expensive`, `destructive`, `credentialed`, or `manual`; never label an unsafe, flaky, credentialed, or unbounded command `safe-auto`.
 
-| Check | Kind | Command / action | Pass condition |
-| --- | --- | --- | --- |
-| REQ-001 unit | test |  |  |
-| REQ-001 surface | real-surface |  |  |
+| ID | Covers | Check | Kind | Command / action | Pass condition | Run policy |
+| --- | --- | --- | --- | --- | --- | --- |
+| VER-001 | REQ-001 | focused unit | test |  |  | safe-auto |
+| VER-002 | REQ-001 | real surface | real-surface |  |  | manual |
 
 ## Deferred Risks
 
@@ -177,9 +184,9 @@ States mirror `protocol.json` verbatim (lowercase; the script rejects other spel
 
 Quote entry counts and dashboard numbers from helper output (`ambiguity_ledger.py` or `session_status.py`), never hand-count — the first real handoff wrote "24 entries" when the ledger had 26.
 
-| ID | Requirement | Source | Evidence | Evidence channels | Ambiguity | Impact weight | Status |
+| ID | Requirement | Track (category / domain / target surface) | Evidence ids / independence groups | Evidence channels (projected) | Ambiguity | Impact weight | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| REQ-001 |  |  |  | from-code, from-user | 0/1/2/3 | 1/2/3/5 | Draft/Triangulated/Contested/Blocked/Accepted/Deferred |
+| REQ-001 |  |  | EV-001/group-a; EV-002/group-b | from-code, from-user | 0/1/2/3 | 1/2/3/5 | Draft/Triangulated/Contested/Blocked/Accepted/Deferred |
 
 ## Ambiguity Dashboard
 
@@ -192,10 +199,11 @@ uv run <ultimateinterview-skill>/scripts/ambiguity_ledger.py --format markdown <
 ```text
 residual = sum(impact_weight * ambiguity_score)  over active gaps
 
-Handoff readiness is blocker-based: ready exactly when no active score 2 or 3 gap remains
-and no active weight-5 entry sits at score 0 or 1 with fewer than two distinct evidence_channels
-(assumption never counts) unless its status records explicit acceptance (Accepted)
-backed by at least one non-assumption channel.
+Handoff readiness is blocker-based: ready exactly when no active score 2 or 3 gap remains.
+In evidence schema v1, each active weight-5 entry at score 0 or 1 needs two eligible
+causal independence groups, or one current establishing owner/delegated record plus Accepted
+status as an explicit decision-authority override. Model-prior/assumption records never count.
+Schema v0 retains historical distinct-channel compatibility.
 The percentage (100 * residual / sum(impact_weight * 3)) is the remaining-ambiguity share —
 lower is better; it dilutes as settled entries accumulate. Informational only; never gate handoff on it.
 Deferred gaps are excluded from the residual and listed under Deferred Risks.
@@ -242,9 +250,9 @@ Use when the readiness gate is triggered.
 
 Condensed from `.ultimateinterview/<slug>/transcript.md`. Batched smart-default rounds and critical-path bundles appear as one row with per-item outcomes.
 
-| # | Question / batch | Decision | Pressure test / checkpoint correction |
-| --- | --- | --- | --- |
-|  |  |  |  |
+| # | Question / batch | Target ledger ids / track | Decision | Pressure test / checkpoint correction |
+| --- | --- | --- | --- | --- |
+|  |  |  |  |  |
 
 ## Contested Log
 

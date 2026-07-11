@@ -28,7 +28,7 @@ No measurable quality bar applies - this fixture validates gate wiring only.
 
 ## Decision Boundaries
 
-No implementation choice may change REQ-001.
+No implementation choice may change REQ-001. Standing instruction: append every decision the spec did not force to `.ultimateinterview/ready-minimal/decisions.jsonl` as you make it (the execution substrate does not record it automatically).
 
 ## Out Of Scope / Non-Goals
 

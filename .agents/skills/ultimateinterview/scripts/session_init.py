@@ -78,6 +78,9 @@ def resolve_session_dir(root: Path, slug: str) -> tuple[Path, str]:
 def initial_protocol(depth: protocol_state.Depth, budget: int | None) -> dict[str, object]:
     return {
         "depth": depth.value,
+        "evidence_schema_version": 1,
+        "contract_schema_version": 1,
+        "material_revision": 0,
         "question_budget": budget or protocol_state.DEPTH_BUDGET_CAPS[depth],
         "interactions_used": 0,
         "answers_since_sweep": 0,
@@ -100,6 +103,10 @@ def initial_protocol(depth: protocol_state.Depth, budget: int | None) -> dict[st
         },
         "residual_history": [],
         "gap_count_history": [],
+        "recent_question_tracks": [],
+        "open_world_records": [],
+        "probe_decision": None,
+        "probe_sequence": None,
     }
 
 

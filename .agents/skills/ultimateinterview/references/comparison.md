@@ -8,7 +8,7 @@ Use this when the user asks why `ultimateinterview` is better than Ouroboros int
 - `ouroboros/src/ouroboros/agents/socratic-interviewer.md`: question-generator role boundaries, one focused Socratic question, brownfield context prefixes, breadth control, and stop conditions.
 - `oh-my-codex/skills/deep-interview/SKILL.md`: intent-first Socratic clarification, weighted ambiguity thresholds, brownfield preflight, challenge modes, context snapshots, `.omx/specs/` output, and execution handoff.
 - `skills/skills/productivity/grill-me/SKILL.md` and `skills/skills/productivity/grilling/SKILL.md`: relentless one-question-at-a-time decision-tree grilling with recommended answers; stateless by design.
-- `docs/requirements-gap-discovery.md`: Contextual observation, Viewpoint matrix, EventStorming, Domain Storytelling, obstacle analysis, misuse/abuse cases, quality attribute scenarios, EARS, and evidence ledger.
+- `docs/reference/requirements-gap-discovery.md`: Contextual observation, Viewpoint matrix, EventStorming, Domain Storytelling, obstacle analysis, misuse/abuse cases, quality attribute scenarios, EARS, and evidence ledger.
 
 ## What Existing Tools Cover
 

@@ -46,7 +46,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import signal
 import subprocess
+from contextlib import suppress
 from pathlib import Path
 from typing import TypedDict
 
@@ -61,9 +64,16 @@ SESSION_STATUS = SELF_DIR / "session_status.py"
 POSTMORTEM_LINT = (
     SELF_DIR.parent.parent / "ultimateinterview-postmortem" / "scripts" / "postmortem_lint.py"
 )
+VERIFICATION_EXECUTION_LINT = (
+    SELF_DIR.parent.parent
+    / "ultimateinterview-postmortem"
+    / "scripts"
+    / "verification_execution_lint.py"
+)
 
 TRACEBACK_MARKER = "Traceback (most recent call last)"
 CHILD_TIMEOUT_SECONDS = 30
+CHILD_TERMINATE_GRACE_SECONDS = 1
 
 # Recorded expected verdicts per fixture. Each was captured from the real
 # session and cross-checked to reproduce on the fixture (see the module docstring
@@ -74,6 +84,9 @@ CHILD_TIMEOUT_SECONDS = 30
 #                                        report predating the contract); <keyword>
 #                                        is the section the report lacks
 #                None                 -> session has no postmortem.md (skip)
+#   verification_execution: "ok"         -> matching capture provenance is complete
+#                           "violations" -> legacy report/bundle is intentionally incomplete
+#                           None         -> session has no postmortem.md (skip)
 class ExpectedVerdicts(TypedDict):
     coverage_ok: bool
     handoff_ready: bool
@@ -81,6 +94,7 @@ class ExpectedVerdicts(TypedDict):
     interview_converged: bool
     implementation_ready: bool
     postmortem: str | None
+    verification_execution: str | None
     why: str
 
 
@@ -88,6 +102,7 @@ class RegressionRow(TypedDict):
     slug: str
     coverage_ok: bool | None
     postmortem: str | None
+    verification_execution: str | None
     findings: list[str]
 
 
@@ -99,6 +114,7 @@ EXPECTED: dict[str, ExpectedVerdicts] = {
         "interview_converged": True,
         "implementation_ready": True,
         "postmortem": None,
+        "verification_execution": None,
         "why": "synthetic positive control; prevents an always-blocked gate from passing the sweep",
     },
     "todo-cli-app-5": {
@@ -108,6 +124,7 @@ EXPECTED: dict[str, ExpectedVerdicts] = {
         "interview_converged": False,
         "implementation_ready": False,
         "postmortem": "ok",
+        "verification_execution": "ok",
         "why": "richest closed loop: full handoff, decisions.jsonl, bundle lessons snapshot -> report contract satisfied",
     },
     "todo-cli-app-4": {
@@ -117,6 +134,7 @@ EXPECTED: dict[str, ExpectedVerdicts] = {
         "interview_converged": False,
         "implementation_ready": False,
         "postmortem": "missing:lessons fire-tracking",
+        "verification_execution": "violations",
         "why": "predates the postmortem report contract; lacks the lessons fire-tracking section",
     },
     "todo-cli-app": {
@@ -126,6 +144,7 @@ EXPECTED: dict[str, ExpectedVerdicts] = {
         "interview_converged": False,
         "implementation_ready": False,
         "postmortem": "missing:verification execution",
+        "verification_execution": "violations",
         "why": "earliest report; lacks the verification-execution section",
     },
     "attribute-search-mysql": {
@@ -135,6 +154,7 @@ EXPECTED: dict[str, ExpectedVerdicts] = {
         "interview_converged": False,
         "implementation_ready": False,
         "postmortem": None,
+        "verification_execution": None,
         "why": "no postmortem run; exercises handoff_coverage + verification_lint on a non-todo domain",
     },
 }
@@ -144,18 +164,42 @@ class Regression(Exception):
     """A script crashed or a host-independent verdict moved."""
 
 
-def _run(script: Path, session_dir: Path, extra: list[str]) -> tuple[int, str]:
+def _run(script: Path, session_dir: Path, extra: list[str]) -> tuple[int, str, str]:
     command = ["uv", "run", str(script), str(session_dir), *extra]
+    proc = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=os.name == "posix",
+    )
     try:
-        proc = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            timeout=CHILD_TIMEOUT_SECONDS,
-        )
+        stdout, stderr = proc.communicate(timeout=CHILD_TIMEOUT_SECONDS)
     except subprocess.TimeoutExpired:
-        return 124, f"timed out after {CHILD_TIMEOUT_SECONDS}s: {' '.join(command)}"
-    return proc.returncode, proc.stdout + proc.stderr
+        if os.name == "posix":
+            with suppress(ProcessLookupError):
+                os.killpg(proc.pid, signal.SIGTERM)
+        else:
+            # Platforms without POSIX process groups fall back to the direct
+            # child; callers still get bounded termination and reaping.
+            proc.terminate()
+        try:
+            stdout, stderr = proc.communicate(timeout=CHILD_TERMINATE_GRACE_SECONDS)
+        except subprocess.TimeoutExpired:
+            if os.name == "posix":
+                with suppress(ProcessLookupError):
+                    os.killpg(proc.pid, signal.SIGKILL)
+            else:
+                proc.kill()
+            stdout, stderr = proc.communicate()
+        diagnostic = f"timed out after {CHILD_TIMEOUT_SECONDS}s: {' '.join(command)}"
+        separator = "" if not stderr or stderr.endswith("\n") else "\n"
+        return 124, stdout, f"{stderr}{separator}{diagnostic}"
+    return proc.returncode, stdout, stderr
+
+
+def _diagnostic_context(stderr: str) -> str:
+    return f"; stderr: {stderr.strip()}" if stderr.strip() else ""
 
 
 def _no_crash(out: str, label: str) -> list[str]:
@@ -171,25 +215,34 @@ def check_session(
     findings: list[str] = []
 
     # 1. handoff_coverage — deterministic coverage_ok
-    rc, out = _run(HANDOFF_COVERAGE, session_dir, ["--format", "json", "--advisory"])
+    rc, stdout, stderr = _run(
+        HANDOFF_COVERAGE,
+        session_dir,
+        ["--format", "json", "--advisory"],
+    )
+    out = stdout + stderr
     findings += _no_crash(out, "handoff_coverage")
     if rc != 0:
         findings.append(f"handoff_coverage: advisory run exited {rc} (expected 0)")
     coverage_ok = None
     try:
-        coverage_payload = json.loads(out)
+        coverage_payload = json.loads(stdout)
         coverage_ok = coverage_payload["coverage_ok"]
         if not isinstance(coverage_ok, bool):
             raise TypeError("coverage_ok is not a boolean")
     except (json.JSONDecodeError, KeyError, TypeError):
-        findings.append("handoff_coverage: output was not valid coverage JSON")
+        findings.append(
+            "handoff_coverage: output was not valid coverage JSON"
+            f"{_diagnostic_context(stderr)}"
+        )
     if coverage_ok != expected["coverage_ok"]:
         findings.append(
             f"handoff_coverage: coverage_ok={coverage_ok}, expected {expected['coverage_ok']}"
         )
 
     # 2. verification_lint — runs cleanly, well-formed report; value NOT asserted (host-dependent)
-    rc, out = _run(VERIFICATION_LINT, session_dir, [])
+    rc, stdout, stderr = _run(VERIFICATION_LINT, session_dir, [])
+    out = stdout + stderr
     findings += _no_crash(out, "verification_lint")
     if rc != 0:
         findings.append(f"verification_lint: advisory run exited {rc} (expected 0)")
@@ -201,17 +254,19 @@ def check_session(
     # why it is advisory), so we assert STRUCTURE not value, exactly like
     # verification_lint's MISSING-head set. Precise fire/clean assertions live in
     # test_predicate_lint.py against the crafted regression_fixtures/predicate_cases.
-    rc, out = _run(PREDICATE_LINT, session_dir, [])
+    rc, stdout, stderr = _run(PREDICATE_LINT, session_dir, [])
+    out = stdout + stderr
     findings += _no_crash(out, "predicate_lint")
     if rc != 0:
         findings.append(f"predicate_lint: advisory run exited {rc} (expected 0)")
     if "predicate_ok" not in out:
         findings.append("predicate_lint: report missing 'predicate_ok' line")
 
-    rc, out = _run(SESSION_STATUS, session_dir, ["--format", "json"])
+    rc, stdout, stderr = _run(SESSION_STATUS, session_dir, ["--format", "json"])
+    out = stdout + stderr
     findings += _no_crash(out, "session_status")
     try:
-        status_payload = json.loads(out)
+        status_payload = json.loads(stdout)
         actual = {
             "handoff_ready": status_payload["ledger"]["handoff_ready"],
             "protocol_ready": status_payload["protocol"]["protocol_ready"],
@@ -220,7 +275,10 @@ def check_session(
         if not all(isinstance(value, bool) for value in actual.values()):
             raise TypeError("status verdict is not boolean")
     except (json.JSONDecodeError, KeyError, TypeError):
-        findings.append("session_status: output was not valid JSON")
+        findings.append(
+            "session_status: output was not valid JSON"
+            f"{_diagnostic_context(stderr)}"
+        )
     else:
         for key, value in actual.items():
             if value != expected[key]:
@@ -228,19 +286,23 @@ def check_session(
     if rc != 0:
         findings.append(f"session_status: exited {rc} (expected 0)")
 
-    gate_rc, gate_out = _run(
+    gate_rc, gate_stdout, gate_stderr = _run(
         SESSION_STATUS,
         session_dir,
         ["--format", "json", "--gate"],
     )
+    gate_out = gate_stdout + gate_stderr
     findings += _no_crash(gate_out, "implementation_gate")
     try:
-        gate_payload = json.loads(gate_out)
+        gate_payload = json.loads(gate_stdout)
         implementation_ready = gate_payload["implementation_gate"]["implementation_ready"]
         if not isinstance(implementation_ready, bool):
             raise TypeError("implementation_ready is not boolean")
     except (json.JSONDecodeError, KeyError, TypeError):
-        findings.append("implementation_gate: output was not valid gate JSON")
+        findings.append(
+            "implementation_gate: output was not valid gate JSON"
+            f"{_diagnostic_context(gate_stderr)}"
+        )
     else:
         if implementation_ready != expected["implementation_ready"]:
             findings.append(
@@ -251,11 +313,42 @@ def check_session(
     if gate_rc != expected_rc:
         findings.append(f"implementation_gate: exited {gate_rc}, expected {expected_rc}")
 
+    # 3. verification_execution_lint — provenance verdict for every session
+    # with a postmortem. Legacy reports are expected to be violations, not
+    # tracebacks or malformed-input exits.
+    execution_expected = expected["verification_execution"]
+    execution_verdict = None
+    if execution_expected is not None:
+        rc, stdout, stderr = _run(
+            VERIFICATION_EXECUTION_LINT,
+            session_dir,
+            ["--advisory"],
+        )
+        out = stdout + stderr
+        findings += _no_crash(out, "verification_execution_lint")
+        if rc != 0:
+            findings.append(
+                f"verification_execution_lint: advisory run exited {rc} (expected 0)"
+            )
+        low = out.lower()
+        if "verification_execution_lint: ok" in low:
+            execution_verdict = "ok"
+        elif "verification_execution_lint:" in low and "violation" in low:
+            execution_verdict = "violations"
+        else:
+            execution_verdict = "other"
+        if execution_verdict != execution_expected:
+            first_line = out.strip().splitlines()[0] if out.strip() else out
+            findings.append(
+                f"verification_execution_lint: expected {execution_expected}, got {first_line!r}"
+            )
+
     # 3. postmortem_lint — verdict class (only if a postmortem exists)
     pm_expected = expected["postmortem"]
     pm_verdict = None
     if pm_expected is not None:
-        rc, out = _run(POSTMORTEM_LINT, session_dir, ["--advisory"])
+        rc, stdout, stderr = _run(POSTMORTEM_LINT, session_dir, ["--advisory"])
+        out = stdout + stderr
         findings += _no_crash(out, "postmortem_lint")
         if rc != 0:
             findings.append(f"postmortem_lint: advisory run exited {rc} (expected 0)")
@@ -279,6 +372,9 @@ def check_session(
         "slug": slug,
         "coverage_ok": coverage_ok,
         "postmortem": pm_verdict if pm_expected is not None else "n/a",
+        "verification_execution": (
+            execution_verdict if execution_expected is not None else "n/a"
+        ),
         "findings": findings,
     }
 
@@ -287,41 +383,55 @@ def check_unrecorded_live(slug: str, session_dir: Path) -> RegressionRow:
     findings: list[str] = []
     coverage_ok: bool | None = None
     if (session_dir / "handoff.md").is_file():
-        rc, out = _run(HANDOFF_COVERAGE, session_dir, ["--format", "json", "--advisory"])
+        rc, stdout, stderr = _run(
+            HANDOFF_COVERAGE,
+            session_dir,
+            ["--format", "json", "--advisory"],
+        )
+        out = stdout + stderr
         if rc != 0:
             findings.append(f"handoff_coverage: advisory run exited {rc} (expected 0)")
         try:
-            coverage_payload = json.loads(out)
+            coverage_payload = json.loads(stdout)
             coverage_ok = coverage_payload["coverage_ok"]
             if not isinstance(coverage_ok, bool):
                 raise TypeError("coverage_ok is not a boolean")
         except (json.JSONDecodeError, KeyError, TypeError):
-            findings.append("handoff_coverage: output was not valid coverage JSON")
+            findings.append(
+                "handoff_coverage: output was not valid coverage JSON"
+                f"{_diagnostic_context(stderr)}"
+            )
 
         for label, script, marker in (
             ("verification_lint", VERIFICATION_LINT, "executable_ok"),
             ("predicate_lint", PREDICATE_LINT, "predicate_ok"),
         ):
-            rc, out = _run(script, session_dir, [])
+            rc, stdout, stderr = _run(script, session_dir, [])
+            out = stdout + stderr
             if rc != 0:
                 findings.append(f"{label}: advisory run exited {rc} (expected 0)")
             if marker not in out:
                 findings.append(f"{label}: report missing {marker!r} line")
 
-    rc, out = _run(SESSION_STATUS, session_dir, ["--format", "json"])
+    rc, stdout, stderr = _run(SESSION_STATUS, session_dir, ["--format", "json"])
+    out = stdout + stderr
     if rc != 0:
         findings.append(f"session_status: exited {rc} (expected 0)")
     try:
-        payload = json.loads(out)
+        payload = json.loads(stdout)
         if not isinstance(payload["interview_converged"], bool):
             raise TypeError("interview_converged is not boolean")
     except (json.JSONDecodeError, KeyError, TypeError):
-        findings.append("session_status: output was not valid JSON")
+        findings.append(
+            "session_status: output was not valid JSON"
+            f"{_diagnostic_context(stderr)}"
+        )
 
     return {
         "slug": f"{slug} (live-unrecorded)",
         "coverage_ok": coverage_ok,
         "postmortem": "n/a",
+        "verification_execution": "n/a",
         "findings": findings,
     }
 
@@ -332,8 +442,15 @@ def run_check(include_live: bool = False) -> list[RegressionRow]:
     for slug, expected in EXPECTED.items():
         fx = FIXTURES_DIR / slug
         if not fx.is_dir():
-            rows.append({"slug": slug, "coverage_ok": None, "postmortem": None,
-                         "findings": [f"fixture missing: {fx}"]})
+            rows.append(
+                {
+                    "slug": slug,
+                    "coverage_ok": None,
+                    "postmortem": None,
+                    "verification_execution": None,
+                    "findings": [f"fixture missing: {fx}"],
+                }
+            )
             continue
         rows.append(check_session(slug, fx, expected))
 

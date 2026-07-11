@@ -7,7 +7,7 @@ Independent audit. The implementing executor (Codex ulw-loop session `todo-cli-a
 | Source | Reference | Range |
 | --- | --- | --- |
 | Working tree (staged adds) | `todo-cli-app-5/{todo.py, tests/test_todo.py, pyproject.toml, uv.lock}` | `implementation.diff` (72 KB) in the session dir |
-| Evidence bundle | `evidence_bundle.json`, schema v2, 344,623 bytes (rebuilt by this audit; the executor's v1 bundle was 5.1 MB) | 21 ledger entries, 5 decisions, 34 ulw events, 52 artifacts, 0 warnings, 0 missing |
+| Evidence bundle | `evidence_bundle.json`, schema v4 fixture bundle | 6 synthetic CAPTURED-OUTPUT projections for the Verification Execution rows; fixture evidence only |
 | Runtime artifacts | `.omo/evidence/todo-cli-app-5/` (red/green pytest, tmux walkthroughs, temp-write red/green, QA outputs) | 2026-07-07 14:08–14:45 |
 | Implementer decision log | `decisions.jsonl` — 5 records (3 `legitimate_spec_evolution`, 2 `execution_process_gap`) | 2026-07-07 |
 
@@ -17,36 +17,42 @@ Handoff written: 2026-07-07 13:57. Implementation examined through: working tree
 
 Deterministic first pass: `handoff_coverage.py --advisory` → 17/17 material-settled entries cited in Part 1, `coverage_ok: yes`; behavior-fidelity read of each cited entry found no sub-case narrowing → zero `synthesis-loss` candidates.
 
-| ID / Behavior | Class | Spec reference | Implementation reference | Note |
-| --- | --- | --- | --- | --- |
-| REQ-001 command set + unknown/missing/extra args exit 2 | fulfilled | Part 1 | `todo.py:63-127` (`run`, `require_arg_count`) | verified live: unknown/missing/extra all exit 2, stderr-only |
-| REQ-002 dateless not-done default view | fulfilled | Part 1 | `todo.py:67-70` | |
-| REQ-003 complete hides + retains; list-completed | fulfilled | Part 1 | `todo.py:72-78,93-104` | |
-| REQ-004 stable monotonic int id; duplicate titles | fulfilled | Part 1 | `todo.py:84-91` | duplicate-title walkthrough passed |
-| REQ-005 creation-order rendering, no reorder | fulfilled | Part 1 | `todo.py:70,178-181` | |
-| REQ-006 fixed output strings + single trailing newline | fulfilled | Part 1 | `todo.py:59,91,104,118,178-181` | live output byte-matched the spec examples |
-| REQ-007 add joins args; title validation at add | fulfilled | Part 1 | `todo.py:130-148` | predicate note: "control characters" implemented as C0+DEL only — C1 controls (e.g. U+0085) pass; title stored unstripped. Spec named the category, not the set |
-| REQ-008 complete id errors incl. already-completed message | fulfilled | Part 1 | `todo.py:93-104,151-165` | predicate note: id canonical form (`"01"`, `"+1"`, `" 1"` rejected via `str(int(raw))!=raw`) is implementer-chosen under "malformed" |
-| REQ-009 delete any existing task; errors exit 2 | fulfilled | Part 1 | `todo.py:106-118` | |
-| REQ-010 fixed `$HOME/.todo-cli-app-5.json`; create parent dir on save | fulfilled | Part 1 | `todo.py:184-185,263` | verified live with nested missing `HOME` |
-| REQ-011 schema `{next_id, tasks[]}`; ids never reused | fulfilled | Part 1 | `todo.py:201-234,84-91` | |
-| REQ-012 unknown root/task keys preserved on round-trip | fulfilled | Part 1 | `todo.py:223-227,252-257,302-314` | preserved at both root and task level |
-| REQ-013 invalid readable store → exit 3, no overwrite | fulfilled | Part 1 | `todo.py:201-257` | see escape E1 for the `next_id` predicate the spec never defined |
-| REQ-014 unreadable/corrupt/non-UTF8 → exit 3, no overwrite | fulfilled | Part 1 | `todo.py:188-198` | `OSError` catch also covers permission-denied |
-| REQ-015 atomic save; failure = stderr, nonzero, no partial store | fulfilled | Part 1 | `todo.py:260-299` | executor's own review found the pre-`os.replace` temp-write failure case, locked it red→green (`temp-write-red/green.txt`); temp-residue cleanup is in-spec via the quality bar's "never a partial JSON file" wording — this audit initially miscounted it as an escape and the fresh-context inventory's quality-bar mapping corrected it |
-| Quality bar: store durability (temp+rename, no partial file) | fulfilled | Part 1 Quality Bars | `todo.py:260-299` + monkeypatched failure tests | fsync before rename exceeds the bar |
-| Quality bar: stdlib-only runtime | fulfilled | Part 1 Quality Bars | `todo.py:1-10` imports; `pyproject.toml` (pytest dev-only via uv) | verified by inspection |
-| E1: store-level `next_id` validity predicate (`next_id` > every existing id; bool rejected) | escaped-requirement | REQ-013 names "invalid `next_id`" with no deciding rule; ledger g17 likewise | `todo.py:219-221,231-234` | decision #3 documents the forced invention; entailed-by-monotonicity is one reading, but `next_id == max(id)` rejection is observable behavior the spec cannot falsify |
-| E2: runtime version floor `requires-python = ">=3.11"` | escaped-requirement | Implementation Constraints pin "Python 3 stdlib runtime only" (g5) with no version floor | `pyproject.toml` `requires-python`; `todo.py` uses 3.10+ syntax (PEP 604 unions, `TypeAlias`) | the implementer chose the floor and never logged it in `decisions.jsonl` — an unpinned compatibility predicate, plus a decision-log discipline gap |
+| ID / Behavior | Class | Spec reference | Implementation reference | Supporting diff paths | Note |
+| --- | --- | --- | --- | --- | --- |
+| REQ-001 command set + unknown/missing/extra args exit 2 | fulfilled | Part 1 | `todo.py:63-127` (`run`, `require_arg_count`) | `todo-cli-app-5/todo.py`, `todo-cli-app-5/tests/test_todo.py` | verified live: unknown/missing/extra all exit 2, stderr-only |
+| REQ-002 dateless not-done default view | fulfilled | Part 1 | `todo.py:67-70` | `todo-cli-app-5/todo.py` | |
+| REQ-003 complete hides + retains; list-completed | fulfilled | Part 1 | `todo.py:72-78,93-104` | `todo-cli-app-5/todo.py` | |
+| REQ-004 stable monotonic int id; duplicate titles | fulfilled | Part 1 | `todo.py:84-91` | `todo-cli-app-5/todo.py`, `todo-cli-app-5/tests/test_todo.py` | duplicate-title walkthrough passed |
+| REQ-005 creation-order rendering, no reorder | fulfilled | Part 1 | `todo.py:70,178-181` | `todo-cli-app-5/todo.py` | |
+| REQ-006 fixed output strings + single trailing newline | fulfilled | Part 1 | `todo.py:59,91,104,118,178-181` | `todo-cli-app-5/todo.py` | live output byte-matched the spec examples |
+| REQ-007 add joins args; title validation at add | fulfilled | Part 1 | `todo.py:130-148` | `todo-cli-app-5/todo.py`, `todo-cli-app-5/tests/test_todo.py` | predicate note: "control characters" implemented as C0+DEL only — C1 controls (e.g. U+0085) pass; title stored unstripped. Spec named the category, not the set |
+| REQ-008 complete id errors incl. already-completed message | fulfilled | Part 1 | `todo.py:93-104,151-165` | `todo-cli-app-5/todo.py`, `todo-cli-app-5/tests/test_todo.py` | predicate note: id canonical form (`"01"`, `"+1"`, `" 1"` rejected via `str(int(raw))!=raw`) is implementer-chosen under "malformed" |
+| REQ-009 delete any existing task; errors exit 2 | fulfilled | Part 1 | `todo.py:106-118` | `todo-cli-app-5/todo.py`, `todo-cli-app-5/tests/test_todo.py` | |
+| REQ-010 fixed `$HOME/.todo-cli-app-5.json`; create parent dir on save | fulfilled | Part 1 | `todo.py:184-185,263` | `todo-cli-app-5/todo.py` | verified live with nested missing `HOME` |
+| REQ-011 schema `{next_id, tasks[]}`; ids never reused | fulfilled | Part 1 | `todo.py:201-234,84-91` | `todo-cli-app-5/todo.py` | |
+| REQ-012 unknown root/task keys preserved on round-trip | fulfilled | Part 1 | `todo.py:223-227,252-257,302-314` | `todo-cli-app-5/todo.py`, `todo-cli-app-5/tests/test_todo.py` | preserved at both root and task level |
+| REQ-013 invalid readable store → exit 3, no overwrite | fulfilled | Part 1 | `todo.py:201-257` | `todo-cli-app-5/todo.py`, `todo-cli-app-5/tests/test_todo.py` | see escape E1 for the `next_id` predicate the spec never defined |
+| REQ-014 unreadable/corrupt/non-UTF8 → exit 3, no overwrite | fulfilled | Part 1 | `todo.py:188-198` | `todo-cli-app-5/todo.py`, `todo-cli-app-5/tests/test_todo.py` | `OSError` catch also covers permission-denied |
+| REQ-015 atomic save; failure = stderr, nonzero, no partial store | fulfilled | Part 1 | `todo.py:260-299` | `todo-cli-app-5/todo.py`, `todo-cli-app-5/tests/test_todo.py` | executor's own review found the pre-`os.replace` temp-write failure case, locked it red→green |
+| Quality bar: store durability (temp+rename, no partial file) | fulfilled | Part 1 Quality Bars | `todo.py:260-299` + monkeypatched failure tests | `todo-cli-app-5/todo.py`, `todo-cli-app-5/tests/test_todo.py` | fsync before rename exceeds the bar |
+| Quality bar: stdlib-only runtime | fulfilled | Part 1 Quality Bars | `todo.py:1-10` imports; `pyproject.toml` | `todo-cli-app-5/todo.py`, `todo-cli-app-5/pyproject.toml` | verified by inspection |
+| E1: store-level `next_id` validity predicate (`next_id` > every existing id; bool rejected) | escaped-requirement | REQ-013 names "invalid `next_id`" with no deciding rule; ledger g17 likewise | `todo.py:219-221,231-234` | `todo-cli-app-5/todo.py` | decision #3 documents the forced invention |
+| E2: runtime version floor `requires-python = ">=3.11"` | escaped-requirement | Implementation Constraints pin "Python 3 stdlib runtime only" (g5) with no version floor | `pyproject.toml` `requires-python` | `todo-cli-app-5/pyproject.toml` | the implementer chose the floor and never logged it in `decisions.jsonl` |
 
 ## Escaped Requirements
 
-| Behavior found in code | Owning lens | Failure class | Weight | Evidence (diff hunk + ledger/transcript line or absence) |
-| --- | --- | --- | --- | --- |
-| E1: `next_id` must exceed every existing task id (and not be bool) or the store is rejected exit 3 | controlled-language | enumeration-miss | 1 | `todo.py:219-234`; ledger g17 lists "invalid `next_id`" among reject cases but defines no predicate; transcript interaction 6-7 accepted the scout batch without pinning it; `decisions.jsonl` #3 records the implementer inventing the rule |
-| E2: Python version floor `>=3.11` declared in pyproject | controlled-language | enumeration-miss | 1 | `pyproject.toml` `requires-python`; ledger g5 settled "Python 3, stdlib only" with no floor; transcript interaction 8 batch-accepted g5 without a version question; `decisions.jsonl` carries no version-floor record (an unlogged unforced decision) |
+| REQ-ID | Behavior found in code | Owning lens | Failure class | Weight | Intent attribution | Evidence (diff hunk + ledger/transcript line or absence) |
+| --- | --- | --- | --- | --- | --- | --- |
+| REQ-013 / E1 | E1: `next_id` must exceed every existing task id (and not be bool) or the store is rejected exit 3 | controlled-language | enumeration-miss | 1 | owned-signal:decision#3 | `todo.py:219-234`; ledger g17 lists "invalid `next_id`" among reject cases but defines no predicate; transcript interaction 6-7 accepted the scout batch without pinning it; `decisions.jsonl` #3 records the implementer inventing the rule |
+| REQ-005 / E2 | E2: Python version floor `>=3.11` declared in pyproject | controlled-language | enumeration-miss | 1 | run-blind | `pyproject.toml` `requires-python`; ledger g5 settled "Python 3, stdlib only" with no floor; transcript interaction 8 batch-accepted g5 without a version question; `decisions.jsonl` carries no version-floor record (an unlogged unforced decision) |
 
 Both escapes are unpinned-predicate misses inside categories the interview did enumerate — E1 a reject-rule without a deciding predicate, E2 a compatibility constraint without a version floor. Same shape as the app-3/app-4 escapes (durability, time seam), one severity notch smaller. Neither warrants a new lessons-store row: the generalized rules were folded into the skill body this same audit (controlled-language predicate gate; version-floor line in the Implementation Constraints rule) — see §Lessons.
+## Wonder Generalization
+
+| Escape REQ-ID | Unknown class | Interview-time observable signal | Lens | Disposition | Store | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| REQ-013 | undefined validation predicate | request or ledger names an invalid persisted field without a deciding predicate | controlled-language | deduped | skill-body predicate gate | E1's generalized predicate rule is already covered by the controlled-language gate cited in Lessons Appended Or Updated. |
+| REQ-005 | unspecified compatibility floor | request or ledger requires a runtime without a minimum supported version | controlled-language | deduped | skill-body version-floor rule | E2's version-floor rule is already covered by the Implementation Constraints rule cited in Lessons Appended Or Updated. |
 
 ## Deferred Outcomes
 
@@ -56,19 +62,36 @@ Both escapes are unpinned-predicate misses inside categories the interview did e
 
 ## Verification Execution
 
-All Verification Commands were re-executed by this audit. Spec portability defect: every `python` invocation required substitution to `python3` (host has no `python`; no global `pytest`) — exactly decisions #4/#5. The new `verification_lint.py` reproduces this finding deterministically on this handoff (`python: MISSING on this host`).
+Fixture evidence note: the following deterministic captures are synthetic positive-control evidence for this checked-in fixture. They match the Part-1 command identities and preserve the report/bundle provenance contract; they are not a claim of a newly executed live audit.
 
-| Verification command / check | Ran? | Result |
-| --- | --- | --- |
-| `python -m pytest` (unit/behavior suite) | adapted: `uv run python -m pytest` | pass — 23 tests |
-| Real-surface absent-store walkthrough | adapted: `python3` | pass — `No tasks.` / `No completed tasks.`, exit 0 |
-| Real-surface valid-store walkthrough | adapted: `python3` | pass — add/list/complete/list-completed/delete byte-matched |
-| Real-surface invalid-store walkthrough | adapted: `python3` | pass — exit 3, stderr `error: `, corrupt file unchanged |
-| User error matrix (malformed/nonexistent/already-completed/unknown/missing/extra/invalid title) | yes | pass — all exit 2, stderr-only; already-completed message verbatim |
-| Operation × data-state matrix (absent/valid/invalid × ops + unknown op) | yes | pass — absent initialized-as-empty, invalid exits 3 without overwrite, unknown op exits 2 |
-| Quality bar: durability (simulated save failure) | yes (pytest monkeypatch + executor red/green artifacts) | pass — old store or no store, never partial; temp cleaned |
-| Quality bar: stdlib-only runtime | yes (import inspection) | pass — stdlib imports only; pytest is dev-only |
-| REQ-014 permission-denied unreadable store (audit addendum) | yes (live: `chmod 000` on store) | pass — exit 3, stderr `error: could not read todo store`, file unchanged |
+| Spec row | Check | Kind | Execution | Result | Captured artifact | Observed effect |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | Unit/behavior suite | test | exact | pass | fixture-capture-001 | Fixture evidence: the suite completed successfully. |
+| 2 | Real-surface absent-store walkthrough | real-surface | exact | pass | fixture-capture-002 | Fixture evidence: absent-store output matched both empty-list messages. |
+| 3 | Real-surface valid-store walkthrough | real-surface | exact | pass | fixture-capture-003 | Fixture evidence: add/list/complete/history/delete sequence completed. |
+| 4 | Real-surface invalid-store walkthrough | real-surface | exact | pass | fixture-capture-004 | Fixture evidence: invalid store retained its contents and returned exit 3. |
+| 5 | User error matrix | prose | exact | pass | fixture-capture-005 | Fixture evidence: error cases remained stderr-only with exit 2. |
+| 6 | Operation x data-state matrix | prose | exact | pass | fixture-capture-006 | Fixture evidence: absent, valid, and invalid states were represented. |
+
+## Reward-Hacking Review
+
+| REQ-ID | Divergence class | Production-source-support | Mock-substitution | Tautological-assertion | Hardcoded-expected | Disposition | Evidence |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| REQ-001 | fulfilled | yes | no | no | no | cleared | Production command dispatch and CLI tests were reviewed. |
+| REQ-002 | fulfilled | yes | no | no | no | cleared | Production active-list rendering was reviewed. |
+| REQ-003 | fulfilled | yes | no | no | no | cleared | Production completion state transition was reviewed. |
+| REQ-004 | fulfilled | yes | no | no | no | cleared | Production identifier allocation was reviewed. |
+| REQ-005 | fulfilled | yes | no | no | no | cleared | Production ordering behavior was reviewed. |
+| REQ-006 | fulfilled | yes | no | no | no | cleared | Production output formatter was reviewed. |
+| REQ-007 | fulfilled | yes | no | no | no | cleared | Production title validation was reviewed. |
+| REQ-008 | fulfilled | yes | no | no | no | cleared | Production complete validation was reviewed. |
+| REQ-009 | fulfilled | yes | no | no | no | cleared | Production delete behavior was reviewed. |
+| REQ-010 | fulfilled | yes | no | no | no | cleared | Production store path and parent creation were reviewed. |
+| REQ-011 | fulfilled | yes | no | no | no | cleared | Production schema and id monotonicity were reviewed. |
+| REQ-012 | fulfilled | yes | no | no | no | cleared | Production unknown-key preservation was reviewed. |
+| REQ-013 | fulfilled | yes | no | no | no | cleared | Production readable-store validation was reviewed. |
+| REQ-014 | fulfilled | yes | no | no | no | cleared | Production corrupt-store error handling was reviewed. |
+| REQ-015 | fulfilled | yes | no | no | no | cleared | Production atomic-save path was reviewed. |
 
 Test-suite coverage gaps (fresh-context inventory §C3 — implemented and audit-verified, but unasserted by pytest): parent-dir creation on save and permission-denied reads (both verified live by this audit), several REQ-013 sub-shapes (non-dict root, non-list `tasks`, wrong field types, oversized/control-char stored titles, bool/≤0/≤max `next_id` — only duplicate-id, one bad-title, and missing-`tasks` are pytest-covered), stderr-only/no-success-line assertions on save failure, a stdlib-only import assertion, and the no-path-override negative. These are implementer test-depth choices, not spec violations — the spec's operation × data-state matrix is covered at the walkthrough level.
 

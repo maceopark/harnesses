@@ -17,7 +17,7 @@
 #      (ulw-loop state auto-discovered under <repo-root>/.omo/ulw-loop; --ulw-dir overrides)
 # ──────────────────
 #
-# ExecutionEvidenceBundle adapter (docs/ultimateinterview-postmortem-closed-loop-handoff.md §14.3).
+# ExecutionEvidenceBundle adapter (docs/archive/ultimateinterview-postmortem-closed-loop-handoff.md §14.3).
 #
 # Projects scattered execution evidence into ONE schema-versioned JSON the
 # postmortem consumes, so the postmortem never reads executor-internal formats
@@ -37,7 +37,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
+import tempfile
 import sys
 from enum import StrEnum
 from pathlib import Path
@@ -56,8 +58,16 @@ sys.path.insert(0, str(_INTERVIEW_SCRIPTS))
 
 import lessons as lessons_store  # noqa: E402
 from ambiguity_ledger import parse_entries  # noqa: E402
+from verification_contract import CapturedOutput, effective_heads  # noqa: E402
+from bundle_v5 import BundleV5Error, project_contract_evidence  # noqa: E402
+from evidence_artifacts import (  # noqa: E402
+    EvidenceArtifactError,
+    discover_evidence_files,
+    stable_artifact_id,
+    validate_evidence_directory,
+)
 
-BUNDLE_SCHEMA_VERSION: Final[int] = 3
+BUNDLE_SCHEMA_VERSION: Final[int] = 5
 BUNDLE_FILENAME: Final[str] = "evidence_bundle.json"
 DECISIONS_FILENAME: Final[str] = "decisions.jsonl"
 DEFAULT_ULW_RELPATH: Final[str] = ".omo/ulw-loop"
@@ -242,7 +252,7 @@ def snapshot_lessons(
             continue
         try:
             parsed = lessons_store.parse_file(path)
-        except Exception as error:  # noqa: BLE001 - degrade, don't abort the whole bundle
+        except (OSError, UnicodeDecodeError, typer.BadParameter) as error:
             warnings.append(f"lessons store {path} did not parse ({error}) - snapshot skipped")
             continue
         stores.append(
@@ -443,14 +453,12 @@ def resolve_evidence_dir(
     missing: list[str],
 ) -> Path | None:
     if evidence_dir is not None:
-        resolved = evidence_dir if evidence_dir.is_absolute() else repo_root / evidence_dir
-        if not resolved.is_dir():
-            raise fail(f"--evidence-dir {evidence_dir} is not a directory")
-        return resolved
+        candidate = evidence_dir if evidence_dir.is_absolute() else repo_root / evidence_dir
+        return validate_evidence_directory(candidate, repo_root)
     root = repo_root / DEFAULT_EVIDENCE_RELPATH
     slug_dir = root / slug
-    if slug_dir.is_dir():
-        return slug_dir
+    if slug_dir.exists() or slug_dir.is_symlink():
+        return validate_evidence_directory(slug_dir, repo_root)
     if root.is_dir():
         missing.append(
             f"no evidence artifact dir at {slug_dir} - pass --evidence-dir if artifacts "
@@ -474,28 +482,40 @@ def collect_evidence_artifacts(
         "present": False,
         "root": None,
         "files": [],
+        "captured_outputs": [],
     }
     if evidence_dir is None:
         return artifact_bundle
 
     files: list[dict[str, Any]] = []
     text_budget = MAX_TOTAL_ARTIFACT_TEXT_BYTES
-    for path in sorted(item for item in evidence_dir.rglob("*") if item.is_file()):
+    seen_ids: set[str] = set()
+    for evidence_file in discover_evidence_files(evidence_dir, repo_root):
+        path = evidence_file.path
         try:
             content = path.read_bytes()
         except OSError as error:
             warnings.append(f"could not read evidence artifact {path}: {error}")
             continue
 
-        rel_path = str(path.relative_to(repo_root))
+        rel_path = evidence_file.relative_posix
+        stable_id = artifact_id(rel_path)
+        if stable_id in seen_ids:
+            raise EvidenceArtifactError(f"duplicate artifact id {stable_id!r}")
+        seen_ids.add(stable_id)
         record: dict[str, Any] = {
-            "id": artifact_id(rel_path),
+            "id": stable_id,
             "kind": artifact_kind(path),
             "path": rel_path,
             "size_bytes": len(content),
             "sha256": hashlib.sha256(content).hexdigest(),
             "referenced_by": artifact_references(rel_path, execution),
         }
+        captured_output = parse_captured_output(
+            content, rel_path, record["id"], record["sha256"]
+        )
+        if captured_output is not None:
+            artifact_bundle["captured_outputs"].append(captured_output)
         if len(content) > MAX_ARTIFACT_TEXT_BYTES:
             record["text_omitted"] = f"larger than {MAX_ARTIFACT_TEXT_BYTES} bytes"
         elif len(content) > text_budget:
@@ -516,9 +536,66 @@ def collect_evidence_artifacts(
     return artifact_bundle
 
 
+
+
+def parse_captured_output(
+    content: bytes, rel_path: str, stable_id: str, file_sha256: str
+) -> dict[str, Any] | None:
+    """Return a validated owned capture projection, or ``None`` for foreign artifacts."""
+    try:
+        parsed = json.loads(content)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(parsed, dict) or parsed.get("marker") != "CAPTURED-OUTPUT":
+        return None
+    try:
+        record = CapturedOutput.model_validate_json(content)
+    except ValidationError as error:
+        first = error.errors()[0]
+        location = ".".join(str(part) for part in first["loc"]) or "<record>"
+        raise fail(f"captured output {rel_path}: {location}: {first['msg']}") from error
+    if record.effective_heads != effective_heads(record.exact_command):
+        raise fail(
+            f"captured output {rel_path}: effective_heads must equal canonical command heads"
+        )
+    return {
+        "artifact_id": stable_id,
+        "file_sha256": file_sha256,
+        **record.model_dump(mode="json"),
+    }
+
+
+def atomically_write_text(path: Path, text: str) -> None:
+    """Write a completed bundle with durable temp-file replacement."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_name: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as temporary:
+            temporary_name = temporary.name
+            temporary.write(text)
+            temporary.flush()
+            os.fsync(temporary.fileno())
+        os.replace(temporary_name, path)
+        directory_fd = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    except OSError:
+        if temporary_name is not None:
+            Path(temporary_name).unlink(missing_ok=True)
+        raise
+
+
 def artifact_id(rel_path: str) -> str:
-    normalized = "".join(char if char.isalnum() else "-" for char in rel_path.lower())
-    return "artifact-" + "-".join(part for part in normalized.split("-") if part)
+    return stable_artifact_id(rel_path)
 
 
 def artifact_kind(path: Path) -> str:
@@ -639,11 +716,25 @@ def main(
         digest = hashlib.sha256(handoff_text.encode("utf-8")).hexdigest()[:12]
         execution["brief_md"] = f"[identical to spec.handoff_md - sha256 {digest}]"
     diff = collect_diff(diff_range, diff_file, resolved_root, missing)
-    resolved_evidence_dir = resolve_evidence_dir(
-        evidence_dir, resolved_root, session_dir.resolve().name, missing
-    )
-    artifacts = collect_evidence_artifacts(resolved_evidence_dir, resolved_root, execution, warnings)
+    try:
+        resolved_evidence_dir = resolve_evidence_dir(
+            evidence_dir, resolved_root, session_dir.resolve().name, missing
+        )
+        artifacts = collect_evidence_artifacts(
+            resolved_evidence_dir, resolved_root, execution, warnings
+        )
+    except EvidenceArtifactError as error:
+        raise fail(f"--evidence-dir: {error}") from error
     lessons_snapshot = snapshot_lessons(lessons, resolved_root, missing, warnings)
+    try:
+        contract_evidence = project_contract_evidence(
+            session_dir,
+            handoff_text,
+            frozenset(record["id"] for record in artifacts["files"]),
+            missing,
+        )
+    except BundleV5Error as error:
+        raise fail(str(error)) from error
 
     bundle: dict[str, Any] = {
         "schema_version": BUNDLE_SCHEMA_VERSION,
@@ -659,6 +750,7 @@ def main(
         },
         "decisions": decisions,
         "execution": execution,
+        "contract": contract_evidence,
         "artifacts": artifacts,
         "lessons": lessons_snapshot,
         "diff": diff,
@@ -677,7 +769,7 @@ def main(
         bundle_bytes = len(serialized.encode("utf-8"))
 
     out_path = out or (session_dir / BUNDLE_FILENAME)
-    out_path.write_text(serialized, encoding="utf-8")
+    atomically_write_text(out_path, serialized)
 
     typer.echo(
         f"bundle written: {out_path} | schema v{BUNDLE_SCHEMA_VERSION} | "

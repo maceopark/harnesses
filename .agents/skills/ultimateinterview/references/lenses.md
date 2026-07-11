@@ -4,6 +4,8 @@ Full methods for the Diverge techniques. Read the section for a lens when it is 
 
 ## Lens output contract
 
+Do not choose lens states before the orientation open-world record exists for the current material revision. Treat its surviving candidates as hypothesis-only routing inputs: use their applicability questions to trigger a lens or create a score-`2`/`3` gap, but never treat model novelty as evidence that completes a lens. At breadth, rerun the same absent-possibility check before declaring a dry sweep; an inventory-only pass cannot satisfy this boundary.
+
 Each triggered lens must leave its exact typed `lenses.<name>.artifact`, or a documented skip reason, and any settled requirements use `origin: "lens:<name>"`. The enum proves artifact presence and type; the per-lens minimum fields below remain an audit/fresh-review check.
 
 | Lens | Required artifact | Minimum fields |

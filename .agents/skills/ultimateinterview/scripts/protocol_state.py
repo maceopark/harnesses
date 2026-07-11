@@ -33,10 +33,16 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    StrictBool,
+    StrictInt,
     ValidationError,
     field_validator,
     model_validator,
 )
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from scripts import open_world, probe_policy
 
 
 LENS_NAMES: Final[frozenset[str]] = frozenset(
@@ -52,6 +58,7 @@ LENS_NAMES: Final[frozenset[str]] = frozenset(
 SWEEP_CADENCE: Final[int] = 4
 STAGNATION_ROUNDS: Final[int] = 2
 RESIDUAL_LAG_THRESHOLD: Final[int] = 2
+LOCALITY_WINDOW: Final[int] = 3
 
 
 class OutputFormat(StrEnum):
@@ -115,32 +122,73 @@ class LensRecord(BaseModel):
         return self
 
 
+class QuestionTrackSnapshot(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
+
+    asked_question_id: str
+    ledger_ids: tuple[str, ...]
+    categories: tuple[str, ...]
+    domains: tuple[str, ...]
+    target_files: tuple[str, ...]
+
+    @field_validator("asked_question_id")
+    @classmethod
+    def asked_question_id_is_nonblank(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("asked_question_id must be nonblank")
+        return normalized
+
+    @field_validator("ledger_ids")
+    @classmethod
+    def normalize_ledger_ids(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(item.strip() for item in value)
+        if any(not item for item in normalized):
+            raise ValueError("question track keys must be nonblank")
+        return tuple(sorted(set(normalized)))
+
+    @field_validator("categories", "domains", "target_files")
+    @classmethod
+    def normalize_locality_sets(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(item.strip().lower() for item in value)
+        if any(not item for item in normalized):
+            raise ValueError("question track keys must be nonblank")
+        return tuple(sorted(set(normalized)))
+
+
 class ProtocolState(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
 
     depth: Depth
-    question_budget: int = Field(gt=0)
-    interactions_used: int = Field(ge=0)
-    answers_since_sweep: int = Field(ge=0)
-    sweeps_run: int = Field(ge=0)
-    dry_sweeps_in_row: int = Field(default=0, ge=0)
-    contrarian_probes_run: int = Field(ge=0)
-    falsification_checkpoints_run: int = Field(ge=0)
-    checkpoint_since_last_material_change: bool = False
-    framing_challenged: bool = False
-    brain_dump_done: bool = False
+    evidence_schema_version: StrictInt = Field(default=0, ge=0, le=1)
+    contract_schema_version: StrictInt = Field(default=0, ge=0, le=1)
+    material_revision: StrictInt = Field(default=0, ge=0)
+    question_budget: StrictInt = Field(gt=0)
+    interactions_used: StrictInt = Field(ge=0)
+    answers_since_sweep: StrictInt = Field(ge=0)
+    sweeps_run: StrictInt = Field(ge=0)
+    dry_sweeps_in_row: StrictInt = Field(default=0, ge=0)
+    contrarian_probes_run: StrictInt = Field(ge=0)
+    falsification_checkpoints_run: StrictInt = Field(ge=0)
+    checkpoint_since_last_material_change: StrictBool = False
+    framing_challenged: StrictBool = False
+    brain_dump_done: StrictBool = False
     brain_dump_waiver: str = ""
-    build_contract_tested: bool = False
+    build_contract_tested: StrictBool = False
     build_contract_digest: str = ""
     build_contract_reviewer: str = ""
-    implementer_scout_run: bool = False
-    pressure_followups_by_parent: dict[str, int] = Field(default_factory=dict)
+    implementer_scout_run: StrictBool = False
+    pressure_followups_by_parent: dict[str, StrictInt] = Field(default_factory=dict)
     lenses: dict[str, LensRecord]
-    residual_history: tuple[int, ...] = ()
-    gap_count_history: tuple[int, ...] = ()
-    stagnation_escalated_at: int = Field(default=0, ge=0)
+    residual_history: tuple[StrictInt, ...] = ()
+    gap_count_history: tuple[StrictInt, ...] = ()
+    stagnation_escalated_at: StrictInt = Field(default=0, ge=0)
     budget_extension_reason: str = ""
-    due_now_corrections: int = Field(default=0, ge=0)
+    due_now_corrections: StrictInt = Field(default=0, ge=0)
+    recent_question_tracks: tuple[QuestionTrackSnapshot, ...] = ()
+    open_world_records: tuple[open_world.OpenWorldSweep, ...] = ()
+    probe_decision: probe_policy.ProbeDecision | None = None
+    probe_sequence: probe_policy.ProbeSequence | None = None
 
     @field_validator("lenses")
     @classmethod
@@ -204,6 +252,23 @@ class ProtocolState(BaseModel):
             raise ValueError(message)
         return self
 
+    @model_validator(mode="after")
+    def versioned_contract_state_is_coherent(self) -> ProtocolState:
+        if self.open_world_records:
+            open_world.OpenWorldHistory(records=self.open_world_records)
+        if self.probe_sequence is not None and self.probe_decision is None:
+            raise ValueError("probe_sequence requires the persisted probe_decision")
+        if self.probe_sequence is not None:
+            persisted_decision = self.probe_decision
+            if persisted_decision is None or not any(
+                attempt.decision == persisted_decision
+                for attempt in self.probe_sequence.attempts
+            ):
+                raise ValueError(
+                    "probe_sequence decision must exactly match the persisted probe_decision",
+                )
+        return self
+
 
 @dataclass(frozen=True, slots=True)
 class ProtocolSummary:
@@ -217,6 +282,23 @@ class ProtocolSummary:
 
 def parse_state(raw_json: str) -> ProtocolState:
     return ProtocolState.model_validate_json(raw_json)
+
+
+def locality_repeated_keys(
+    snapshots: tuple[QuestionTrackSnapshot, ...],
+) -> dict[str, tuple[str, ...]]:
+    """Return locality keys present in every snapshot of the latest full window."""
+    if len(snapshots) < LOCALITY_WINDOW:
+        return {}
+    window = snapshots[-LOCALITY_WINDOW:]
+    repeated: dict[str, tuple[str, ...]] = {}
+    for dimension in ("categories", "domains", "target_files"):
+        common = set(getattr(window[0], dimension))
+        for snapshot in window[1:]:
+            common.intersection_update(getattr(snapshot, dimension))
+        if common:
+            repeated[dimension] = tuple(sorted(common))
+    return repeated
 
 
 def is_stagnant(
@@ -282,13 +364,38 @@ def build_handoff_blockers(state: ProtocolState) -> tuple[str, ...]:
         blockers.append("framing challenge has not run")
     if not state.brain_dump_done and not state.brain_dump_waiver.strip():
         blockers.append("brain-dump intake neither done nor explicitly waived with a reason")
+    if state.evidence_schema_version == 1:
+        orientation = next(
+            (
+                record
+                for record in state.open_world_records
+                if record.phase is open_world.OpenWorldPhase.ORIENTATION
+            ),
+            None,
+        )
+        if orientation is None:
+            blockers.append("no orientation open-world pass precedes lens selection")
+        elif not orientation.is_fresh(state.material_revision):
+            blockers.append("orientation open-world pass is stale after a material change")
+        fresh_breadth = any(
+            record.phase is open_world.OpenWorldPhase.BREADTH
+            and record.is_fresh(state.material_revision)
+            for record in state.open_world_records
+        )
+        if not fresh_breadth:
+            blockers.append("no fresh breadth open-world pass precedes the dry sweep")
     if state.sweeps_run < 1:
         blockers.append("no breadth sweep has run")
     if state.dry_sweeps_in_row < 2:
         blockers.append(
             "divergence is not saturated: two consecutive dry breadth sweeps are required",
         )
-    if state.contrarian_probes_run < 1:
+    if state.evidence_schema_version == 1:
+        if state.probe_decision is None:
+            blockers.append("no typed probe decision has been persisted")
+        elif state.probe_sequence is None:
+            blockers.append("the selected probe obligation has no recorded result")
+    elif state.contrarian_probes_run < 1:
         blockers.append("no contrarian probe has run")
     if state.falsification_checkpoints_run < 1:
         blockers.append("no falsification checkpoint has run")

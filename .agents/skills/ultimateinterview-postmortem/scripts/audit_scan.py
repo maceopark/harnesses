@@ -18,7 +18,7 @@
 #
 # Pre-classification audit scanner for the postmortem (advisory).
 #
-# Four deterministic scans the three-arm benchmark (claudeplan / codexplan /
+# Six deterministic scans the three-arm benchmark (claudeplan / codexplan /
 # app-5) showed the manual audit does by eye - and sometimes misses:
 #
 #   A. REQ->test coverage   - which Part-1 REQ ids have a test that names them.
@@ -37,22 +37,29 @@
 #   D. promised-artifact existence - files/paths the spec names (Target Surface,
 #      Verification Commands) that do not exist in the tree. codexplan promised
 #      a test file and evidence paths that never materialized.
+#   E. reward-hacking support - test/doc-only changed paths or fulfilled-REQ
+#      support mappings. A human still determines whether this is gaming.
+#   F. cooperation-free intent signals - deterministic signal presence for each
+#      Part-1 REQ plus a session-level decision-shape list. It never assigns an
+#      intent or class; a REQ-named test is never an owned intent signal.
 #
 # Every section is a CANDIDATE list for the auditor to classify, never a verdict:
 # the detectors are keyword/pattern heuristics with false positives, so the tool
-# is advisory (exit 0) by default; --strict exits 1 when any section has hits.
-# It never writes files and never classifies - classification stays with the
-# postmortem author.
+# is advisory (exit 0) by default; --strict exits 1 when an existing finding
+# section has hits. It never writes files and never classifies - classification
+# stays with the postmortem author.
 
 from __future__ import annotations
 
 import json
 import re
+import shlex
 import sys
 from pathlib import Path
 from typing import Annotated, Final
 
 import typer
+from pydantic import ValidationError
 
 # Reuse the sibling ultimateinterview + postmortem_lint helpers.
 sys.path.insert(
@@ -61,7 +68,14 @@ sys.path.insert(
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from handoff_coverage import extract_part1  # noqa: E402
+from pack_evidence import DecisionRecord  # noqa: E402
 from postmortem_lint import first_table, section_body, split_sections  # noqa: E402
+from postmortem_bundle import JsonValue  # noqa: E402
+from verification_contract import (  # noqa: E402
+    CapturedOutput,
+    captured_output_matches,
+    parse_verification_rows,
+)
 
 REQ_ID: Final[re.Pattern[str]] = re.compile(r"REQ-\d+")
 BUNDLE_FILENAME: Final[str] = "evidence_bundle.json"
@@ -149,6 +163,169 @@ def added_lines(diff_text: str) -> list[tuple[str, str]]:
         if line.startswith("+") and not line.startswith("+++"):
             out.append((current, line[1:]))
     return out
+_TEST_PATH_COMPONENTS: Final[frozenset[str]] = frozenset({"test", "tests", "spec", "specs"})
+_SUPPORT_PATH: Final[re.Pattern[str]] = re.compile(
+    r"(?:(?:[A-Za-z]:)?[\\/]|(?:\.\.?[\\/]))?"
+    r"(?:[A-Za-z0-9_.-]+[\\/])*[A-Za-z0-9_-]+\.[A-Za-z0-9]{1,10}"
+)
+_DOC_BASENAME: Final[re.Pattern[str]] = re.compile(
+    r"^(?:readme|changelog|license)", re.IGNORECASE
+)
+
+
+def _normalized_changed_path(path: str) -> str | None:
+    """Return a safe, repo-relative slash-separated path, or None."""
+    candidate = path.strip().replace("\\", "/")
+    if candidate in {"/dev/null", ""}:
+        return None
+    if candidate.startswith(("a/", "b/")):
+        candidate = candidate[2:]
+    if candidate.startswith("/") or re.match(r"^[A-Za-z]:/", candidate):
+        return None
+    components = candidate.split("/")
+    if any(component in {"", ".."} for component in components):
+        return None
+    return "/".join(component for component in components if component != ".")
+
+
+def classify_changed_path(path: str) -> str:
+    """Classify a safe changed path as test, doc, or production."""
+    normalized = _normalized_changed_path(path)
+    if normalized is None:
+        return "production"
+    components = [component.lower() for component in normalized.split("/")]
+    basename = components[-1]
+    if (
+        any(component in _TEST_PATH_COMPONENTS for component in components)
+        or re.match(r"^test_[^.]+\.[^.]+$", basename) is not None
+        or re.match(r"^.+_test\.[^.]+$", basename) is not None
+        or ".spec." in basename
+        or ".test." in basename
+    ):
+        return "test"
+    if (
+        "docs" in components
+        or _DOC_BASENAME.match(basename) is not None
+        or basename.endswith((".md", ".rst"))
+    ):
+        return "doc"
+    return "production"
+
+
+def changed_paths(diff_text: str) -> set[str]:
+    """Return safe repo-relative paths named by unified-diff file headers."""
+    paths: set[str] = set()
+    for line in diff_text.splitlines():
+        candidates: list[str] = []
+        if line.startswith("diff --git "):
+            try:
+                parts = shlex.split(line)
+            except ValueError:
+                continue
+            candidates = parts[2:4]
+        elif line.startswith(("--- ", "+++ ")):
+            candidates = [line[4:].split("\t", 1)[0].strip()]
+        for candidate in candidates:
+            normalized = _normalized_changed_path(candidate)
+            if normalized is not None:
+                paths.add(normalized)
+    return paths
+
+
+def _support_paths(value: str) -> list[str] | None:
+    """Extract safe path references from a Divergence Table support cell."""
+    references = re.findall(r"`([^`]+)`", value)
+    if references:
+        raw_paths = [
+            reference.strip()
+            for references_cell in references
+            for reference in re.split(r"[,;\n]", references_cell)
+            if reference.strip()
+        ]
+    else:
+        raw_paths = [match.group() for match in _SUPPORT_PATH.finditer(value)]
+    paths: list[str] = []
+    for raw_path in raw_paths:
+        path = re.sub(r":\d+(?:-\d+)?$", "", raw_path)
+        normalized = _normalized_changed_path(path)
+        if (
+            normalized is None
+            or any(character.isspace() for character in normalized)
+        ):
+            return None
+        if normalized not in paths:
+            paths.append(normalized)
+    return paths or None
+
+
+def _fulfilled_support_mapping(
+    postmortem_text: str | None,
+) -> list[tuple[str, list[str] | None]] | None:
+    if postmortem_text is None:
+        return None
+    body = section_body(split_sections(postmortem_text), "divergence table")
+    table = first_table(body) if body is not None else None
+    if table is None:
+        return None
+    headers, rows = table
+    class_column = next(
+        (index for index, header in enumerate(headers) if "class" in header.lower()),
+        None,
+    )
+    support_column = next(
+        (
+            index
+            for index, header in enumerate(headers)
+            if "supporting diff paths" in header.lower()
+        ),
+        None,
+    )
+    if class_column is None or support_column is None:
+        return None
+    mapping: list[tuple[str, list[str] | None]] = []
+    for number, row in enumerate(rows, start=1):
+        class_value = row[class_column] if class_column < len(row) else ""
+        if re.match(r"^[*_`~\s]*fulfilled\b", class_value, re.IGNORECASE) is None:
+            continue
+        req_ids = REQ_ID.findall(row[0] if row else "")
+        label = ", ".join(req_ids) if req_ids else f"row {number}"
+        support_value = row[support_column] if support_column < len(row) else ""
+        mapping.append((label, _support_paths(support_value)))
+    return mapping
+
+
+def scan_test_doc_only_support(
+    part1: str, diff_paths: set[str], postmortem_text: str | None
+) -> tuple[list[str], list[str]]:
+    """Return reward-hacking candidates and separately insufficient mappings."""
+    mapping = _fulfilled_support_mapping(postmortem_text)
+    if mapping is None:
+        if diff_paths and all(
+            classify_changed_path(path) in {"test", "doc"} for path in diff_paths
+        ):
+            req_ids = sorted(set(REQ_ID.findall(part1)), key=lambda req: int(req.split("-")[1]))
+            return [
+                "global candidate: every changed diff path is test/doc-only; "
+                f"Part-1 REQs requiring human review: {', '.join(req_ids) or 'none'}"
+            ], []
+        return [], []
+
+    candidates: list[str] = []
+    insufficient: list[str] = []
+    for label, support_paths in mapping:
+        if not support_paths:
+            insufficient.append(
+                f"{label}: fulfilled row has insufficient supporting diff-path mapping "
+                "(not evidence of verification gaming)"
+            )
+            continue
+        categories = {classify_changed_path(path) for path in support_paths}
+        if categories <= {"test", "doc"}:
+            candidates.append(
+                f"{label}: fulfilled row cites only test/doc supporting paths "
+                f"({', '.join(support_paths)}) - candidate, not a verdict"
+            )
+    return candidates, insufficient
 
 
 def test_reference_tokens(req_id: str) -> tuple[str, ...]:
@@ -168,20 +345,159 @@ def scan_req_tests(part1: str, tests_text: str) -> tuple[list[str], list[str]]:
         else:
             unmapped.append(req)
     return mapped, unmapped
+def _part1_req_ids(part1: str) -> list[str]:
+    return sorted(set(REQ_ID.findall(part1)), key=lambda req: int(req.split("-")[1]))
+
+
+def _req_cited(req_id: str, text: str) -> bool:
+    return re.search(
+        rf"(?<![0-9A-Za-z_-]){re.escape(req_id)}(?![0-9A-Za-z_-])",
+        text,
+        re.IGNORECASE,
+    ) is not None
+
+
+def _bundle_data(path: Path) -> dict[str, JsonValue]:
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _owned_decision_refs(
+    decisions_text: str, bundle_data: dict[str, JsonValue]
+) -> list[tuple[str, DecisionRecord]]:
+    """Validated decision records with a stable human-reference label."""
+    records: list[tuple[str, DecisionRecord]] = []
+    for number, line in enumerate(decisions_text.splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            records.append((f"decision#{number}", DecisionRecord.model_validate_json(line)))
+        except ValidationError:
+            continue
+    bundled = bundle_data.get("decisions")
+    if isinstance(bundled, list):
+        for number, raw in enumerate(bundled, start=1):
+            try:
+                record = DecisionRecord.model_validate(raw)
+            except ValidationError:
+                continue
+            if not any(existing == record for _, existing in records):
+                records.append((f"decision#{number}", record))
+    return records
+
+
+def _owned_capture_refs(
+    part1: str, bundle_data: dict[str, JsonValue]
+) -> dict[str, list[str]]:
+    """Return REQ ids explicitly named by a provenance-matched capture check."""
+    version = bundle_data.get("schema_version")
+    artifacts = bundle_data.get("artifacts")
+    if (
+        isinstance(version, bool)
+        or not isinstance(version, int)
+        or version < 4
+        or not isinstance(artifacts, dict)
+    ):
+        return {}
+    projections = artifacts.get("captured_outputs")
+    if not isinstance(projections, list):
+        return {}
+
+    refs: dict[str, list[str]] = {}
+    verification_rows = parse_verification_rows(part1)
+    for projection in projections:
+        if not isinstance(projection, dict):
+            continue
+        artifact_id = projection.get("artifact_id")
+        if not isinstance(artifact_id, str) or not artifact_id.strip():
+            continue
+        envelope = {
+            key: value
+            for key, value in projection.items()
+            if key not in {"artifact_id", "file_sha256"}
+        }
+        try:
+            # Validate through the JSON path: projections serialize tuple fields
+            # (effective_heads) as arrays, and CapturedOutput is strict, so
+            # model_validate on the parsed dict would reject the list. Round-trip
+            # via JSON so the array coerces back to the tuple the model requires.
+            capture = CapturedOutput.model_validate_json(json.dumps(envelope))
+        except ValidationError:
+            continue
+        for row in verification_rows:
+            if not captured_output_matches(row, capture):
+                continue
+            for req_id in _part1_req_ids(part1):
+                if _req_cited(req_id, row.check):
+                    refs.setdefault(req_id, []).append(f"capture:{artifact_id.strip()}")
+    return refs
+
+
+def scan_intent_signals(
+    part1: str,
+    tests_text: str,
+    decisions_text: str,
+    bundle_data: dict[str, JsonValue],
+) -> list[str]:
+    """Presence-only, cooperation-free signals; no intent classification."""
+    named_tests, _ = scan_req_tests(part1, tests_text)
+    named_test_ids = set(named_tests)
+    decision_refs = _owned_decision_refs(decisions_text, bundle_data)
+    capture_refs = _owned_capture_refs(part1, bundle_data)
+    lines: list[str] = []
+    for req_id in _part1_req_ids(part1):
+        owned_refs = [
+            ref
+            for ref, record in decision_refs
+            if record.spec_citation is not None and _req_cited(req_id, record.spec_citation)
+        ]
+        owned_refs.extend(capture_refs.get(req_id, []))
+        test_present = req_id in named_test_ids
+        owned_present = bool(owned_refs)
+        lines.append(
+            f"{req_id}: req_named_test={str(test_present).lower()} "
+            f"(provenance: {'tests source' if test_present else 'none'}); "
+            f"owned_intent_signal={str(owned_present).lower()} "
+            f"(provenance: {', '.join(owned_refs) if owned_refs else 'none'})"
+        )
+    return lines
+
+
+def unlogged_decision_shape_hits(
+    adds: list[tuple[str, str]], decisions_text: str
+) -> list[tuple[str, list[tuple[str, str]], tuple[str, ...]]]:
+    """Decision-shape hits that section B found absent from the decision log."""
+    log = decisions_text.lower()
+    findings: list[tuple[str, list[tuple[str, str]], tuple[str, ...]]] = []
+    for category, pattern, keywords in DECISION_SHAPES:
+        hits = [(fname, line.strip()) for fname, line in adds if pattern.search(line)]
+        if hits and not any(keyword in log for keyword in keywords):
+            findings.append((category, hits, keywords))
+    return findings
+
+
+def decision_shape_hunk_count(
+    adds: list[tuple[str, str]], decisions_text: str
+) -> int:
+    return len(
+        {
+            hit
+            for _, hits, _ in unlogged_decision_shape_hits(adds, decisions_text)
+            for hit in hits
+        }
+    )
 
 
 def scan_decision_shapes(
     adds: list[tuple[str, str]], decisions_text: str
 ) -> list[str]:
-    log = decisions_text.lower()
     findings: list[str] = []
-    for category, pattern, keywords in DECISION_SHAPES:
-        hits = [(fname, line.strip()) for fname, line in adds if pattern.search(line)]
-        if not hits:
-            continue
-        logged = any(keyword in log for keyword in keywords)
-        if logged:
-            continue
+    for category, hits, keywords in unlogged_decision_shape_hits(adds, decisions_text):
         sample_file, sample_line = hits[0]
         findings.append(
             f"{category}: {len(hits)} added line(s) look like this decision "
@@ -315,6 +631,7 @@ def main(
     resolved_bundle = bundle or (session_dir / BUNDLE_FILENAME)
     diff_text, diff_source = load_diff(diff_file, resolved_bundle)
     adds = added_lines(diff_text)
+    diff_paths = changed_paths(diff_text)
 
     decisions_path = decisions or (session_dir / "decisions.jsonl")
     decisions_text = decisions_path.read_text(encoding="utf-8") if decisions_path.is_file() else ""
@@ -336,8 +653,28 @@ def main(
 
     mapped, unmapped = scan_req_tests(part1, tests_text)
     decision_findings = scan_decision_shapes(adds, decisions_text) if diff_text else []
+    decision_hunk_count = decision_shape_hunk_count(adds, decisions_text) if diff_text else 0
     creep_findings = scan_scope_creep(part1, adds) if diff_text else []
     artifact_findings = scan_artifacts(part1, resolved_root)
+    postmortem_path = session_dir / "postmortem.md"
+    postmortem_text = (
+        postmortem_path.read_text(encoding="utf-8") if postmortem_path.is_file() else None
+    )
+    support_candidates, insufficient_support = scan_test_doc_only_support(
+        part1, diff_paths, postmortem_text
+    )
+    intent_signal_lines = scan_intent_signals(
+        part1, tests_text, decisions_text, _bundle_data(resolved_bundle)
+    )
+    from audit_open_world import candidates as open_world_candidates
+
+    open_candidates = open_world_candidates(
+        frozenset(
+            path for path in diff_paths if classify_changed_path(path) == "production"
+        ),
+        frozenset(promised_paths(part1)),
+        resolved_bundle,
+    )
 
     typer.echo("## Postmortem Audit Scan (advisory)\n")
 
@@ -358,6 +695,10 @@ def main(
     elif decision_findings:
         for note in decision_findings:
             typer.echo(f"- {note}")
+        typer.echo(
+            f"- execution_process_gap candidate: {decision_hunk_count} decision-shaped "
+            "hunk(s) not logged in decisions.jsonl (session-level advisory only)"
+        )
     else:
         typer.echo("- decisions_ok: yes (no decision-shaped diff hunk is missing from the log)")
 
@@ -376,8 +717,51 @@ def main(
             typer.echo(f"- {note}")
     else:
         typer.echo("- artifacts_ok: yes (every spec-named path exists)")
+    typer.echo(f"\n### E. reward-hacking support candidates  (diff: {diff_source})")
+    if support_candidates:
+        for note in support_candidates:
+            typer.echo(f"- {note}")
+    else:
+        typer.echo("- no test/doc-only support candidate detected")
+    for note in insufficient_support:
+        typer.echo(f"- insufficient mapping: {note}")
+    typer.echo("\n### F. cooperation-free intent signals (advisory)")
+    if decision_findings:
+        for note in decision_findings:
+            typer.echo(
+                "- decision_shape_present=true "
+                f"(provenance: section B: {note}; session-level only because "
+                "diff-to-REQ association is not reliably deterministic)"
+            )
+    else:
+        typer.echo(
+            "- decision_shape_present=false "
+            "(provenance: section B; no unlogged decision-shaped hunk; "
+            "session-level only because diff-to-REQ association is not reliably deterministic)"
+        )
+    for note in intent_signal_lines:
+        typer.echo(f"- {note}")
+    typer.echo(
+        "- Signal presence only: no signal assigns an intent or a postmortem class; "
+        "req_named_test never lifts the run-blind floor."
+    )
+    typer.echo("\n### G. open-world candidates (advisory only)")
+    if open_candidates:
+        for note in open_candidates:
+            typer.echo(f"- {note}")
+    else:
+        typer.echo("- no negative-space, ontology, runtime-only, or evidence-missing signal detected")
+    typer.echo("- Candidate generation never classifies a row or assigns no-owner.")
 
-    total = len(unmapped) + len(decision_findings) + len(creep_findings) + len(artifact_findings)
+
+    total = (
+        len(unmapped)
+        + len(decision_findings)
+        + len(creep_findings)
+        + len(artifact_findings)
+        + len(support_candidates)
+        + len(insufficient_support)
+    )
     typer.echo(f"\n- findings: {total} (advisory - classify each in the postmortem, do not auto-fail)")
     if total and strict:
         raise typer.Exit(1)

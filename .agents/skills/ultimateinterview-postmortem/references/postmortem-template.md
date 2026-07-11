@@ -8,6 +8,8 @@ Write to `.ultimateinterview/<slug>/postmortem.md`.
 
 # Postmortem: <slug>
 
+postmortem_schema: 2
+
 ## Implementation Evidence
 
 | Source | Reference | Range |
@@ -18,19 +20,29 @@ Handoff written: <date>. Implementation examined through: <date/commit>.
 
 ## Divergence Table
 
-| ID / Behavior | Class | Spec reference | Implementation reference | Note |
-| --- | --- | --- | --- | --- |
-| REQ-001 | fulfilled / escaped-requirement / scope-drift / divergent-implementation / deferred-outcome |  |  |  |
+| ID / Behavior | Class | Spec reference | Implementation reference | Supporting diff paths | Note |
+| --- | --- | --- | --- | --- | --- |
+| REQ-001 | fulfilled / scope-drift / divergent-implementation / deferred-outcome |  |  | `path/to/production.py` |  |
+| ESC-001 | escaped-requirement | absent |  | `path/to/production.py` |  |
 
 ## Escaped Requirements
 
-One row here per `escaped-requirement` row in the Divergence Table (the lint enforces the 1:1 match). Weight uses the ledger impact scale.
+One `ESC-NNN` row here per `escaped-requirement` row in the Divergence Table. The lint enforces the exact Divergence → Escaped Requirements → Wonder join; a fulfilled Part-1 `REQ-NNN` cannot double as an escape. Weight uses the ledger impact scale.
 
-| Behavior found in code | Owning lens | Failure class | Weight | Evidence (diff hunk + ledger/transcript line or absence) |
-| --- | --- | --- | --- | --- |
-|  | viewpoint / domain/state / goal/obstacle / misuse / quality / controlled-language / core-path | trigger-too-narrow / enumeration-miss / scoring-starved / answer-unpressured / synthesis-loss | 1/2/3/5 |  |
+| ESC-ID | Behavior found in code | Failure mode | Requirement structure | Owning frame | Weight | Intent attribution | Disposition | Store | Evidence |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ESC-001 |  | trigger-too-narrow / enumeration-miss / scoring-starved / answer-unpressured / synthesis-loss / ontology-miss | item / boundary / interaction / system / novel:<slug>, optionally +negative-space and/or +runtime-only | viewpoint / domain/state / goal/obstacle / misuse / quality / controlled-language / core-path / none | 1/2/3/5 | owned-signal:<ref> / run-blind | new / strengthened / deduped / not-routing/synthesis-loss / not-routing/ontology-miss |  |  |
 
-Owning-lens values are ultimateinterview's canonical trigger names. Use `core-path` when the miss belongs to always-on machinery (contextual observation, the framing challenge): those are `enumeration-miss` by definition and become routing lessons only if a repo-observable signal could have routed a heavier lens instead. `known-deferred` items are not escapes - record them under Deferred Outcomes.
+`Intent attribution` is a closed structural vocabulary: `owned-signal:<decision-id|capture-id>` identifies an owned validated signal; `run-blind` records no owned signal. It does not reconstruct a motive, and a REQ-named test or prose never lifts `run-blind`.
+
+`ontology-miss` requires `owning frame:none`, a `novel:<slug>` base, `not-routing/ontology-miss`, and no lesson store/write. A `negative-space` row must cite an observed bundle artifact; any external artifact kind is sufficient. Use `core-path` for always-on machinery. `known-deferred` items are not escapes.
+## Wonder Generalization
+
+Run one bounded pass after escape classification. One row per escape, joined by `ESC-NNN`; the actual lesson remains in Lessons Appended Or Updated. Ontology misses never route or write a lesson.
+
+| Escape ID | Unknown class | Interview-time observable signal | Owning frame | Disposition | Store | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| ESC-001 |  |  |  | new / strengthened / deduped / not-routing/synthesis-loss / not-routing/ontology-miss |  |  |
 
 ## Deferred Outcomes
 
@@ -40,11 +52,20 @@ Owning-lens values are ultimateinterview's canonical trigger names. Use `core-pa
 
 ## Verification Execution
 
-Whether the spec's Verification Commands actually ran and passed - run them when cheap; name the ones not executed. Note any command that needed host adaptation (a substituted interpreter is a portability defect `verification_lint.py` should have caught at handoff time).
+For a stable-v5 bundle, join each row to the validated ExecutionReturn by `VER-ID` and contract digest. Reordering cannot change the join. Legacy schema-v3/v4 evidence uses the positional `Spec row` table instead and never proves a pass without a matching capture.
 
-| Verification command / check | Ran? | Result |
-| --- | --- | --- |
-|  | yes/no/adapted: <how> | pass/fail/skipped: <why> |
+| VER-ID | Check | Kind | Execution | Result | Captured artifact | Observed effect |
+| --- | --- | --- | --- | --- | --- | --- |
+| VER-001 | Unit/behavior suite | test | exact | pass | artifact-... | Tests passed; captured output records the run. |
+
+## Reward-Hacking Review
+
+One row per Part-1 REQ-ID. This is a human-entered consistency record, not an automated path classification: `audit_scan.py` candidates remain advisory. Any `yes` in mock substitution, tautological assertion, or hardcoded expected requires `confirmed-gaming`, which requires `divergent-implementation`. `legitimate-test-doc-only` requires nonblank rationale/evidence.
+
+| REQ-ID | Divergence class | Production-source-support | Mock-substitution | Tautological-assertion | Hardcoded-expected | Disposition | Evidence |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| REQ-001 | fulfilled | yes | no | no | no | cleared | Production path and assertion were reviewed. |
+| REQ-002 | fulfilled | no | no | no | no | legitimate-test-doc-only | Documentation-only REQ; no production change was expected. |
 
 ## Scope Drift / Divergent Implementations
 
@@ -83,6 +104,18 @@ One row per lesson active AT AUDIT START per store, every run - `no-signal` is a
 | scoring-starved |  |
 | answer-unpressured |  |
 | synthesis-loss (interview caught it; handoff drafting narrowed/dropped it) |  |
+| ontology-miss |  |
+
+| Structure / modifier / owner | Count |
+| --- | --- |
+| item |  |
+| boundary |  |
+| interaction |  |
+| system |  |
+| novel:<slug> (one row per observed novel base) |  |
+| modifier:negative-space |  |
+| modifier:runtime-only |  |
+| owning-frame:none |  |
 
 Rates - recomputed from the Divergence Table by `postmortem_lint.py`; state both, plus the weighted pair when any escape exists:
 

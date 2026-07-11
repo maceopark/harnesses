@@ -6,7 +6,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
-from scripts import ambiguity_ledger, handoff_coverage, predicate_lint, protocol_state
+from scripts import (
+    ambiguity_ledger,
+    build_contract_schema,
+    handoff_coverage,
+    predicate_lint,
+    protocol_state,
+)
 from scripts import verification_lint
 
 REQUIRED_SECTIONS: Final[tuple[str, ...]] = (
@@ -124,6 +130,30 @@ def has_labeled_value(body: str, label: str) -> bool:
     )
 
 
+def has_decision_log_instruction(
+    decision_body: str,
+    *,
+    schema_version: int = 0,
+) -> bool:
+    """Part 1 must tell the implementer to log unforced decisions to decisions.jsonl.
+    Execution substrates (e.g. lazycodex ulw-loop) do not record it automatically."""
+    normalized = " ".join(decision_body.lower().split())
+    if schema_version == 0:
+        return "decisions.jsonl" in normalized
+    if re.search(r"\b(?:do not|don't|never|must not|shall not)\b", normalized):
+        return False
+    affirmative = re.search(
+        r"\b(?:append|log|record|write)\b.*\bdecisions\.jsonl\b",
+        normalized,
+    )
+    scope = re.search(
+        r"\bevery\b.*(?:\b(?:unforced|not forced)\b.*\bdecision\b|"
+        r"\bdecision\b.*\bspec did not force\b)",
+        normalized,
+    )
+    return affirmative is not None and scope is not None
+
+
 def contract_digest(handoff_text: str) -> str:
     part1 = handoff_coverage.extract_part1(handoff_text).strip() + "\n"
     return hashlib.sha256(part1.encode("utf-8")).hexdigest()
@@ -146,8 +176,27 @@ def evaluate(
     search_path: str | None = None,
     workdir: Path | None = None,
     protocol: protocol_state.ProtocolState | None = None,
+    contract_sidecar: build_contract_schema.BuildContract | None = None,
+    raw_ledger_text: str | None = None,
 ) -> GateResult:
-    failures = list(ambiguity_ledger.gate_failures(entries))
+    evidence_schema_version = 0 if protocol is None else protocol.evidence_schema_version
+    contract_schema_version = 0 if protocol is None else protocol.contract_schema_version
+    failures = list(
+        ambiguity_ledger.gate_failures(
+            entries,
+            evidence_schema_version=evidence_schema_version,
+        ),
+    )
+    if evidence_schema_version == 1:
+        if raw_ledger_text is None:
+            failures.append("v1 composite gate requires the pre-normalization raw ledger")
+        else:
+            bundle_ids = ambiguity_ledger.raw_legacy_bundle_origin_ids(raw_ledger_text)
+            if bundle_ids:
+                failures.append(
+                    "v1 ledger uses legacy-only raw origin 'bundle': "
+                    f"{', '.join(bundle_ids)}",
+                )
     if not ledger_summary.handoff_ready:
         failures.extend(ledger_summary.blockers)
     if not protocol_summary.protocol_ready:
@@ -155,6 +204,23 @@ def evaluate(
     if protocol is not None and protocol.build_contract_tested:
         if protocol.build_contract_digest != contract_digest(handoff_text):
             failures.append("fresh-implementer evidence does not match the current Part 1 digest")
+    if protocol is not None and protocol.contract_schema_version == 1:
+        if contract_sidecar is None:
+            failures.append("BuildContract v1 sidecar is missing or invalid")
+        elif contract_sidecar.source_part1_sha256 != contract_digest(handoff_text):
+            failures.append("BuildContract v1 sidecar is stale for the current Part 1")
+        else:
+            from scripts import build_contract
+
+            try:
+                compiled_contract = build_contract.compile_handoff(handoff_text)
+            except ValueError as error:
+                failures.append(f"BuildContract v1 recompilation failed: {error}")
+            else:
+                if contract_sidecar != compiled_contract:
+                    failures.append(
+                        "BuildContract v1 sidecar does not exactly match compiled Part 1",
+                    )
 
     raw_part1 = handoff_coverage.extract_part1(handoff_text)
     part1 = verification_lint.strip_fenced_blocks(raw_part1)
@@ -234,6 +300,16 @@ def evaluate(
         frozenset({"decision", "agent may decide?", "boundary"}),
     ):
         failures.append("Decision Boundaries contains no complete decision row")
+
+    if not has_decision_log_instruction(
+        decision_body,
+        schema_version=contract_schema_version,
+    ):
+        failures.append(
+            "Decision Boundaries must carry the standing instruction to append every unforced "
+            "decision to .ultimateinterview/<slug>/decisions.jsonl (execution substrates like "
+            "ulw-loop do not record it automatically)"
+        )
 
     guardrail_body = section_body(part1, "Guardrail Compile")
     guardrail_headers = frozenset(

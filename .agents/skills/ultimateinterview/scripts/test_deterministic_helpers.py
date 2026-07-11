@@ -1243,12 +1243,44 @@ def make_session(tmp_path: Path, **protocol_overrides: object) -> Path:
     session.mkdir()
     ledger = {
         "entries": [
-            {"id": "g1", "requirement": "open gap", "ambiguity_score": 2, "impact_weight": 3, "status": "draft", "evidence_channels": []},
+            {
+                "id": "g1",
+                "requirement": "open gap",
+                "ambiguity_score": 2,
+                "impact_weight": 3,
+                "status": "draft",
+                "evidence_channels": [],
+                "track": {
+                    "category": "scope",
+                    "domain": "test-session",
+                    "target_surfaces": ["src/g1.py"],
+                },
+            },
             {"id": "g2", "requirement": "settled fact", "ambiguity_score": 0, "impact_weight": 2, "status": "draft", "evidence_channels": ["from-code"]},
         ]
     }
     (session / "ledger.json").write_text(json.dumps(ledger), encoding="utf-8")
     (session / "protocol.json").write_text(make_protocol(**protocol_overrides), encoding="utf-8")
+    (session / "questions.json").write_text(
+        json.dumps(
+            {
+                "questions": [
+                    {
+                        "id": "Q1",
+                        "question": "Resolve the open gap?",
+                        "impact": 3,
+                        "branch_split": 3,
+                        "uncertainty_reduction": 3,
+                        "coverage": 3,
+                        "user_cost": 1,
+                        "redundancy": 0,
+                        "target_ids": ["g1"],
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
     return session
 
 
@@ -1365,7 +1397,10 @@ def read_ledger_entries(session: Path) -> list[dict]:
 
 def test_event_scored_question_computes_costing(tmp_path: Path) -> None:
     session = make_session(tmp_path)
-    result = run_update(session, {"event": "scored-question"})
+    result = run_update(
+        session,
+        {"event": "scored-question", "asked_question_id": "Q1"},
+    )
     assert result.exit_code == 0, result.output
     written = read_protocol(session)
     assert written["interactions_used"] == 4
@@ -1606,6 +1641,7 @@ def test_material_ledger_change_rearms_checkpoint(tmp_path: Path) -> None:
         session,
         {
             "event": "scored-question",
+            "asked_question_id": "Q1",
             "set": [{"id": "g1", "ambiguity_score": 0, "add_channels": ["from-code"]}],
         },
     )
@@ -1658,6 +1694,7 @@ def test_transcript_heading_uses_computed_interaction_number(tmp_path: Path) -> 
     session = make_session_with_transcript(tmp_path)
     delta = {
         "event": "scored-question",
+        "asked_question_id": "Q1",
         "transcript": {"title": "store scope", "lines": ["Verbatim answer: single machine"]},
     }
     result = run_update(session, delta)
@@ -1703,7 +1740,11 @@ def test_transcript_note_awaiting_marker_renders(tmp_path: Path) -> None:
 def test_answer_bearing_event_resolves_awaiting_marker(tmp_path: Path) -> None:
     session = make_session_with_transcript(tmp_path)
     run_update(session, {"transcript": {"title": "question sent", "awaiting": True}})
-    delta = {"event": "scored-question", "transcript": {"title": "answer landed"}}
+    delta = {
+        "event": "scored-question",
+        "asked_question_id": "Q1",
+        "transcript": {"title": "answer landed"},
+    }
     result = run_update(session, delta)
     assert result.exit_code == 0, result.output
     text = (session / "transcript.md").read_text(encoding="utf-8")
@@ -1968,7 +2009,7 @@ Ship the settled behavior. (source: {source_id})
 ## Quality Bars
 No measurable quality bar applies - this local validation has no runtime quality target.
 ## Decision Boundaries
-No implementation choice may change REQ-001.
+No implementation choice may change REQ-001. Standing instruction: append every unforced decision to `.ultimateinterview/<slug>/decisions.jsonl` as you make it (the execution substrate does not auto-log).
 ## Out Of Scope / Non-Goals
 No unrelated command changes.
 ## Implementation Constraints
@@ -2446,6 +2487,107 @@ def test_next_arms_implementer_scout_once(tmp_path: Path) -> None:
     result2 = status_next(session2)
     assert "implementer-scout" not in result2.output
 
+LOCALITY_TRACKS = [
+    {
+        "asked_question_id": f"Q{number}",
+        "ledger_ids": ["g1"],
+        "categories": ["scope"],
+        "domains": ["test-session"],
+        "target_files": ["src/g1.py"],
+    }
+    for number in range(1, protocol_state.LOCALITY_WINDOW + 1)
+]
+
+
+def add_locality_sibling(session: Path) -> None:
+    ledger = json.loads((session / "ledger.json").read_text(encoding="utf-8"))
+    ledger["entries"].append(
+        {
+            "id": "g-sibling",
+            "requirement": "unresolved sibling track",
+            "ambiguity_score": 1,
+            "impact_weight": 1,
+            "status": "draft",
+            "track": {
+                "category": "behavior",
+                "domain": "other-domain",
+                "target_surfaces": ["src/sibling.py"],
+            },
+        },
+    )
+    (session / "ledger.json").write_text(json.dumps(ledger), encoding="utf-8")
+
+
+def test_next_locality_zoom_out_preempts_scored_routing(tmp_path: Path) -> None:
+    session = make_session(tmp_path, recent_question_tracks=LOCALITY_TRACKS)
+    add_locality_sibling(session)
+
+    result = status_next(session)
+
+    assert result.exit_code == 0, result.output
+    assert "- next: locality zoom-out:" in result.output
+    assert "categories=scope" in result.output
+    assert "domains=test-session" in result.output
+    assert "target_files=src/g1.py" in result.output
+    assert "unresolved sibling ledger ids: g-sibling" in result.output
+    assert "scored-question targeting a critical-path gap" not in result.output
+    assert "smart-default batch flush" not in result.output
+
+
+def test_next_locality_does_not_fire_before_full_window(tmp_path: Path) -> None:
+    session = make_session(tmp_path, recent_question_tracks=LOCALITY_TRACKS[:2])
+    add_locality_sibling(session)
+
+    result = status_next(session)
+
+    assert result.exit_code == 0, result.output
+    assert "locality zoom-out:" not in result.output
+    assert "scored-question targeting a critical-path gap (g1)" in result.output
+
+
+def test_next_locality_does_not_fire_without_common_key(tmp_path: Path) -> None:
+    tracks = [
+        {
+            **LOCALITY_TRACKS[index],
+            "categories": [category],
+            "domains": [f"domain-{index}"],
+            "target_files": [f"src/{index}.py"],
+        }
+        for index, category in enumerate(("scope", "behavior", "verification"))
+    ]
+    session = make_session(tmp_path, recent_question_tracks=tracks)
+    add_locality_sibling(session)
+
+    result = status_next(session)
+
+    assert result.exit_code == 0, result.output
+    assert "locality zoom-out:" not in result.output
+    assert "scored-question targeting a critical-path gap (g1)" in result.output
+
+
+def test_next_locality_stays_deep_without_an_unresolved_sibling(tmp_path: Path) -> None:
+    session = make_session(tmp_path, recent_question_tracks=LOCALITY_TRACKS)
+
+    result = status_next(session)
+
+    assert result.exit_code == 0, result.output
+    assert "locality zoom-out:" not in result.output
+    assert "scored-question targeting a critical-path gap (g1)" in result.output
+
+
+def test_next_locality_does_not_refire_after_sweep_clears_window(tmp_path: Path) -> None:
+    session = make_session(tmp_path, recent_question_tracks=LOCALITY_TRACKS)
+    add_locality_sibling(session)
+    assert "locality zoom-out:" in status_next(session).output
+
+    result = run_update(session, {"event": "sweep-free", "sweep_result": "dry"})
+    assert result.exit_code == 0, result.output
+
+    next_result = status_next(session)
+    assert next_result.exit_code == 0, next_result.output
+    assert "locality zoom-out:" not in next_result.output
+    assert "scored-question targeting a critical-path gap (g1)" in next_result.output
+
 
 # ─── session_init (C) ───
 
@@ -2529,6 +2671,7 @@ Intro prose.
 | --- | --- | --- | --- | --- | --- |
 | free-text input on CLI | misuse | enumeration-miss | some postmortem | 2026-07-05 | 2/0 |
 | temporal word in goal | domain/state | trigger-too-narrow | experiment | 2026-07-06 | 0/0 |
+| request names a persisted field invalid without a deciding predicate | controlled-language | enumeration-miss | Wonder candidate | 2026-07-10 | 0/0 |
 
 ## Retired
 
@@ -2568,6 +2711,22 @@ def test_lessons_third_dry_fire_retires_row(tmp_path: Path) -> None:
     reparsed = CLI_RUNNER.invoke(lessons.app, ["list", str(path)])
     assert "free-text" not in reparsed.output
 
+def test_wonder_new_lesson_validates_fires_and_retires_after_three_dry_fires(
+    tmp_path: Path,
+) -> None:
+    path = make_lessons(tmp_path)
+    assert CLI_RUNNER.invoke(lessons.app, ["validate", str(path)]).exit_code == 0
+
+    for expected_fired in (1, 2):
+        result = CLI_RUNNER.invoke(lessons.app, ["fire", str(path), "persisted field"])
+        assert result.exit_code == 0, result.output
+        assert f"| {expected_fired}/0 |" in path.read_text(encoding="utf-8")
+
+    result = CLI_RUNNER.invoke(lessons.app, ["fire", str(path), "persisted field"])
+    assert result.exit_code == 0, result.output
+    text = path.read_text(encoding="utf-8")
+    assert "auto-retired by lessons.py: 3 fires, 0 catches" in text
+    assert "persisted field invalid without a deciding predicate" in text
 
 def test_lessons_ambiguous_selector_fails(tmp_path: Path) -> None:
     path = make_lessons(tmp_path)
@@ -2959,7 +3118,7 @@ def test_session_update_replaces_questions_in_same_commit(tmp_path: Path) -> Non
 
     assert result.exit_code == 0, result.output
     written = json.loads((session / "questions.json").read_text(encoding="utf-8"))
-    assert written == {"questions": [candidate]}
+    assert written == {"questions": [{**candidate, "target_ids": []}]}
 
 
 def test_material_ledger_change_clears_unreplaced_question_queue(tmp_path: Path) -> None:
@@ -3130,6 +3289,28 @@ def test_worked_example_passes_the_composite_gate() -> None:
     assert result.implementation_ready, result.failures
 
 
+def test_gate_requires_decision_log_instruction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_gate_command(tmp_path, monkeypatch)
+    session = tmp_path / "gate-session"
+    session.mkdir()
+    write_session(session)
+    handoff = make_gate_handoff("R1").replace(
+        " Standing instruction: append every unforced decision to "
+        "`.ultimateinterview/<slug>/decisions.jsonl` as you make it "
+        "(the execution substrate does not auto-log).",
+        "",
+    )
+    write_gate_handoff(session, handoff)
+
+    result = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--gate"])
+
+    assert result.exit_code == 1
+    assert "decisions.jsonl" in result.output
+
+
 def test_session_init_rejects_symlinked_state_root(tmp_path: Path) -> None:
     outside = tmp_path / "outside"
     outside.mkdir()
@@ -3215,3 +3396,290 @@ def test_explicit_status_paths_recover_interrupted_generation_before_read(
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+def test_ledger_track_validates_and_normalizes_locality_keys() -> None:
+    track = ambiguity_ledger.LedgerTrack.model_validate(
+        {
+            "category": "scope",
+            "domain": " Checkout-Flow ",
+            "target_surfaces": ["./SRC/Checkout.py", "src/checkout.py"],
+        },
+    )
+    assert track.category is ambiguity_ledger.TrackCategory.SCOPE
+    assert track.domain == "checkout-flow"
+    assert track.target_surfaces == ("src/checkout.py",)
+
+    with pytest.raises(ValidationError, match="track must include"):
+        ambiguity_ledger.LedgerTrack()
+    for surface in ("/private/checkout.py", "../checkout.py"):
+        with pytest.raises(ValidationError):
+            ambiguity_ledger.LedgerTrack(target_surfaces=(surface,))
+
+
+def test_question_target_ids_preserve_io_without_changing_rank_or_score() -> None:
+    payload = {
+        "id": "Q-track",
+        "question": "Which surface is in scope?",
+        "impact": 3,
+        "branch_split": 4,
+        "uncertainty_reduction": 3,
+        "coverage": 2,
+        "user_cost": 1,
+        "redundancy": 0,
+        "target_ids": ["g2", "g1"],
+    }
+    with_targets = parse_questions(json.dumps({"questions": [payload]}))
+    without_targets = parse_questions(
+        json.dumps({"questions": [{key: value for key, value in payload.items() if key != "target_ids"}]}),
+    )
+
+    ranked_with_targets = rank_questions(with_targets, top=1)
+    ranked_without_targets = rank_questions(without_targets, top=1)
+    assert ranked_with_targets[0].target_ids == ("g2", "g1")
+    assert (
+        ranked_with_targets[0].rank,
+        ranked_with_targets[0].id,
+        ranked_with_targets[0].score,
+    ) == (
+        ranked_without_targets[0].rank,
+        ranked_without_targets[0].id,
+        ranked_without_targets[0].score,
+    )
+    assert json.loads(question_score.rankings_as_json(ranked_with_targets))["ranked_questions"][0][
+        "target_ids"
+    ] == ["g2", "g1"]
+    assert "g2, g1" in question_score.rankings_as_markdown(ranked_with_targets)
+
+
+def test_scored_question_derives_and_caps_question_track_history(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+
+    for _ in range(protocol_state.LOCALITY_WINDOW + 1):
+        result = run_update(
+            session,
+            {"event": "scored-question", "asked_question_id": "Q1"},
+        )
+        assert result.exit_code == 0, result.output
+
+    snapshots = read_protocol(session)["recent_question_tracks"]
+    assert len(snapshots) == protocol_state.LOCALITY_WINDOW
+    assert snapshots == [
+        {
+            "asked_question_id": "Q1",
+            "ledger_ids": ["g1"],
+            "categories": ["scope"],
+            "domains": ["test-session"],
+            "target_files": ["src/g1.py"],
+        },
+    ] * protocol_state.LOCALITY_WINDOW
+    assert protocol_state.locality_repeated_keys(
+        parse_state(json.dumps(read_protocol(session))).recent_question_tracks,
+    ) == {
+        "categories": ("scope",),
+        "domains": ("test-session",),
+        "target_files": ("src/g1.py",),
+    }
+
+
+@pytest.mark.parametrize(
+    ("asked_question_id", "target_ids", "message"),
+    [
+        ("missing", None, "absent"),
+        ("Q1", [], "has no target_ids"),
+        ("Q1", ["missing-ledger"], "absent from the current ledger"),
+    ],
+)
+def test_scored_question_rejects_invalid_booking(
+    tmp_path: Path,
+    asked_question_id: str,
+    target_ids: list[str] | None,
+    message: str,
+) -> None:
+    session = make_session(tmp_path)
+    if target_ids is not None:
+        questions = json.loads((session / "questions.json").read_text(encoding="utf-8"))
+        questions["questions"][0]["target_ids"] = target_ids
+        (session / "questions.json").write_text(json.dumps(questions), encoding="utf-8")
+
+    result = run_update(
+        session,
+        {"event": "scored-question", "asked_question_id": asked_question_id},
+    )
+
+    assert result.exit_code != 0
+    assert message in result.output
+
+
+def test_pressure_followup_inherits_most_recent_question_track(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    assert run_update(
+        session,
+        {"event": "scored-question", "asked_question_id": "Q1"},
+    ).exit_code == 0
+    before = read_protocol(session)["recent_question_tracks"]
+    result = run_update(
+        session,
+        {"event": "pressure-followup", "pressure_parent": "Q1"},
+    )
+
+    assert result.exit_code == 0, result.output
+    assert read_protocol(session)["recent_question_tracks"] == [before[0], before[0]]
+
+
+@pytest.mark.parametrize(
+    "delta",
+    [
+        {"event": "sweep-free", "sweep_result": "dry"},
+        {"checkpoint_confirm": {"ids": ["g1"], "fatigue": True}},
+        {"event": "contrarian-free"},
+    ],
+)
+def test_boundary_events_clear_question_track_history(tmp_path: Path, delta: dict) -> None:
+    session = make_session(tmp_path)
+    assert run_update(
+        session,
+        {"event": "scored-question", "asked_question_id": "Q1"},
+    ).exit_code == 0
+
+    result = run_update(session, delta)
+
+    assert result.exit_code == 0, result.output
+    assert read_protocol(session)["recent_question_tracks"] == []
+
+
+def test_session_update_rejects_direct_question_track_history_patch(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+
+    result = run_update(
+        session,
+        {
+            "protocol": {
+                "recent_question_tracks": [
+                    {
+                        "asked_question_id": "forged",
+                        "ledger_ids": ["g1"],
+                        "categories": ["scope"],
+                        "domains": [],
+                        "target_files": [],
+                    },
+                ],
+            },
+        },
+    )
+
+    assert result.exit_code != 0
+    assert "event-managed" in result.output
+
+
+def test_legacy_protocol_without_question_track_history_parses_empty() -> None:
+    assert parse_state(make_protocol()).recent_question_tracks == ()
+
+
+def test_locality_updates_do_not_change_readiness_material_state(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    before_entries = parse_entries((session / "ledger.json").read_text(encoding="utf-8"))
+    before_protocol = parse_state((session / "protocol.json").read_text(encoding="utf-8"))
+    before_ledger_summary = summarize_ambiguity(before_entries)
+    before_protocol_summary = summarize_protocol(before_protocol)
+    before_gate_failures = ambiguity_ledger.gate_failures(before_entries)
+    before_gate_ready = implementation_gate.evaluate(
+        before_entries,
+        before_ledger_summary,
+        before_protocol_summary,
+        "",
+        protocol=before_protocol,
+    ).implementation_ready
+    tracked_state = (
+        "build_contract_tested",
+        "build_contract_digest",
+        "build_contract_reviewer",
+        "checkpoint_since_last_material_change",
+        "dry_sweeps_in_row",
+    )
+    before_values = tuple(getattr(before_protocol, field) for field in tracked_state)
+    before_ready = session_status.is_ready(before_ledger_summary, before_protocol_summary)
+
+    result = run_update(
+        session,
+        {
+            "event": "scored-question",
+            "asked_question_id": "Q1",
+            "set": [
+                {
+                    "id": "g1",
+                    "track": {
+                        "category": "behavior",
+                        "domain": "checkout-flow",
+                        "target_surfaces": ["./SRC/Checkout.py"],
+                    },
+                },
+            ],
+        },
+    )
+
+    assert result.exit_code == 0, result.output
+    after_entries = parse_entries((session / "ledger.json").read_text(encoding="utf-8"))
+    after_protocol = parse_state((session / "protocol.json").read_text(encoding="utf-8"))
+    after_ledger_summary = summarize_ambiguity(after_entries)
+    after_protocol_summary = summarize_protocol(after_protocol)
+    assert tuple(getattr(after_protocol, field) for field in tracked_state) == before_values
+    assert ambiguity_ledger.gate_failures(after_entries) == before_gate_failures
+    assert session_status.is_ready(after_ledger_summary, after_protocol_summary) is before_ready
+    assert implementation_gate.evaluate(
+        after_entries,
+        after_ledger_summary,
+        after_protocol_summary,
+        "",
+        protocol=after_protocol,
+    ).implementation_ready is before_gate_ready
+    assert after_protocol.recent_question_tracks
+
+
+def test_question_track_snapshot_normalizes_sets() -> None:
+    snapshot = protocol_state.QuestionTrackSnapshot(
+        asked_question_id=" Q1 ",
+        ledger_ids=("g2", "g1", "g1"),
+        categories=("Scope", "scope"),
+        domains=("Checkout", "checkout"),
+        target_files=("SRC/Checkout.py", "src/checkout.py"),
+    )
+
+    assert snapshot == protocol_state.QuestionTrackSnapshot(
+        asked_question_id="Q1",
+        ledger_ids=("g1", "g2"),
+        categories=("scope",),
+        domains=("checkout",),
+        target_files=("src/checkout.py",),
+    )
+
+
+def test_multi_track_batch_clears_question_track_history(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    assert run_update(
+        session,
+        {"event": "scored-question", "asked_question_id": "Q1"},
+    ).exit_code == 0
+    result = run_update(
+        session,
+        {
+            "event": "batch",
+            "add": [
+                {
+                    "id": "b1",
+                    "ambiguity_score": 1,
+                    "impact_weight": 1,
+                    "track": {"category": "scope"},
+                },
+                {
+                    "id": "b2",
+                    "ambiguity_score": 1,
+                    "impact_weight": 1,
+                    "track": {"category": "quality"},
+                },
+            ],
+        },
+    )
+
+    assert result.exit_code == 0, result.output
+    assert read_protocol(session)["recent_question_tracks"] == []

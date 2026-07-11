@@ -19,6 +19,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sys
@@ -141,7 +142,7 @@ def test_full_bundle_packs_all_sections(tmp_path: Path) -> None:
     )
     assert result.exit_code == 0, result.output
     bundle = read_bundle(session)
-    assert bundle["schema_version"] == 3
+    assert bundle["schema_version"] == 5
     assert bundle["lessons"]["stores"] == []  # default paths absent in tmp (global isolated)
     assert bundle["spec"]["interview_ledger"][0]["id"] == "g1"
     assert bundle["decisions"][0]["self_class"] == "spec_gap"
@@ -160,7 +161,9 @@ def test_full_bundle_packs_all_sections(tmp_path: Path) -> None:
         ".omo/evidence/demo/run.txt",
     ]
     assert bundle["artifacts"]["files"][0]["kind"] == "data"
-    assert bundle["artifacts"]["files"][1]["id"] == "artifact-omo-evidence-demo-run-txt"
+    assert bundle["artifacts"]["files"][1]["id"] == pack_evidence.artifact_id(
+        ".omo/evidence/demo/run.txt"
+    )
     assert bundle["artifacts"]["files"][1]["kind"] == "log"
     assert bundle["artifacts"]["files"][1]["referenced_by"] == [
         {
@@ -174,7 +177,10 @@ def test_full_bundle_packs_all_sections(tmp_path: Path) -> None:
     assert bundle["artifacts"]["files"][1]["text"] == "command passed\n"
     assert len(bundle["artifacts"]["files"][1]["sha256"]) == 64
     assert bundle["diff"]["text"].startswith("--- a/x")
-    assert bundle["missing_evidence"] == []
+    assert bundle["contract"]["compatibility_mode"] == "legacy-v4"
+    assert bundle["contract"]["build_contract"] is None
+    assert bundle["contract"]["execution_return"] is None
+    assert len(bundle["missing_evidence"]) == 2
     assert bundle["warnings"] == []
 
 
@@ -298,6 +304,95 @@ def test_missing_handoff_fails_closed(tmp_path: Path) -> None:
     assert result.exit_code == 1
     assert "handoff.md" in result.output
 
+
+
+
+def captured_output_record(
+    command: str = "bash -c 'echo hi'", stdout: str = "hi"
+) -> dict[str, object]:
+    full_stdout = b"hello"
+    digest = pack_evidence.hashlib.sha256(" ".join(command.split()).encode("utf-8")).hexdigest()
+    return {
+        "marker": "CAPTURED-OUTPUT",
+        "spec_row_number": 1,
+        "check": "Output capture",
+        "kind": "test",
+        "exact_command": command,
+        "command_digest": digest,
+        "effective_heads": list(pack_evidence.effective_heads(command)),
+        "cwd": "/repo",
+        "started_at": "2026-07-10T00:00:00+00:00",
+        "ended_at": "2026-07-10T00:00:01+00:00",
+        "spawned": True,
+        "timed_out": False,
+        "timeout_seconds": 60,
+        "exit_code": 0,
+        "stdout": stdout,
+        "stderr": "",
+        "stdout_full_bytes": len(full_stdout),
+        "stderr_full_bytes": 0,
+        "stdout_sha256": hashlib.sha256(full_stdout).hexdigest(),
+        "stderr_sha256": hashlib.sha256(b"").hexdigest(),
+    }
+
+
+def test_captured_output_projects_with_recomputed_file_sha(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    evidence = make_evidence(tmp_path)
+    capture_path = evidence / "captured-output-row-0001.json"
+    capture_path.write_text(json.dumps(captured_output_record()), encoding="utf-8")
+
+    result = runner.invoke(pack_evidence.app, [str(session)])
+
+    assert result.exit_code == 0, result.output
+    projected = read_bundle(session)["artifacts"]["captured_outputs"]
+    assert len(projected) == 1
+    assert projected[0]["artifact_id"] == pack_evidence.artifact_id(
+        ".omo/evidence/demo/captured-output-row-0001.json"
+    )
+    assert projected[0]["file_sha256"] == hashlib.sha256(capture_path.read_bytes()).hexdigest()
+    assert projected[0]["stdout_full_bytes"] == 5
+    assert projected[0]["stdout_sha256"] == hashlib.sha256(b"hello").hexdigest()
+
+
+def test_malformed_captured_output_marker_fails_closed(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    evidence = make_evidence(tmp_path)
+    (evidence / "captured-output-row-0001.json").write_text(
+        json.dumps({"marker": "CAPTURED-OUTPUT", "spec_row_number": 1}), encoding="utf-8"
+    )
+
+    result = runner.invoke(pack_evidence.app, [str(session)])
+
+    assert result.exit_code == 1
+    assert "captured output" in result.output
+    assert not (session / "evidence_bundle.json").exists()
+
+
+def test_captured_output_truncation_fields_survive_projection(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+    evidence = make_evidence(tmp_path)
+    (evidence / "captured-output-row-0001.json").write_text(
+        json.dumps(captured_output_record(stdout="he")), encoding="utf-8"
+    )
+
+    result = runner.invoke(pack_evidence.app, [str(session)])
+
+    assert result.exit_code == 0, result.output
+    projected = read_bundle(session)["artifacts"]["captured_outputs"][0]
+    assert projected["stdout"] == "he"
+    assert projected["stdout_full_bytes"] == 5
+    assert projected["stdout_sha256"] == hashlib.sha256(b"hello").hexdigest()
+
+
+def test_final_bundle_write_is_atomic(tmp_path: Path) -> None:
+    session = make_session(tmp_path)
+
+    result = runner.invoke(pack_evidence.app, [str(session)])
+
+    assert result.exit_code == 0, result.output
+    assert (session / "evidence_bundle.json").is_file()
+    assert not list(session.glob(".evidence_bundle.json.*.tmp"))
 
 def test_invalid_interview_ledger_fails_closed(tmp_path: Path) -> None:
     session = make_session(tmp_path)

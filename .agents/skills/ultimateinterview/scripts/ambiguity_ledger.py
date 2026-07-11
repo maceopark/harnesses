@@ -35,11 +35,17 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    StrictBool,
+    StrictInt,
     TypeAdapter,
     ValidationError,
     field_validator,
     model_validator,
 )
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from scripts import claim_evidence
 
 
 DEFERRED_STATUSES: Final[frozenset[str]] = frozenset(
@@ -71,6 +77,7 @@ CHANNEL_ALIASES: Final[dict[str, str]] = {
     "scenario": "from-scenario",
     "user": "from-user",
 }
+LEGACY_ORIGIN_ALIASES: Final[dict[str, str]] = {"bundle": "batch"}
 NON_EVIDENCE_CHANNELS: Final[frozenset[str]] = frozenset({"assumption"})
 VALID_ORIGINS: Final[frozenset[str]] = frozenset(
     {
@@ -82,6 +89,7 @@ VALID_ORIGINS: Final[frozenset[str]] = frozenset(
         "batch",
         "checkpoint",
         "sweep",
+        "probe",
         "contrarian",
         "fold-back",
     }
@@ -89,6 +97,63 @@ VALID_ORIGINS: Final[frozenset[str]] = frozenset(
 LENS_ORIGIN: Final[re.Pattern[str]] = re.compile(
     r"^lens:(?:viewpoint|domain/state|goal/obstacle|misuse|quality|controlled-language)$"
 )
+
+
+TRACK_DOMAIN_PATTERN: Final[re.Pattern[str]] = re.compile(
+    r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
+)
+
+
+class TrackCategory(StrEnum):
+    GOAL = "goal"
+    SCOPE = "scope"
+    BEHAVIOR = "behavior"
+    DOMAIN_STATE = "domain-state"
+    CONSTRAINT = "constraint"
+    DECISION_BOUNDARY = "decision-boundary"
+    QUALITY = "quality"
+    MISUSE = "misuse"
+    VERIFICATION = "verification"
+    ROLLOUT_RECOVERY = "rollout-recovery"
+
+
+class LedgerTrack(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
+
+    category: TrackCategory | None = None
+    domain: str | None = None
+    target_surfaces: tuple[str, ...] = ()
+
+    @field_validator("domain")
+    @classmethod
+    def normalize_domain(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip().lower()
+        if not TRACK_DOMAIN_PATTERN.fullmatch(normalized):
+            raise ValueError("track domain must be a nonblank lowercase kebab-case slug")
+        return normalized
+
+    @field_validator("target_surfaces")
+    @classmethod
+    def normalize_target_surfaces(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized: list[str] = []
+        for surface in value:
+            cleaned = surface.strip().lower()
+            if cleaned.startswith("/"):
+                raise ValueError("track target surface must be repo-relative, not absolute")
+            while cleaned.startswith("./"):
+                cleaned = cleaned[2:]
+            if not cleaned or any(part == ".." for part in cleaned.split("/")):
+                raise ValueError("track target surface must be nonempty and cannot traverse '..'")
+            normalized.append(cleaned)
+        return tuple(sorted(set(normalized)))
+
+    @model_validator(mode="after")
+    def has_a_locality_key(self) -> LedgerTrack:
+        if self.category is None and self.domain is None and not self.target_surfaces:
+            raise ValueError("track must include a category, domain, or target surface")
+        return self
 
 
 class OutputFormat(StrEnum):
@@ -124,19 +189,21 @@ class LedgerEntry(BaseModel):
     reason: str = ""
     origin: str = ""  # which mechanism surfaced this entry (dump, pressure, checkpoint, sweep, lens:<name>, ...)
     status: str = "draft"
-    deferred: bool | DeferredRecord = False
-    ambiguity_score: int = Field(
+    deferred: StrictBool | DeferredRecord = False
+    ambiguity_score: StrictInt = Field(
         validation_alias=AliasChoices("ambiguity_score", "ambiguity"),
         ge=0,
         le=3,
     )
-    impact_weight: int = Field(
+    impact_weight: StrictInt = Field(
         validation_alias=AliasChoices("impact_weight", "weight"),
     )
     evidence_channels: tuple[str, ...] = Field(
         default=(),
         validation_alias=AliasChoices("evidence_channels", "channels"),
     )
+    evidence_records: tuple[claim_evidence.ClaimEvidence, ...] = ()
+    track: LedgerTrack | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -150,12 +217,41 @@ class LedgerEntry(BaseModel):
         ):
             if canonical in value and alias in value:
                 raise ValueError(f"use either {canonical!r} or {alias!r}, not both")
+        if "evidence_records" in value:
+            raw_records = value["evidence_records"]
+            if not isinstance(raw_records, (list, tuple)):
+                raise ValueError("evidence_records must be an array")
+            records = tuple(
+                record
+                if isinstance(record, claim_evidence.ClaimEvidence)
+                else claim_evidence.ClaimEvidence.model_validate_json(json.dumps(record))
+                for record in raw_records
+            )
+            raw_channels = value.get("evidence_channels", value.get("channels"))
+            supplied_channels = None
+            if raw_channels is not None:
+                supplied_channels = tuple(
+                    claim_evidence.CHANNEL_ALIASES[str(channel).strip().lower()]
+                    for channel in raw_channels
+                )
+            evidence_set = claim_evidence.ClaimEvidenceSet(
+                evidence_records=records,
+                evidence_channels=supplied_channels,
+            )
+            normalized = dict(value)
+            normalized.pop("channels", None)
+            normalized["evidence_records"] = evidence_set.evidence_records
+            normalized["evidence_channels"] = tuple(
+                channel.value for channel in evidence_set.projected_channels
+            )
+            return normalized
         return value
 
     @field_validator("origin")
     @classmethod
     def validate_origin(cls, value: str) -> str:
         normalized = value.strip().lower()
+        normalized = LEGACY_ORIGIN_ALIASES.get(normalized, normalized)
         if normalized not in VALID_ORIGINS and not LENS_ORIGIN.fullmatch(normalized):
             raise ValueError("origin is outside the documented closed vocabulary")
         return normalized
@@ -234,8 +330,16 @@ class LedgerEntry(BaseModel):
         return frozenset(self.evidence_channels) - NON_EVIDENCE_CHANNELS
 
     @property
+    def distinct_evidence_groups(self) -> frozenset[str]:
+        return claim_evidence.eligible_independence_groups(self.evidence_records)
+
+    @property
     def is_single_source_accepted(self) -> bool:
-        return self.status.strip().lower() in SINGLE_SOURCE_ACCEPTED_STATUSES
+        if self.status.strip().lower() not in SINGLE_SOURCE_ACCEPTED_STATUSES:
+            return False
+        if self.evidence_records:
+            return claim_evidence.accepts_explicit_single_source(self.evidence_records)
+        return True
 
     @property
     def is_contested(self) -> bool:
@@ -245,19 +349,27 @@ class LedgerEntry(BaseModel):
     def is_untriangulated_critical(self) -> bool:
         if self.impact_weight != CRITICAL_WEIGHT or self.ambiguity_score > 1:
             return False
-        channel_count = len(self.distinct_evidence_channels)
+        source_count = len(
+            self.distinct_evidence_groups
+            if self.evidence_records
+            else self.distinct_evidence_channels
+        )
         # The single-source waiver still needs at least one real channel:
         # zero-channel or assumption-only acceptance is not single-source.
         if self.is_single_source_accepted:
-            return channel_count < 1
-        return channel_count < 2
+            return source_count < 1
+        return source_count < 2
 
     @property
     def is_thin_critical(self) -> bool:
         return (
             self.impact_weight == CRITICAL_WEIGHT
             and self.ambiguity_score == 1
-            and len(self.distinct_evidence_channels) < 2
+            and len(
+                self.distinct_evidence_groups
+                if self.evidence_records
+                else self.distinct_evidence_channels
+            ) < 2
             and not self.is_single_source_accepted
         )
 
@@ -268,6 +380,17 @@ class LedgerEntry(BaseModel):
     @property
     def contribution(self) -> int:
         return self.impact_weight * self.ambiguity_score
+
+
+def entry_track_keys(entry: LedgerEntry) -> dict[str, tuple[str, ...]]:
+    """Return normalized locality keys in the dimensions used by routing."""
+    if entry.track is None:
+        return {"categories": (), "domains": (), "target_files": ()}
+    return {
+        "categories": () if entry.track.category is None else (entry.track.category.value,),
+        "domains": () if entry.track.domain is None else (entry.track.domain,),
+        "target_files": entry.track.target_surfaces,
+    }
 
 
 class LedgerDocument(BaseModel):
@@ -340,6 +463,29 @@ def parse_entries(raw_json: str) -> tuple[LedgerEntry, ...]:
     return entries
 
 
+def raw_legacy_bundle_origin_ids(raw_json: str) -> tuple[str, ...]:
+    payload = json.loads(raw_json)
+    if isinstance(payload, list):
+        raw_entries = payload
+    elif isinstance(payload, dict):
+        raw_entries = next(
+            (
+                payload[name]
+                for name in SECTION_NAMES
+                if isinstance(payload.get(name), list) and payload[name]
+            ),
+            [],
+        )
+    else:
+        raw_entries = []
+    return tuple(
+        str(entry.get("id", "<unknown>"))
+        for entry in raw_entries
+        if isinstance(entry, dict)
+        and str(entry.get("origin", "")).strip().lower() == "bundle"
+    )
+
+
 def display_percent(value: float) -> str:
     if value == 0:
         return "0%"
@@ -352,6 +498,7 @@ def summarize_ambiguity(
     entries: tuple[LedgerEntry, ...],
     *,
     top: int = 3,
+    evidence_schema_version: int = 0,
 ) -> AmbiguitySummary:
     active_entries = tuple(entry for entry in entries if not entry.is_deferred)
     deferred_count = len(entries) - len(active_entries)
@@ -370,7 +517,25 @@ def summarize_ambiguity(
         for entry in active_entries
         if entry.is_thin_critical
     )
-    blockers = build_blockers(score_3=score_3, score_2=score_2, untriangulated=untriangulated)
+    blockers = list(
+        build_blockers(
+            score_3=score_3,
+            score_2=score_2,
+            untriangulated=untriangulated,
+            evidence_schema_version=evidence_schema_version,
+        ),
+    )
+    if evidence_schema_version == 1:
+        unevidenced = tuple(
+            entry.id
+            for entry in active_entries
+            if entry.ambiguity_score <= 1 and not entry.distinct_evidence_groups
+        )
+        if unevidenced:
+            blockers.append(
+                "v1 settled entries without eligible structured evidence: "
+                f"{', '.join(unevidenced)}",
+            )
     top_drivers = tuple(
         sorted(
             (entry for entry in active_entries if entry.ambiguity_score > 0),
@@ -390,7 +555,7 @@ def summarize_ambiguity(
         ambiguity_percent=ambiguity_percent,
         display_percent=display_percent(ambiguity_percent),
         handoff_ready=len(blockers) == 0,
-        blockers=blockers,
+        blockers=tuple(blockers),
         triangulation_violations=untriangulated,
         triangulation_warnings=warnings,
         contested=contested,
@@ -398,7 +563,11 @@ def summarize_ambiguity(
     )
 
 
-def gate_failures(entries: tuple[LedgerEntry, ...]) -> tuple[str, ...]:
+def gate_failures(
+    entries: tuple[LedgerEntry, ...],
+    *,
+    evidence_schema_version: int = 0,
+) -> tuple[str, ...]:
     """Hard failures for the endgame gates that the readiness helpers only report:
     unresolved Contested entries, and deferrals without structured owner/date."""
     failures: list[str] = []
@@ -410,12 +579,19 @@ def gate_failures(entries: tuple[LedgerEntry, ...]) -> tuple[str, ...]:
         for entry in entries
         if not entry.is_deferred
         and entry.ambiguity_score <= 1
-        and not entry.evidence_channels
+        and (
+            not entry.distinct_evidence_groups
+            if evidence_schema_version == 1
+            else not entry.evidence_channels
+        )
     ]
     if unevidenced:
-        failures.append(
-            f"settled entries without a recorded channel: {', '.join(unevidenced)}",
+        label = (
+            "v1 settled entries without eligible structured evidence"
+            if evidence_schema_version == 1
+            else "settled entries without a recorded channel"
         )
+        failures.append(f"{label}: {', '.join(unevidenced)}")
     contested = [entry.id for entry in entries if entry.is_contested and not entry.is_deferred]
     if contested:
         failures.append(
@@ -432,8 +608,16 @@ def gate_failures(entries: tuple[LedgerEntry, ...]) -> tuple[str, ...]:
 
 
 def triangulation_warning_line(entry: LedgerEntry) -> str:
-    channels = sorted(entry.distinct_evidence_channels)
-    source = channels[0] if channels else "no non-assumption evidence channel"
+    sources = sorted(
+        entry.distinct_evidence_groups
+        if entry.evidence_records
+        else entry.distinct_evidence_channels
+    )
+    source = sources[0] if sources else (
+        "no eligible evidence group"
+        if entry.evidence_records
+        else "no non-assumption evidence channel"
+    )
     return (
         f"{entry.id}: weight-5 gap at score 1 rests on a single evidence source "
         f"({source}); triangulate with a second channel or record explicit acceptance"
@@ -445,6 +629,7 @@ def build_blockers(
     score_3: tuple[str, ...],
     score_2: tuple[str, ...],
     untriangulated: tuple[str, ...],
+    evidence_schema_version: int = 0,
 ) -> tuple[str, ...]:
     blockers: list[str] = []
     if len(score_3) > 0:
@@ -452,9 +637,14 @@ def build_blockers(
     if len(score_2) > 0:
         blockers.append(f"active score 2 gaps remain: {', '.join(score_2)}")
     if len(untriangulated) > 0:
+        requirement = (
+            "need two eligible causal groups or an owner/delegated single-source override"
+            if evidence_schema_version == 1
+            else "need two distinct evidence channels or explicit accepted status"
+        )
         blockers.append(
             "weight-5 gaps settled without triangulation "
-            "(need two distinct evidence channels or explicit accepted status): "
+            f"({requirement}): "
             f"{', '.join(untriangulated)}",
         )
     return tuple(blockers)
