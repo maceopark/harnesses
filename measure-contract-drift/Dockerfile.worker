@@ -1,0 +1,48 @@
+# syntax=docker/dockerfile:1
+# The selected arm64 manifest was resolved from docker.io/library/python:3.14-slim.
+# Do not replace this reference with a tag: worker_launcher.preflight_worker_image
+# rejects a Dockerfile that does not match oci/profile.json's base digest.
+FROM --platform=linux/arm64 docker.io/library/python@sha256:8b48630e688730a22bd25f3c9e04606b37fa1488cf70e665932ef78a3ee1e4d0
+
+ENV HOME=/nonexistent \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONPATH=/opt/driftbench/src \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONHASHSEED=0 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /opt/driftbench
+COPY --chown=root:root requirements.worker.lock uv.lock ./
+COPY --chown=root:root wheelhouse/ ./wheelhouse/
+RUN python -m pip install \
+        --no-index \
+        --find-links=/opt/driftbench/wheelhouse \
+        --require-hashes \
+        --only-binary=:all: \
+        --no-cache-dir \
+        --no-compile \
+        -r requirements.worker.lock
+
+# Only frozen public inputs and launcher policy enter a worker layer.  Private
+# corpus, host configuration, run artifacts, and credentials remain excluded.
+COPY --chown=root:root src/ ./src/
+COPY --chown=root:root corpus/public/ ./corpus/public/
+COPY --chown=root:root oci/ ./oci/
+COPY --chown=root:root protocol/ultimateinterview/ui-native-77b0327-r4/ ./protocol/ultimateinterview/ui-native-77b0327-r4/
+RUN addgroup --system --gid 10001 worker \
+    && adduser --system --uid 10001 --gid 10001 --no-create-home --home /nonexistent --shell /usr/sbin/nologin worker \
+    && mkdir -p /workspace/planner /workspace/implementer /workspace/observation /workspace/postmortem \
+    && install -m 0555 /opt/driftbench/oci/driftbench /usr/local/bin/driftbench \
+    && install -m 0555 /opt/driftbench/oci/uv /usr/local/bin/uv \
+    && ln -sf /usr/local/bin/python /usr/bin/python3 \
+    && ln -sf /usr/local/bin/uv /usr/bin/uv \
+    && chown -R root:root /opt/driftbench \
+    && chmod -R a-w /opt/driftbench \
+    && chown -R worker:worker /workspace \
+    && chmod 0755 /workspace /workspace/planner /workspace/implementer /workspace/observation /workspace/postmortem
+
+USER 10001:10001
+WORKDIR /workspace/implementer
+ENTRYPOINT ["driftbench"]
+CMD ["--help"]

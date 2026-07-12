@@ -1,0 +1,116 @@
+{
+  "schema": "DriftbenchRoleCapabilities.v2",
+  "default_policy": {
+    "deny_unlisted_tools": true,
+    "deny_unlisted_commands": true,
+    "direct_argv_only": true,
+    "allow_shell": false,
+    "allow_environment_overrides": false,
+    "allow_absolute_paths": false,
+    "allow_path_traversal": false,
+    "allow_network": false,
+    "allow_credentials": false
+  },
+  "roles": {
+    "planner": {
+      "roots": [
+        {
+          "path": "/workspace/planner",
+          "access": "read-write",
+          "allow_symlinks": false
+        }
+      ],
+      "tools": [
+        "read",
+        "search",
+        "task"
+      ],
+      "commands": []
+    },
+    "implementer": {
+      "roots": [
+        {
+          "path": "/workspace/implementer",
+          "access": "read-write",
+          "allow_symlinks": false
+        }
+      ],
+      "tools": [
+        "read",
+        "search",
+        "write_patch",
+        "run"
+      ],
+      "commands": [
+        {
+          "argv": [
+            "pytest",
+            "-q",
+            "tests"
+          ]
+        },
+        {
+          "argv": [
+            "driftbench",
+            "validate-corpus",
+            "--public-root",
+            "corpus/public",
+            "--partition",
+            "dev"
+          ]
+        }
+      ]
+    },
+    "observation": {
+      "roots": [
+        {
+          "path": "/workspace/observation",
+          "access": "read-write",
+          "allow_symlinks": false
+        }
+      ],
+      "tools": [
+        "read",
+        "run"
+      ],
+      "commands": []
+    },
+    "postmortem": {
+      "roots": [
+        {
+          "path": "/workspace/postmortem",
+          "access": "read-write",
+          "allow_symlinks": false
+        }
+      ],
+      "tools": [
+        "read",
+        "search"
+      ],
+      "commands": []
+    }
+  },
+  "external_service_requirements": {
+    "provider": {
+      "capability": "provider.invoke.v1",
+      "required_for": [
+        "live-dev"
+      ],
+      "granted_to_worker": false
+    },
+    "simulator": {
+      "capability": "simulator.execute.v1",
+      "required_for": [
+        "live-dev"
+      ],
+      "granted_to_worker": false
+    },
+    "evaluator": {
+      "capability": "evaluator.score.v1",
+      "required_for": [
+        "live-dev"
+      ],
+      "granted_to_worker": false
+    }
+  }
+}

@@ -291,5 +291,52 @@ def test_prose_action_with_apostrophe_is_not_parsed_as_shell() -> None:
     assert verification_lint.command_parse_findings(part1) == ()
 
 
+def test_uv_is_the_only_host_checked_head_for_project_commands(tmp_path: Path) -> None:
+    session = make_session(
+        tmp_path,
+        HANDOFF.replace(
+            "| Unit suite | cd app && python -m pytest | passes |",
+            "| Unit suite | `uv run --project app pytest tests -q` | passes |",
+        ),
+    )
+    bindir = make_host(tmp_path, ["uv", "mktemp", "python", "python3"])
+    code, output = lint(session, bindir, "--strict")
+    assert code == 0, output
+    assert "uv: ok" in output
+    assert "uv nested command 'pytest' (project 'app'): project-managed; not host-PATH checked" in output
+    assert "pytest: ok" not in output
+    assert "policy-approved" not in output
+
+
+def test_missing_uv_is_advisory_or_strict(tmp_path: Path) -> None:
+    session = make_session(
+        tmp_path,
+        HANDOFF.replace(
+            "| Unit suite | cd app && python -m pytest | passes |",
+            "| Unit suite | `uv run pytest tests -q` | passes |",
+        ),
+    )
+    bindir = make_host(tmp_path, ["python3", "mktemp"])
+    advisory_code, advisory_output = lint(session, bindir)
+    assert advisory_code == 0
+    assert "uv: MISSING on this host" in advisory_output
+    assert "project-managed; not host-PATH checked" in advisory_output
+
+    strict_code, strict_output = lint(session, bindir, "--strict")
+    assert strict_code == 1
+    assert "uv: MISSING on this host" in strict_output
+
+
+def test_non_uv_command_status_remains_host_path_only(tmp_path: Path) -> None:
+    part1 = (
+        "## Verification Commands\n"
+        "| Check | Command |\n"
+        "| --- | --- |\n"
+        "| surface | `pytest tests -q` |\n"
+    )
+    bindir = make_host(tmp_path, ["pytest"])
+    assert verification_lint.command_head_status(part1, str(bindir), tmp_path) == {
+        "pytest": True,
+    }
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))

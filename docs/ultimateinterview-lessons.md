@@ -6,6 +6,7 @@ Repo-specific signals only — repo-agnostic lessons live in the global store (`
 
 | Signal | Lens to trigger | Failure class | Evidence | Date | Fired/Caught |
 | --- | --- | --- | --- | --- | --- |
+| Handoff pins `uv run --project <fixture> pytest` from a workspace root that already has unrelated tests - establish whether project selection changes cwd or collection, and name a fixture-scoped collector if it does not | core-path | trigger-too-narrow | todo-cli-benchmark-new postmortem ESC-001: `uv --project` selected the environment but kept the harness cwd, so the pinned command needed a root-scoped pytest11 selector | 2026-07-11 | 0/0 |
 
 ## Retired
 

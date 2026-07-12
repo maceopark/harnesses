@@ -1868,6 +1868,28 @@ def test_checkpoint_confirm_credits_single_channel_entries(tmp_path: Path) -> No
     assert written["interactions_used"] == 4
 
 
+def test_checkpoint_confirm_records_stagnation_escalation_marker(tmp_path: Path) -> None:
+    session = make_session(
+        tmp_path,
+        residual_history=[6, 6, 6],
+        gap_count_history=[1, 1, 1],
+    )
+
+    result = run_update(
+        session,
+        {
+            "checkpoint_confirm": {"ids": ["g1"], "fatigue": False},
+        },
+    )
+
+    assert result.exit_code == 0, result.output
+    written = read_protocol(session)
+    assert written["stagnation_escalated_at"] == len(written["residual_history"])
+    status = CLI_RUNNER.invoke(make_app(session_status.main), [str(session), "--next"])
+    assert status.exit_code == 0, status.output
+    assert "stagnation: residual has not dropped" not in status.output
+
+
 def test_checkpoint_confirm_never_double_credits_from_user(tmp_path: Path) -> None:
     session = make_session(tmp_path)
     run_update(session, {"set": [{"id": "g2", "evidence_channels": ["from-user"]}]})

@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="암호학과 Zero Trust의 통제 구조를 ultimateinterview에 안전하게 적용하는 연구 보고서">
+  <title>신뢰를 증명하지 않고, 신뢰할 수 있게 만들기</title>
+  <style>
+    :root {
+      --canvas:#fbfaf7;--paper:#fff;--surface:#f6f5f1;--ink:#20201e;--muted:#68645f;--faint:#918b84;--border:#e5e1da;
+      --accent:#1769aa;--accent-soft:#e8f2fa;--warning:#9a5418;--warning-soft:#fbf0df;--reject:#8f3d3a;--reject-soft:#f8e8e7;
+      --success:#2f6b45;--success-soft:#e8f2eb;--lead:#3e3c39;--s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:20px;--s6:24px;--s8:32px;
+      --s12:48px;--s16:64px;--s20:80px;--s24:96px;--radius:12px;--page:1200px;--reading:760px;
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;background:var(--canvas);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;line-height:1.75;-webkit-font-smoothing:antialiased}
+    a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:3px} a:hover{text-decoration-thickness:2px} a:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}
+    .shell{max-width:var(--page);margin:0 auto;padding:0 var(--s12)}
+    .hero{padding:var(--s24) 0 var(--s20);border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+    .hero::after{content:"";position:absolute;width:420px;height:420px;right:-140px;top:-170px;border:1px solid var(--border);border-radius:50%;box-shadow:0 0 0 48px var(--surface),0 0 0 49px var(--border),0 0 0 96px var(--canvas);z-index:-1}
+    .eyebrow,.label{font-size:.75rem;font-weight:700;line-height:1.4;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+    h1,h2{font-family:Georgia,"Noto Serif KR",serif;word-break:keep-all;text-wrap:balance} h1{font-size:clamp(2.4rem,7vw,5rem);line-height:1.02;letter-spacing:-.035em;max-width:920px;margin:var(--s4) 0 var(--s8)}
+    h2{font-size:clamp(1.8rem,4vw,3rem);line-height:1.15;letter-spacing:-.025em;margin:0 0 var(--s8)} h3{font-size:1.125rem;line-height:1.4;margin:0 0 var(--s3);word-break:keep-all}
+    p,li{word-break:keep-all} .lead{font-size:1.2rem;line-height:1.75;max-width:var(--reading);color:var(--lead);margin:0}
+    .meta{display:flex;flex-wrap:wrap;gap:var(--s3);margin-top:var(--s8);color:var(--muted);font-size:.875rem}.meta span{border:1px solid var(--border);background:var(--paper);padding:var(--s2) var(--s3);border-radius:6px}
+    .layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:var(--s16);padding:var(--s16) 0 var(--s24)}
+    aside{position:sticky;top:var(--s6);align-self:start}.nav-title{font-size:.75rem;font-weight:700;letter-spacing:.08em;color:var(--muted);margin-bottom:var(--s3)}nav a{display:block;color:var(--muted);text-decoration:none;padding:6px 0;font-size:.875rem;border-bottom:1px solid transparent}nav a:hover{color:var(--ink);border-bottom-color:var(--border)}
+    main{min-width:0}.section{padding:var(--s16) 0;border-bottom:1px solid var(--border)}.section:first-child{padding-top:0}.section:last-child{border:0}
+    .summary{font-size:1.05rem;max-width:var(--reading)}.quote{margin:var(--s8) 0;padding:var(--s6) var(--s8);background:var(--surface);border-left:4px solid var(--ink);font-family:Georgia,"Noto Serif KR",serif;font-size:1.2rem;line-height:1.7;word-break:keep-all}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s4)}.card{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);padding:var(--s6);min-width:0}.card p{margin:0;color:var(--muted)}
+    .badge{display:inline-block;font-size:.75rem;font-weight:700;letter-spacing:.05em;padding:3px 8px;border-radius:999px;margin-bottom:var(--s3)}.verified{color:var(--success);background:var(--success-soft)}.conditional{color:var(--warning);background:var(--warning-soft)}.rejected{color:var(--reject);background:var(--reject-soft)}.local{color:var(--accent);background:var(--accent-soft)}
+    .table-scroll{max-width:100%;overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--paper)}.table-scroll:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.scroll-hint{display:none;margin:0;padding:var(--s2) var(--s3);border-bottom:1px solid var(--border);color:var(--muted);font-size:.75rem}.mapping{width:100%;table-layout:fixed;border-collapse:collapse;font-size:.92rem}.mapping th,.mapping td{text-align:left;vertical-align:top;padding:var(--s3);border-bottom:1px solid var(--border);word-break:keep-all;overflow-wrap:normal}.mapping tr:last-child td{border-bottom:0}.mapping th{font-size:.75rem;letter-spacing:.04em;color:var(--muted);background:var(--surface)}
+    .firewall{list-style:none;margin:var(--s8) 0;padding:0;display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}.firewall li{padding:var(--s6) var(--s4);min-height:180px;border-right:1px solid var(--border);background:var(--paper)}.firewall li:last-child{border-right:0}.firewall li:nth-child(3){background:var(--accent-soft)}.firewall li:nth-child(4){background:var(--warning-soft)}.firewall li:nth-child(5){background:var(--surface)}.firewall strong{display:block;font-family:Georgia,"Noto Serif KR",serif;font-size:1.25rem;margin:var(--s3) 0}.firewall small{color:var(--muted);line-height:1.55;display:block}.no-imply{color:var(--reject);font-size:.75rem;font-weight:700;margin-top:var(--s4)}
+    .priority{display:grid;grid-template-columns:54px 1.1fr 1.6fr;gap:var(--s4);padding:var(--s6) 0;border-bottom:1px solid var(--border)}.priority:last-child{border-bottom:0}.pnum{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted);font-weight:700}.priority p{margin:0;color:var(--muted)}.priority p strong{color:var(--ink);font-size:.8rem}
+    .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s3);margin:var(--s8) 0}.flow .node{background:var(--paper);border:1px solid var(--border);border-radius:8px;padding:var(--s4);position:relative}.flow .node:not(:last-child)::after{content:"→";position:absolute;right:-13px;top:50%;transform:translateY(-50%);color:var(--faint);background:var(--canvas);padding:0 2px}.flow strong{display:block;margin-bottom:var(--s2)}
+    .callout{background:var(--reject-soft);border:1px solid color-mix(in srgb,var(--reject) 30%,var(--border));border-radius:var(--radius);padding:var(--s6);margin:var(--s8) 0}.callout h3{color:var(--reject)}
+    details{border-top:1px solid var(--border);padding:var(--s4) 0}summary{cursor:pointer;font-weight:700;word-break:keep-all}.details-body{color:var(--muted);padding:var(--s3) 0 0}
+    .sources{padding-left:1.35rem}.sources li{margin-bottom:var(--s3);color:var(--muted)}.refs{font-size:.8rem;color:var(--muted)}.refs a{margin-right:4px}.nowrap{white-space:nowrap}code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em;background:var(--surface);border:1px solid var(--border);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+    footer{border-top:1px solid var(--border);padding:var(--s8) 0 var(--s16);font-size:.875rem;color:var(--muted)}
+    @media(max-width:900px){.shell{padding:0 var(--s8)}.layout{grid-template-columns:1fr;gap:0}aside{display:none}.firewall{grid-template-columns:1fr}.firewall li{min-height:0;border-right:0;border-bottom:1px solid var(--border)}.firewall li:last-child{border-bottom:0}.flow{grid-template-columns:1fr 1fr}.flow .node::after{display:none}}
+    @media(max-width:759px){.grid{grid-template-columns:1fr}}
+    @media(max-width:640px){.shell{padding:0 var(--s5)}.hero{padding:var(--s16) 0 var(--s12)}h1{font-size:1.8rem}.phrase{white-space:nowrap}.compact-heading{font-size:1.25rem}.grid{grid-template-columns:1fr}.priority{grid-template-columns:44px 1fr}.priority p{grid-column:2}.flow{grid-template-columns:1fr}.scroll-hint{display:block}.mapping{min-width:680px;font-size:.86rem}.mapping th,.mapping td{padding:var(--s3)}.quote{padding:var(--s5);font-size:1.05rem}.meta span{width:100%}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="shell">
+      <div class="eyebrow">ULW Research · Ultimateinterview</div>
+      <h1><span class="phrase">신뢰를 증명하지 않고,</span><br>신뢰할 수 있게 만들기</h1>
+      <p class="lead">암호학, Zero Trust, 분산 합의, 형식 검증, LLM 실증 연구에서 가져온 통제 구조를 요구사항 인터뷰에 적용하는 방법.</p>
+      <div class="meta"><span>31 research axes</span><span>3 waves</span><span>262 unique URLs</span><span>13 current v1 tests + historical 666 baseline</span></div>
+    </div>
+  </header>
+
+  <div class="shell layout">
+    <aside aria-label="보고서 목차">
+      <div class="nav-title">CONTENTS</div>
+      <nav>
+        <a href="#answer">핵심 답변</a><a href="#crypto">암호학의 교훈</a><a href="#zt">Zero Trust</a><a href="#independence">독립성</a><a href="#verifier">Verifier routing</a><a href="#firewall">다섯 verdict</a><a href="#priority">적용 우선순위</a><a href="#limits">남는 한계</a><a href="#sources">주요 출처</a>
+      </nav>
+    </aside>
+
+    <main>
+      <section class="section" id="answer">
+        <div class="label">THE ANSWER</div>
+        <h2>보증을 빌리지 말고,<br><span class="phrase">보증의 조건을 설계한다</span></h2>
+        <p class="summary">자연어 인터뷰는 암호학적 proof system이 아니다. 가져올 수 있는 것은 claim 고정, 독립 challenge, 명시적 predicate, <span class="nowrap">provenance와 freshness</span>, fail-closed transition, residual risk의 구조다. 통과의 의미는 “기록된 범위 안에서 구현 준비 조건을 만족”이지 “참·완전·독립적으로 증명됨”이 아니다. <span class="refs"><a href="#src-1">[1]</a><a href="#src-2">[2]</a><a href="#src-5">[5]</a></span></p>
+        <div class="quote">“통과는 기록된 증거와 조건에 대한 기계적 적합 판정이며, <span class="nowrap">사실성 판정이 아니다.</span>”</div>
+        <div class="grid">
+          <article class="card"><span class="badge verified">KEEP</span><h3>현재 구현된 구조적 통제</h3><p>Typed state, material revision, BuildContract sidecar 재검증, open-world/probe/checkpoint 의무, blocker-based readiness, fresh-implementer review.</p></article>
+          <article class="card"><span class="badge local">LOCAL EVIDENCE</span><h3>현재 확인된 간극</h3><p>독립성·freshness·authority가 <span class="nowrap">self-attested</span>이며, verification command는 실행되지 않고, whole-session manifest와 semantic-fidelity 판정은 없다. <span class="refs"><a href="#src-17">[17]</a></span></p></article>
+        </div>
+      </section>
+
+      <section class="section" id="crypto">
+        <div class="label">CRYPTOGRAPHY</div><h2>정확히 전이되는 것은 매우 좁다</h2>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="암호학 아이디어 적용 표, 작은 화면에서는 좌우로 스크롤할 수 있습니다"><p class="scroll-hint">표를 좌우로 스크롤할 수 있습니다.</p><table class="mapping">
+          <thead><tr><th>아이디어</th><th>판정</th><th>안전한 사용</th><th>금지할 과장</th></tr></thead>
+          <tbody>
+            <tr><td>Executable witness predicate</td><td><span class="badge verified">EXACT</span></td><td>특정 artifact가 특정 predicate를 만족하는지 재실행</td><td>Predicate가 실제 의도를 충분히 표현한다고 주장</td></tr>
+            <tr><td>Freeze before challenge</td><td><span class="badge conditional">BOUNDED</span></td><td>Test phase 전에 claim/scope/evidence manifest 고정</td><td>Hash가 truth·non-repudiation·replay resistance를 준다고 주장</td></tr>
+            <tr><td>Independent challenge</td><td><span class="badge conditional">BOUNDED</span></td><td>별도 provenance의 반례와 판정 관찰</td><td>후속 질문 자체가 soundness를 준다고 주장</td></tr>
+            <tr><td>Proof of knowledge / ZK / Fiat–Shamir</td><td><span class="badge rejected">REJECT</span></td><td>정식 relation/extractor/simulator가 있는 micro-protocol에서만</td><td>그럴듯한 답변·redaction·결정론 질문에 이름을 붙임</td></tr>
+          </tbody>
+        </table></div>
+        <p class="refs">근거 <a href="#src-1">[1]</a><a href="#src-2">[2]</a><a href="#src-3">[3]</a><a href="#src-9">[9]</a></p>
+        <div class="callout"><h3>중요한 경계</h3><p>요구사항은 종종 이미 존재하는 숨은 witness가 아니다. 인터뷰 중 사실을 발견하고, 선호를 드러내고, 정책을 공동 형성한다. 따라서 formation phase와 test phase를 구분해야 한다.</p></div>
+      </section>
+
+      <section class="section" id="zt">
+        <div class="label">ZERO TRUST</div><h2>의미가 아니라 권한과 전이를 매개한다</h2>
+        <div class="flow" aria-label="Zero Trust transition flow">
+          <div class="node"><strong>Subject</strong><span>model · user · reviewer · tool</span></div>
+          <div class="node"><strong>Request</strong><span>claim · handoff · dispatch · effect</span></div>
+          <div class="node"><strong>PDP</strong><span>allow · deny · revise · revoke</span></div>
+          <div class="node"><strong>PEP</strong><span>grant 소비 · effect 차단 · receipt</span></div>
+        </div>
+        <p>현재 canonical state writer는 자신이 소유한 파일에 대해 실제 PEP다. v1 final gate는 state·sidecar·open-world/probe/checkpoint 의무를 함께 판정하지만, 호출자가 반드시 존중할 때만 PEP다. question emission, handoff delivery, implementation dispatch, runtime tool path에는 우회 경로가 남아 있다. <span class="refs"><a href="#src-5">[5]</a><a href="#src-10">[10]</a><a href="#src-11">[11]</a><a href="#src-17">[17]</a></span></p>
+        <div class="callout"><h3>제품 경계: 실행을 소유하지 않는다</h3><p><code>ultimateinterview</code>는 canonical interview state, BuildContract, readiness policy까지 소유한다. Delivery·dispatch·runtime PEP는 downstream harness가 소비해야 할 통합 계약이다. v1은 L0–L3 probe의 decision/result contract를 강제한다. L1의 두 behavioral stub과 L2/L3의 권한은 <em>실행·artifact authenticity·효과</em>를 아직 증명하지 않으므로, executor receipt와 calibration이 남는다. <span class="refs"><a href="#src-16">[16]</a><a href="#src-17">[17]</a></span></p></div>
+        <details><summary>Grant가 bind해야 할 최소 정보</summary><div class="details-body"><code>subject · resource · action · session · generation · payload_digest · policy_version · expiry · nonce</code>. Effect 직전에 검증·소비하고 machine-issued receipt를 남긴다.</div></details>
+        <details><summary>Exactly-once를 주장하지 않는 이유</summary><div class="details-body">Timeout 뒤 effect는 발생했지만 receipt가 유실될 수 있다. durable intent/outbox, idempotency key, effect-status reconciliation으로 처리한다.</div></details>
+      </section>
+
+      <section class="section" id="independence">
+        <div class="label">INDEPENDENCE</div><h2>Agent 수가 아니라 failure domain을 센다</h2>
+        <div class="grid">
+          <article class="card"><span class="badge rejected">COLLAPSE</span><h3>한 관찰로 취급</h3><p>같은 retry/cache, principal, process, model checkpoint, prompt, source/retriever, verifier, specification, snapshot, incentive.</p></article>
+          <article class="card"><span class="badge conditional">ESCALATE</span><h3>의존성이 불명확할 때</h3><p>자동 settlement를 중단한다. <span class="nowrap">Dissent는 다수결로</span> 지우지 않고 새 evidence, checker, authority decision으로 판정한다.</p></article>
+        </div>
+        <p>다양성은 후보 생성과 robustness에는 유용할 수 있다. 그러나 <code>3-of-4</code> 같은 숫자는 실험할 workflow template일 뿐 BFT theorem이나 truth probability가 아니다. <span class="refs"><a href="#src-6">[6]</a><a href="#src-7">[7]</a><a href="#src-8">[8]</a></span></p>
+      </section>
+
+      <section class="section" id="verifier">
+        <div class="label">VERIFIER ROUTING</div><h2 class="compact-heading">Critique는 질문을 만들고,<br><span class="phrase">Checker는 정해진 조건만 판정한다</span></h2>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Verifier routing 표, 작은 화면에서는 좌우로 스크롤할 수 있습니다"><p class="scroll-hint">표를 좌우로 스크롤할 수 있습니다.</p><table class="mapping">
+          <thead><tr><th>Class</th><th>역할</th><th>판정 권한</th></tr></thead>
+          <tbody><tr><td>Reflection / persona / debate</td><td>후보, 반례, missing question</td><td>없음</td></tr><tr><td>Retrieval / search</td><td>Source candidate, contradiction</td><td>Claim entailment을 별도 검사</td></tr><tr><td>Learned verifier</td><td>Calibrated slice의 ranking/advice</td><td>High-impact 단독 settlement 불가</td></tr><tr><td>Deterministic scoped checker</td><td>Encoded predicate의 실행 판정</td><td>그 predicate에 한정</td></tr><tr><td>Authorized owner</td><td>Preference, policy, risk acceptance</td><td>인증된 decision scope에 한정</td></tr><tr><td>Live observation</td><td>실제 behavior 관찰</td><td>환경·시점·관찰 조건에 한정</td></tr></tbody>
+        </table></div>
+        <p class="refs">근거 <a href="#src-7">[7]</a><a href="#src-8">[8]</a><a href="#src-13">[13]</a></p>
+      </section>
+
+      <section class="section" id="firewall">
+        <div class="label">VERDICT FIREWALL</div><h2>하나의 green status를 다섯 개로 분리한다</h2>
+        <ol class="firewall">
+          <li><span class="label">01</span><strong>ABI</strong><small>Schema와 exact sidecar binding</small><div class="no-imply">≠ 의미 보존</div></li>
+          <li><span class="label">02</span><strong>Trace</strong><small>REQ·VER·source 참조 closure</small><div class="no-imply">≠ property truth</div></li>
+          <li><span class="label">03</span><strong>Property</strong><small>P holds for M under A and S</small><div class="no-imply">≠ model adequacy</div></li>
+          <li><span class="label">04</span><strong>Adequacy</strong><small>Mutation·vacuity·counterexample challenge</small><div class="no-imply">≠ exhaustive correctness</div></li>
+          <li><span class="label">05</span><strong>Stakeholder</strong><small>Exact digest와 residual의 권한 있는 수용</small><div class="no-imply">≠ factual proof</div></li>
+        </ol>
+        <p>현재 committed v1은 ABI·trace에 더해 typed evidence shape, material-revision freshness, BuildContract sidecar, open-world/probe/checkpoint 조건을 기계적으로 확인한다. 하지만 Verification row는 실행 결과가 아니라 실행 계획이며, property·adequacy·authenticated provenance/freshness·stakeholder verdict는 여전히 남는다. <span class="refs"><a href="#src-4">[4]</a><a href="#src-17">[17]</a></span></p>
+      </section>
+
+      <section class="section" id="priority">
+        <div class="label">ROADMAP</div><h2>적용 우선순위</h2>
+        <div class="priority"><div class="pnum">P0</div><h3>Guarantee language firewall</h3><p>v1의 <code>interview_converged</code>와 <code>implementation_ready</code> 분리를 유지하고, “verified·independent·discovery rate”만 scope/version/evidence-qualified 문구로 제한한다.<br><strong>검증:</strong> terminology lint와 문서 counter-review. <strong>잔여:</strong> 런타임 보증은 늘지 않는다.</p></div>
+        <div class="priority"><div class="pnum">P1</div><h3>Residual false-positive controls</h3><p>BuildContract·fresh review·typed probe는 구현됐다. 남은 것은 verifier-derived provenance, correlation graph, executed receipts, semantic mutation, complete session manifest다. L0–L3 probe는 실제 실행/receipt와 unique-catch calibration이 필요하다.<br><strong>검증:</strong> forged label, stale source, missing file, weakened oracle와 probe-executor fixture. <strong>잔여:</strong> verifier trust root와 probe 비용.</p></div>
+        <div class="priority"><div class="pnum">P2</div><h3>Downstream enforcement contract</h3><p>스킬은 grant/receipt/deny semantics를 BuildContract에 표현하고, downstream harness가 delivery·dispatch·runtime effect를 매개한다. 실행 루프는 스킬이 소유하지 않는다.<br><strong>검증:</strong> consumer contract test와 모든 alternate path의 deny/no-effect mutation. <strong>잔여:</strong> consumer 준수, PEP outage와 break-glass risk.</p></div>
+        <div class="priority"><div class="pnum">P3</div><h3>Session-level freshness</h3><p>Material revision과 reviewed Part 1 sidecar freshness는 구현됐다. 다음은 snapshot binding, monotonic head, expiry/event invalidation, authority rotation, 필요 시 external checkpoint다.<br><strong>검증:</strong> rollback, equal-version fork, mix-and-match, expired approval fixture. <strong>잔여:</strong> clock·external anchor trust.</p></div>
+        <div class="priority"><div class="pnum">P4</div><h3>Risk-triggered assurance</h3><p>High-risk claim에만 warrant/defeater, mutation/vacuity, bounded formal obligation을 추가한다.<br><strong>검증:</strong> zero unexplained must-kill survivor. <strong>잔여:</strong> fault-model과 stakeholder adequacy.</p></div>
+        <div class="priority"><div class="pnum">P5</div><h3>Postmortem calibration</h3><p>기존 escape를 seed로 삼아 method별 unique catch, false alarm, time, downstream escape를 측정한다.<br><strong>검증:</strong> blinded held-out postmortem. <strong>잔여:</strong> dataset drift와 표본 한계.</p></div>
+      </section>
+
+      <section class="section" id="limits">
+        <div class="label">RESIDUAL RISK</div><h2>끝까지 남는 것</h2>
+        <div class="grid">
+          <article class="card"><h3>Open-world completeness</h3><p>어떤 sweep·lens·formal model도 모든 unknown unknown을 증명하지 않는다. Bounded coverage와 uncovered complement를 보고한다.</p></article>
+          <article class="card"><h3>Human authority</h3><p>Stakeholder acceptance는 decision authority다. Identity·delegation·fatigue·organizational pressure는 별도 trust root다.</p></article>
+          <article class="card"><h3>Semantic equivalence</h3><p>Natural-language subcase preservation은 일반적으로 decidable하지 않다. Independent source-to-scenario review가 남는다.</p></article>
+          <article class="card"><h3>Privacy and liveness</h3><p>더 많은 telemetry와 fail-closed gate는 민감정보 축적, false block, fatigue를 만든다. Risk-tiering과 retention policy가 필요하다.</p></article>
+        </div>
+      </section>
+
+      <section class="section" id="sources">
+        <div class="label">SOURCE MAP</div><h2>주요 출처</h2>
+        <ol class="sources">
+          <li id="src-1"><a href="https://evervault.com/papers/zkp-1986.pdf">Goldwasser, Micali, Rackoff — Interactive Proof Systems</a></li>
+          <li id="src-2"><a href="https://www.wisdom.weizmann.ac.il/~oded/PSX/pok.pdf">Bellare &amp; Goldreich — Proofs of Knowledge</a></li>
+          <li id="src-3"><a href="https://eprint.iacr.org/1998/011.pdf">Canetti, Goldreich, Halevi — Random Oracle Methodology Revisited</a></li>
+          <li id="src-4">Local artifacts — <a href="source-memos/live-contract-zero-trust-map.md">live map</a>, <a href="source-memos/design-history-evolution-map.md">history</a></li>
+          <li id="src-5"><a href="https://csrc.nist.gov/pubs/sp/800/207/final">NIST SP 800-207 — Zero Trust Architecture</a></li>
+          <li id="src-6"><a href="https://www.usenix.org/conference/osdi-99/practical-byzantine-fault-tolerance">Castro &amp; Liskov — PBFT</a></li>
+          <li id="src-7"><a href="https://arxiv.org/abs/2310.01798">Huang et al. — Intrinsic Self-Correction Limits</a></li>
+          <li id="src-8"><a href="https://proceedings.iclr.cc/paper_files/paper/2025/hash/f3c5e56274140e0420baa3916c529210-Abstract-Conference.html">Stechly et al. — Sound vs LLM Verifiers</a>; <a href="https://arxiv.org/abs/2506.07962">Kim et al. — Correlated LLM Errors</a></li>
+          <li id="src-9"><a href="https://theupdateframework.github.io/specification/latest/">TUF</a>, <a href="https://github.com/in-toto/specification/blob/master/in-toto-spec.md">in-toto</a>, <a href="https://slsa.dev/spec/v1.2/verifying-artifacts">SLSA</a></li>
+          <li id="src-10"><a href="https://openai.github.io/openai-agents-python/guardrails/">OpenAI Agents SDK Guardrail Boundaries</a></li>
+          <li id="src-11"><a href="https://docs.langchain.com/oss/python/langgraph/interrupts">LangGraph Interrupt Replay Semantics</a></li>
+          <li id="src-12"><a href="https://www.sei.cmu.edu/blog/cyber-threat-modeling-an-evaluation-of-three-methods/">SEI threat-model method comparison</a></li>
+          <li id="src-13"><a href="https://arxiv.org/abs/2305.11738">CRITIC — tool-grounded critique</a></li>
+          <li id="src-14"><a href="https://www.usenix.org/conference/osdi24/presentation/goldweber">IronSpec</a>, <a href="https://alloytools.org/spec.html">Alloy</a>, <a href="https://www.nist.gov/publications/mutation-operators-specifications">NIST specification mutation</a></li>
+          <li id="src-15"><a href="verify-current-deterministic-gates.md">2026-07-10 historical checkout 검증과 bypass evidence</a></li>
+          <li id="src-16"><a href="../../../docs/ultimateinterview-spec-layer-strategy.md">추적 중인 로컬 실행-불가지 스펙 층 전략</a></li>
+          <li id="src-17"><a href="verify-current-contract-oracle.md">2026-07-11 committed v1 contract-oracle rebaseline</a></li>
+        </ol>
+      </section>
+    </main>
+  </div>
+
+  <footer><div class="shell">ULW Research · 2026-07-10 research / 2026-07-11 v1 rebaseline · 이 보고서는 설계 제안이며 product/skill 파일을 변경하지 않았다.</div></footer>
+</body>
+</html>

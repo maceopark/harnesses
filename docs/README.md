@@ -20,6 +20,7 @@ Documentation for the `ultimateinterview` closed loop, organized by topic. The g
 | `reference/ultimateinterview-deterministic-readiness-hardening.md` | Current architecture of the deterministic readiness gate and the advisory/deterministic split. |
 | `reference/ultimateinterview-vs-planning-interview-loops.md` | Evidence-based comparison of Codex Plan Mode, oh-my-openagent, Superpowers, and `ultimateinterview`, including structural advantages, limits, and the experiment needed to establish discovery-rate superiority. |
 | `reference/requirements-gap-discovery.md` | The reusable requirements-gap method (contextual observation, viewpoint matrix, EventStorming, misuse cases, EARS, evidence ledger). Cited by the skill's `comparison.md`. |
+| `reference/ultimateinterview-evidence-authority-model-revision.md` | Design note that compresses the proposed unknown-unknown extension into a minimal evidence-scope, counterfactual-discriminator, and authority-routing loop. |
 
 ## Runtime store (do not move)
 

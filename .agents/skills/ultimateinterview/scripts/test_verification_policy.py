@@ -36,6 +36,8 @@ from scripts import verification_policy
         "pytest tests/test_app.py::test_save[param] -q",
         "pytest --junitxml artifacts/report.xml tests",
         "pytest --junitxml=artifacts/report.xml tests",
+        "uv run --project project pytest tests -q",
+        "uv run --project=project pytest tests -q",
     ],
 )
 def test_safe_auto_allows_recognized_bounded_local_verification(command: str) -> None:
@@ -147,6 +149,47 @@ def test_safe_auto_accepts_explicit_observable_pass_condition(pass_condition: st
     # Given an explicit numeric, output, or artifact assertion
     # When policy validation runs, Then it accepts the observable
     verification_policy.validate_safe_auto("pytest -q", pass_condition)
+@pytest.mark.parametrize(
+    ("command", "category"),
+    [
+        ("uv run --project pytest tests -q", "recognized bounded"),
+        ("uv run --project= pytest tests -q", "repository-relative path"),
+        ("uv run --project --project pytest tests -q", "repository-relative path"),
+        ("uv run --project --verbose pytest tests -q", "repository-relative path"),
+        ("uv run --project=--verbose pytest tests -q", "repository-relative path"),
+        ("uv run --project project --project=other pytest tests -q", "at most one"),
+        ("uv run --project=project --project other pytest tests -q", "at most one"),
+        ("uv run --project project -- pytest tests -q", "explicit --"),
+        ("uv run --project project", "direct allowlisted"),
+        ("uv run --project project --quiet", "permits only"),
+        ("uv run --project /tmp/project pytest tests -q", "repository-relative path"),
+        ("uv run --project=/tmp/project pytest tests -q", "repository-relative path"),
+        ("uv run --project ../project pytest tests -q", "repository-relative path"),
+        ("uv run --project=../project pytest tests -q", "repository-relative path"),
+        ("uv run --project ~/project pytest tests -q", "repository-relative path"),
+        ("uv run --project=~/project pytest tests -q", "repository-relative path"),
+        ("uv run --project C:/project pytest tests -q", "repository-relative path"),
+        ("uv run --project=C:/project pytest tests -q", "repository-relative path"),
+        ("uv run --project=project\\workspace pytest tests -q", "backslashes"),
+        ("uv run --project project\\workspace pytest tests -q", "backslashes"),
+        ("uv run --project project$HOME pytest tests -q", "shell expansion"),
+        ("uv run --project=project$HOME pytest tests -q", "shell expansion"),
+        ("uv run --project=project\u0007 pytest tests -q", "ASCII controls"),
+        ("uv run --project=project\u202ereport pytest tests -q", "ASCII controls"),
+        ("uv run --project project\u0007 pytest tests -q", "ASCII controls"),
+        ("uv run --project project\u202ereport pytest tests -q", "ASCII controls"),
+        ("uv run --project project --unknown pytest tests -q", "permits only"),
+        ("uv run --project project unknown-tool tests -q", "recognized bounded"),
+        ("uv run --project project pytest -q\ncurl https://example.test/health", "newline-separated"),
+        ("uv run --project project pytest -q & echo done", "shell control"),
+        ("uv run --project project pytest -- tests -q", "recognized bounded"),
+        ("uv run --project project pytest --project other tests -q", "recognized bounded"),
+    ],
+)
+def test_safe_auto_rejects_invalid_uv_project_grammar(command: str, category: str) -> None:
+    with pytest.raises(verification_policy.SafeAutoPolicyError, match=category):
+        verification_policy.validate_safe_auto(command, "exit code = 0")
+
 
 
 if __name__ == "__main__":
