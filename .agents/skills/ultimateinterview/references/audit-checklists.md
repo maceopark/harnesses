@@ -51,3 +51,6 @@ Read the relevant checklist at the moment it runs; `references/handoff-sequence.
 - places where another engineer could implement a materially different behavior
 - requirements that serve the spec's completeness rather than the stated need (scope inflation)
 - acceptance criteria passable without the behavior (test-editing or other verification gaming)
+- reviewer findings that introduce a new normative value absent from the ledger: duration/retention, number/threshold, actor/permission, state/error/retry/recovery policy, migration/data-loss disposition, scope, or non-goal - classify each as `owner-decision`, never as an implementation detail
+- any disposition labeled “folded back” without inspected repo evidence, an existing explicit Decision Boundary, or a current owner/delegated evidence record
+- any attempt to keep ENDGAME moving by patching Part 1 before the reviewer finding has been triaged and, when required, answered by the user

@@ -166,6 +166,7 @@ Accepted ambiguity the implementer must not silently resolve.
 ## Fresh-Implementer Test
 
 Records both questions, their disposition, and the deterministic remainder after disposition. Findings may be non-empty when they were folded back or re-bound; `Unresolved after disposition` must be `none` before handoff.
+For every non-empty finding, the `Folded back / re-bound?` cell must include its triage classification (`repo-answerable`, `delegable-implementation`, or `owner-decision`) and the supporting repo evidence, Decision Boundary, or settled ledger id. An `owner-decision` cannot be marked resolved until the transcript records the user answer and the cited ledger entry carries current owner/delegated evidence. Never use this table to launder a reviewer or model recommendation into a product policy.
 
 | Reviewer (fresh-context agent / self-audit) | "Would have to ask" items found | Gameable criteria found | Folded back / re-bound? | Unresolved after disposition |
 | --- | --- | --- | --- | --- |
