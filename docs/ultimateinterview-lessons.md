@@ -1,16 +1,16 @@
 # Ultimateinterview Lessons
 
-Signal-to-lens routing rules learned from spec postmortems. The `ultimateinterview` skill reads this file during Orientation: when a signal below appears in a new request or the touched code, treat the named lens as triggered. Keep signals observable at interview time, never hindsight. `Fired/Caught` is fire-tracking: postmortems increment Fired when the signal appeared, Caught when the triggered lens actually produced a ledger entry; Fired ≥ 3 with Caught 0 retires the row.
+Repository-specific routing lessons learned from compiler-only postmortems. Signals must be observable in the request or repository at discovery time, never hindsight. `Fired/Caught` records whether a signal appeared and whether the Discovery Record explicitly preserved a `lesson-triggered` marker whose requirement or evidence reference covered it.
 
-Repo-specific signals only — repo-agnostic lessons live in the global store (`~/.agents/skills/ultimateinterview/lessons.md`); dedupe against both before appending.
+Repo-specific signals only. Dedupe before adding or strengthening a row; a decision log or postmortem finding is evidence, not product authority.
 
 | Signal | Lens to trigger | Failure class | Evidence | Date | Fired/Caught |
 | --- | --- | --- | --- | --- | --- |
-| Handoff pins `uv run --project <fixture> pytest` from a workspace root that already has unrelated tests - establish whether project selection changes cwd or collection, and name a fixture-scoped collector if it does not | core-path | trigger-too-narrow | todo-cli-benchmark-new postmortem ESC-001: `uv --project` selected the environment but kept the harness cwd, so the pinned command needed a root-scoped pytest11 selector | 2026-07-11 | 0/0 |
+| A Build Contract pins `uv run --project <fixture> pytest` from a workspace root that already has unrelated tests - establish whether project selection changes cwd or collection, and authorize a fixture-scoped collector when it does not | core-path | trigger-too-narrow | todo-cli-benchmark-new ESC-001 and todo-cli-app-6 ESC-001: `uv --project` selected the environment but retained the harness cwd; app-6 required an uncontracted pytest11 routing hook recorded in digest-bound `decision.jsonl` | 2026-07-13 | 1/0 |
 
 ## Retired
 
-Rows moved here after 3 dry fires (signal appeared, lens caught nothing). Kept for the record; Orientation skips them.
+Rows moved here after repeated dry fires. They remain provenance only and do not participate in current discovery.
 
 | Signal | Lens to trigger | Retired date | Reason |
 | --- | --- | --- | --- |

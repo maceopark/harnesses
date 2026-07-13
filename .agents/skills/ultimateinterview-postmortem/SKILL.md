@@ -64,21 +64,22 @@ For each `escaped-requirement`, name the mechanism that should have caught it an
 Every attribution carries implementation evidence plus a Build Contract or Discovery Record authority, requirement, acceptance, verification, or evidence reference. Absence must be explicit.
 Intent is not deterministically reconstructable. A digest-bound `decision.jsonl` record is owned execution evidence only when its `requirement_refs` covers the row; it never supplies authority. Otherwise record `intent: run-blind (no owned signal)`.
 
-## Wonder Generalization
+## Improvement Proposals
 
-After escape classification, run **one bounded Wonder pass only**. For each non-`synthesis-loss` escaped requirement:
+After classification, derive improvements from observed escapes and divergences. The report is an evaluator output, so proposals remain non-authoritative until separately accepted and applied.
 
-1. Name the reusable class of unknown in one phrase.
-2. Identify the interview-time observable precursor in the request or repo.
-3. Identify the existing lens that should trigger.
-4. Draft **at most one** lesson candidate.
-5. Dedupe or strengthen it across both active and `## Retired` tables in both stores — repo `docs/ultimateinterview-lessons.md` and global `~/.agents/skills/ultimateinterview/lessons.md` — then stop.
+For each distinct root cause, draft at most one proposal. Keep only proposals that satisfy all four gates:
 
-For a `synthesis-loss` escape, write a Wonder row with disposition `not-routing/synthesis-loss` and reason `not an unknown: contract transport loss`. It is a contract-fidelity record, not a lens-routing lesson.
+1. **Simple:** expressible as one short rule or one bounded check; no new workflow, role, ontology, scoring system, or mandatory ceremony.
+2. **Effective:** names the escaped or divergent behavior it would have prevented and the interview or handoff point where it acts.
+3. **General:** applies to a reusable class of work across multiple domains, not to the audited product, framework, command, or file layout.
+4. **Compatible:** does not contradict or duplicate the current `ultimateinterview` skill. Read that skill before proposing a change, cite the nearest existing rule, and prefer a narrow strengthening or clarification over parallel doctrine.
 
-For an `ontology-miss`, use `owning frame:none`, a `novel:<slug>` requirement structure, and `not-routing/ontology-miss`. Do not write a lesson or force it into an existing frame. Requirement structure has one base (`item`, `boundary`, `interaction`, `system`, or `novel:<slug>`) plus optional unique `negative-space` and `runtime-only` modifiers. A negative-space finding may cite any observed external artifact kind.
+Reject proposals that merely restate the missed behavior, rely on hindsight-only signals, or cannot identify a concrete prevention mechanism. Group multiple findings under one proposal when the same general rule prevents them. Usually one to three proposals are enough; zero is valid when the current skill already contains the necessary rule and the failure was execution noncompliance.
 
-A new lesson starts at `Fired/Caught` `0/0`; the audit that generated it cannot retroactively fire it. Wonder MUST NOT recurse, mutate the ontology, use similarity scoring, or graduate a lesson automatically. Existing Fired/Caught, three-dry-fire retirement, and evidence-based graduation machinery remain the only lifecycle controls.
+For each `escaped-requirement`, retain the reusable unknown class, interview-time observable precursor, owning lens or frame, and lesson disposition as supporting detail. A `synthesis-loss` is a contract-fidelity finding, not a routing lesson. An `ontology-miss` uses `owning frame:none`, a `novel:<slug>` requirement structure, and remains non-routing until the ontology is separately revised.
+
+A new lesson starts at `Fired/Caught` `0/0`; the audit that generated it cannot retroactively fire it. Improvement analysis MUST NOT recurse, mutate the ontology, use similarity scoring, or graduate a lesson automatically.
 ## Lessons Store
 
 Two stores, same format: `docs/ultimateinterview-lessons.md` in the repo root for repo-specific signals (committed and durable, because `.ultimateinterview/` is gitignored working state), and the global `~/.agents/skills/ultimateinterview/lessons.md` for signals not tied to this repo's domain - generalize the signal and write it there instead, so lessons compound across a multi-repo solo workflow. Dedupe across both stores. Create either file from the skeleton in `references/postmortem-template.md` when missing.
@@ -95,22 +96,32 @@ The `ultimateinterview` skill reads this file during Orientation and treats a le
 
 ## Output Contract
 
-Write the report to `.ultimateinterview/<slug>/postmortem.md` and update `docs/ultimateinterview-lessons.md` in the same turn. The report must include:
+Write the report to `.ultimateinterview/<slug>/postmortem.md` and update eligible lesson rows in `docs/ultimateinterview-lessons.md` in the same turn.
 
-- `Implementation evidence`: the PR, commit range, or diff examined
-- `Divergence table`: every spec requirement and every unmatched implementation behavior, classified
-- `Escaped requirements`: each `ESC-NNN` with failure mode, requirement structure, owning frame, evidence, and `Intent attribution` as `owned-signal:<decision-id|capture-id>` or `run-blind`.
-- `Wonder generalization`: exactly one `ESC-NNN`-joined row per escape; ontology misses remain non-routing with no lesson write.
-- `Deferred outcomes`: which deferred risks materialized
-- `Verification execution`: one row per Build Contract `VER-ID`, joined to directly observed execution and the digest-bound `implementation-return.json`; mark `not-run`, `blocked`, or `failed` honestly.
-- `Reward-Hacking Review`: one row per Build Contract `REQ-ID` with production-source support, mock substitution, tautological assertion, hardcoded expectation, disposition, evidence, and divergence class.
-- `Execution process-gap candidate`: record logged contract gaps, absent required decision records, unbound implementation returns, and verification-evidence gaps without treating them as product authority.
-- `Scope drift / divergent implementations`: each with whether the owner must decide again.
-- `Lessons appended or updated`: exact rows written.
-- `Calibration summary`: counts derived from the divergence and escape rows.
+The report MUST be conclusion-first. After the schema, digest, evaluator, and timestamp metadata, its first substantive section is `## Conclusion` containing:
 
-Run `python3 scripts/compiler_session_check.py <session-dir>` again after the report to prove all owned machine artifacts still bind the same sealed digest. Inspect the report manually against this Output Contract until a compiler-native report linter exists.
+- one plain-language verdict;
+- a count line stating: total Build Contract requirements, fulfilled, escaped, scope-drift, divergent, deferred, and unverifiable;
+- the distinct root causes in priority order;
+- an `Ultimateinterview improvement proposals` table with at most three proposals, each naming the prevented finding, the exact skill rule to add or strengthen, why it works across domains, and the existing rule it is compatible with;
+- an explicit `no skill change recommended` result when the current skill already contains the preventive rule and the failure was implementation or evaluator noncompliance.
 
-If a `divergent-implementation` reversed an owner decision in the Build Contract, flag it explicitly for re-confirmation. Record any answer only as a report resolution addendum; changing the contract or code remains outside the postmortem.
+A reader must be able to understand the outcome and recommended skill changes from `## Conclusion` without reading the rest of the report. Do not delay counts or recommendations until a calibration appendix.
+
+After the conclusion, include only the evidence needed to substantiate it:
+
+1. `Implementation Evidence`: contract digest, repository diff/range, directly observed verification, implementation return, and decision log.
+2. `Divergence Table`: exactly one row per Build Contract requirement plus one row per unmatched substantive implementation behavior.
+3. `Finding Details`: only escaped requirements, scope drift, divergent implementations, deferred outcomes, and unverifiable items. Include failure mode, requirement structure, owning frame, intent attribution, evidence, and whether the owner must decide again.
+4. `Verification Execution`: one row per Build Contract `VER-ID`, with honest `passed`, `failed`, `blocked`, or `not-run` state and return agreement.
+5. `Lessons`: only lesson rows fired, appended, strengthened, retired, or considered and rejected during this audit. Do not reproduce unaffected stores.
+6. `Process Gaps and Missing Evidence`: logged contract gaps, absent required decision records, unbound returns, and verification gaps. These remain evidence, never product authority.
+7. `Resolution Addendum`: owner responses, when any, as postmortem evidence only.
+
+Do not emit separate Wonder, Reward-Hacking, or Calibration sections. Fold substantive reward-hacking concerns into the affected Divergence or Verification row; omit clear/no-signal boilerplate. Derive all headline counts mechanically from the Divergence Table and ensure each row contributes to exactly one class.
+
+Run `python3 scripts/compiler_session_check.py <session-dir>` again after the report to prove all owned machine artifacts still bind the same sealed digest. Manually verify that the Conclusion counts equal the Divergence Table and that every proposal passes the Simple/Effective/General/Compatible gates.
+
+If a `divergent-implementation` reversed an owner decision in the Build Contract, flag it explicitly for re-confirmation. Changing the contract, skill, or code remains outside the postmortem.
 
 Do not modify the ultimateinterview skill, Discovery Record, Build Contract, implementation, or implementation return from inside a postmortem. Outputs are the report, eligible lesson updates, and the evaluator-owned regenerated compiler evidence bundle.
