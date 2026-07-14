@@ -10,7 +10,7 @@ from typing import Any
 
 
 SCRIPT = Path(__file__).with_name("compiler_session_check.py")
-REPO_ROOT = Path(__file__).resolve().parents[4]
+REPO_ROOT = Path.cwd().resolve()
 ULTIMATEINTERVIEW_SCRIPTS = (
     Path(__file__).resolve().parents[2] / "ultimateinterview" / "scripts"
 )
