@@ -1832,9 +1832,7 @@ def compile_discovery_record(
         "log_path": ".ultimateinterview/<session>/decision.jsonl",
         "instruction": (
             "When the Build Contract is insufficient and implementation would otherwise require "
-            "an arbitrary decision permitted by the authority boundary, choose the simplest option "
-            "that works within the contract and applicable bounded delegation, then append one JSON "
-            "object per decision to decision.jsonl before acting."
+            "an arbitrary decision, append one JSON object per decision to decision.jsonl before acting."
         ),
         "required_fields": [
             "contract_digest",

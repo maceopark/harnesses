@@ -678,9 +678,6 @@ class AuthorityCompilerTests(unittest.TestCase):
                 parsed["implementation_decision_policy"]["log_path"],
                 ".ultimateinterview/<session>/decision.jsonl",
             )
-            instruction = parsed["implementation_decision_policy"]["instruction"]
-            self.assertIn("choose the simplest option that works", instruction)
-            self.assertIn("decision.jsonl before acting", instruction)
             self.assertIn("evidence, not authority", parsed["implementation_decision_policy"]["authority_boundary"])
             self.assertEqual(json.loads(written)["contract_digest"], contract_digest(json.loads(written)))
 
