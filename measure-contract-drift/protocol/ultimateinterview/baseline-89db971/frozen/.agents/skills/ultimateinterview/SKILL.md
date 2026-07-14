@@ -21,8 +21,6 @@ Before constructing, compiling, validating, or handing off any compiler-only JSO
 
 Start from the requested outcome and investigate whatever would materially change it. Follow useful branches in the conversation. Before asking the owner for a fact the repository can answer, inspect the relevant code, docs, tests, configuration, history, and existing artifacts. Research, scenarios, experiments, and small prototypes are also valid discovery tools. A fresh-context review is optional and returns findings, not decisions.
 
-Throughout the entire interview—from initial repository inspection through owner questions, authority reconciliation, Discovery Record construction, and closure—make the best possible effort to uncover consequential blind spots. Continuously challenge the current framing for omitted actors, assumptions, scenarios, dependencies, constraints, and downstream effects; do not postpone blind-spot discovery until the final closure reviews.
-
 Use observations to expose assumptions, conflicts, alternatives, missing behavior, and decision boundaries. Record a recommendation, conventional default, scenario, or assumption as a proposal until valid authority settles it. Do not silently reconcile a conflict between an owner statement and repository evidence; show the conflict and obtain the authority that governs it.
 
 ### Owner Questions
@@ -57,17 +55,7 @@ Describe each acceptance predicate as:
 precondition/input -> action -> observable result -> applicable failure result
 ```
 
-Discovery does not require a prescribed question order, a fixed category list, or a claim that all unknowns were found. Select the next observation or owner question only when it can materially affect the contract.
-
-### Interview Closure
-
-Treat an incomplete specification as a direct customer-impact risk: a missed ambiguity can produce a poor experience for paying customers. Before ending the interview or asserting that no consequential ambiguity remains, perform three distinct closure review passes. In every pass, explicitly search for blind spots: relevant considerations that are absent from the discovery record, not merely ambiguities already visible inside it. Reconsider the whole discovered contract from a fresh angle in each pass rather than mechanically repeating the same checklist:
-
-1. Search for completeness blind spots across every relevant aspect you can identify, including omitted actors, journeys, states, data, interfaces, dependencies, scope boundaries, lifecycle, compatibility, and operations.
-2. Search for scenario blind spots across edge, failure, recovery, concurrency, misuse, abuse, security, privacy, and irreversible outcomes, including hidden choices or conflicting expectations that no existing question exposed.
-3. Search for implementation and verification blind spots: trace every substantive branch and observable outcome to authority, acceptance, and a context-complete verification path, and look again for assumptions or missing cases an implementer would otherwise have to invent.
-
-During any pass, investigate repository-answerable gaps and return every consequential unresolved choice or identified blind spot to the owner. Restart the three-pass closure review after an answer materially changes the prospective contract. End the interview only when all three passes reveal no identified consequential blind spot, unresolved consequential ambiguity, authority conflict, or unverifiable normative behavior. State this bounded conclusion; never claim that every possible unknown has been discovered.
+Discovery does not require a prescribed question order, a fixed category list, a fixed number of reviews, or a claim that all unknowns were found. Select the next observation or owner question only when it can materially affect the contract.
 
 ## Authority Register
 
@@ -116,7 +104,7 @@ Hand an implementing coding agent the compiler-produced Build Contract and repos
 
 Every verification command must be context-complete: state its working directory, exact target, and selection or isolation semantics. A project/environment selector alone does not establish execution scope.
 
-The compiler-produced Build Contract must begin with an `implementation_decision_policy`. When contract insufficiency forces an arbitrary implementation choice that is permitted by the authority boundary, choose the simplest option that works within the contract and applicable bounded delegation, then record one digest-bound JSON object in repository-local `.ultimateinterview/<session>/decision.jsonl` before acting. Include the gap, decision, rationale, alternatives, affected paths, requirement references, and observable impact. The log is evidence, not authority and not an automatic stop gate.
+The compiler-produced Build Contract must begin with an `implementation_decision_policy`. When contract insufficiency forces an implementation choice, record one digest-bound JSON object in repository-local `.ultimateinterview/<session>/decision.jsonl` with the gap, decision, rationale, alternatives, affected paths, requirement references, and observable impact. The log is evidence, not authority and not an automatic stop gate.
 
 The handoff is substrate-neutral: any coding agent can consume it without a particular harness, orchestrator, role name, or prior conversation. Every substantive implementation branch, refusal, fallback, preflight, hook, recovery behavior, or policy must cite an authorized requirement, acceptance predicate, or applicable bounded delegation. An unmapped substantive behavior returns to the owner for authority and a newly compiled contract. Non-substantive internal choices that do not add observable behavior or substantive branches may be logged and implemented without a new owner decision.
 

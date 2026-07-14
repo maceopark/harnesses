@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import subprocess
 from hashlib import sha256
 import importlib
 import sys
@@ -21,9 +19,6 @@ from .models import (
     CellIdentity,
     CellRecord,
     CellStatus,
-    DevelopmentArmScore,
-    DevelopmentBootstrapCI,
-    DevelopmentScore,
     EvaluationStatusReceipt,
     RunConfig,
     RunManifest,
@@ -1389,6 +1384,36 @@ def _cmd_gc(args: argparse.Namespace) -> int:
     return EXIT_COMPLETE
 
 
+def _interview_eval_exit(run_dir: Path) -> int:
+    receipt = json.loads((run_dir / "receipt.json").read_text(encoding="utf-8"))
+    _emit({"run_dir": str(run_dir), "status": receipt["status"]})
+    return (
+        EXIT_COMPLETE
+        if receipt["status"] in {"partial", "completed"}
+        else EXIT_RUNTIME_FAILURE
+    )
+
+
+def _cmd_interview_eval_run(args: argparse.Namespace) -> int:
+    interview_eval = importlib.import_module(".interview_eval", __package__)
+    run_dir = interview_eval.run(
+        Path(args.policy),
+        max_cells=args.max_cells,
+        max_parallel=args.max_parallel,
+    )
+    return _interview_eval_exit(run_dir)
+
+
+def _cmd_interview_eval_resume(args: argparse.Namespace) -> int:
+    interview_eval = importlib.import_module(".interview_eval", __package__)
+    run_dir = interview_eval.resume(
+        Path(args.run_dir),
+        max_cells=args.max_cells,
+        max_parallel=args.max_parallel,
+    )
+    return _interview_eval_exit(run_dir)
+
+
 def build_parser() -> DriftArgumentParser:
     parser = DriftArgumentParser(prog="driftbench")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -1409,6 +1434,25 @@ def build_parser() -> DriftArgumentParser:
     worker_read = commands.add_parser("worker-read-output")
     worker_read.add_argument("--input-digest", required=True)
     worker_read.set_defaults(handler=_cmd_worker_read_output)
+
+    interview_eval = commands.add_parser("interview-eval")
+    interview_commands = interview_eval.add_subparsers(
+        dest="interview_eval_command", required=True
+    )
+    interview_run = interview_commands.add_parser("run")
+    interview_run.add_argument("--policy", required=True)
+    interview_run.add_argument("--max-cells", type=int, choices=range(1, 13))
+    interview_run.add_argument(
+        "--max-parallel", type=int, choices=range(1, 13), default=1
+    )
+    interview_run.set_defaults(handler=_cmd_interview_eval_run)
+    interview_resume = interview_commands.add_parser("resume")
+    interview_resume.add_argument("--run-dir", required=True)
+    interview_resume.add_argument("--max-cells", type=int, choices=range(1, 13))
+    interview_resume.add_argument(
+        "--max-parallel", type=int, choices=range(1, 13), default=1
+    )
+    interview_resume.set_defaults(handler=_cmd_interview_eval_resume)
 
     run = commands.add_parser("run")
     run.add_argument("--config", required=True)
@@ -1451,7 +1495,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except CliError as error:
         _error(str(error))
         return error.code
-    except (StateError, OSError) as error:
+    except (StateError, OSError, RuntimeError, ValueError, KeyError) as error:
         _error(str(error))
         return EXIT_RUNTIME_FAILURE
 

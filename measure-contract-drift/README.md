@@ -1,53 +1,57 @@
 # Ultimateinterview Contract Drift Benchmark
 
-A deterministic, fail-closed benchmark for measuring drift between an interview-produced handoff/Build Contract and a fresh implementation context.
-Conceptual guides: [English](USER_GUIDE.en.md) · [한국어](USER_GUIDE.ko.md)
+A deterministic benchmark for measuring how well an interview-produced Build Contract survives a fresh implementation context. Conceptual guides: [English](USER_GUIDE.en.md) · [한국어](USER_GUIDE.ko.md)
 
-## One-line deterministic development run
+## Deterministic development benchmark
 
 From the workspace root:
 
 ```sh
-benchmark/ultimateinterview-contract-drift/scripts/run-fake.sh
+measure-contract-drift/scripts/run-fake.sh
 ```
 
-The hermetic `fake-dev` run creates and validates planner handoff, Build Contract, implementation, observation, and postmortem artifacts across declared fresh-context transfers. Its scorecard is deterministic development-treatment evidence only: it never calls a model, never accesses holdout data, and never claims live benchmark effectiveness.
+The fake-development run uses deterministic adapters. It does not call a model or access holdout data, and its scorecard is development evidence only.
 
-## Commands
+Validate the public corpus:
 
 ```sh
-uv run --project benchmark/ultimateinterview-contract-drift driftbench validate-corpus --public-root benchmark/ultimateinterview-contract-drift/corpus/public --partition dev
-uv run --project benchmark/ultimateinterview-contract-drift --extra test pytest -q benchmark/ultimateinterview-contract-drift/tests
+uv run --project measure-contract-drift \
+  driftbench validate-corpus \
+  --public-root measure-contract-drift/corpus/public \
+  --partition dev
 ```
-## Offline worker isolation
 
-`Dockerfile.worker` uses the Linux arm64 digest declared in `oci/profile.json`; it
-does not accept a floating base tag. Its dependencies are installed from the
-hash-verified `requirements.worker.lock` and checked-in `wheelhouse/`, with no
-package-index fallback. The image contains only worker source, public corpus,
-OCI policy assets, and the vendored native v1 snapshot required by the canonical
-structural fixture.
+## Live interview evaluation
 
-Before building or launching a worker, run:
+The retained live runtime is `driftbench interview-eval`. It runs a direct Codex interview for each selected public case, uses the vendored Ultimateinterview skill to produce a Discovery Record, and uses the vendored compiler and checker to create and validate the Build Contract, implementation return, and postmortem evidence.
+
+Start a run with the wrapper:
 
 ```sh
-uv run --project benchmark/ultimateinterview-contract-drift python -m driftbench.worker_launcher --project-root benchmark/ultimateinterview-contract-drift preflight
+measure-contract-drift/scripts/run-live.sh \
+  --max-cells 1 \
+  --max-parallel 1
 ```
 
-The launcher requires a digest-addressed worker image and creates direct Docker
-arguments for disabled networking, a read-only root filesystem, UID/GID 10001,
-dropped capabilities, no-new-privileges, the pinned seccomp policy, resource
-limits, and only `/tmp` tmpfs plus the role-specific named volume. A successful
-launch returns a `WorkerIsolationLaunchReceipt.v1`; rejected preflight never
-falls back to a tag, registry install, bind mount, or extra runtime option.
-Each planner, implementer, observation, and postmortem invocation receives one
-canonical digest-bound closure through a launcher-managed named volume, emits
-one canonical volume output, and is validated by the controller before its
-projected lifecycle artifact is accepted. Implementers materialize the public
-starter in their own volume; the independent observation role materializes and
-executes its own copy. OCI execution is authoritative for this deterministic
-development lifecycle, not evidence of live provider or holdout performance.
+Or invoke the CLI directly:
 
-Scored arms are `direct-v1`, `plan-v1`, and `ultimateinterview-current-v1-structural`. The native full-v2 path is excluded from scoring because the pinned protocol has no creditable execution receipt; it may only be represented as an expected-fail conformance fixture.
+```sh
+uv run --project measure-contract-drift driftbench interview-eval run \
+  --policy <policy-path> \
+  --max-cells 1 \
+  --max-parallel 1
+```
 
-Local controller commands reject holdout scoring. Private evaluator, simulator, and reporter services must be provisioned separately before any live or holdout study.
+The six public cases run in required `baseline` and `candidate` treatments, for 12 cells total. The baseline is the vendored immutable skill; `candidate_skill` names a workspace-contained relative path. Candidate bytes, enrollment, corpus rows, and starter trees are pinned inside the run before execution. `--max-cells` limits cells for that invocation, and `--max-parallel` controls concurrent cells; both accept 1–12.
+
+Live output is written below `<project-root>/.measurecontractdrift/interview-eval/` unless the runtime is given a run directory. Persisted JSON uses sorted keys and two-space indentation. A run contains `state.json`, `manifest.json`, and `receipt.json`; each cell contains its repository and `.ultimateinterview` session evidence.
+
+Resume an incomplete or failed run by its directory:
+
+```sh
+measure-contract-drift/scripts/run-live.sh \
+  --resume <run-directory> \
+  --max-parallel 1
+```
+
+The resume command reuses completed cells and reruns cells that are not completed.

@@ -8,26 +8,28 @@ Read `README.md` for commands and `USER_GUIDE.en.md` or `USER_GUIDE.ko.md` for t
 
 ## Working Map
 
-- `src/driftbench/`: controller, role workers, canonical artifacts, replay, semantic comparison, and scoring.
-- `tests/`: behavioral, isolation, replay, and integration coverage.
+- `src/driftbench/`: deterministic benchmark controller, workers, replay, semantic comparison, scoring, and the direct-Codex `interview_eval.py` live CLI.
+- `tests/`: behavioral, isolation, replay, integration, and live CLI coverage.
 - `corpus/`: public development cases, private-test fixtures, and the external holdout boundary.
-- `protocol/`: pinned Ultimateinterview snapshots and conformance fixtures.
-- `oci/`, `Dockerfile.worker`, `requirements.worker.lock`, `wheelhouse/`: hermetic worker runtime and isolation policy.
-- `configs/`, `arms/`, `schemas/`: study and contract definitions.
+- `protocol/`: pinned deterministic benchmark snapshots plus the vendored Ultimateinterview skill, compiler, and checker used by the live CLI.
+- `oci/`, `Dockerfile.worker`, `requirements.worker.lock`, `wheelhouse/`: hermetic worker runtime and isolation policy for the deterministic benchmark lifecycle only.
+- `configs/`, `arms/`, `schemas/`: deterministic study and contract definitions.
 - `scripts/run-fake.sh`: deterministic development lifecycle entry point.
-- `runs/`, `artifacts/`: generated or observed evidence; do not hand-edit to make checks pass.
+- `.measurecontractdrift/`: generated direct live CLI output; do not hand-edit it to make checks pass.
+- `runs/`, `artifacts/`: generated or observed deterministic evidence; do not hand-edit to make checks pass.
 
 Read the nearest nested `AGENTS.md` before editing a governed subtree.
 
 ## Invariants
 
-- Fail closed. Missing services, invalid bindings, stale digests, malformed receipts, or undeclared inputs must be rejected; never silently fall back.
-- Preserve fresh-context role separation. Planner, implementer, observer, and postmortem may consume only their declared transfer artifacts.
-- Preserve canonical serialization and SHA-256 binding across the full receipt chain.
+- Fail closed. Missing services, invalid bindings, stale digests, malformed deterministic receipts, or undeclared deterministic inputs must be rejected; never silently fall back.
+- Preserve fresh-context role separation in the deterministic benchmark. Planner, implementer, observer, and postmortem may consume only their declared transfer artifacts.
+- Preserve canonical serialization and SHA-256 binding across the deterministic benchmark receipt chain.
 - Local fake-development evidence must never be described as live-model, holdout, or production effectiveness evidence.
 - Holdout prompts and starters stay external. Do not add private holdout material to the repository.
-- OCI execution is authoritative for the deterministic lifecycle; the local operator and Docker daemon remain trusted boundaries.
-- Scored arms are policy data. Do not make the non-creditable full-v2 fixture scoreable without valid pinned receipts and corresponding policy/test changes.
+- OCI execution is authoritative only for the deterministic benchmark lifecycle; the local operator and Docker daemon remain trusted boundaries there.
+- The live `driftbench interview-eval` CLI runs direct Codex with the vendored Ultimateinterview skill, compiler, and checker, writes generated output below `.measurecontractdrift/`, and requires neither Docker/OCI nor the deterministic receipt chain or legacy live modules.
+- Scored arms are policy data. Do not make the non-creditable full-v2 fixture scoreable without valid pinned deterministic receipts and corresponding policy/test changes.
 
 ## Commands
 

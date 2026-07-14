@@ -136,7 +136,7 @@ python3 scripts/authority_compiler.py <discovery-record.json> --authority-regist
 {
   "implementation_decision_policy": {
     "log_path": ".ultimateinterview/<session>/decision.jsonl",
-    "instruction": "for a permitted arbitrary contract-gap decision, choose the simplest option that works within the contract and applicable bounded delegation, then log it before acting",
+    "instruction": "log a forced contract-gap decision before acting",
     "required_fields": [
       "contract_digest",
       "requirement_refs",
