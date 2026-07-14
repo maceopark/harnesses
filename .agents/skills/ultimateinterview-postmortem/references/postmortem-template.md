@@ -13,66 +13,67 @@ evaluated_at: `<ISO-8601>`
 
 **Root causes:**
 
-1. `<cause supported by finding IDs>`
-2. `<cause, when distinct>`
+1. `<cause supported by finding IDs, or no divergence identified>`
 
 ### Ultimateinterview improvement proposals
 
 | Proposal | Prevents | Rule to add or strengthen | Cross-domain reason | Compatible existing rule |
 | --- | --- | --- | --- | --- |
-| `<short proposal or "No skill change recommended">` | `<finding IDs>` | `<one bounded rule/check>` | `<reusable class of work>` | `<current SKILL.md rule or noncompliance explanation>` |
+| `<short proposal or No skill change recommended>` | `<finding IDs or implementation/evaluator noncompliance>` | `<one bounded rule/check>` | `<reusable class of work>` | `<current SKILL.md rule or noncompliance explanation>` |
+
+Use at most three proposal rows. Remove this placeholder row when no proposal is warranted; zero rows is valid.
 
 ## Implementation Evidence
 
 | Source | Scope | Digest / revision | Notes |
 | --- | --- | --- | --- |
 | Build Contract | `.ultimateinterview/<session>/build-contract.json` | `<contract digest>` | sole normative source |
-| Repository evidence | `<diff/range/working tree>` | `<revision or bundle hash>` | scoped by contract |
+| Repository evidence | `<explicit diff range or diff file>` | `<bundle repository diff hash>` | scoped by contract |
 | Verification | `<commands/scenarios>` | `<observed result>` | direct evidence |
-| Implementation return | `implementation-return.json` or absent | `<digest binding>` | self-report only |
-| Decision log | `decision.jsonl` or absent | `<row count>` | evidence, never authority |
+| Implementation return | `implementation-return.json` | `<bound digest>` | self-report only |
+| Decision log | `decision.jsonl` or absent | `<row count or absent>` | evidence, never authority |
 
 ## Divergence Table
 
-Exactly one row per Build Contract requirement and one row per unmatched substantive implementation behavior. Each row contributes to exactly one Conclusion class.
+Exactly one row per Build Contract requirement and one row per unmatched substantive implementation behavior. Each row contributes to exactly one Conclusion class. Use each `ESC-NNN` identity exactly once; `ESC` rows must be `escaped-requirement`.
 
 | ID | Behavior | Class | Contract mapping | Implementation evidence | Verification evidence | Owner decision needed? |
 | --- | --- | --- | --- | --- | --- | --- |
-| REQ-001 |  | fulfilled / scope-drift / divergent-implementation / deferred-outcome / unverifiable | AUTH / REQ / ACC / VER |  |  | yes/no |
-| ESC-001 |  | escaped-requirement | absent or insufficient clause |  |  | yes/no |
+| REQ-001 | `<behavior>` | fulfilled / scope-drift / divergent-implementation / deferred-outcome / unverifiable | `<AUTH / REQ / ACC / VER>` | `<direct evidence>` | `<direct evidence or absent>` | yes/no |
+| ESC-001 | `<unmatched substantive behavior>` | escaped-requirement | absent or insufficient clause | `<direct evidence>` | `<direct evidence or absent>` | yes/no |
 
 ## Finding Details
 
-Include only escaped requirements, scope drift, divergent implementations, deferred outcomes, and unverifiable rows.
+Include exactly one row for each escaped requirement, scope drift, divergent implementation, deferred outcome, and unverifiable item. Do not include fulfilled requirements.
 
 | ID | Behavior | Class / failure mode | Structure / owning frame | Intent attribution | Evidence | Owner action |
 | --- | --- | --- | --- | --- | --- | --- |
-| ESC-001 |  | escaped-requirement / trigger-too-narrow / enumeration-miss / answer-unpressured / synthesis-loss / ontology-miss | item / boundary / interaction / system / novel:`<slug>`; frame | owned-signal:`<decision row>` / run-blind |  |  |
-| REQ-001 |  | scope-drift / divergent-implementation / deferred-outcome / unverifiable | n/a | n/a |  |  |
+| ESC-001 | `<behavior>` | escaped-requirement / trigger-too-narrow / enumeration-miss / answer-unpressured / synthesis-loss / ontology-miss | item / boundary / interaction / system / novel:`<slug>`; frame | owned-signal:`<decision row>` / run-blind | `<evidence>` | `<action>` |
+| REQ-001 | `<behavior>` | scope-drift / divergent-implementation / deferred-outcome / unverifiable | n/a | n/a | `<evidence>` | `<action>` |
 
 ## Verification Execution
 
-One row per Build Contract verification.
+Exactly one row per Build Contract verification.
 
 | VER-ID | Procedure | Direct execution | Result | Evidence | Return agreement |
 | --- | --- | --- | --- | --- | --- |
-| VER-001 |  | run / not-run / blocked | passed / failed / blocked / not-run |  | agrees / contradicts / return absent |
+| VER-001 | `<contract procedure>` | run / not-run / blocked | passed / failed / blocked / not-run | `<direct evidence>` | agrees / contradicts / return absent |
 
 Record substantive mock substitution, tautological assertions, or hardcoded expectations in the affected row's evidence; omit clear/no-signal boilerplate.
 
 ## Lessons
 
-Only rows fired, changed, retired, or considered and rejected during this audit.
+Include only lesson rows fired, appended, strengthened, retired, or considered and rejected during this audit. For every row, use the same stable `Store` label passed to `postmortem_report_check.py --lesson-store <Store> <pre-path|-> <post-path|->`. `Pre-state` and `Post-state` must be `absent` or the exact `sha256:<digest>` of those files. `fired`, `appended`, `strengthened`, and `retired` require a state delta; `rejected` and `none` require no delta.
 
-| Store | Signal | Action | Evidence |
-| --- | --- | --- | --- |
-|  |  | fired / appended / strengthened / retired / rejected / none |  |
+| Store | Signal | Action | Pre-state | Post-state | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| repo | `<observable signal>` | fired / appended / strengthened / retired / rejected / none | absent / `sha256:<digest>` | absent / `sha256:<digest>` | `<evidence>` |
 
 ## Process Gaps and Missing Evidence
 
 | Item | Evidence | Authority impact | Required action |
 | --- | --- | --- | --- |
-|  |  | none / owner decision required |  |
+| `<gap or missing artifact>` | `<evidence>` | none / owner decision required | `<action>` |
 
 ## Resolution Addendum
 

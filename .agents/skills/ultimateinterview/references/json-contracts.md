@@ -8,12 +8,14 @@ All JSON files are UTF-8. Compiler-produced JSON is deterministic, two-space-ind
 
 ```text
 .ultimateinterview/<session>/
-  discovery-record.json       # unsealed compiler input
-  build-contract.json         # sealed normative output
-  decision.jsonl              # digest-bound implementation gap evidence, optional
-  implementation-return.json  # digest-bound implementer self-report, optional
+  authority-reconciliation.json # owner-approved reconciliation input
+  authority-register.json       # sealed native Authority Register
+  discovery-record.json         # unsealed compiler input bound to the register
+  build-contract.json           # sealed normative output
+  decision.jsonl                # digest-bound implementation gap evidence, optional
+  implementation-return.json    # digest-bound implementer self-report, optional
   compiler-evidence-bundle.json # postmortem-owned validated projection
-  postmortem.md               # independent evaluator report, optional
+  postmortem.md                 # independent evaluator report, optional
 ```
 
 ## Canonical digest algorithm
@@ -22,9 +24,36 @@ Canonical JSON is `json.dumps(value, ensure_ascii=False, sort_keys=True, separat
 
 - `source_discovery_digest`: canonical digest of the complete Discovery Record.
 - `contract_digest`: canonical digest of the complete Build Contract after removing only its top-level `contract_digest` field.
+- `authority_register_digest`: canonical digest of the complete Authority Register after removing only its top-level `authority_register_digest` field.
 - Acceptance binding digest: owned by `authority_compiler.py`; consumers must verify by recompiling rather than reproducing a partial algorithm.
 
 Formatting does not affect these canonical content digests.
+
+## Authority reconciliation
+
+Before creating Discovery, write `authority-reconciliation.json` with schema
+`ultimateinterview.authority-reconciliation-input.v1`, then run:
+
+```text
+python3 scripts/authority_reconcile.py <authority-reconciliation.json> --output <authority-register.json>
+```
+
+The input contains exactly `schema`, `owner_approval`, `authorities`, `conflicts`, and
+`unresolved_decisions`. `owner_approval` contains exactly `id`, `owner`, `source`,
+`statement`, `approval_authority_ref`, `approved_authority_refs`, and
+`approved_conflict_refs`. Its approval authority must be an active `owner-decision`
+owned by `owner`, and its approved authority and conflict references must cover the
+complete register exactly. Reconciliation fails while any unresolved decision or
+authority conflict remains. Evidence, model, and corpus identifiers (`E-`, `EVID-`,
+`EVIDENCE-`, `M-`, `MODEL-`, `C-`, or `CORPUS-`) cannot be authority IDs or clause
+authority references.
+
+`authority_reconcile.py` is the sole native reconciliation CLI. It writes
+`ultimateinterview.authority-register.v1` with exactly `schema`, `owner_approval`,
+`authorities`, `conflicts`, and `authority_register_digest`, using two-space UTF-8 JSON
+and one LF. It never replaces its output on failure. Discovery copies the reconciled
+authorities and conflicts unchanged and binds `authority_register_digest`; the compiler
+requires `--authority-register <authority-register.json>` and rejects any mismatch.
 
 ## Discovery Record
 
@@ -39,6 +68,7 @@ Top-level required fields:
   "scope": ["Clause with id and decision_class=scope"],
   "non_goals": ["Clause with id and decision_class=non-goals"],
   "authorities": ["Authority"],
+  "authority_register_digest": "64 lowercase hex",
   "evidence": ["Evidence"],
   "requirements": ["Requirement Clause"],
   "acceptance_predicates": ["AcceptancePredicate"],
@@ -96,6 +126,11 @@ Compilation is prohibited while `unresolved_decisions` contains any row or any c
 ## Build Contract
 
 Schema identifier: `ultimateinterview.build-contract.v1`. Only `authority_compiler.py` may produce this file. Its first serialized key is always `implementation_decision_policy`.
+Compile only with the reconciled register:
+
+```text
+python3 scripts/authority_compiler.py <discovery-record.json> --authority-register <authority-register.json> --output <build-contract.json>
+```
 
 ```json
 {
@@ -154,18 +189,26 @@ Required fields:
   "contract_digest": "64 lowercase hex",
   "status": "implemented | blocked | failed",
   "changed_repository_paths": ["normalized/repository/path"],
-  "requirement_outcomes": {"REQ-ID": "passed | failed | blocked | not-run with evidence"},
-  "verification_outcomes": {"VER-ID": "passed | failed | blocked | not-run with evidence"},
+  "requirement_outcomes": {"REQ-ID": "passed | failed | blocked | not-run"},
+  "verification_outcomes": {"VER-ID": "passed | failed | blocked | not-run"},
   "commands": [{"command": "exact command", "result": "observed result"}],
-  "existing_evidence_artifacts": ["repository-relative path"],
-  "non_contract_implementation_decisions": ["decision.jsonl reference or structured summary"],
-  "not_run": ["honest missing lane"],
-  "blocked": ["blocked item"],
-  "failed": ["failed item"]
+  "existing_evidence_artifacts": ["normalized/repository/path"],
+  "non_contract_implementation_decisions": [{"contract_digest": "64 lowercase hex", "requirement_refs": ["REQ-ID"], "decision_ref": "decision.jsonl:1"}],
+  "not_run": ["reason for every not-run lane"],
+  "blocked": ["reason for every blocked lane"],
+  "failed": ["reason for every failed lane"]
 }
 ```
 
-The return is implementer-authored evidence, not authority or final evaluation. Postmortem consumers must reject a digest mismatch and must not upgrade self-reported `passed` to observed success without direct verification evidence.
+The return is implementer-authored evidence, not authority or final evaluation. `contract_digest`
+must match the complete sealed contract. Outcome maps contain every and only contract REQ or VER
+ID. Paths are normalized relative repository paths without absolute, traversal, dot, backslash,
+or wildcard values; path, command-result, decision-reference, and decision requirement-reference
+duplicates are invalid. Every non-passing outcome has a corresponding nonempty explanatory lane;
+every passed outcome requires a command result or existing evidence artifact. A decision reference
+is digest-bound and names only known requirements. Postmortem consumers must use
+`authority_compiler.validate_implementation_return` and must not upgrade self-reported `passed`
+to observed success without direct verification evidence.
 
 ## Compiler Postmortem Evidence Bundle
 

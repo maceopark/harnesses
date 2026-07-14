@@ -20,6 +20,8 @@ from authority_compiler import (
     compile_discovery_record,
     contract_digest,
     sha256_canonical_json,
+    reconcile_authority_register,
+    validate_implementation_return,
 )
 
 
@@ -162,18 +164,62 @@ def valid_record() -> dict[str, Any]:
         },
     ]
     return record
+def authority_reconciliation(record: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema": "ultimateinterview.authority-reconciliation-input.v1",
+        "owner_approval": {
+            "id": "AR-approval",
+            "owner": "product-owner",
+            "source": _source("conversation://owner/44"),
+            "statement": "The owner approves this complete Authority Register.",
+            "approval_authority_ref": "A-owner",
+            "approved_authority_refs": [
+                authority["id"] for authority in record["authorities"]
+            ],
+            "approved_conflict_refs": [
+                conflict["id"] for conflict in record["conflicts"]
+            ],
+        },
+        "authorities": record["authorities"],
+        "conflicts": record["conflicts"],
+        "unresolved_decisions": [],
+    }
+
+
+def compile_record(record: dict[str, Any]) -> dict[str, Any]:
+    register = reconcile_authority_register(authority_reconciliation(record))
+    record["authority_register_digest"] = register["authority_register_digest"]
+    return compile_discovery_record(record, register)
+
+
+def valid_implementation_return(contract: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema": "ultimateinterview.implementation-return.v1",
+        "contract_digest": contract["contract_digest"],
+        "status": "implemented",
+        "changed_repository_paths": ["todo_cli.py"],
+        "requirement_outcomes": {"R-list": "passed"},
+        "verification_outcomes": {"V-list": "passed"},
+        "commands": [{"command": "python3 -m unittest", "result": "passed"}],
+        "existing_evidence_artifacts": [],
+        "non_contract_implementation_decisions": [],
+        "not_run": [],
+        "blocked": [],
+        "failed": [],
+    }
+
 
 
 class AuthorityCompilerTests(unittest.TestCase):
     def assert_rejected(self, record: dict[str, Any], code: str) -> None:
         with self.assertRaises(CompilerError) as raised:
-            compile_discovery_record(record)
+            compile_record(record)
         self.assertEqual(raised.exception.code, code)
 
     def test_compiles_owner_authorized_record_to_sealed_contract(self) -> None:
         record = valid_record()
 
-        contract = compile_discovery_record(record)
+        contract = compile_record(record)
 
         self.assertEqual(contract["schema"], BUILD_CONTRACT_SCHEMA)
         self.assertEqual(contract["source_discovery_digest"], sha256_canonical_json(record))
@@ -241,7 +287,7 @@ class AuthorityCompilerTests(unittest.TestCase):
             "includes": ["repo"],
             "excludes": ["legacy-repo"],
         }
-        compile_discovery_record(record)
+        compile_record(record)
 
     def test_repository_delegation_boundary_rejects_unsafe_or_unbounded_paths(self) -> None:
         invalid_boundaries = (
@@ -264,7 +310,7 @@ class AuthorityCompilerTests(unittest.TestCase):
             "includes": ["src/task_cli"],
             "excludes": ["src/legacy"],
         }
-        compile_discovery_record(record)
+        compile_record(record)
 
     def test_clause_must_preserve_every_authority_behavior(self) -> None:
         record = valid_record()
@@ -371,8 +417,8 @@ class AuthorityCompilerTests(unittest.TestCase):
         self.assert_rejected(record, "UNVERIFIABLE_REQUIREMENT")
 
     def test_digest_is_deterministic_and_detects_tampering(self) -> None:
-        first = compile_discovery_record(valid_record())
-        second = compile_discovery_record(copy.deepcopy(valid_record()))
+        first = compile_record(valid_record())
+        second = compile_record(copy.deepcopy(valid_record()))
         tampered = copy.deepcopy(first)
         tampered["goal"]["text"] = "Provide a remote task CLI."
 
@@ -405,7 +451,7 @@ class AuthorityCompilerTests(unittest.TestCase):
         record["authorities"][0]["supersedes"] = ["A-owner-v0"]
         record["authorities"].append(historical)
 
-        contract = compile_discovery_record(record)
+        contract = compile_record(record)
 
         retained = next(authority for authority in contract["authorities"] if authority["id"] == "A-owner-v0")
         self.assertEqual(retained["status"], "superseded")
@@ -425,7 +471,7 @@ class AuthorityCompilerTests(unittest.TestCase):
         record = valid_record()
         record["authorities"][1]["status"] = "revoked"
 
-        contract = compile_discovery_record(record)
+        contract = compile_record(record)
 
         self.assertEqual(contract["bounded_implementation_delegations"], [])
         retained = next(authority for authority in contract["authorities"] if authority["id"] == "A-implementer")
@@ -443,7 +489,7 @@ class AuthorityCompilerTests(unittest.TestCase):
             "excludes": ["legacy-repository"],
         }
 
-        contract = compile_discovery_record(record)
+        contract = compile_record(record)
 
         retained = next(authority for authority in contract["authorities"] if authority["id"] == "A-implementer")
         self.assertEqual(retained["status"], "superseded")
@@ -514,7 +560,7 @@ class AuthorityCompilerTests(unittest.TestCase):
                 record = valid_record()
                 record["authorities"][0]["status"] = status
 
-                self.assert_rejected(record, "INACTIVE_AUTHORITY")
+                self.assert_rejected(record, "OWNER_APPROVAL_REQUIRED")
 
     def test_inactive_conflict_resolution_authority_is_rejected(self) -> None:
         record = valid_record()
@@ -539,15 +585,83 @@ class AuthorityCompilerTests(unittest.TestCase):
 
         self.assert_rejected(record, "INACTIVE_AUTHORITY")
 
+    def test_compiler_requires_matching_reconciled_register(self) -> None:
+        record = valid_record()
+        register = reconcile_authority_register(authority_reconciliation(record))
+        record["authority_register_digest"] = register["authority_register_digest"]
+
+        with self.assertRaises(CompilerError) as raised:
+            compile_discovery_record(record)
+        self.assertEqual(raised.exception.code, "MISSING_AUTHORITY_REGISTER")
+
+        record["authorities"][0]["statement"] = "Unreconciled authority mutation."
+        with self.assertRaises(CompilerError) as raised:
+            compile_discovery_record(record, register)
+        self.assertEqual(raised.exception.code, "AUTHORITY_REGISTER_MISMATCH")
+
+    def test_implementation_return_is_complete_digest_bound_and_closed(self) -> None:
+        contract = compile_record(valid_record())
+        returned = valid_implementation_return(contract)
+
+        self.assertEqual(validate_implementation_return(returned, contract), returned)
+
+        partial = copy.deepcopy(returned)
+        del partial["verification_outcomes"]["V-list"]
+        with self.assertRaises(CompilerError) as raised:
+            validate_implementation_return(partial, contract)
+        self.assertEqual(raised.exception.code, "OUTCOME_COVERAGE_MISMATCH")
+
+        unknown = copy.deepcopy(returned)
+        unknown["requirement_outcomes"]["R-unknown"] = "passed"
+        with self.assertRaises(CompilerError) as raised:
+            validate_implementation_return(unknown, contract)
+        self.assertEqual(raised.exception.code, "UNKNOWN_REFERENCE")
+
+        duplicate = copy.deepcopy(returned)
+        duplicate["changed_repository_paths"] = ["todo_cli.py", "todo_cli.py"]
+        with self.assertRaises(CompilerError) as raised:
+            validate_implementation_return(duplicate, contract)
+        self.assertEqual(raised.exception.code, "DUPLICATE_REFERENCE")
+
+        unbound = copy.deepcopy(returned)
+        unbound["non_contract_implementation_decisions"] = [
+            {
+                "contract_digest": contract["contract_digest"],
+                "requirement_refs": ["R-unknown"],
+                "decision_ref": "decision.jsonl:1",
+            }
+        ]
+        with self.assertRaises(CompilerError) as raised:
+            validate_implementation_return(unbound, contract)
+        self.assertEqual(raised.exception.code, "UNKNOWN_REFERENCE")
+
+        malformed = copy.deepcopy(returned)
+        malformed["unexpected"] = True
+        with self.assertRaises(CompilerError) as raised:
+            validate_implementation_return(malformed, contract)
+        self.assertEqual(raised.exception.code, "UNKNOWN_FIELD")
     def test_cli_writes_pretty_contract_with_canonical_digest(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             discovery = root / "discovery.json"
             output = root / "build-contract.json"
-            discovery.write_text(json.dumps(valid_record(), indent=2), encoding="utf-8")
+            record = valid_record()
+            register = reconcile_authority_register(authority_reconciliation(record))
+            record["authority_register_digest"] = register["authority_register_digest"]
+            register_path = root / "authority-register.json"
+            discovery.write_text(json.dumps(record, indent=2), encoding="utf-8")
+            register_path.write_text(json.dumps(register, indent=2), encoding="utf-8")
 
             result = subprocess.run(
-                [sys.executable, str(SCRIPT), str(discovery), "--output", str(output)],
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    str(discovery),
+                    "--authority-register",
+                    str(register_path),
+                    "--output",
+                    str(output),
+                ],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -574,11 +688,23 @@ class AuthorityCompilerTests(unittest.TestCase):
             output = root / "build-contract.json"
             invalid = valid_record()
             invalid["requirements"][0]["authority_refs"] = []
+            register = reconcile_authority_register(authority_reconciliation(invalid))
+            invalid["authority_register_digest"] = register["authority_register_digest"]
+            register_path = root / "authority-register.json"
             discovery.write_text(json.dumps(invalid), encoding="utf-8")
+            register_path.write_text(json.dumps(register), encoding="utf-8")
             output.write_text("existing contract must survive\n", encoding="utf-8")
 
             result = subprocess.run(
-                [sys.executable, str(SCRIPT), str(discovery), "--output", str(output)],
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    str(discovery),
+                    "--authority-register",
+                    str(register_path),
+                    "--output",
+                    str(output),
+                ],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -590,7 +716,15 @@ class AuthorityCompilerTests(unittest.TestCase):
             self.assertEqual(output.read_text(encoding="utf-8"), "existing contract must survive\n")
             output.unlink()
             absent_result = subprocess.run(
-                [sys.executable, str(SCRIPT), str(discovery), "--output", str(output)],
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    str(discovery),
+                    "--authority-register",
+                    str(register_path),
+                    "--output",
+                    str(output),
+                ],
                 check=False,
                 capture_output=True,
                 text=True,
