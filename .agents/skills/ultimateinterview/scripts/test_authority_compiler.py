@@ -191,6 +191,94 @@ def compile_record(record: dict[str, Any]) -> dict[str, Any]:
     return compile_discovery_record(record, register)
 
 
+def split_requirement_record() -> dict[str, Any]:
+    """Project one authority's obligations into independently verifiable requirements."""
+
+    record = valid_record()
+    record["requirements"] = [
+        _clause(
+            "Listing tasks performs no network access.",
+            "observable-behavior",
+            ["A-owner"],
+            identifier="R-network",
+            constraints=["no-network"],
+            preserved_behaviors=[],
+            evidence_refs=["E-repo"],
+        ),
+        _clause(
+            "Listing tasks preserves existing local task data.",
+            "observable-behavior",
+            ["A-owner"],
+            identifier="R-preserve",
+            constraints=[],
+            preserved_behaviors=["Existing local task data remains local."],
+            evidence_refs=["E-repo"],
+        ),
+    ]
+    record["acceptance_predicates"] = [
+        {
+            "id": "P-network",
+            "requirement_ref": "R-network",
+            "precondition": "A local task exists.",
+            "input": "Run the list command.",
+            "action": "Block network primitives and observe the command.",
+            "observable_result": "The command performs no network access.",
+            "failure_result": "Any network attempt fails verification.",
+        },
+        {
+            "id": "P-preserve",
+            "requirement_ref": "R-preserve",
+            "precondition": "A local task exists.",
+            "input": "Run the list command.",
+            "action": "Compare the task store before and after.",
+            "observable_result": "Existing local task data remains unchanged.",
+            "failure_result": "Any task-store mutation fails verification.",
+        },
+    ]
+    record["verifications"] = [
+        {
+            "id": "V-network",
+            "requirement_ref": "R-network",
+            "acceptance_refs": ["P-network"],
+            "method": "scenario",
+            "procedure": "Run list with network primitives blocked.",
+            "expected_result": "The command performs no network access.",
+        },
+        {
+            "id": "V-preserve",
+            "requirement_ref": "R-preserve",
+            "acceptance_refs": ["P-preserve"],
+            "method": "scenario",
+            "procedure": "Run list and compare the complete task store.",
+            "expected_result": "Existing local task data remains unchanged.",
+        },
+    ]
+    record["trace"] = [
+        {
+            "authority_ref": "A-owner",
+            "requirement_ref": requirement["id"],
+            "acceptance_ref": acceptance["id"],
+            "verification_ref": verification["id"],
+        }
+        for requirement, acceptance, verification in zip(
+            record["requirements"],
+            record["acceptance_predicates"],
+            record["verifications"],
+            strict=True,
+        )
+    ]
+    for requirement, acceptance in zip(
+        record["requirements"], record["acceptance_predicates"], strict=True
+    ):
+        requirement["acceptance_bindings"] = [
+            {
+                "acceptance_ref": acceptance["id"],
+                "digest": acceptance_binding_digest(requirement, acceptance),
+            }
+        ]
+    return record
+
+
 class AuthorityCompilerTests(unittest.TestCase):
     def assert_rejected(self, record: dict[str, Any], code: str) -> None:
         with self.assertRaises(CompilerError) as raised:
@@ -219,6 +307,27 @@ class AuthorityCompilerTests(unittest.TestCase):
         self.assertEqual(contract["unresolved_decisions"], [])
         self.assertEqual(contract["contract_digest"], contract_digest(contract))
         self.assertTrue(canonical_json(contract).endswith("\n"))
+
+    def test_splits_authority_obligations_across_atomic_requirements(self) -> None:
+        record = split_requirement_record()
+
+        contract = compile_record(record)
+
+        self.assertEqual(
+            [requirement["id"] for requirement in contract["requirements"]],
+            ["R-network", "R-preserve"],
+        )
+        self.assertEqual(contract["requirements"][0]["preserved_behaviors"], [])
+        self.assertEqual(contract["requirements"][1]["constraints"], [])
+
+    def test_rejects_authority_obligation_lost_between_atomic_requirements(self) -> None:
+        record = split_requirement_record()
+        record["requirements"] = record["requirements"][:1]
+        record["acceptance_predicates"] = record["acceptance_predicates"][:1]
+        record["verifications"] = record["verifications"][:1]
+        record["trace"] = record["trace"][:1]
+
+        self.assert_rejected(record, "AUTHORITY_REQUIREMENT_COVERAGE")
 
     def test_missing_authority_fails_closed(self) -> None:
         record = valid_record()

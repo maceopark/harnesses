@@ -175,6 +175,55 @@ def _report(
     )
 
 
+def _compact_report(
+    *,
+    counts: str = "**Counts:** 1 contract requirements — 1 fulfilled, 0 escaped, 0 scope-drift, 0 divergent, 0 deferred, 0 unverifiable.",
+    finding_rows: list[list[str]] | None = None,
+    verification_rows: list[list[str]] | None = None,
+    verdict: str = "The implementation fulfilled the sealed contract.",
+    improvement: str | None = None,
+) -> str:
+    finding_rows = finding_rows or [
+        ["REQ-001", "fulfilled", "Tasks are listed.", "scoped diff; VER-001", "none", "none"]
+    ]
+    verification_rows = verification_rows if verification_rows is not None else [
+        ["VER-001", "passed", "direct command output"]
+    ]
+    lines = [
+        "# Ultimateinterview Postmortem",
+        "",
+        "postmortem_schema: 3",
+        f"contract_digest: {CONTRACT_DIGEST}",
+        "evaluator: independent-reviewer",
+        "evaluated_at: 2026-07-14T12:00:00Z",
+        "",
+        "## Conclusion",
+        "",
+        f"**Verdict:** {verdict}",
+        "",
+        counts,
+    ]
+    if improvement is not None:
+        lines.extend(["", f"**Improvement:** {improvement}"])
+    lines.extend(
+        [
+            "",
+            "## Findings",
+            "",
+            _table(
+                ["ID", "Class", "Behavior", "Evidence", "Root cause", "Owner action"],
+                finding_rows,
+            ),
+            "",
+            "## Verification",
+            "",
+            _table(["VER-ID", "Result", "Evidence"], verification_rows),
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def _run(report: Path, bundle: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(SCRIPT), str(report), "--bundle", str(bundle), *arguments],
@@ -192,6 +241,80 @@ def test_report_checker_accepts_valid_report(tmp_path: Path) -> None:
     result = _run(report, bundle)
 
     assert result.returncode == 0, result.stderr
+
+
+def test_report_checker_accepts_compact_report(tmp_path: Path) -> None:
+    bundle = _bundle(tmp_path / "bundle.json")
+    report = tmp_path / "postmortem.md"
+    report.write_text(_compact_report(), encoding="utf-8")
+
+    result = _run(report, bundle)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_compact_report_rejects_duplicate_escape(tmp_path: Path) -> None:
+    bundle = _bundle(tmp_path / "bundle.json")
+    report = tmp_path / "postmortem.md"
+    report.write_text(
+        _compact_report(
+            counts="**Counts:** 1 contract requirements — 1 fulfilled, 2 escaped, 0 scope-drift, 0 divergent, 0 deferred, 0 unverifiable.",
+            finding_rows=[
+                ["REQ-001", "fulfilled", "Tasks are listed.", "diff", "none", "none"],
+                ["ESC-001", "escaped-requirement", "Fallback.", "diff", "implementation-drift", "remove"],
+                ["ESC-001", "escaped-requirement", "Other fallback.", "diff", "implementation-drift", "remove"],
+            ],
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run(report, bundle)
+
+    assert result.returncode == 1
+    assert "duplicate escape row ESC-001" in result.stderr
+
+
+def test_compact_report_rejects_missing_verification(tmp_path: Path) -> None:
+    bundle = _bundle(tmp_path / "bundle.json")
+    report = tmp_path / "postmortem.md"
+    report.write_text(_compact_report(verification_rows=[]), encoding="utf-8")
+
+    result = _run(report, bundle)
+
+    assert result.returncode == 1
+    assert "missing rows: VER-001" in result.stderr
+
+
+def test_compact_report_rejects_long_finding_cell(tmp_path: Path) -> None:
+    bundle = _bundle(tmp_path / "bundle.json")
+    report = tmp_path / "postmortem.md"
+    report.write_text(
+        _compact_report(
+            finding_rows=[
+                ["REQ-001", "fulfilled", "x" * 241, "diff", "none", "none"],
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run(report, bundle)
+
+    assert result.returncode == 1
+    assert "exceeds 240 characters" in result.stderr
+
+
+def test_compact_report_rejects_extra_prose(tmp_path: Path) -> None:
+    bundle = _bundle(tmp_path / "bundle.json")
+    report = tmp_path / "postmortem.md"
+    report.write_text(
+        _compact_report().replace("## Findings", "Extra explanation.\n\n## Findings"),
+        encoding="utf-8",
+    )
+
+    result = _run(report, bundle)
+
+    assert result.returncode == 1
+    assert "unsupported prose" in result.stderr
 
 
 def test_report_checker_rejects_count_mismatch(tmp_path: Path) -> None:

@@ -13,7 +13,13 @@ from authority_compiler import (
     compile_discovery_record,
     reconcile_authority_register,
 )
-from projection_check import ProjectionError, parse_execution_contract, validate_projection
+from projection_check import (
+    LEGACY_MANIFEST_SCHEMA,
+    MANIFEST_SCHEMA,
+    ProjectionError,
+    parse_execution_contract,
+    validate_projection,
+)
 from test_authority_compiler import authority_reconciliation, valid_record
 
 
@@ -43,9 +49,9 @@ def _decision(
     }
 
 
-def _contract(*decisions: dict) -> str:
+def _contract(*decisions: dict, schema: str = LEGACY_MANIFEST_SCHEMA) -> str:
     manifest = {
-        "schema": "ultimateinterview.material-decisions.v1",
+        "schema": schema,
         "decisions": list(decisions or (_decision(),)),
     }
     return (
@@ -72,8 +78,74 @@ def test_projection_gate_accepts_complete_material_lineage() -> None:
     result = validate_projection(execution_contract, discovery, register, build)
 
     assert result["decision_ids"] == ["DEC-001"]
+    assert result["decision_requirements"] == {"DEC-001": "R-list"}
+    assert result["legacy_shared_requirements"] == []
     assert result["contract_digest"] == build["contract_digest"]
     assert len(result["manifest_digest"]) == 64
+
+
+def test_v2_accepts_one_atomic_decision_per_requirement() -> None:
+    record = valid_record()
+    record["authorities"][0]["preserved_behaviors"] = ["no-network"]
+    for clause in (
+        record["goal"],
+        *record["scope"],
+        *record["non_goals"],
+        *record["requirements"],
+    ):
+        clause["preserved_behaviors"] = ["no-network"]
+    record["requirements"][0]["acceptance_bindings"][0]["digest"] = (
+        acceptance_binding_digest(
+            record["requirements"][0], record["acceptance_predicates"][0]
+        )
+    )
+    register, build = _compile(record)
+
+    result = validate_projection(
+        _contract(schema=MANIFEST_SCHEMA), record, register, build
+    )
+
+    assert result["schema"] == MANIFEST_SCHEMA
+
+
+def test_v2_rejects_multiple_decisions_for_one_requirement() -> None:
+    second = _decision(
+        identifier="DEC-002",
+        statement="Existing local task data remains local.",
+    )
+
+    with pytest.raises(ProjectionError, match="NON_ATOMIC_REQUIREMENT"):
+        parse_execution_contract(
+            _contract(_decision(), second, schema=MANIFEST_SCHEMA)
+        )
+
+
+def test_v2_rejects_hidden_requirement_obligation() -> None:
+    execution_contract, discovery, register, build = _fixture()
+
+    with pytest.raises(ProjectionError, match="NON_ATOMIC_REQUIREMENT"):
+        validate_projection(
+            execution_contract.replace(LEGACY_MANIFEST_SCHEMA, MANIFEST_SCHEMA),
+            discovery,
+            register,
+            build,
+        )
+
+
+def test_v1_preserves_legacy_many_decisions_one_requirement() -> None:
+    execution_contract, discovery, register, build = _fixture()
+    second = _decision(
+        identifier="DEC-002",
+        statement="Existing local task data remains local.",
+    )
+
+    result = validate_projection(
+        _contract(_decision(), second), discovery, register, build
+    )
+
+    assert result["schema"] == LEGACY_MANIFEST_SCHEMA
+    assert result["decision_ids"] == ["DEC-001", "DEC-002"]
+    assert result["legacy_shared_requirements"] == ["R-list"]
 
 
 def test_projection_gate_rejects_decision_lost_from_compiler_inputs() -> None:

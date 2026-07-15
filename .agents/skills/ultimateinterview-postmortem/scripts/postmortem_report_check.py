@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-closed structural validator for a postmortem_schema: 2 Markdown report."""
+"""Fail-closed structural validator for Ultimateinterview postmortem reports."""
 
 from __future__ import annotations
 
@@ -14,8 +14,9 @@ from typing import Any, Iterable, Mapping, Sequence
 
 
 BUNDLE_SCHEMA = "ultimateinterview.compiler-postmortem-evidence.v1"
-REPORT_SCHEMA = "2"
-REQUIRED_SECTIONS = (
+LEGACY_REPORT_SCHEMA = "2"
+COMPACT_REPORT_SCHEMA = "3"
+LEGACY_REQUIRED_SECTIONS = (
     "Conclusion",
     "Implementation Evidence",
     "Divergence Table",
@@ -25,6 +26,7 @@ REQUIRED_SECTIONS = (
     "Process Gaps and Missing Evidence",
     "Resolution Addendum",
 )
+COMPACT_REQUIRED_SECTIONS = ("Conclusion", "Findings", "Verification")
 DIVERGENCE_HEADERS = (
     "ID",
     "Behavior",
@@ -50,6 +52,8 @@ VERIFICATION_HEADERS = (
     "Result",
     "Evidence",
 )
+COMPACT_FINDING_HEADERS = ("ID", "Class", "Behavior", "Evidence", "Root cause", "Owner action")
+COMPACT_VERIFICATION_HEADERS = ("VER-ID", "Result", "Evidence")
 LESSON_HEADERS = (
     "Store",
     "Signal",
@@ -76,6 +80,18 @@ CLASS_TO_COUNT = {
 REQUIREMENT_CLASSES = frozenset(CLASS_TO_COUNT) - {"escaped-requirement"}
 LESSON_ACTIONS = frozenset({"fired", "appended", "strengthened", "retired", "rejected", "none"})
 MUTATING_LESSON_ACTIONS = frozenset({"fired", "appended", "strengthened", "retired"})
+ROOT_CAUSES = frozenset(
+    {
+        "none",
+        "discovery-miss",
+        "decision-miss",
+        "handoff-loss",
+        "contract-defect",
+        "implementation-drift",
+        "verification-gap",
+    }
+)
+MAX_COMPACT_TEXT = 240
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 ESCAPE_ID_RE = re.compile(r"ESC-[0-9]{3,}\Z")
 DIGEST_RE = re.compile(r"sha256:[0-9a-f]{64}\Z")
@@ -149,7 +165,9 @@ def heading_index(lines: Sequence[str]) -> list[tuple[int, int, str]]:
     return headings
 
 
-def section_ranges(lines: Sequence[str]) -> dict[str, tuple[int, int]]:
+def section_ranges(
+    lines: Sequence[str], required_sections: Sequence[str], *, exact: bool = False
+) -> dict[str, tuple[int, int]]:
     headings = heading_index(lines)
     if not headings or headings[0][1:] != (1, "Ultimateinterview Postmortem"):
         raise ReportError("report must begin with '# Ultimateinterview Postmortem'")
@@ -161,19 +179,23 @@ def section_ranges(lines: Sequence[str]) -> dict[str, tuple[int, int]]:
         if title in positions:
             raise ReportError(f"report contains duplicate section '{title}'")
         positions[title] = index
-    for name in REQUIRED_SECTIONS:
+    for name in required_sections:
         if name not in positions:
             raise ReportError(f"report is missing required section '{name}'")
+    if exact:
+        extras = sorted(set(positions) - set(required_sections))
+        if extras:
+            raise ReportError(f"compact report has unsupported sections: {', '.join(extras)}")
     result: dict[str, tuple[int, int]] = {}
     ordered = sorted((index, name) for name, index in positions.items())
     for offset, (start, name) in enumerate(ordered):
         end = ordered[offset + 1][0] if offset + 1 < len(ordered) else len(lines)
-        if name in REQUIRED_SECTIONS:
+        if name in required_sections:
             result[name] = (start + 1, end)
     return result
 
 
-def metadata(lines: Sequence[str], conclusion_heading: int, contract_digest: str) -> None:
+def metadata_values(lines: Sequence[str], conclusion_heading: int) -> dict[str, str]:
     values: dict[str, str] = {}
     for line in lines[1:conclusion_heading]:
         if not line.strip():
@@ -186,8 +208,15 @@ def metadata(lines: Sequence[str], conclusion_heading: int, contract_digest: str
         if not key or not value or key in values:
             raise ReportError("report metadata is malformed")
         values[key] = value
-    if values.get("postmortem_schema") != REPORT_SCHEMA:
-        raise ReportError("postmortem_schema must be 2")
+    return values
+
+
+def metadata(
+    lines: Sequence[str], conclusion_heading: int, contract_digest: str, expected_schema: str
+) -> None:
+    values = metadata_values(lines, conclusion_heading)
+    if values.get("postmortem_schema") != expected_schema:
+        raise ReportError(f"postmortem_schema must be {expected_schema}")
     if values.get("contract_digest") != contract_digest:
         raise ReportError("report contract_digest does not match compiler evidence bundle")
     if not values.get("evaluator"):
@@ -294,6 +323,131 @@ def validate_conclusion(
     if len(proposals) > 3:
         raise ReportError("Conclusion has more than three improvement proposals")
     return counts, proposals
+
+
+def validate_compact_text(value: str, label: str) -> None:
+    if len(value) > MAX_COMPACT_TEXT:
+        raise ReportError(f"{label} exceeds {MAX_COMPACT_TEXT} characters")
+
+
+def validate_compact_conclusion(
+    lines: Sequence[str], section: tuple[int, int], requirement_count: int
+) -> dict[str, int]:
+    body = lines[slice(*section)]
+    unsupported = [
+        line.strip()
+        for line in body
+        if line.strip()
+        and not line.strip().startswith(("**Verdict:**", "**Counts:**", "**Improvement:**"))
+    ]
+    if unsupported:
+        raise ReportError("compact Conclusion contains unsupported prose")
+    verdicts = [
+        match.group(1)
+        for line in body
+        if (match := re.fullmatch(r"\*\*Verdict:\*\*\s+(.+)", line.strip()))
+    ]
+    if len(verdicts) != 1:
+        raise ReportError("Conclusion requires exactly one plain-language Verdict")
+    validate_compact_text(verdicts[0], "Conclusion Verdict")
+    count_lines = [line.strip() for line in body if line.strip().startswith("**Counts:**")]
+    if len(count_lines) != 1:
+        raise ReportError("Conclusion requires exactly one Counts line")
+    match = COUNTS_RE.fullmatch(count_lines[0])
+    if not match:
+        raise ReportError("Conclusion Counts line has an invalid mechanical format")
+    counts = {
+        "total": int(match.group("total")),
+        "fulfilled": int(match.group("fulfilled")),
+        "escaped": int(match.group("escaped")),
+        "scope-drift": int(match.group("scope_drift")),
+        "divergent": int(match.group("divergent")),
+        "deferred": int(match.group("deferred")),
+        "unverifiable": int(match.group("unverifiable")),
+    }
+    if counts["total"] != requirement_count:
+        raise ReportError("Conclusion total does not equal the Build Contract requirement count")
+    improvements = [
+        match.group(1)
+        for line in body
+        if (match := re.fullmatch(r"\*\*Improvement:\*\*\s+(.+)", line.strip()))
+    ]
+    if len(improvements) > 1:
+        raise ReportError("Conclusion allows at most one Improvement line")
+    if improvements:
+        validate_compact_text(improvements[0], "Conclusion Improvement")
+    return counts
+
+
+def validate_compact_findings(
+    lines: Sequence[str], section: tuple[int, int], requirement_ids: Sequence[str], counts: Mapping[str, int]
+) -> None:
+    if any(line.strip() and not line.strip().startswith("|") for line in lines[slice(*section)]):
+        raise ReportError("compact Findings may contain only its required table")
+    rows = require_table(lines, section, COMPACT_FINDING_HEADERS, "Findings")
+    known_requirements = set(requirement_ids)
+    seen_requirements: set[str] = set()
+    seen_escapes: set[str] = set()
+    actual = {key: 0 for key in ("fulfilled", "escaped", "scope-drift", "divergent", "deferred", "unverifiable")}
+    for row in rows:
+        identifier = row["ID"]
+        classification = row["Class"]
+        for header, value in row.items():
+            validate_compact_text(value, f"Findings row {identifier} {header}")
+        if identifier in known_requirements:
+            if identifier in seen_requirements:
+                raise ReportError(f"Findings has duplicate requirement row {identifier}")
+            if classification not in REQUIREMENT_CLASSES:
+                raise ReportError(f"Findings row {identifier} has invalid requirement class")
+            seen_requirements.add(identifier)
+        elif ESCAPE_ID_RE.fullmatch(identifier):
+            if identifier in seen_escapes:
+                raise ReportError(f"Findings has duplicate escape row {identifier}")
+            if classification != "escaped-requirement":
+                raise ReportError(f"Findings escape row {identifier} must be escaped-requirement")
+            seen_escapes.add(identifier)
+        else:
+            raise ReportError(f"Findings row has unknown ID {identifier}")
+        root_cause = row["Root cause"]
+        if root_cause not in ROOT_CAUSES:
+            raise ReportError(f"Findings row {identifier} has invalid root cause")
+        if classification == "fulfilled" and root_cause != "none":
+            raise ReportError(f"Findings row {identifier} must use root cause none when fulfilled")
+        if classification != "fulfilled" and root_cause == "none":
+            raise ReportError(f"Findings row {identifier} requires a root cause")
+        actual[CLASS_TO_COUNT[classification]] += 1
+    missing = sorted(known_requirements - seen_requirements)
+    if missing:
+        raise ReportError(f"Findings is missing requirement rows: {', '.join(missing)}")
+    for key, value in actual.items():
+        if counts[key] != value:
+            raise ReportError(f"Conclusion {key} count does not match Findings")
+    if sum(actual[key] for key in ("fulfilled", "scope-drift", "divergent", "deferred", "unverifiable")) != counts["total"]:
+        raise ReportError("Findings requirement partition does not equal the Conclusion total")
+
+
+def validate_compact_verifications(
+    lines: Sequence[str], section: tuple[int, int], verification_ids: Sequence[str]
+) -> None:
+    if any(line.strip() and not line.strip().startswith("|") for line in lines[slice(*section)]):
+        raise ReportError("compact Verification may contain only its required table")
+    rows = require_table(lines, section, COMPACT_VERIFICATION_HEADERS, "Verification")
+    known = set(verification_ids)
+    seen: set[str] = set()
+    for row in rows:
+        identifier = row["VER-ID"]
+        for header, value in row.items():
+            validate_compact_text(value, f"Verification row {identifier} {header}")
+        if identifier not in known:
+            raise ReportError(f"Verification has unknown verification row {identifier}")
+        if identifier in seen:
+            raise ReportError(f"Verification has duplicate verification row {identifier}")
+        if row["Result"] not in {"passed", "failed", "blocked", "not-run"}:
+            raise ReportError(f"Verification row {identifier} has invalid result")
+        seen.add(identifier)
+    missing = sorted(known - seen)
+    if missing:
+        raise ReportError(f"Verification is missing rows: {', '.join(missing)}")
 
 
 def validate_divergence(
@@ -474,15 +628,31 @@ def main(argv: list[str] | None = None) -> int:
             lines = arguments.report.read_text(encoding="utf-8").splitlines()
         except (OSError, UnicodeError) as error:
             raise ReportError("postmortem report is not valid UTF-8 text") from error
-        ranges = section_ranges(lines)
-        metadata(lines, ranges["Conclusion"][0] - 1, contract_digest)
-        counts, _ = validate_conclusion(lines, ranges["Conclusion"], len(requirement_ids))
-        classes, _ = validate_divergence(lines, ranges["Divergence Table"], requirement_ids, counts)
-        validate_implementation_evidence(lines, ranges["Implementation Evidence"])
-        validate_finding_details(lines, ranges["Finding Details"], classes)
-        validate_verifications(lines, ranges["Verification Execution"], verification_ids)
-        validate_lessons(lines, ranges["Lessons"], lesson_state_arguments(arguments.lesson_store))
-        validate_supporting_sections(lines, ranges)
+        headings = heading_index(lines)
+        conclusion_headings = [index for index, level, title in headings if level == 2 and title == "Conclusion"]
+        if len(conclusion_headings) != 1:
+            raise ReportError("report requires exactly one Conclusion section")
+        schema = metadata_values(lines, conclusion_headings[0]).get("postmortem_schema")
+        if schema == COMPACT_REPORT_SCHEMA:
+            if arguments.lesson_store:
+                raise ReportError("postmortem_schema 3 does not support lesson-store rows")
+            ranges = section_ranges(lines, COMPACT_REQUIRED_SECTIONS, exact=True)
+            metadata(lines, ranges["Conclusion"][0] - 1, contract_digest, COMPACT_REPORT_SCHEMA)
+            counts = validate_compact_conclusion(lines, ranges["Conclusion"], len(requirement_ids))
+            validate_compact_findings(lines, ranges["Findings"], requirement_ids, counts)
+            validate_compact_verifications(lines, ranges["Verification"], verification_ids)
+        elif schema == LEGACY_REPORT_SCHEMA:
+            ranges = section_ranges(lines, LEGACY_REQUIRED_SECTIONS)
+            metadata(lines, ranges["Conclusion"][0] - 1, contract_digest, LEGACY_REPORT_SCHEMA)
+            counts, _ = validate_conclusion(lines, ranges["Conclusion"], len(requirement_ids))
+            classes, _ = validate_divergence(lines, ranges["Divergence Table"], requirement_ids, counts)
+            validate_implementation_evidence(lines, ranges["Implementation Evidence"])
+            validate_finding_details(lines, ranges["Finding Details"], classes)
+            validate_verifications(lines, ranges["Verification Execution"], verification_ids)
+            validate_lessons(lines, ranges["Lessons"], lesson_state_arguments(arguments.lesson_store))
+            validate_supporting_sections(lines, ranges)
+        else:
+            raise ReportError("postmortem_schema must be 2 or 3")
         print(
             f"postmortem report valid: {contract_digest} | requirements {len(requirement_ids)} | "
             f"verifications {len(verification_ids)}"

@@ -16,12 +16,14 @@ The sealed Build Contract is the sole normative source. The evidence map, Discov
 Require substantially complete implementation evidence: a merged PR, commit range, branch diff, or unambiguous working tree. Run from this skill directory:
 
 ```text
-python3 scripts/compiler_session_check.py <session-dir> [--diff-range <range> | --diff-file <path>]
+python3 scripts/compiler_session_check.py <session-dir> --repo-root <git-worktree-root> [--diff-range <range> | --diff-file <path>]
 ```
 
 This must verify the sealed digest, recompile the Discovery Record against the Authority Register, run the deterministic projection gate whenever `execution-contract.md` is present, validate the decision log when present, scope the repository evidence, and regenerate `compiler-evidence-bundle.json`. Stop on failure. A legacy session with no execution contract records a null projection result; an execution contract that is present but lacks or fails the manifest is invalid, never silently downgraded to legacy.
 
 The evaluator should be independent of the interview and implementation. If it participated in either and a fresh evaluator cannot be used, disclose the limitation and do not claim an independent result. Do not add a panel or iterative reviewer loop.
+
+Treat `ultimateinterview.material-decisions.v2` requirements as independent verdict units. For a legacy v1 manifest, inspect the decision-to-requirement mapping before counting outcomes. If multiple material decisions share one requirement, record coarse verdict granularity as a process gap and state that requirement-level counts cannot be interpreted as decision-level fidelity.
 
 ## Bounded Audit
 
@@ -55,9 +57,9 @@ For every non-fulfilled item, assign one earliest root cause:
 
 Do not blame the one-time Fresh Handoff Check for `discovery-miss`; its inputs cannot reveal facts the interviewer never observed. Use `handoff-loss` only for lineage already present in the evidence map, owner decisions, or compiler inputs. A current repository behavior intentionally superseded by valid authority is not an evidence-contract mismatch.
 
-## Improvement Proposals
+## Improvement Proposal
 
-Draft at most one proposal per distinct root cause and no more than three total. A proposal must be:
+Draft at most one proposal total. A proposal must be:
 
 - **simple** — one short rule or bounded deterministic check, with no new role, score, artifact family, or mandatory ceremony;
 - **effective** — names the finding it would have prevented and the exact stage where it acts;
@@ -68,22 +70,21 @@ Zero proposals is valid. Do not recommend a skill change when the rule already e
 
 ## Output and Validation
 
-Use `references/postmortem-template.md` and write `.ultimateinterview/<session>/postmortem.md`. Keep the report conclusion-first and evidence-minimal:
+Use `references/postmortem-template.md` and write `.ultimateinterview/<session>/postmortem.md` with `postmortem_schema: 3`. Keep it conclusion-first and short:
 
 1. mechanical counts and verdict;
-2. implementation evidence;
-3. one divergence row per requirement plus each unmatched substantive behavior;
-4. details only for non-fulfilled items, including the v3 root cause;
-5. one row per verification; and
-6. process gaps, missing evidence, and any owner action.
+2. one Findings row per requirement plus each unmatched substantive behavior; and
+3. one Verification row per contract verification.
 
-The template retains a `Lessons` table for schema compatibility. Leave it empty unless the user separately requested a durable lesson-store update; do not create routing lenses or mutate lesson stores by default.
+Put direct evidence, root cause, and owner action in the same Findings row. Use `none` for a fulfilled row's root cause and owner action. Do not repeat evidence in separate implementation, detail, process-gap, lesson, or addendum sections. Keep each verdict, improvement, and table cell at 240 characters or less. Omit the optional `Improvement` line when no new general rule is warranted.
+
+Schema 2 remains validator-compatible for existing reports, but do not generate it. Durable lesson-store updates and owner-response addenda are separate explicitly requested workflows, not postmortem sections.
 
 Validate the report and then recheck the compiler session:
 
 ```text
 python3 scripts/postmortem_report_check.py <session-dir>/postmortem.md --bundle <session-dir>/compiler-evidence-bundle.json
-python3 scripts/compiler_session_check.py <session-dir> [same diff arguments]
+python3 scripts/compiler_session_check.py <session-dir> --repo-root <git-worktree-root> [same diff arguments]
 ```
 
-Verify that Conclusion counts equal the Divergence Table. If implementation reversed an owner decision, flag it for re-confirmation. Do not modify the sealed contract, Discovery Record, implementation, or either skill from inside a postmortem.
+Verify that Conclusion counts equal Findings. If implementation reversed an owner decision, flag it in that row's owner action. Do not modify the sealed contract, Discovery Record, implementation, or either skill from inside a postmortem.

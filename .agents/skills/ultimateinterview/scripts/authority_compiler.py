@@ -638,6 +638,7 @@ def _parse_clause(
     has_id: bool,
     required_class: DecisionClass | None = None,
     require_acceptance_bindings: bool = False,
+    allow_empty_obligation_groups: bool = False,
 ) -> Clause:
     fields = {"text", "decision_class", "scope", "constraints", "preserved_behaviors", "authority_refs", "evidence_refs"}
     if has_id:
@@ -658,13 +659,29 @@ def _parse_clause(
     )
     if len({binding.acceptance_ref for binding in bindings}) != len(bindings):
         _fail("DUPLICATE_REFERENCE", f"{path}.acceptance_bindings", "must not contain duplicate acceptance references")
+    constraints = _unique_texts(
+        object_value["constraints"],
+        f"{path}.constraints",
+        allow_empty=allow_empty_obligation_groups,
+    )
+    preserved_behaviors = _unique_texts(
+        object_value["preserved_behaviors"],
+        f"{path}.preserved_behaviors",
+        allow_empty=allow_empty_obligation_groups,
+    )
+    if not constraints and not preserved_behaviors:
+        _fail(
+            "INVALID_VALUE",
+            path,
+            "constraints and preserved_behaviors must contain at least one obligation",
+        )
     return Clause(
         id=_identifier(object_value["id"], f"{path}.id") if has_id else None,
         text=_text(object_value["text"], f"{path}.text"),
         decision_class=decision_class,
         scope=_scope(object_value["scope"], f"{path}.scope"),
-        constraints=_unique_texts(object_value["constraints"], f"{path}.constraints"),
-        preserved_behaviors=_unique_texts(object_value["preserved_behaviors"], f"{path}.preserved_behaviors"),
+        constraints=constraints,
+        preserved_behaviors=preserved_behaviors,
         authority_refs=_unique_identifiers(object_value["authority_refs"], f"{path}.authority_refs", allow_empty=True),
         evidence_refs=_unique_identifiers(object_value["evidence_refs"], f"{path}.evidence_refs", allow_empty=True),
         acceptance_bindings=bindings,
@@ -1065,7 +1082,13 @@ def _parse_record(value: Any) -> DiscoveryRecord:
         authorities=tuple(_parse_authority(item, f"$.authorities[{index}]") for index, item in enumerate(authority_values)),
         evidence=tuple(_parse_evidence(item, f"$.evidence[{index}]") for index, item in enumerate(evidence_values)),
         requirements=tuple(
-            _parse_clause(item, f"$.requirements[{index}]", has_id=True, require_acceptance_bindings=True)
+            _parse_clause(
+                item,
+                f"$.requirements[{index}]",
+                has_id=True,
+                require_acceptance_bindings=True,
+                allow_empty_obligation_groups=True,
+            )
             for index, item in enumerate(requirement_values)
         ),
         acceptance_predicates=tuple(
@@ -1347,6 +1370,8 @@ def _validate_clause_authority(
     authorities: Mapping[str, Authority],
     evidence_ids: frozenset[str],
     conflicts: Sequence[Conflict],
+    *,
+    allow_obligation_subset: bool = False,
 ) -> None:
     if not clause.authority_refs:
         _fail("MISSING_AUTHORITY", path, "normative clause has no authority reference")
@@ -1400,12 +1425,63 @@ def _validate_clause_authority(
                     _fail("STALE_AUTHORITY", path, f"{authority_ref} is lower precedence than {candidate.id}")
 
     mandatory_constraints, mandatory_behaviors = _mandatory_obligations(referenced_authorities)
-    if set(clause.constraints) != mandatory_constraints or set(clause.preserved_behaviors) != mandatory_behaviors:
+    clause_constraints = set(clause.constraints)
+    clause_behaviors = set(clause.preserved_behaviors)
+    obligations_match = (
+        clause_constraints <= mandatory_constraints
+        and clause_behaviors <= mandatory_behaviors
+        if allow_obligation_subset
+        else clause_constraints == mandatory_constraints
+        and clause_behaviors == mandatory_behaviors
+    )
+    if not obligations_match:
         _fail(
             "AUTHORITY_SCOPE_MISMATCH",
             path,
-            "clause constraints and preserved behaviors must exactly retain all referenced authority obligations",
+            (
+                "requirement obligations must be an authorized subset of referenced authority obligations"
+                if allow_obligation_subset
+                else "clause constraints and preserved behaviors must exactly retain all referenced authority obligations"
+            ),
         )
+
+
+def _validate_requirement_authority_coverage(
+    requirements: Sequence[Clause], authorities: Mapping[str, Authority]
+) -> None:
+    """Require atomic requirement subsets to retain every referenced authority obligation."""
+
+    referenced_authority_ids = {
+        authority_ref
+        for requirement in requirements
+        for authority_ref in requirement.authority_refs
+    }
+    for authority_ref in sorted(referenced_authority_ids):
+        authority = authorities[authority_ref]
+        related = [
+            requirement
+            for requirement in requirements
+            if authority_ref in requirement.authority_refs
+        ]
+        covered_constraints = {
+            constraint for requirement in related for constraint in requirement.constraints
+        }
+        covered_behaviors = {
+            behavior
+            for requirement in related
+            for behavior in requirement.preserved_behaviors
+        }
+        missing_constraints = sorted(set(authority.constraints) - covered_constraints)
+        missing_behaviors = sorted(
+            set(authority.preserved_behaviors) - covered_behaviors
+        )
+        if missing_constraints or missing_behaviors:
+            missing = (missing_constraints or missing_behaviors)[0]
+            _fail(
+                "AUTHORITY_REQUIREMENT_COVERAGE",
+                "$.requirements",
+                f"{authority_ref} obligation is not projected into any requirement: {missing}",
+            )
 
 
 def _validate_acceptance_and_verification(record: DiscoveryRecord) -> None:
@@ -1691,7 +1767,15 @@ def compile_discovery_record(
     for index, clause in enumerate(record.non_goals):
         _validate_clause_authority(clause, f"$.non_goals[{index}]", authorities, evidence_ids, record.conflicts)
     for index, clause in enumerate(record.requirements):
-        _validate_clause_authority(clause, f"$.requirements[{index}]", authorities, evidence_ids, record.conflicts)
+        _validate_clause_authority(
+            clause,
+            f"$.requirements[{index}]",
+            authorities,
+            evidence_ids,
+            record.conflicts,
+            allow_obligation_subset=True,
+        )
+    _validate_requirement_authority_coverage(record.requirements, authorities)
 
     _validate_acceptance_and_verification(record)
 

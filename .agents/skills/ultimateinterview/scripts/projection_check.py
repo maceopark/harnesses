@@ -14,7 +14,9 @@ from typing import Any, Mapping, Sequence
 import authority_compiler
 
 
-MANIFEST_SCHEMA = "ultimateinterview.material-decisions.v1"
+LEGACY_MANIFEST_SCHEMA = "ultimateinterview.material-decisions.v1"
+MANIFEST_SCHEMA = "ultimateinterview.material-decisions.v2"
+SUPPORTED_MANIFEST_SCHEMAS = frozenset({LEGACY_MANIFEST_SCHEMA, MANIFEST_SCHEMA})
 BLOCK_PATTERN = re.compile(
     r"^```ultimateinterview-material-decisions[ \t]*\n(?P<body>.*?)^```[ \t]*$",
     re.MULTILINE | re.DOTALL,
@@ -96,10 +98,12 @@ def _text(value: Any, path: str) -> str:
     return value
 
 
-def _string_array(value: Any, path: str) -> tuple[str, ...]:
+def _string_array(
+    value: Any, path: str, *, allow_empty: bool = False
+) -> tuple[str, ...]:
     values = _array(value, path)
     result = tuple(_text(item, f"{path}[{index}]") for index, item in enumerate(values))
-    if not result:
+    if not result and not allow_empty:
         _fail("INVALID_VALUE", path, "must not be empty")
     if len(result) != len(set(result)):
         _fail("DUPLICATE_REFERENCE", path, "must not contain duplicates")
@@ -152,11 +156,12 @@ def parse_execution_contract(text: str) -> dict[str, Any]:
         "$.material_decisions",
         frozenset({"schema", "decisions"}),
     )
-    if _text(manifest["schema"], "$.material_decisions.schema") != MANIFEST_SCHEMA:
+    schema = _text(manifest["schema"], "$.material_decisions.schema")
+    if schema not in SUPPORTED_MANIFEST_SCHEMAS:
         _fail(
             "INVALID_SCHEMA",
             "$.material_decisions.schema",
-            f"must be {MANIFEST_SCHEMA}",
+            f"must be one of: {', '.join(sorted(SUPPORTED_MANIFEST_SCHEMAS))}",
         )
     decisions = _array(manifest["decisions"], "$.material_decisions.decisions")
     if not decisions:
@@ -165,6 +170,7 @@ def parse_execution_contract(text: str) -> dict[str, Any]:
     normalized: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
     seen_projection_keys: set[tuple[str, str, str]] = set()
+    seen_requirement_refs: set[str] = set()
     for index, value in enumerate(decisions):
         path = f"$.material_decisions.decisions[{index}]"
         decision = _closed_fields(value, path, DECISION_FIELDS)
@@ -180,6 +186,13 @@ def parse_execution_contract(text: str) -> dict[str, Any]:
         statement = _text(decision["statement"], f"{path}.statement")
         authority_ref = _text(decision["authority_ref"], f"{path}.authority_ref")
         requirement_ref = _text(decision["requirement_ref"], f"{path}.requirement_ref")
+        if schema == MANIFEST_SCHEMA and requirement_ref in seen_requirement_refs:
+            _fail(
+                "NON_ATOMIC_REQUIREMENT",
+                f"{path}.requirement_ref",
+                f"{requirement_ref} is already assigned to another material decision",
+            )
+        seen_requirement_refs.add(requirement_ref)
         projection_key = (statement, authority_ref, requirement_ref)
         if projection_key in seen_projection_keys:
             _fail("DUPLICATE_PROJECTION", path, "duplicates an existing decision projection")
@@ -202,7 +215,7 @@ def parse_execution_contract(text: str) -> dict[str, Any]:
                 ),
             }
         )
-    return {"schema": MANIFEST_SCHEMA, "decisions": normalized}
+    return {"schema": schema, "decisions": normalized}
 
 
 def _id_map(value: Mapping[str, Any], field: str) -> dict[str, dict[str, Any]]:
@@ -218,11 +231,18 @@ def _id_map(value: Mapping[str, Any], field: str) -> dict[str, dict[str, Any]]:
 
 
 def _obligations(row: Mapping[str, Any], path: str) -> frozenset[str]:
-    constraints = _string_array(row.get("constraints"), f"{path}.constraints")
-    preserved = _string_array(
-        row.get("preserved_behaviors"), f"{path}.preserved_behaviors"
+    constraints = _string_array(
+        row.get("constraints"), f"{path}.constraints", allow_empty=True
     )
-    return frozenset((*constraints, *preserved))
+    preserved = _string_array(
+        row.get("preserved_behaviors"),
+        f"{path}.preserved_behaviors",
+        allow_empty=True,
+    )
+    result = frozenset((*constraints, *preserved))
+    if not result:
+        _fail("INVALID_VALUE", path, "must contain at least one obligation")
+    return result
 
 
 def validate_projection(
@@ -321,6 +341,22 @@ def validate_projection(
                 f"{path}.statement",
                 f"is not an exact requirement constraint or preserved behavior in {requirement_ref}",
             )
+        if manifest["schema"] == MANIFEST_SCHEMA:
+            requirement_obligations = _obligations(
+                requirement, f"$.requirements[{requirement_ref}]"
+            )
+            if requirement_obligations != {statement}:
+                _fail(
+                    "NON_ATOMIC_REQUIREMENT",
+                    f"$.requirements[{requirement_ref}]",
+                    "must contain exactly the one obligation named by its material decision",
+                )
+            if set(requirement.get("authority_refs", [])) != {authority_ref}:
+                _fail(
+                    "NON_ATOMIC_REQUIREMENT",
+                    f"$.requirements[{requirement_ref}].authority_refs",
+                    "must contain exactly the authority named by its material decision",
+                )
 
         expected_acceptances = {
             identifier
@@ -386,11 +422,26 @@ def validate_projection(
     manifest_digest = hashlib.sha256(
         authority_compiler.canonical_json(manifest).encode("utf-8")
     ).hexdigest()
+    decision_requirements = {
+        decision["id"]: decision["requirement_ref"]
+        for decision in sorted(manifest["decisions"], key=lambda item: item["id"])
+    }
+    requirement_decision_counts: dict[str, int] = {}
+    for requirement_ref in decision_requirements.values():
+        requirement_decision_counts[requirement_ref] = (
+            requirement_decision_counts.get(requirement_ref, 0) + 1
+        )
     return {
-        "schema": MANIFEST_SCHEMA,
+        "schema": manifest["schema"],
         "manifest_digest": manifest_digest,
         "contract_digest": build_contract.get("contract_digest"),
         "decision_ids": sorted(decision["id"] for decision in manifest["decisions"]),
+        "decision_requirements": decision_requirements,
+        "legacy_shared_requirements": sorted(
+            requirement_ref
+            for requirement_ref, count in requirement_decision_counts.items()
+            if count > 1
+        ),
     }
 
 

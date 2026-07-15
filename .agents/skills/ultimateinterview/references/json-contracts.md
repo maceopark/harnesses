@@ -39,7 +39,7 @@ The `Decisions & Defaults` section of every new `execution-contract.md` contains
 ````text
 ```ultimateinterview-material-decisions
 {
-  "schema": "ultimateinterview.material-decisions.v1",
+  "schema": "ultimateinterview.material-decisions.v2",
   "decisions": [
     {
       "id": "DEC-001",
@@ -56,9 +56,9 @@ The `Decisions & Defaults` section of every new `execution-contract.md` contains
 ```
 ````
 
-The manifest is closed and nonempty, and it is the only content allowed in `Decisions & Defaults`; prose decisions outside it fail the gate. IDs match `DEC-NNN`, remain stable within the session, and are unique. `choice` is `explicit` only with active owner-decision or canonical-contract authority and `delegated-default` only with active bounded-delegation authority.
+The manifest is closed and nonempty, and it is the only content allowed in `Decisions & Defaults`; prose decisions outside it fail the gate. IDs match `DEC-NNN`, remain stable within the session, and are unique. `choice` is `explicit` only with active owner-decision or canonical-contract authority and `delegated-default` only with active bounded-delegation authority. `ultimateinterview.material-decisions.v1` remains accepted only to validate already sealed legacy sessions.
 
-The `statement` is an atomic projection anchor. It must occur byte-for-byte in both the referenced authority's and requirement's `constraints` or `preserved_behaviors`. `applicable_boundary` exactly equals the requirement scope. The acceptance and verification references cover every and only those attached to the requirement, and the compiler trace contains every applicable authority-requirement-acceptance-verification row. Across all decision rows, every requirement-authority pair is covered; missing and invented pairs fail closed.
+The `statement` is an atomic projection anchor and one postmortem verdict unit. In v2, each decision maps to a dedicated requirement that no other decision may reference. That requirement names exactly the decision's one authority, and the union of its `constraints` and `preserved_behaviors` is exactly `{statement}`; either array may be empty. `applicable_boundary` exactly equals the requirement scope. The acceptance and verification references cover every and only those attached to the requirement, and the compiler trace contains every applicable authority-requirement-acceptance-verification row. Missing, invented, shared, or compound requirement projections fail closed.
 
 After reconciliation and compilation, run:
 
@@ -66,7 +66,7 @@ After reconciliation and compilation, run:
 python3 scripts/projection_check.py <execution-contract.md> --discovery <discovery-record.json> --authority-register <authority-register.json> --build-contract <build-contract.json>
 ```
 
-The gate strictly parses the manifest, revalidates the Authority Register, freshly recompiles Discovery, requires structural equality with the sealed Build Contract, and validates the complete decision lineage. It writes nothing. Legacy sessions without `execution-contract.md` remain compiler-auditable, but no new v3 session may hand off implementation until this gate passes.
+The gate strictly parses the manifest, revalidates the Authority Register, freshly recompiles Discovery, requires structural equality with the sealed Build Contract, and validates the complete decision lineage. Its result includes `decision_requirements` and `legacy_shared_requirements` so postmortems can disclose coarse v1 verdict units. It writes nothing. Legacy sessions without `execution-contract.md` remain compiler-auditable, but no new v3 session may hand off implementation until this gate passes.
 
 ## Authority reconciliation
 
@@ -118,7 +118,7 @@ Top-level required fields:
 }
 ```
 
-A Clause contains `id` when used in arrays, plus `text`, `decision_class`, nonempty `scope`, nonempty `constraints`, nonempty `preserved_behaviors`, `authority_refs`, and `evidence_refs`. A requirement additionally contains `acceptance_bindings`, each with `acceptance_ref` and a 64-lowercase-hex `digest`.
+A Clause contains `id` when used in arrays, plus `text`, `decision_class`, nonempty `scope`, `constraints`, `preserved_behaviors`, `authority_refs`, and `evidence_refs`. Goal, scope, and non-goal clauses keep both obligation arrays nonempty and exactly retain their referenced authorities. A requirement may leave either obligation array empty, but their union must be nonempty and contain only authorized obligations. Across all requirements, every obligation from every referenced authority must remain covered. A requirement additionally contains `acceptance_bindings`, each with `acceptance_ref` and a 64-lowercase-hex `digest`.
 
 An Authority contains:
 
