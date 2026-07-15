@@ -5,7 +5,7 @@ description: Agent-agnostic material-decision interview and implementation plann
 
 # Ultimateinterview
 
-Produce a small, authorized, verifiable execution contract and a derived implementation plan. Ground briefly, ask only decisions that can materially change implementation, compile the contract, plan the implementation within bounded delegation, run one fresh handoff check, then finalize and stop.
+Produce a small, authorized, verifiable execution contract and a derived implementation plan. Ground briefly, ask only decisions that can materially change implementation, compile the contract, plan the implementation within bounded delegation, run one fresh handoff check, then finalize, print a copy-ready implementation prompt, and stop.
 
 Evidence describes current state; it does not authorize new behavior. Only an explicit `owner-decision`, an applicable `canonical-contract`, or a `bounded-delegation` may authorize a normative decision. A delegated default is a choice made under bounded delegation, never an authority kind.
 
@@ -127,3 +127,33 @@ python3 scripts/implementation_plan.py <implementation-plan.json> --build-contra
 ```
 
 Hand any implementing coding agent the sealed Build Contract, compiled implementation plan, and repository access. The Build Contract governs; the plan explains how to realize it. Internal choices may proceed only as recorded within bounded delegation. Contract-plan conflict, substantive unmapped behavior, or an infeasible plan returns for authority or replanning rather than silent invention.
+
+Only after every final gate passes and no material owner decision remains unresolved, end the user-facing response with exactly one copy-ready `Implementation prompt` code block. Substitute the actual repository-relative session paths for `<session>`; do not leave placeholders, duplicate the artifact contents, include the interview transcript, or write the prompt into a new artifact unless the owner asks. Do not print this prompt when the session finishes as `incomplete`.
+
+Use this prompt, preserving its authority order while adapting only repository-specific path wording:
+
+```text
+Implement the completed Ultimateinterview handoff in this repository.
+
+Build Contract:
+.ultimateinterview/<session>/build-contract.json
+
+Implementation Plan:
+.ultimateinterview/<session>/implementation-plan.json
+
+First read every applicable AGENTS.md from the repository root through the target paths. Verify that the compiled implementation plan is bound to the supplied Build Contract before editing.
+
+Implementation rules:
+- The Build Contract is the governing authority for product behavior, scope, acceptance, and verification.
+- The Implementation Plan is derived execution guidance. Follow its IMP-NNN decisions and dependency-ordered STEP-NNN steps unless repository reality makes a step infeasible.
+- Never let the plan override the contract or invent observable behavior, fallback, retry, compatibility, migration, lifecycle, or failure semantics.
+- If the plan is infeasible but the contract can remain unchanged, explain the reason, replan within the recorded bounded delegations, and continue.
+- If implementation requires changing the contract or making a new material product decision, stop and report the exact decision gap instead of guessing.
+- Keep unrelated changes untouched and run every contract verification.
+
+Complete the implementation and report:
+1. requirements implemented and files changed;
+2. any plan deviation and its reason;
+3. verification commands and results; and
+4. any remaining blocker or contract divergence.
+```
