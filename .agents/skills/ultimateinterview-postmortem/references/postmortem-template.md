@@ -48,8 +48,8 @@ Include exactly one row for each escaped requirement, scope drift, divergent imp
 
 | ID | Behavior | Class / failure mode | Structure / owning frame | Intent attribution | Evidence | Owner action |
 | --- | --- | --- | --- | --- | --- | --- |
-| ESC-001 | `<behavior>` | escaped-requirement / trigger-too-narrow / enumeration-miss / answer-unpressured / synthesis-loss / ontology-miss | item / boundary / interaction / system / novel:`<slug>`; frame | owned-signal:`<decision row>` / run-blind | `<evidence>` | `<action>` |
-| REQ-001 | `<behavior>` | scope-drift / divergent-implementation / deferred-outcome / unverifiable | n/a | n/a | `<evidence>` | `<action>` |
+| ESC-001 | `<behavior>` | escaped-requirement / discovery-miss / decision-miss / handoff-loss / contract-defect / implementation-drift / verification-gap | observed evidence / material decision / contract / acceptance-verification / implementation | owned-signal:`<decision row>` / run-blind | `<evidence>` | `<action>` |
+| REQ-001 | `<behavior>` | scope-drift / handoff-loss, divergent-implementation / implementation-drift, deferred-outcome / decision-miss, unverifiable / verification-gap | `<lineage stage or n/a>` | n/a | `<evidence>` | `<action>` |
 
 ## Verification Execution
 
@@ -63,7 +63,7 @@ Record substantive mock substitution, tautological assertions, or hardcoded expe
 
 ## Lessons
 
-Include only lesson rows fired, appended, strengthened, retired, or considered and rejected during this audit. For every row, use the same stable `Store` label passed to `postmortem_report_check.py --lesson-store <Store> <pre-path|-> <post-path|->`. `Pre-state` and `Post-state` must be `absent` or the exact `sha256:<digest>` of those files. `fired`, `appended`, `strengthened`, and `retired` require a state delta; `rejected` and `none` require no delta.
+Leave this table empty unless the user separately requested a durable lesson-store update. When used, pass the same stable `Store` label to `postmortem_report_check.py --lesson-store <Store> <pre-path|-> <post-path|->`. `Pre-state` and `Post-state` must be `absent` or the exact `sha256:<digest>` of those files. `fired`, `appended`, `strengthened`, and `retired` require a state delta; `rejected` and `none` require no delta.
 
 | Store | Signal | Action | Pre-state | Post-state | Evidence |
 | --- | --- | --- | --- | --- | --- |

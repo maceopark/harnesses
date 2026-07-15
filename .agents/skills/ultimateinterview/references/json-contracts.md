@@ -8,6 +8,8 @@ All JSON files are UTF-8. Compiler-produced JSON is deterministic, two-space-ind
 
 ```text
 .ultimateinterview/<session>/
+  execution-contract.md          # unsealed human-facing four-section contract, optional for legacy sessions
+  evidence-map.md                # compact observed evidence for the one-time handoff check, optional for legacy sessions
   authority-reconciliation.json # owner-approved reconciliation input
   authority-register.json       # sealed native Authority Register
   discovery-record.json         # unsealed compiler input bound to the register
