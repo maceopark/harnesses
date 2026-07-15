@@ -189,3 +189,53 @@ def test_live_wrapper_resume_keeps_arguments_and_enables_titles(tmp_path: Path) 
         "<--run-dir></tmp/run with spaces><--max-parallel><2>"
         "<--max-cells><2>"
     ]
+
+
+def test_run_live_accepts_six_and_rejects_seven_before_tmux(tmp_path: Path) -> None:
+    _, uv_calls = _run_wrapper(tmp_path, "--max-cells", "6", "--max-parallel", "6")
+    assert "<--max-cells><6>" in uv_calls[0]
+    assert "<--max-parallel><6>" in uv_calls[0]
+
+    rejected_root = tmp_path / "rejected"
+    rejected_root.mkdir()
+    _, rejected = _run_wrapper(rejected_root, "--max-cells", "7", expected_returncode=2)
+    assert rejected == []
+
+
+def test_live_wrapper_prints_usage_and_validates_missing_values(tmp_path: Path) -> None:
+    project = Path(__file__).resolve().parents[1]
+    help_result = subprocess.run(
+        [str(project / "scripts/run-live.sh"), "--help"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert help_result.returncode == 0
+    assert "Usage:" in help_result.stdout
+    assert "--max-cells 1-6" in help_result.stdout
+    assert "--resume RUN_DIRECTORY" in help_result.stdout
+
+    missing = subprocess.run(
+        [str(project / "scripts/run-live.sh"), "--max-cells"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert missing.returncode == 2
+    assert "Missing value for --max-cells" in missing.stderr
+    assert "Usage:" in missing.stderr
+
+
+def test_live_wrapper_without_options_prints_help_without_starting(tmp_path: Path) -> None:
+    project = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        [str(project / "scripts/run-live.sh")],
+        text=True,
+        capture_output=True,
+        env={**os.environ, "PATH": "/usr/bin:/bin", "TMUX": "", "TMUX_PANE": ""},
+        check=False,
+    )
+    assert result.returncode == 0
+    assert "Usage:" in result.stdout
+    assert "With no options, this help is displayed." in result.stdout
+    assert result.stderr == ""

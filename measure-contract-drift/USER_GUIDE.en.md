@@ -27,7 +27,7 @@ uv run --project measure-contract-drift \
 
 The live lifecycle is `driftbench interview-eval run` and `driftbench interview-eval resume`. All direct Codex roles use `gpt-5.6-sol` with configurable reasoning effort, defaulting to medium.
 
-For every selected case and treatment, the runtime:
+For every selected case, the runtime:
 
 1. copies the public starter into an isolated cell repository;
 2. starts a direct Codex interviewer session and retains its thread only for that interview;
@@ -56,11 +56,11 @@ uv run --project measure-contract-drift driftbench interview-eval run \
   --max-parallel 1
 ```
 
-The six public cases run in required `baseline` and `candidate` treatments, for 12 cells total. The baseline is the vendored immutable skill. `candidate_skill` must be a relative path inside the workspace; its bytes, the enrollment, corpus rows, and starter trees are copied into the run's `inputs/` directory before execution. Resume validates those pinned inputs and every completed cell before continuing. `--max-cells` selects 1–12 pending cells for the current invocation; `--max-parallel` runs 1–12 cells concurrently.
+The six public cases run once each against one immutable frozen skill, for six case-only cells total. There is no candidate skill or treatment concept. Enrollment, corpus rows, starter trees, and the frozen runtime manifest are bound before execution. Resume validates those pinned inputs and every completed cell before continuing. `--max-cells` and `--max-parallel` both accept 1–6. Earlier twelve-cell state is incompatible and rejected schema-first.
 
 The enrollment file `<project-root>/.measurecontractdrift/live.toml` may set `model_reasoning_effort`. It defaults to `"medium"` when omitted and applies to interviewer, simulator, implementation, and postmortem Codex sessions. The model remains pinned to `gpt-5.6-sol`.
 
-`run-live.sh` requires tmux. Outside tmux it first starts a tmux session and re-runs itself there with the same validated run or resume arguments; missing tmux fails clearly before any interview starts. For an invocation that schedules at least two cells with `--max-parallel` set to 2–12, each executing cell receives one detached pane as its first runtime action. The pane starts at `Preparing` while local interview inputs are set up, then remains through `Interview`, `Contract`, `Implementation`, `Checking`, and `Postmortem`. It shows color-independent `Question` and `Answer` blocks plus live content-free activity categories and lifecycle states. Raw prompts, reasoning text, model messages, command or tool arguments and output, file contents, and secrets are never rendered. The wrapper enables current-window pane borders; each bounded credential-safe title identifies the treatment, case, and coding task. A pane closes only after its complete cell succeeds. Failed or catchably interrupted cells retain their panes with the safe current stage, exception class, and manual-close instruction; a resume attempt uses a new attempt identity and does not reuse a retained pane. An operational pane failure warns once and preserves the existing case-and-treatment-prefixed stderr fallback for interview exchanges. Pane content is transient: it is not added to transcripts, manifests, receipts, state, or any separate pane artifact. Final compact stdout JSON and existing diagnostics are unchanged.
+`run-live.sh` requires tmux. Outside tmux it first starts a tmux session and re-runs itself there with the same validated run or resume arguments; missing tmux fails clearly before any interview starts. For an invocation that schedules at least two cells with `--max-parallel` set to 2–6, each executing cell receives one detached pane as its first runtime action. The pane starts at `Preparing` while local interview inputs are set up, then remains through `Interview`, `Contract`, `Implementation`, `Checking`, and `Postmortem`. It shows color-independent `Question` and `Answer` blocks plus live content-free activity categories and lifecycle states. Raw prompts, reasoning text, model messages, command or tool arguments and output, file contents, and secrets are never rendered. The wrapper enables current-window pane borders; each bounded credential-safe title identifies the case and coding task. A pane closes only after its complete cell succeeds. Failed or catchably interrupted cells retain their panes with the safe current stage, exception class, and manual-close instruction; a resume attempt uses a new attempt identity and does not reuse a retained pane. An operational pane failure warns once and preserves the existing case-prefixed stderr fallback for interview exchanges. Pane content is transient: it is not added to transcripts, manifests, receipts, state, or any separate pane artifact. Final compact stdout JSON and existing diagnostics are unchanged.
 
 ## Run output and resume
 
@@ -90,6 +90,6 @@ Completed cells are retained; cells without a completed result are run again. `-
 
 ## Reading results
 
-The CLI emits compact JSON with the run directory and status. `partial` means the bounded invocation succeeded while pending cells remain; `completed` means all 12 cells completed. `failed` means at least one attempted cell failed; inspect that cell's `state.json` entry and session evidence.
+The CLI emits compact JSON with the run directory and status. `partial` means the bounded invocation succeeded while pending cells remain; `completed` means all six cells completed. `failed` means at least one attempted cell failed; inspect that cell's `state.json` entry and session evidence.
 
 The live path evaluates public development cases only. It does not make claims about private holdouts or general model performance.

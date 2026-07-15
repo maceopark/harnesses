@@ -26,7 +26,7 @@ _REQUIRED_COMMANDS = {
     "show-options",
     "split-window",
 }
-_OPTION_NAMES = ("run", "attempt", "cell", "case", "treatment")
+_OPTION_NAMES = ("run", "attempt", "cell", "case")
 _TMUX_TIMEOUT_SECONDS = 5
 _MAX_ACTIVITY_EVENT_BYTES = 64 * 1024
 _MAX_EXCHANGE_TEXT = 16 * 1024
@@ -162,7 +162,7 @@ class TmuxPresentation:
         runner: Runner = _default_runner,
     ) -> TmuxPresentation | None:
         """Return an active controller, silently falling back when tmux is unavailable."""
-        if scheduled_cells < 2 or not 2 <= max_parallel <= 12:
+        if scheduled_cells < 2 or not 2 <= max_parallel <= 6:
             return None
         environment = os.environ if environment is None else environment
         execution_pane = environment.get("TMUX_PANE", "")
@@ -253,7 +253,7 @@ class TmuxPresentation:
         if pane._warned:
             return
         pane._warned = True
-        identity = _safe_text(f"{pane.case_id}/{pane.treatment}", title=True)
+        identity = _safe_text(pane.case_id, title=True)
         try:
             print(
                 f"warning: tmux presentation unavailable for {identity} ({operation}); "
@@ -265,7 +265,7 @@ class TmuxPresentation:
             pass
 
     def _fallback(self, pane: CellPane, block: str) -> None:
-        identity = _safe_text(f"{pane.case_id}/{pane.treatment}", title=True)
+        identity = _safe_text(pane.case_id, title=True)
         with self._fallback_lock:
             try:
                 print(f"[{identity}]\n{block}", file=sys.stderr, end="", flush=True)
@@ -295,17 +295,12 @@ class CellPane:
     def case_id(self) -> str:
         return str(self.cell["case_id"])
 
-    @property
-    def treatment(self) -> str:
-        return str(self.cell["treatment"])
-
     def _metadata(self) -> dict[str, str]:
         return {
             "run": _encoded(self.presentation.run_id),
             "attempt": _encoded(self.presentation.attempt_id),
             "cell": _encoded(self.cell_id),
             "case": _encoded(self.case_id),
-            "treatment": _encoded(self.treatment),
         }
 
     def _title(self) -> str:
@@ -313,7 +308,7 @@ class CellPane:
         summary = (
             _safe_exchange_text(prompt) if str(prompt or "").strip() else self.case_id
         )
-        title = _safe_text(f"[{self.treatment}] {self.case_id} — {summary}", title=True)
+        title = _safe_text(f"{self.case_id} — {summary}", title=True)
         return title[:_MAX_PANE_TITLE].rstrip()
 
     def create(self) -> None:

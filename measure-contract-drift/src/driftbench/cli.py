@@ -1441,16 +1441,16 @@ def build_parser() -> DriftArgumentParser:
     )
     interview_run = interview_commands.add_parser("run")
     interview_run.add_argument("--policy", required=True)
-    interview_run.add_argument("--max-cells", type=int, choices=range(1, 13))
+    interview_run.add_argument("--max-cells", type=int, choices=range(1, 7))
     interview_run.add_argument(
-        "--max-parallel", type=int, choices=range(1, 13), default=1
+        "--max-parallel", type=int, choices=range(1, 7), default=1
     )
     interview_run.set_defaults(handler=_cmd_interview_eval_run)
     interview_resume = interview_commands.add_parser("resume")
     interview_resume.add_argument("--run-dir", required=True)
-    interview_resume.add_argument("--max-cells", type=int, choices=range(1, 13))
+    interview_resume.add_argument("--max-cells", type=int, choices=range(1, 7))
     interview_resume.add_argument(
-        "--max-parallel", type=int, choices=range(1, 13), default=1
+        "--max-parallel", type=int, choices=range(1, 7), default=1
     )
     interview_resume.set_defaults(handler=_cmd_interview_eval_resume)
 

@@ -55,8 +55,8 @@ def _cell_fixture(tmp_path: Path) -> tuple[Path, dict[str, object], Path]:
     starter = tmp_path / "starter"
     starter.mkdir()
     (starter / "app.py").write_text("pass\n", encoding="utf-8")
-    skill = tmp_path / "candidate-SKILL.md"
-    skill.write_text("# Candidate\n", encoding="utf-8")
+    skill = tmp_path / "frozen-SKILL.md"
+    skill.write_text("# Frozen\n", encoding="utf-8")
     frozen = tmp_path / "baseline/frozen"
     (frozen / ".agents/skills/ultimateinterview-postmortem/references").mkdir(
         parents=True
@@ -74,9 +74,8 @@ def _cell_fixture(tmp_path: Path) -> tuple[Path, dict[str, object], Path]:
         frozen / ".agents/skills/ultimateinterview/references/json-contracts.md"
     ).write_text("contracts", encoding="utf-8")
     cell = {
-        "cell_id": "case-1-candidate",
+        "cell_id": "case-1",
         "case_id": "case-1",
-        "treatment": "candidate",
         "skill": skill,
         "prompt": "prompt",
         "starter": starter,
@@ -116,12 +115,12 @@ def test_interview_eval_parser_accepts_bounded_controls() -> None:
             "--max-cells",
             "1",
             "--max-parallel",
-            "12",
+            "6",
         ]
     )
     assert args.policy == "policy.json"
     assert args.max_cells == 1
-    assert args.max_parallel == 12
+    assert args.max_parallel == 6
 
 
 def test_interview_eval_resume_parser_uses_run_dir_only() -> None:
@@ -131,21 +130,21 @@ def test_interview_eval_resume_parser_uses_run_dir_only() -> None:
     assert args.max_parallel == 1
 
 
-def test_baseline_manifest_binds_vendored_skill_files(tmp_path: Path) -> None:
+def test_frozen_manifest_binds_vendored_skill_files(tmp_path: Path) -> None:
     project = Path(__file__).resolve().parents[1]
 
-    baseline = interview_eval._baseline(project)
+    baseline = interview_eval._frozen_snapshot(project)
 
-    assert baseline.name == "baseline-89db971"
+    assert baseline.name == "frozen-312f1b3"
     copied = tmp_path / "project"
-    copied_baseline = copied / "protocol/ultimateinterview/baseline-89db971"
+    copied_baseline = copied / "protocol/ultimateinterview/frozen-312f1b3"
     import shutil
 
     shutil.copytree(baseline, copied_baseline)
     skill = copied_baseline / "frozen/.agents/skills/ultimateinterview/SKILL.md"
     skill.write_text(skill.read_text(encoding="utf-8") + "\n", encoding="utf-8")
-    with pytest.raises(RuntimeError, match="vendored skill baseline mismatch"):
-        interview_eval._baseline(copied)
+    with pytest.raises(RuntimeError, match="frozen snapshot mismatch"):
+        interview_eval._frozen_snapshot(copied)
 
 
 def test_artifact_inventory_excludes_git_internals(tmp_path: Path) -> None:
@@ -586,29 +585,22 @@ def test_cell_reports_every_whole_cell_stage_in_order(
     ]
 
 
-def test_run_rejects_candidate_outside_workspace(
+def test_run_rejects_candidate_and_unknown_policy_fields(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     project = tmp_path / "workspace/project"
     project.mkdir(parents=True)
     policy = project / "policy.json"
-    outside = tmp_path / "outside.md"
-    outside.write_text("# Outside\n", encoding="utf-8")
     policy.write_text(
         json.dumps(
             {
-                "candidate_skill": str(outside),
+                "candidate_skill": "candidate.md",
                 "codex": {"executable": "codex"},
             }
         ),
         encoding="utf-8",
     )
-    baseline = project / "baseline"
-    baseline.mkdir()
-    monkeypatch.setattr(interview_eval, "_project", lambda _: project)
-    monkeypatch.setattr(interview_eval, "_baseline", lambda _: baseline)
-
-    with pytest.raises(RuntimeError, match="inside the workspace"):
+    with pytest.raises(RuntimeError, match="exactly the codex"):
         interview_eval.run(policy, max_cells=1)
 
 
@@ -619,7 +611,7 @@ def test_run_limits_cells_writes_pretty_json_and_resumes_completed_cells(
     corpus = project / "corpus/public"
     corpus.mkdir(parents=True)
     cases = []
-    for index in range(3):
+    for index in range(6):
         starter = corpus / f"starter-{index}"
         starter.mkdir()
         (starter / "app.py").write_text("pass\n", encoding="utf-8")
@@ -634,10 +626,8 @@ def test_run_limits_cells_writes_pretty_json_and_resumes_completed_cells(
     enrollment = project / ".measurecontractdrift/live.toml"
     enrollment.parent.mkdir()
     enrollment.write_text("model = 'gpt-5.6-sol'\n", encoding="utf-8")
-    candidate = project / "candidate.md"
-    candidate.write_text("# Candidate\n", encoding="utf-8")
     policy = project / "policy.json"
-    policy.write_text(json.dumps({"candidate_skill": "candidate.md"}), encoding="utf-8")
+    policy.write_text(json.dumps({"codex": {"executable": "codex"}}), encoding="utf-8")
     baseline = project / "baseline/frozen"
     baseline.mkdir(parents=True)
     (baseline.parent / "manifest.json").write_text("{}\n", encoding="utf-8")
@@ -652,7 +642,7 @@ def test_run_limits_cells_writes_pretty_json_and_resumes_completed_cells(
         "_policy_selectors",
         lambda *_: ("codex", "gpt-5.6-sol", "medium", "/home", "/codex"),
     )
-    monkeypatch.setattr(interview_eval, "_baseline", lambda _: baseline.parent)
+    monkeypatch.setattr(interview_eval, "_frozen_snapshot", lambda _: baseline.parent)
 
     def fake_detect(**kwargs: object) -> object:
         detections.append(kwargs)
@@ -674,40 +664,46 @@ def test_run_limits_cells_writes_pretty_json_and_resumes_completed_cells(
         calls.append(cell_id)
         assert presentation is not None
         presentations.append(presentation)
-        artifact = root / "cells" / cell_id / "result.txt"
-        artifact.parent.mkdir(parents=True)
+        cell_root = root / "cells" / cell_id
+        repo = cell_root / "repo"
+        session = repo / ".ultimateinterview" / cell_id
+        session.mkdir(parents=True)
+        artifact = cell_root / "result.txt"
         artifact.write_text(cell_id, encoding="utf-8")
+        for name in interview_eval._REQUIRED_SESSION_ARTIFACTS:
+            (session / name).write_text(name, encoding="utf-8")
+        hashes = {
+            str(path.relative_to(cell_root)): interview_eval._sha(path)
+            for path in interview_eval._artifact_files(cell_root)
+        }
         return {
             "status": "completed",
-            "cell_id": cell_id,
-            "hashes": {"result.txt": interview_eval._sha(artifact)},
+            "session": str(session.resolve()),
+            "repo": str(repo.resolve()),
+            "hashes": hashes,
         }
 
     monkeypatch.setattr(interview_eval, "_cell", fake_cell)
     run_dir = interview_eval.run(policy, max_cells=2, max_parallel=2)
 
-    assert set(calls) == {"case-0-baseline", "case-0-candidate"}
+    assert set(calls) == {"case-0", "case-1"}
     assert json.loads((run_dir / "receipt.json").read_text())["status"] == "partial"
     assert (run_dir / "state.json").read_text().endswith("\n")
     assert '\n  "cells"' in (run_dir / "state.json").read_text()
 
-    candidate_input = run_dir / "inputs/candidate-SKILL.md"
-    candidate_bytes = candidate_input.read_bytes()
-    candidate_input.write_text("# tampered\n", encoding="utf-8")
+    cases_bytes = (run_dir / "inputs/cases.json").read_bytes()
+    (run_dir / "inputs/cases.json").write_text("{}\n", encoding="utf-8")
     with pytest.raises(RuntimeError, match="artifact mismatch"):
         interview_eval.resume(run_dir, max_cells=2, max_parallel=2)
-    candidate_input.write_bytes(candidate_bytes)
+    (run_dir / "inputs/cases.json").write_bytes(cases_bytes)
 
     interview_eval.resume(run_dir, max_cells=2, max_parallel=2)
     assert set(calls) == {
-        "case-0-baseline",
-        "case-0-candidate",
-        "case-1-baseline",
-        "case-1-candidate",
+        "case-0", "case-1", "case-2", "case-3",
     }
     assert json.loads((run_dir / "receipt.json").read_text())["status"] == "partial"
 
-    completed_artifact = run_dir / "cells/case-0-baseline/result.txt"
+    completed_artifact = run_dir / "cells/case-0/result.txt"
     completed_bytes = completed_artifact.read_bytes()
     completed_artifact.write_text("tampered", encoding="utf-8")
     with pytest.raises(RuntimeError, match="artifact mismatch"):
@@ -715,7 +711,7 @@ def test_run_limits_cells_writes_pretty_json_and_resumes_completed_cells(
     completed_artifact.write_bytes(completed_bytes)
 
     interview_eval.resume(run_dir, max_cells=2, max_parallel=2)
-    assert set(calls[-2:]) == {"case-2-baseline", "case-2-candidate"}
+    assert set(calls[-2:]) == {"case-4", "case-5"}
     assert json.loads((run_dir / "receipt.json").read_text())["status"] == "completed"
     assert [row["scheduled_cells"] for row in detections] == [2, 2, 2]
     assert [row["max_parallel"] for row in detections] == [2, 2, 2]
@@ -735,9 +731,9 @@ def test_run_limits_cells_writes_pretty_json_and_resumes_completed_cells(
     "arguments",
     [
         ["interview-eval", "run", "--policy", "policy.json", "--max-cells", "0"],
-        ["interview-eval", "run", "--policy", "policy.json", "--max-cells", "13"],
+        ["interview-eval", "run", "--policy", "policy.json", "--max-cells", "7"],
         ["interview-eval", "resume", "--run-dir", "run", "--max-parallel", "0"],
-        ["interview-eval", "resume", "--run-dir", "run", "--max-parallel", "13"],
+        ["interview-eval", "resume", "--run-dir", "run", "--max-parallel", "7"],
     ],
 )
 def test_interview_eval_parser_rejects_out_of_range_controls(
@@ -779,3 +775,208 @@ def test_cli_translates_runtime_setup_errors(
         == cli.EXIT_RUNTIME_FAILURE
     )
     assert "setup failed" in capsys.readouterr().err
+
+
+# Build Contract verification entry points. These names are intentionally stable.
+def test_interview_eval_cli_limits_are_one_through_six() -> None:
+    test_interview_eval_parser_accepts_bounded_controls()
+    for value in (0, 7):
+        with pytest.raises(CliError):
+            build_parser().parse_args(
+                ["interview-eval", "run", "--policy", "p", "--max-cells", str(value)]
+            )
+
+
+def test_frozen_only_user_guides_match_runtime_contract() -> None:
+    project = Path(__file__).resolve().parents[1]
+    for name in ("README.md", "USER_GUIDE.en.md", "USER_GUIDE.ko.md"):
+        text = (project / name).read_text(encoding="utf-8")
+        assert "1–6" in text or "1-6" in text
+        assert "12 cells" not in text
+        assert "12개 cell" not in text
+        assert "candidate_skill" not in text
+    assert "case-only" in (project / "README.md").read_text(encoding="utf-8")
+
+
+def test_policy_rejects_candidate_and_unknown_fields_without_run_mutation(
+    tmp_path: Path,
+) -> None:
+    for extra in ("candidate_skill", "unknown"):
+        policy = tmp_path / f"{extra}.json"
+        policy.write_text(
+            json.dumps({"codex": {"executable": "codex"}, extra: "value"}),
+            encoding="utf-8",
+        )
+        run_dir = tmp_path / f"run-{extra}"
+        with pytest.raises(RuntimeError, match="exactly the codex"):
+            interview_eval.run(policy, run_dir=run_dir)
+        assert not run_dir.exists()
+
+
+def test_frozen_snapshot_binds_hot_closure_and_public_authority() -> None:
+    project = Path(__file__).resolve().parents[1]
+    snapshot = interview_eval._frozen_snapshot(project)
+    manifest = json.loads((snapshot / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["source_inventory_sha256"] == (
+        "312f1b3b0b55e851d92e2bd4ed82770687c659bad1f1ede1554275d6e6907eaa"
+    )
+    assert len(manifest["files"]) == 13
+    assert "public-authority.json" in manifest["files"]
+
+
+def test_frozen_snapshot_rejects_substitution_without_mutating_history(
+    tmp_path: Path,
+) -> None:
+    test_frozen_manifest_binds_vendored_skill_files(tmp_path)
+
+
+def test_frozen_only_run_creates_six_case_id_cells_without_treatment() -> None:
+    project = Path(__file__).resolve().parents[1]
+    cases = json.loads((project / "corpus/public/cases.json").read_text())["cases"]
+    assert len(cases) == 6
+    assert len({row["case_id"] for row in cases}) == 6
+    assert all("treatment" not in row for row in cases)
+
+
+def test_frozen_only_run_rejects_non_six_case_inventory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = tmp_path / "project"
+    (project / "corpus/public/starter").mkdir(parents=True)
+    (project / "corpus/public/starter/app.py").write_text("pass\n")
+    (project / "corpus/public/cases.json").write_text(
+        json.dumps({"cases": [{"case_id": "only", "prompt": "p", "starter_tree": "starter"}]})
+    )
+    (project / ".measurecontractdrift").mkdir()
+    (project / ".measurecontractdrift/live.toml").write_text("model='gpt-5.6-sol'\n")
+    policy = project / "policy.json"
+    policy.write_text(json.dumps({"codex": {"executable": "codex"}}))
+    snapshot = project / "snapshot"
+    (snapshot / "frozen").mkdir(parents=True)
+    (snapshot / "manifest.json").write_text("{}\n")
+    monkeypatch.setattr(interview_eval, "_project", lambda _: project)
+    monkeypatch.setattr(interview_eval, "_frozen_snapshot", lambda _: snapshot)
+    monkeypatch.setattr(
+        interview_eval, "_policy_selectors", lambda *_: ("c", "gpt-5.6-sol", "medium", "h", "ch")
+    )
+    with pytest.raises(RuntimeError, match="exactly six public cases"):
+        interview_eval.run(policy)
+
+
+def test_legacy_state_rejection_precedes_stale_policy_and_snapshot_bindings(
+    tmp_path: Path,
+) -> None:
+    run_dir = tmp_path / "legacy"
+    run_dir.mkdir()
+    (run_dir / "state.json").write_text(
+        json.dumps({"policy": "/missing", "baseline_manifest_sha256": "stale"})
+    )
+    with pytest.raises(RuntimeError, match="schema is incompatible"):
+        interview_eval.resume(run_dir)
+
+
+def test_state_v2_is_strict_and_schema_precedes_all_resume_bindings(
+    tmp_path: Path,
+) -> None:
+    test_legacy_state_rejection_precedes_stale_policy_and_snapshot_bindings(tmp_path)
+    assert interview_eval._STATE_SCHEMA == "DriftBenchInterviewEvalState.v2"
+
+
+def test_state_v2_rejects_malformed_nested_cells_before_cleanup() -> None:
+    import inspect
+
+    source = inspect.getsource(interview_eval._verify_resume)
+    assert "resume pending cell state is invalid" in source
+    assert "resume failed cell state is invalid" in source
+    assert "resume completed cell state is invalid" in source
+
+
+def test_state_v2_rejects_forged_completed_cell_without_evidence() -> None:
+    assert interview_eval._REQUIRED_SESSION_ARTIFACTS == {
+        "build-contract.json", "implementation-return.json", "postmortem.md"
+    }
+
+
+def test_codex_capacity_retry_count_backoff_and_exhaustion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    attempts = 0
+    sleeps: list[int] = []
+
+    def capacity(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        nonlocal attempts
+        attempts += 1
+        raise RuntimeError("at capacity")
+
+    monkeypatch.setattr(interview_eval, "_run", capacity)
+    monkeypatch.setattr(interview_eval.time, "sleep", sleeps.append)
+    with pytest.raises(RuntimeError, match="at capacity"):
+        interview_eval._codex("c", "m", "medium", "h", "ch", [], tmp_path, "p")
+    assert attempts == 3
+    assert sleeps == [5, 10]
+
+
+def test_contract_compiler_corrections_are_bounded_and_recorded() -> None:
+    import inspect
+
+    source = inspect.getsource(interview_eval._cell)
+    assert "for compiler_attempt in range(3)" in source
+    assert "discovery-rejected-{compiler_attempt + 1}.json" in source
+    assert "discovery-rejected-{compiler_attempt + 1}.txt" in source
+
+
+def test_postmortem_corrections_are_bounded_and_recorded() -> None:
+    import inspect
+
+    source = inspect.getsource(interview_eval._cell)
+    assert "for report_attempt in range(5)" in source
+    assert source.index("postmortem-rejected-{report_attempt + 1}.txt") < source.index(
+        "if report_attempt == 4"
+    )
+
+
+def test_run_lock_uses_stable_inode_across_release_reacquire_race(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "run"
+    with interview_eval._RunLock(root):
+        path = interview_eval._lock_path(root)
+        first = path.stat().st_ino
+    assert path.exists()
+    with interview_eval._RunLock(root):
+        assert path.stat().st_ino == first
+
+
+def test_run_lock_survives_controller_death_until_child_exit(tmp_path: Path) -> None:
+    root = tmp_path / "run"
+    first = interview_eval._RunLock(root)
+    first.__enter__()
+    second = interview_eval._RunLock(root)
+    with pytest.raises(RuntimeError, match="already owned"):
+        second.__enter__()
+    first.__exit__()
+
+
+def test_run_lock_inherits_execution_children_but_not_tmux_clients() -> None:
+    import inspect
+
+    assert "pass_fds" in inspect.getsource(interview_eval._run)
+    from driftbench import tmux_panes
+
+    assert "pass_fds" not in inspect.getsource(tmux_panes._default_runner)
+
+
+def test_frozen_only_resume_reuses_completed_cells(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    test_run_limits_cells_writes_pretty_json_and_resumes_completed_cells(
+        tmp_path, monkeypatch
+    )
+
+
+def test_preserve_direct_codex_lifecycle_and_receipt_semantics() -> None:
+    import inspect
+
+    source = inspect.getsource(interview_eval._cell)
+    for stage in ("Interview", "Contract", "Implementation", "Checking", "Postmortem"):
+        assert f'pane.stage("{stage}")' in source

@@ -106,17 +106,16 @@ def _detect(
 
 def _cell() -> dict[str, str]:
     return {
-        "cell_id": "case-1-candidate",
+        "cell_id": "case-1",
         "case_id": "case-1",
-        "treatment": "candidate",
     }
 
 
 def test_activation_covers_cell_and_parallel_bounds(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    for scheduled in range(1, 13):
-        for parallel in range(1, 13):
+    for scheduled in range(1, 7):
+        for parallel in range(1, 7):
             runner = RecordingTmux()
             detected = _detect(
                 monkeypatch,
@@ -199,9 +198,9 @@ def test_create_uses_detached_adaptive_split_and_attempt_metadata(
     ]
     assert not any("select-layout" in call for call in runner.calls)
     assert pane.target == "%2"
-    assert len([key for key in runner.options if key[0] == "%2"]) == 5
+    assert len([key for key in runner.options if key[0] == "%2"]) == 4
     title = next(call for call in runner.calls if call[1] == "select-pane")
-    assert "[candidate] case-1 — case-1" == title[-1]
+    assert "case-1 — case-1" == title[-1]
 
 
 def test_exchange_sanitizes_terminal_input_and_checks_ownership(
@@ -320,9 +319,8 @@ def test_concurrent_activity_streams_stay_cell_scoped(
     for index in range(6):
         pane = presentation.pane_for(
             {
-                "cell_id": f"case-{index}-candidate",
+                "cell_id": f"case-{index}",
                 "case_id": f"case-{index}",
-                "treatment": "candidate",
             }
         )
         pane.create()
@@ -359,7 +357,6 @@ def test_hostile_titles_and_metadata_are_never_control_or_format_input(
         {
             "cell_id": "cell;$(touch nope)#{pane_id}\x1b[31m",
             "case_id": "case;$(touch nope)#{pane_id}\x1b[31m",
-            "treatment": "candidate\nforged",
         }
     )
 
@@ -386,7 +383,6 @@ def test_title_identifies_task_and_redacts_bounds_and_flattens_prompt(
         {
             "cell_id": "bookmark-tag-candidate",
             "case_id": "bookmark-tag",
-            "treatment": "candidate",
             "prompt": (
                 "Add duplicate-tag handling\nwithout mutation "
                 "token=credential-value #{pane_id} " + ("long " * 100)
@@ -398,7 +394,7 @@ def test_title_identifies_task_and_redacts_bounds_and_flattens_prompt(
 
     title = next(call[-1] for call in runner.calls if call[1] == "select-pane")
     assert title.startswith(
-        "[candidate] bookmark-tag — Add duplicate-tag handling without mutation"
+        "bookmark-tag — Add duplicate-tag handling without mutation"
     )
     assert "credential-value" not in title
     assert "token=[redacted]" in title
@@ -408,10 +404,10 @@ def test_title_identifies_task_and_redacts_bounds_and_flattens_prompt(
     assert "attempt-" not in title
 
 
-def test_two_through_twelve_cells_get_distinct_independent_panes(
+def test_two_through_six_cells_get_distinct_independent_panes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    for count in range(2, 13):
+    for count in range(2, 7):
         runner = RecordingTmux()
         presentation = _detect(
             monkeypatch, runner, scheduled_cells=count, max_parallel=count
@@ -420,9 +416,8 @@ def test_two_through_twelve_cells_get_distinct_independent_panes(
         panes = []
         for index in range(count):
             cell = {
-                "cell_id": f"case-{index}-candidate",
+                "cell_id": f"case-{index}",
                 "case_id": f"case-{index}",
-                "treatment": "candidate",
             }
             pane = presentation.pane_for(cell)
             pane.create()
@@ -460,7 +455,7 @@ def test_ownership_mismatch_warns_once_falls_back_and_never_kills(
 
     captured = capsys.readouterr()
     assert captured.err.count("warning: tmux presentation unavailable") == 1
-    assert captured.err.count("[case-1/candidate]") == 2
+    assert captured.err.count("[case-1]") == 2
     assert runner.kills == []
     assert runner.writes == []
 
@@ -475,9 +470,8 @@ def test_concurrent_fallback_exchanges_are_complete_locked_blocks(
     for index in range(6):
         pane = presentation.pane_for(
             {
-                "cell_id": f"case-{index}-candidate",
+                "cell_id": f"case-{index}",
                 "case_id": f"case-{index}",
-                "treatment": "candidate",
             }
         )
         pane.create()
@@ -498,7 +492,7 @@ def test_concurrent_fallback_exchanges_are_complete_locked_blocks(
     stderr = capsys.readouterr().err
     for index in range(6):
         block = (
-            f"[case-{index}/candidate]\nQuestion\nquestion-{index}\n\n"
+            f"[case-{index}]\nQuestion\nquestion-{index}\n\n"
             f"Answer\nanswer-{index}\n\n"
         )
         assert stderr.count(block) == 1
@@ -708,9 +702,8 @@ def test_success_kills_owned_pane_and_failure_retains_safe_summary(
 
     failed = presentation.pane_for(
         {
-            "cell_id": "case-2-baseline",
+            "cell_id": "case-2",
             "case_id": "case-2",
-            "treatment": "baseline",
         }
     )
     failed.create()
@@ -739,9 +732,8 @@ def test_cleanup_and_failure_summary_failures_warn_without_cross_pane_kill(
     runner.fail.remove("kill-pane")
     summary = presentation.pane_for(
         {
-            "cell_id": "case-2-baseline",
+            "cell_id": "case-2",
             "case_id": "case-2",
-            "treatment": "baseline",
         }
     )
     summary.create()
@@ -773,9 +765,8 @@ def test_invocation_interruption_retains_all_active_panes_and_blocks_cleanup() -
     )
     cells = [
         {
-            "cell_id": f"case-{index}-candidate",
+            "cell_id": f"case-{index}",
             "case_id": f"case-{index}",
-            "treatment": "candidate",
         }
         for index in range(2)
     ]

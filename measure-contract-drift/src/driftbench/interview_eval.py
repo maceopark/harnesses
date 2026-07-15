@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import concurrent.futures
+import fcntl
 import hashlib
 import json
 import os
@@ -20,6 +21,14 @@ from .corpus import starter_tree_digest
 from .tmux_panes import TmuxPresentation
 
 _LOCK = threading.Lock()
+_STATE_SCHEMA = "DriftBenchInterviewEvalState.v2"
+_SNAPSHOT = "frozen-312f1b3"
+_REQUIRED_SESSION_ARTIFACTS = {
+    "build-contract.json",
+    "implementation-return.json",
+    "postmortem.md",
+}
+_INHERITED_LOCK_FD: int | None = None
 
 
 def _pretty(path: Path, value: Any) -> None:
@@ -79,23 +88,72 @@ def _verify_hashes(
             raise RuntimeError(f"artifact mismatch: {relative}")
 
 
-def _verify_resume(root: Path, state_path: Path, policy_path: Path) -> dict[str, Any]:
+def _verify_resume(
+    root: Path,
+    state_path: Path,
+    policy_path: Path,
+    snapshot: Path,
+    cell_ids: set[str],
+) -> dict[str, Any]:
     state = json.loads(state_path.read_text(encoding="utf-8"))
+    if state.get("schema") != _STATE_SCHEMA:
+        raise RuntimeError("resume state schema is incompatible")
+    if set(state) != {
+        "schema",
+        "policy",
+        "policy_sha256",
+        "frozen_manifest_sha256",
+        "cells",
+    }:
+        raise RuntimeError("resume state fields are invalid")
     if state.get("policy") != str(policy_path) or state.get("policy_sha256") != _sha(
         policy_path
     ):
         raise RuntimeError("resume policy binding is invalid")
+    if state.get("frozen_manifest_sha256") != _sha(snapshot / "manifest.json"):
+        raise RuntimeError("resume frozen snapshot binding is invalid")
     inputs = root / "inputs"
     input_manifest = json.loads((inputs / "manifest.json").read_text(encoding="utf-8"))
     _verify_hashes(inputs, input_manifest.get("hashes"), ignored={"manifest.json"})
     cells = state.get("cells")
-    if not isinstance(cells, dict):
-        raise RuntimeError("resume cell state is invalid")
+    if not isinstance(cells, dict) or set(cells) != cell_ids:
+        raise RuntimeError("resume cell inventory is invalid")
     for cell_id, result in cells.items():
         if not isinstance(result, dict):
             raise RuntimeError(f"resume cell state is invalid: {cell_id}")
-        if result.get("status") == "completed":
-            _verify_hashes(root / "cells" / cell_id, result.get("hashes"))
+        status = result.get("status")
+        if status == "pending":
+            if result != {"status": "pending"}:
+                raise RuntimeError(f"resume pending cell state is invalid: {cell_id}")
+        elif status == "failed":
+            if set(result) != {"status", "error"} or not isinstance(
+                result.get("error"), str
+            ) or not result["error"]:
+                raise RuntimeError(f"resume failed cell state is invalid: {cell_id}")
+        elif status == "completed":
+            if set(result) != {"status", "session", "repo", "hashes"}:
+                raise RuntimeError(f"resume completed cell state is invalid: {cell_id}")
+            cell_root = root / "cells" / cell_id
+            expected_repo = (cell_root / "repo").resolve()
+            expected_session = (
+                expected_repo / ".ultimateinterview" / cell_id
+            ).resolve()
+            if result.get("repo") != str(expected_repo) or result.get("session") != str(
+                expected_session
+            ):
+                raise RuntimeError(f"resume completed cell paths are invalid: {cell_id}")
+            hashes = result.get("hashes")
+            if not isinstance(hashes, dict) or not hashes:
+                raise RuntimeError(f"resume completed cell hashes are invalid: {cell_id}")
+            required = {
+                str((expected_session / name).relative_to(cell_root))
+                for name in _REQUIRED_SESSION_ARTIFACTS
+            }
+            if not required <= set(hashes):
+                raise RuntimeError(f"resume completed cell evidence is incomplete: {cell_id}")
+            _verify_hashes(cell_root, hashes)
+        else:
+            raise RuntimeError(f"resume cell status is invalid: {cell_id}")
     return state
 
 
@@ -106,17 +164,17 @@ def _project(policy: Path) -> Path:
     return policy.parent
 
 
-def _baseline(project: Path) -> Path:
-    root = project / "protocol/ultimateinterview/baseline-89db971"
+def _frozen_snapshot(project: Path) -> Path:
+    root = project / "protocol/ultimateinterview" / _SNAPSHOT
     manifest_path = root / "manifest.json"
     if manifest_path.is_symlink():
-        raise RuntimeError("vendored skill baseline manifest must not be a symlink")
+        raise RuntimeError("frozen snapshot manifest must not be a symlink")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if manifest.get("baseline") != "ultimateinterview-89db971":
-        raise RuntimeError("vendored skill baseline identity is invalid")
+    if manifest.get("snapshot") != _SNAPSHOT:
+        raise RuntimeError("frozen snapshot identity is invalid")
     files = manifest.get("files")
     if not isinstance(files, dict) or not files:
-        raise RuntimeError("vendored skill baseline manifest is invalid")
+        raise RuntimeError("frozen snapshot manifest is invalid")
     actual = {
         str(path.relative_to(root / "frozen"))
         for path in _artifact_files(root / "frozen")
@@ -126,16 +184,62 @@ def _baseline(project: Path) -> Path:
     if authority_path.is_symlink():
         raise RuntimeError("vendored public authority must not be a symlink")
     if actual != set(files):
-        raise RuntimeError("vendored skill baseline inventory is invalid")
+        raise RuntimeError("frozen snapshot inventory is invalid")
     for relative, expected in files.items():
         path = (
             root / ("frozen" if relative != "public-authority.json" else "") / relative
         )
         if path.is_symlink() or not path.resolve().is_relative_to(root.resolve()):
-            raise RuntimeError(f"vendored skill baseline path is invalid: {relative}")
+            raise RuntimeError(f"frozen snapshot path is invalid: {relative}")
         if not path.is_file() or _sha(path) != expected:
-            raise RuntimeError(f"vendored skill baseline mismatch: {relative}")
+            raise RuntimeError(f"frozen snapshot mismatch: {relative}")
     return root
+
+
+def _validate_policy(policy_path: Path) -> dict[str, Any]:
+    policy = json.loads(policy_path.read_text(encoding="utf-8"))
+    if not isinstance(policy, dict) or set(policy) != {"codex"}:
+        raise RuntimeError("live policy allows exactly the codex top-level field")
+    codex = policy["codex"]
+    if not isinstance(codex, dict) or set(codex) != {"executable"} or not isinstance(
+        codex.get("executable"), str
+    ) or not codex["executable"]:
+        raise RuntimeError("live policy codex field is invalid")
+    return policy
+
+
+def _lock_path(root: Path) -> Path:
+    resolved = root.resolve()
+    digest = hashlib.sha256(str(resolved).encode()).hexdigest()
+    lock_dir = resolved.parent / ".interview-eval-locks"
+    lock_dir.mkdir(parents=True, exist_ok=True)
+    return lock_dir / f"{digest}.lock"
+
+
+class _RunLock:
+    def __init__(self, root: Path) -> None:
+        self.path = _lock_path(root)
+        self.fd: int | None = None
+
+    def __enter__(self) -> int:
+        global _INHERITED_LOCK_FD
+        fd = os.open(self.path, os.O_RDWR | os.O_CREAT, 0o600)
+        os.set_inheritable(fd, True)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            os.close(fd)
+            raise RuntimeError("run is already owned by another process") from None
+        self.fd = fd
+        _INHERITED_LOCK_FD = fd
+        return fd
+
+    def __exit__(self, *args: object) -> None:
+        global _INHERITED_LOCK_FD
+        assert self.fd is not None
+        _INHERITED_LOCK_FD = None
+        fcntl.flock(self.fd, fcntl.LOCK_UN)
+        os.close(self.fd)
 
 
 def _policy_selectors(
@@ -183,6 +287,7 @@ def _run(
             capture_output=True,
             env=environment,
             check=False,
+            pass_fds=(() if _INHERITED_LOCK_FD is None else (_INHERITED_LOCK_FD,)),
         )
     else:
         process = subprocess.Popen(
@@ -193,6 +298,7 @@ def _run(
             stderr=subprocess.PIPE,
             text=True,
             env=environment,
+            pass_fds=(() if _INHERITED_LOCK_FD is None else (_INHERITED_LOCK_FD,)),
         )
         assert process.stdin is not None
         assert process.stdout is not None
@@ -802,8 +908,6 @@ def _cell(
             _run(report_argv, session)
             break
         except RuntimeError as error:
-            if report_attempt == 4:
-                raise
             attempts = session / "attempts"
             attempts.mkdir(exist_ok=True)
             shutil.copy2(
@@ -813,6 +917,8 @@ def _cell(
             (attempts / f"postmortem-rejected-{report_attempt + 1}.txt").write_text(
                 str(error) + "\n", encoding="utf-8"
             )
+            if report_attempt == 4:
+                raise
             correction_prompt = (
                 "The vendored postmortem report validator rejected the prior report. "
                 "Read only compiler-evidence-bundle.json in this cell session and return a "
@@ -858,7 +964,7 @@ def _cell(
     }
 
 
-def run(
+def _run_locked(
     policy_path: Path,
     *,
     max_cells: int | None = None,
@@ -867,8 +973,8 @@ def run(
 ) -> Path:
     policy_path = policy_path.resolve(strict=True)
     project = _project(policy_path)
-    baseline = _baseline(project)
-    frozen = baseline / "frozen"
+    snapshot = _frozen_snapshot(project)
+    frozen = snapshot / "frozen"
     root = run_dir or project / ".measurecontractdrift/interview-eval" / (
         "live-" + datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ") + "-interview-eval"
     )
@@ -879,17 +985,7 @@ def run(
     enrollment_input = inputs / "enrollment.toml"
     cases_input = inputs / "cases.json"
     starters_input = inputs / "starters"
-    policy = json.loads(policy_path.read_text(encoding="utf-8"))
-    candidate_setting = policy.get("candidate_skill")
-    if not isinstance(candidate_setting, str) or not candidate_setting.strip():
-        raise RuntimeError("candidate_skill must be a nonempty relative path")
-    candidate_relative = Path(candidate_setting)
-    candidate_source = (policy_path.parent / candidate_relative).resolve()
-    if candidate_relative.is_absolute() or not candidate_source.is_relative_to(
-        project.parent
-    ):
-        raise RuntimeError("candidate_skill must stay inside the workspace")
-    candidate_input = inputs / "candidate-SKILL.md"
+    _validate_policy(policy_path)
     if not is_resume:
         if _artifact_files(root):
             raise RuntimeError("new run directory is not empty")
@@ -904,48 +1000,46 @@ def run(
                 project / "corpus/public" / row["starter_tree"],
                 starters_input / row["case_id"],
             )
-        candidate_source = candidate_source.resolve(strict=True)
-        candidate_input.write_bytes(candidate_source.read_bytes())
         input_hashes = {
             str(path.relative_to(inputs)): _sha(path)
             for path in sorted(_artifact_files(inputs))
         }
         _pretty(inputs / "manifest.json", {"hashes": input_hashes})
     selectors = _policy_selectors(policy_path, enrollment_input)
-    baseline_skill = frozen / ".agents/skills/ultimateinterview/SKILL.md"
-    treatments = [("baseline", baseline_skill)]
-    if not candidate_input.is_file():
-        raise RuntimeError("candidate skill input is missing")
-    treatments.append(("candidate", candidate_input))
+    frozen_skill = frozen / ".agents/skills/ultimateinterview/SKILL.md"
+    if is_resume:
+        preliminary_state = json.loads(state_path.read_text(encoding="utf-8"))
+        if preliminary_state.get("schema") != _STATE_SCHEMA:
+            raise RuntimeError("resume state schema is incompatible")
+        input_manifest = json.loads(
+            (inputs / "manifest.json").read_text(encoding="utf-8")
+        )
+        _verify_hashes(inputs, input_manifest.get("hashes"), ignored={"manifest.json"})
     corpus = json.loads(cases_input.read_text(encoding="utf-8"))["cases"]
     cells = [
         {
-            "cell_id": f"{row['case_id']}-{treatment}",
+            "cell_id": row["case_id"],
             "case_id": row["case_id"],
-            "treatment": treatment,
-            "skill": skill,
+            "skill": frozen_skill,
             "prompt": row["prompt"],
             "starter": starters_input / row["case_id"],
         }
         for row in corpus
-        for treatment, skill in treatments
     ]
+    if len(cells) != 6 or len({row["cell_id"] for row in cells}) != 6:
+        raise RuntimeError("live evaluation requires exactly six public cases")
+    cell_ids = {row["cell_id"] for row in cells}
     state = (
-        _verify_resume(root, state_path, policy_path)
+        _verify_resume(root, state_path, policy_path, snapshot, cell_ids)
         if is_resume
         else {
+            "schema": _STATE_SCHEMA,
             "policy": str(policy_path),
             "policy_sha256": _sha(policy_path),
-            "baseline_manifest_sha256": _sha(baseline / "manifest.json"),
+            "frozen_manifest_sha256": _sha(snapshot / "manifest.json"),
             "cells": {row["cell_id"]: {"status": "pending"} for row in cells},
         }
     )
-    if state.get("baseline_manifest_sha256") != _sha(baseline / "manifest.json"):
-        raise RuntimeError("resume baseline binding is invalid")
-    if not isinstance(state.get("cells"), dict) or set(state["cells"]) != {
-        row["cell_id"] for row in cells
-    }:
-        raise RuntimeError("resume cell inventory is invalid")
     _pretty(state_path, state)
 
     pending = [
@@ -1030,11 +1124,39 @@ def run(
     return root
 
 
+def run(
+    policy_path: Path,
+    *,
+    max_cells: int | None = None,
+    max_parallel: int = 1,
+    run_dir: Path | None = None,
+) -> Path:
+    if max_cells is not None and not 1 <= max_cells <= 6:
+        raise RuntimeError("max_cells must be between one and six")
+    if not 1 <= max_parallel <= 6:
+        raise RuntimeError("max_parallel must be between one and six")
+    policy_path = policy_path.resolve(strict=True)
+    _validate_policy(policy_path)
+    project = _project(policy_path)
+    root = (run_dir or project / ".measurecontractdrift/interview-eval" / (
+        "live-" + datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ") + "-interview-eval"
+    )).resolve()
+    with _RunLock(root):
+        return _run_locked(
+            policy_path,
+            max_cells=max_cells,
+            max_parallel=max_parallel,
+            run_dir=root,
+        )
+
+
 def resume(
     run_dir: Path, *, max_cells: int | None = None, max_parallel: int = 1
 ) -> Path:
     run_dir = run_dir.resolve(strict=True)
     state = json.loads((run_dir / "state.json").read_text(encoding="utf-8"))
+    if state.get("schema") != _STATE_SCHEMA:
+        raise RuntimeError("resume state schema is incompatible")
     return run(
         Path(state["policy"]),
         max_cells=max_cells,
