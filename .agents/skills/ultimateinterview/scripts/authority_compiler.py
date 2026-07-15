@@ -41,7 +41,6 @@ DISCOVERY_SCHEMA = "ultimateinterview.discovery-record.v1"
 BUILD_CONTRACT_SCHEMA = "ultimateinterview.build-contract.v1"
 AUTHORITY_RECONCILIATION_INPUT_SCHEMA = "ultimateinterview.authority-reconciliation-input.v1"
 AUTHORITY_REGISTER_SCHEMA = "ultimateinterview.authority-register.v1"
-IMPLEMENTATION_RETURN_SCHEMA = "ultimateinterview.implementation-return.v1"
 _ID_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9._:-]*\Z")
 _SCOPE_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/-]*\Z")
 _DELEGATION_WILDCARD_PATTERN = re.compile(r"[*?\[\]]")
@@ -110,10 +109,6 @@ class VerificationMethod(StrEnum):
     COMMAND = "command"
     SCENARIO = "scenario"
     INSPECTION = "inspection"
-_RETURN_STATUSES = frozenset({"implemented", "blocked", "failed"})
-_RETURN_OUTCOMES = frozenset({"passed", "failed", "blocked", "not-run"})
-
-
 OWNER_ONLY_DECISION_CLASSES = frozenset(
     {
         DecisionClass.GOAL,
@@ -1639,133 +1634,6 @@ def _delegation_payload(authority: Authority) -> dict[str, Any]:
         "statement": authority.statement,
         "source": _source_payload(authority.source),
     }
-def _contract_ids(contract: Mapping[str, Any], field: str) -> frozenset[str]:
-    rows = _array(contract.get(field), f"$.{field}")
-    identifiers = tuple(
-        _identifier(_object(row, f"$.{field}[{index}]").get("id"), f"$.{field}[{index}].id")
-        for index, row in enumerate(rows)
-    )
-    if len(set(identifiers)) != len(identifiers):
-        _fail("DUPLICATE_ID", f"$.{field}", "contains duplicate identifiers")
-    return frozenset(identifiers)
-
-
-def _return_outcomes(value: Any, path: str, known: frozenset[str]) -> dict[str, str]:
-    outcomes = _object(value, path)
-    unknown = sorted(set(outcomes) - known)
-    missing = sorted(known - set(outcomes))
-    if unknown:
-        _fail("UNKNOWN_REFERENCE", path, f"unknown reference {unknown[0]}")
-    if missing:
-        _fail("OUTCOME_COVERAGE_MISMATCH", path, f"missing outcome for {missing[0]}")
-    result: dict[str, str] = {}
-    for identifier in sorted(known):
-        outcome = _text(outcomes[identifier], f"{path}.{identifier}")
-        if outcome not in _RETURN_OUTCOMES:
-            _fail("INVALID_VALUE", f"{path}.{identifier}", "must be passed, failed, blocked, or not-run")
-        result[identifier] = outcome
-    return result
-
-
-def validate_implementation_return(value: Any, contract: Mapping[str, Any]) -> dict[str, Any]:
-    """Validate a complete digest-bound implementation self-report."""
-    if _text(contract.get("schema"), "$.schema") != BUILD_CONTRACT_SCHEMA:
-        _fail("INVALID_SCHEMA", "$.schema", f"must be {BUILD_CONTRACT_SCHEMA}")
-    claimed_contract_digest = _digest(contract.get("contract_digest"), "$.contract_digest")
-    if contract_digest(contract) != claimed_contract_digest:
-        _fail("CONTRACT_DIGEST_MISMATCH", "$.contract_digest", "does not match the Build Contract")
-    requirements = _contract_ids(contract, "requirements")
-    verifications = _contract_ids(contract, "verifications")
-    object_value = _fields(
-        value,
-        "$",
-        {
-            "schema",
-            "contract_digest",
-            "status",
-            "changed_repository_paths",
-            "requirement_outcomes",
-            "verification_outcomes",
-            "commands",
-            "existing_evidence_artifacts",
-            "non_contract_implementation_decisions",
-            "not_run",
-            "blocked",
-            "failed",
-        },
-    )
-    if _text(object_value["schema"], "$.schema") != IMPLEMENTATION_RETURN_SCHEMA:
-        _fail("INVALID_SCHEMA", "$.schema", f"must be {IMPLEMENTATION_RETURN_SCHEMA}")
-    if _digest(object_value["contract_digest"], "$.contract_digest") != claimed_contract_digest:
-        _fail("CONTRACT_DIGEST_MISMATCH", "$.contract_digest", "does not match the Build Contract")
-    status = _text(object_value["status"], "$.status")
-    if status not in _RETURN_STATUSES:
-        _fail("INVALID_VALUE", "$.status", "must be implemented, blocked, or failed")
-    requirement_outcomes = _return_outcomes(
-        object_value["requirement_outcomes"], "$.requirement_outcomes", requirements
-    )
-    verification_outcomes = _return_outcomes(
-        object_value["verification_outcomes"], "$.verification_outcomes", verifications
-    )
-    all_outcomes = tuple(requirement_outcomes.values()) + tuple(verification_outcomes.values())
-    for field in ("changed_repository_paths", "existing_evidence_artifacts"):
-        paths = tuple(
-            _repository_path(item, f"$.{field}[{index}]", error_code="INVALID_REPOSITORY_PATH")
-            for index, item in enumerate(_array(object_value[field], f"$.{field}"))
-        )
-        if len(set(paths)) != len(paths):
-            _fail("DUPLICATE_REFERENCE", f"$.{field}", "must not contain duplicates")
-    commands = _array(object_value["commands"], "$.commands")
-    command_rows: set[tuple[str, str]] = set()
-    for index, command in enumerate(commands):
-        row = _fields(command, f"$.commands[{index}]", {"command", "result"})
-        pair = (
-            _text(row["command"], f"$.commands[{index}].command"),
-            _text(row["result"], f"$.commands[{index}].result"),
-        )
-        if pair in command_rows:
-            _fail("DUPLICATE_REFERENCE", "$.commands", "must not contain duplicate command results")
-        command_rows.add(pair)
-    decision_refs: set[str] = set()
-    for index, decision in enumerate(
-        _array(object_value["non_contract_implementation_decisions"], "$.non_contract_implementation_decisions")
-    ):
-        row = _fields(
-            decision,
-            f"$.non_contract_implementation_decisions[{index}]",
-            {"contract_digest", "requirement_refs", "decision_ref"},
-        )
-        if _digest(row["contract_digest"], f"$.non_contract_implementation_decisions[{index}].contract_digest") != claimed_contract_digest:
-            _fail("CONTRACT_DIGEST_MISMATCH", f"$.non_contract_implementation_decisions[{index}].contract_digest", "does not match the Build Contract")
-        decision_ref = _text(row["decision_ref"], f"$.non_contract_implementation_decisions[{index}].decision_ref")
-        if decision_ref in decision_refs:
-            _fail("DUPLICATE_REFERENCE", "$.non_contract_implementation_decisions", "must not contain duplicate decision references")
-        decision_refs.add(decision_ref)
-        references = _unique_identifiers(
-            row["requirement_refs"],
-            f"$.non_contract_implementation_decisions[{index}].requirement_refs",
-        )
-        for reference in references:
-            if reference not in requirements:
-                _fail("UNKNOWN_REFERENCE", f"$.non_contract_implementation_decisions[{index}].requirement_refs", f"unknown requirement reference {reference}")
-    for field, outcome in (("not_run", "not-run"), ("blocked", "blocked"), ("failed", "failed")):
-        notes = _unique_texts(object_value[field], f"$.{field}", allow_empty=True)
-        if outcome in all_outcomes and not notes:
-            _fail("OUTCOME_EVIDENCE_MISMATCH", f"$.{field}", f"must explain {outcome} outcomes")
-        if outcome not in all_outcomes and notes:
-            _fail("OUTCOME_EVIDENCE_MISMATCH", f"$.{field}", f"cannot be present without {outcome} outcomes")
-    if "passed" in all_outcomes and not commands and not object_value["existing_evidence_artifacts"]:
-        _fail("MISSING_EVIDENCE", "$", "passed outcomes require a command result or evidence artifact")
-    if status == "implemented" and any(outcome != "passed" for outcome in all_outcomes):
-        _fail("STATUS_OUTCOME_MISMATCH", "$.status", "implemented requires every outcome to be passed")
-    if status == "blocked" and "blocked" not in all_outcomes:
-        _fail("STATUS_OUTCOME_MISMATCH", "$.status", "blocked requires a blocked outcome")
-    if status == "failed" and "failed" not in all_outcomes:
-        _fail("STATUS_OUTCOME_MISMATCH", "$.status", "failed requires a failed outcome")
-    return dict(object_value)
-
-
-
 def compile_discovery_record(
     value: Any,
     authority_register: Any | None = None,

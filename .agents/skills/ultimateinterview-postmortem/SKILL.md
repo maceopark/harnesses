@@ -9,9 +9,9 @@ Compare the sealed Build Contract with the implementation and attribute each mat
 
 ## Preconditions and Evidence Boundary
 
-Read `../ultimateinterview/references/json-contracts.md`. Require a repository-local `.ultimateinterview/<session>/` containing a valid `build-contract.json`, `discovery-record.json`, and `authority-register.json`. New v3 sessions also require `execution-contract.md` with its deterministic DEC manifest; legacy compiler-only sessions remain auditable when it is absent. Treat `evidence-map.md` as preferred v3 lineage evidence when present. Never fabricate missing `implementation-return.json` or `decision.jsonl`.
+Read `../ultimateinterview/references/json-contracts.md`. Require a repository-local `.ultimateinterview/<session>/` containing a valid `build-contract.json`, `discovery-record.json`, and `authority-register.json`. New v3 sessions also require `execution-contract.md` with its deterministic DEC manifest; legacy compiler-only sessions remain auditable when it is absent. Treat `evidence-map.md` as preferred v3 lineage evidence when present. Never fabricate missing `decision.jsonl`.
 
-The sealed Build Contract is the sole normative source. The evidence map, Discovery Record, repository state, tests, implementation return, decision log, prior conversation, and reviewer output are evidence only. Evidence may reveal an unexplained mismatch but cannot authorize product behavior.
+The sealed Build Contract is the sole normative source. The evidence map, Discovery Record, repository state, tests, decision log, prior conversation, and reviewer output are evidence only. Evidence may reveal an unexplained mismatch but cannot authorize product behavior.
 
 Require substantially complete implementation evidence: a merged PR, commit range, branch diff, or unambiguous working tree. Run from this skill directory:
 
@@ -19,7 +19,7 @@ Require substantially complete implementation evidence: a merged PR, commit rang
 python3 scripts/compiler_session_check.py <session-dir> [--diff-range <range> | --diff-file <path>]
 ```
 
-This must verify the sealed digest, recompile the Discovery Record against the Authority Register, run the deterministic projection gate whenever `execution-contract.md` is present, validate optional digest-bound implementation artifacts, scope the repository evidence, and regenerate `compiler-evidence-bundle.json`. Stop on failure. A legacy session with no execution contract records a null projection result; an execution contract that is present but lacks or fails the manifest is invalid, never silently downgraded to legacy.
+This must verify the sealed digest, recompile the Discovery Record against the Authority Register, run the deterministic projection gate whenever `execution-contract.md` is present, validate the decision log when present, scope the repository evidence, and regenerate `compiler-evidence-bundle.json`. Stop on failure. A legacy session with no execution contract records a null projection result; an execution contract that is present but lacks or fails the manifest is invalid, never silently downgraded to legacy.
 
 The evaluator should be independent of the interview and implementation. If it participated in either and a fresh evaluator cannot be used, disclose the limitation and do not claim an independent result. Do not add a panel or iterative reviewer loop.
 
@@ -86,4 +86,4 @@ python3 scripts/postmortem_report_check.py <session-dir>/postmortem.md --bundle 
 python3 scripts/compiler_session_check.py <session-dir> [same diff arguments]
 ```
 
-Verify that Conclusion counts equal the Divergence Table. If implementation reversed an owner decision, flag it for re-confirmation. Do not modify the sealed contract, Discovery Record, implementation, implementation return, or either skill from inside a postmortem.
+Verify that Conclusion counts equal the Divergence Table. If implementation reversed an owner decision, flag it for re-confirmation. Do not modify the sealed contract, Discovery Record, implementation, or either skill from inside a postmortem.

@@ -49,7 +49,6 @@ VERIFICATION_HEADERS = (
     "Direct execution",
     "Result",
     "Evidence",
-    "Return agreement",
 )
 LESSON_HEADERS = (
     "Store",
@@ -378,8 +377,6 @@ def validate_verifications(
             raise ReportError(f"Verification Execution row {identifier} has invalid direct execution state")
         if row["Result"] not in {"passed", "failed", "blocked", "not-run"}:
             raise ReportError(f"Verification Execution row {identifier} has invalid result")
-        if row["Return agreement"] not in {"agrees", "contradicts", "return absent"}:
-            raise ReportError(f"Verification Execution row {identifier} has invalid return agreement")
         seen.add(identifier)
     missing = sorted(known - seen)
     if missing:
@@ -440,7 +437,7 @@ def validate_implementation_evidence(lines: Sequence[str], section: tuple[int, i
     headers = ("Source", "Scope", "Digest / revision", "Notes")
     rows = require_table(lines, section, headers, "Implementation Evidence")
     sources = {row["Source"] for row in rows}
-    expected = {"Build Contract", "Repository evidence", "Verification", "Implementation return", "Decision log"}
+    expected = {"Build Contract", "Repository evidence", "Verification", "Decision log"}
     missing = sorted(expected - sources)
     if missing:
         raise ReportError(f"Implementation Evidence is missing sources: {', '.join(missing)}")

@@ -1,15 +1,15 @@
 ---
 name: ultimateinterview
-description: Material-decision interview for brownfield software changes. Use when a developer wants a fast, evidence-grounded, implementation-ready contract before coding; especially for unclear feature or bugfix behavior, requirements gaps, acceptance criteria, non-goals, edge cases, misuse cases, PRDs, specs, or Build Contracts.
+description: Agent-agnostic material-decision interview and implementation planning for brownfield software changes. Use when a developer wants a fast, evidence-grounded Build Contract plus a fresh-context-ready implementation plan before coding; especially for unclear feature or bugfix behavior, requirements gaps, acceptance criteria, non-goals, edge cases, misuse cases, PRDs, specs, or implementation handoffs.
 ---
 
 # Ultimateinterview
 
-Produce a small, authorized, verifiable execution contract. Ground briefly, ask only decisions that can materially change implementation, run one fresh handoff check, then compile and stop.
+Produce a small, authorized, verifiable execution contract and a derived implementation plan. Ground briefly, ask only decisions that can materially change implementation, compile the contract, plan the implementation within bounded delegation, run one fresh handoff check, then finalize and stop.
 
 Evidence describes current state; it does not authorize new behavior. Only an explicit `owner-decision`, an applicable `canonical-contract`, or a `bounded-delegation` may authorize a normative decision. A delegated default is a choice made under bounded delegation, never an authority kind.
 
-Keep all session artifacts under `.ultimateinterview/<session>/`. Use `execution-contract.md` as the single human-facing contract and `evidence-map.md` as its compact observed-evidence input. Both remain unsealed. Only compiler-produced `build-contract.json` is normative.
+Keep all session artifacts under `.ultimateinterview/<session>/`. Use `execution-contract.md` as the single human-facing contract and `evidence-map.md` as its compact observed-evidence input. Both remain unsealed. Only compiler-produced `build-contract.json` is normative. Compiler-produced `implementation-plan.json` is digest-bound derived guidance, never authority.
 
 ## 1. Minimum Grounding
 
@@ -71,21 +71,7 @@ Do not create a separate interview ledger, ambiguity score, transcript snapshot,
 
 Assign stable `DEC-NNN` IDs and do not renumber them within a session. Each decision block row must use the closed format in `references/json-contracts.md`. Keep its `statement` atomic and byte-identical in the selected authority's and requirement's `constraints` or `preserved_behaviors`; this is the deterministic projection anchor. Every requirement-authority pair must have a decision row. Acceptance and verification references must cover every and only the rows belonging to that requirement.
 
-## 5. One Fresh Handoff Check
-
-Run exactly one fresh-context reviewer after drafting the small contract. Give it only `execution-contract.md` and `evidence-map.md`; do not provide the interview transcript, interviewer conclusions, or repository access. The check measures lineage loss from observed evidence through decisions into contract, acceptance, and verification. It does not prove discovery completeness.
-
-Allow at most three blockers, limited to:
-
-- `material-divergence` — two plausibly compliant implementations can produce materially different outcomes not explicitly delegated or allowed by tolerance;
-- `evidence-contract-mismatch` — a material observed fact is neither preserved, explicitly superseded by valid authority, nor intentionally excluded; or
-- `unverifiable-acceptance` — success or an applicable failure result cannot be objectively determined.
-
-The reviewer must not browse, invent product requirements, critique general architecture, report delegated internal variation, or treat evidence as authority.
-
-Resolve admissible blockers as needed, but never rerun the reviewer or restart the interview. Repeat only deterministic reconciliation, compilation, and validation. If a material owner decision remains unresolved, finish as `incomplete`.
-
-## Compile and Hand Off
+## 5. Compile the Candidate Contract
 
 Before creating compiler JSON, read `references/json-contracts.md`. Generate the compiler inputs from the accepted small contract, then run from this skill directory:
 
@@ -95,6 +81,49 @@ python3 scripts/authority_compiler.py <discovery-record.json> --authority-regist
 python3 scripts/projection_check.py <execution-contract.md> --discovery <discovery-record.json> --authority-register <authority-register.json> --build-contract <build-contract.json>
 ```
 
-Do not hand-author, edit, or post-process the sealed output. Compiler or projection-gate failure means the contract is not ready: correct only the projection, resolve missing authority, or finish incomplete. Do not rerun the fresh reviewer. The gate must prove complete `material decision -> authority -> requirement -> acceptance -> verification` traceability and structural equality with a fresh compile before handoff.
+Do not hand-author, edit, or post-process the sealed output. Compiler or projection-gate failure means the contract is not ready: correct only the projection, resolve missing authority, or finish incomplete. The gate must prove complete `material decision -> authority -> requirement -> acceptance -> verification` traceability and structural equality with a fresh compile before implementation planning.
 
-Hand the implementing agent the sealed Build Contract and repository access. Internal choices may proceed only within bounded delegation; substantive unmapped behavior returns for authority and recompilation. Request a digest-bound implementation return using the formats in `references/json-contracts.md`.
+## 6. Implementation Planning
+
+Treat the Build Contract as immutable product intent. Inspect the affected implementation surfaces and produce `implementation-plan-draft.json` using the closed format in `references/json-contracts.md`. Do not repeat the behavioral interview or ask the owner for repository facts. Ask the owner only when planning exposes a new observable, policy, scope, lifecycle, failure, compatibility, data-loss, ownership, or out-of-delegation decision; return that gap to the Material Decision Loop and compile a new contract before continuing.
+
+Record each material internal choice as `IMP-NNN`. Every choice must cite one active bounded delegation, the contract requirements, acceptances, and verifications it realizes, the affected repository paths or stable named components, its rationale and alternatives, and `observable_impact: none beyond the Build Contract`. A plan may not use consensus, evidence, convention, or model preference as delegation.
+
+Write dependency-ordered `STEP-NNN` rows covering every contract requirement, acceptance, verification, and implementation decision. Include exact affected surfaces and a context-complete test realization for every verification. Stop planning only when a fresh implementer can execute the approach, boundaries, sequence, and verification without making another material internal decision. Small local choices already contained by a recorded `IMP-NNN` and its delegation remain free.
+
+Compile the derived plan:
+
+```text
+python3 scripts/implementation_plan.py <implementation-plan-draft.json> --build-contract <build-contract.json> --output <implementation-plan.json>
+```
+
+The compiler validates references, delegation, coverage, dependency order, context-complete test realization, contract binding, and the fixed return-to-owner boundary. It adds `plan_digest`. It does not authorize the plan or change the Build Contract.
+
+## 7. One Fresh Handoff Check
+
+Run exactly one fresh-context reviewer after compiling the candidate contract and implementation plan. Give it `execution-contract.md`, `evidence-map.md`, `build-contract.json`, `implementation-plan.json`, and repository access; do not provide the interview transcript, interviewer conclusions, or intended answer. The check measures lineage loss and whether the derived plan is executable in the repository. It does not prove discovery completeness or authorize product behavior.
+
+Allow at most three blockers, limited to:
+
+- `material-divergence` — two plausibly compliant implementations can produce materially different outcomes not explicitly delegated or allowed by tolerance;
+- `evidence-contract-mismatch` — a material observed fact is neither preserved, explicitly superseded by valid authority, nor intentionally excluded; or
+- `unverifiable-acceptance` — success or an applicable failure result cannot be objectively determined;
+- `infeasible-implementation` — the proposed approach cannot be implemented on the inspected repository surfaces without changing the contract; or
+- `implementation-decision-gap` — a fresh implementer must still make a material internal choice not contained by an `IMP-NNN` row and its bounded delegation.
+
+The reviewer may inspect only repository surfaces needed to test feasibility. It must not invent product requirements, choose a replacement architecture, critique general architecture, report immaterial delegated variation, or treat evidence as authority.
+
+Resolve admissible blockers as needed, but never rerun the reviewer for the same contract digest. Correct delegated plan defects and recompile the plan; return authority gaps to the owner and compile a new contract. If the contract digest changes materially, the prior review is stale and exactly one new fresh check is required for that new digest. If a material owner decision remains unresolved, finish as `incomplete`.
+
+## Finalize and Hand Off
+
+After resolving the fresh check, rerun the deterministic gates against the final artifacts:
+
+```text
+python3 scripts/authority_compiler.py <discovery-record.json> --authority-register <authority-register.json> --output <build-contract.json>
+python3 scripts/projection_check.py <execution-contract.md> --discovery <discovery-record.json> --authority-register <authority-register.json> --build-contract <build-contract.json>
+python3 scripts/implementation_plan.py <implementation-plan-draft.json> --build-contract <build-contract.json> --output <implementation-plan.json>
+python3 scripts/implementation_plan.py <implementation-plan.json> --build-contract <build-contract.json> --check
+```
+
+Hand any implementing coding agent the sealed Build Contract, compiled implementation plan, and repository access. The Build Contract governs; the plan explains how to realize it. Internal choices may proceed only as recorded within bounded delegation. Contract-plan conflict, substantive unmapped behavior, or an infeasible plan returns for authority or replanning rather than silent invention.

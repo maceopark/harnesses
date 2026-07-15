@@ -1,6 +1,6 @@
 # Ultimateinterview JSON Contracts
 
-This is the canonical cross-skill format reference for compiler-only Ultimateinterview sessions. Producers and consumers must fail closed on unknown schema identifiers, missing required fields, duplicate IDs, invalid references, digest mismatches, or malformed JSON/JSONL. Repository evidence and implementation self-reports are never authority.
+This is the canonical cross-skill format reference for compiler-only Ultimateinterview sessions. Producers and consumers must fail closed on unknown schema identifiers, missing required fields, duplicate IDs, invalid references, digest mismatches, or malformed JSON/JSONL. Repository evidence is never authority.
 
 All JSON files are UTF-8. Compiler-produced JSON is deterministic, two-space-indented, and ends with exactly one newline. JSONL uses one compact JSON object per nonblank line and ends with one newline.
 
@@ -14,8 +14,9 @@ All JSON files are UTF-8. Compiler-produced JSON is deterministic, two-space-ind
   authority-register.json       # sealed native Authority Register
   discovery-record.json         # unsealed compiler input bound to the register
   build-contract.json           # sealed normative output
+  implementation-plan-draft.json # unsealed derived planning input
+  implementation-plan.json     # compiled non-normative plan bound to the contract
   decision.jsonl                # digest-bound implementation gap evidence, optional
-  implementation-return.json    # digest-bound implementer self-report, optional
   compiler-evidence-bundle.json # postmortem-owned validated projection
   postmortem.md                 # independent evaluator report, optional
 ```
@@ -215,38 +216,73 @@ File: `decision.jsonl`. Each line contains exactly:
 
 `contract_digest` must match the current sealed contract and every requirement reference must exist. The log is evidence only. A user-visible, policy, scope, lifecycle, failure, compatibility, data-loss, or out-of-delegation gap must stop implementation and return to the owner; recording it does not authorize proceeding.
 
-## Implementation Return
+## Implementation Plan
 
-Schema identifier: `ultimateinterview.implementation-return.v1`.
-
-Required fields:
+`implementation-plan-draft.json` uses schema `ultimateinterview.implementation-plan-draft.v1` and contains exactly:
 
 ```json
 {
-  "schema": "ultimateinterview.implementation-return.v1",
+  "schema": "ultimateinterview.implementation-plan-draft.v1",
   "contract_digest": "64 lowercase hex",
-  "status": "implemented | blocked | failed",
-  "changed_repository_paths": ["normalized/repository/path"],
-  "requirement_outcomes": {"REQ-ID": "passed | failed | blocked | not-run"},
-  "verification_outcomes": {"VER-ID": "passed | failed | blocked | not-run"},
-  "commands": [{"command": "exact command", "result": "observed result"}],
-  "existing_evidence_artifacts": ["normalized/repository/path"],
-  "non_contract_implementation_decisions": [{"contract_digest": "64 lowercase hex", "requirement_refs": ["REQ-ID"], "decision_ref": "decision.jsonl:1"}],
-  "not_run": ["reason for every not-run lane"],
-  "blocked": ["reason for every blocked lane"],
-  "failed": ["reason for every failed lane"]
+  "approach": {
+    "summary": "recommended implementation approach",
+    "rationale": "why this approach fits the contract and repository"
+  },
+  "decisions": [
+    {
+      "id": "IMP-001",
+      "statement": "one material internal implementation choice",
+      "delegation_ref": "AUTH-DELEGATION",
+      "requirement_refs": ["REQ-001"],
+      "acceptance_refs": ["ACC-001"],
+      "verification_refs": ["VER-001"],
+      "affected_surfaces": ["src/component.py"],
+      "rationale": "why this delegated choice is recommended",
+      "alternatives": ["material alternative considered"],
+      "observable_impact": "none beyond the Build Contract"
+    }
+  ],
+  "steps": [
+    {
+      "id": "STEP-001",
+      "summary": "implement one dependency-ordered unit",
+      "depends_on": [],
+      "decision_refs": ["IMP-001"],
+      "requirement_refs": ["REQ-001"],
+      "acceptance_refs": ["ACC-001"],
+      "verification_refs": ["VER-001"],
+      "affected_surfaces": ["src/component.py", "tests/test_component.py"]
+    }
+  ],
+  "test_realization": [
+    {
+      "verification_ref": "VER-001",
+      "working_directory": "repository root",
+      "target": "tests/test_component.py",
+      "procedure": "exact command or scenario including isolation and selection semantics",
+      "expected_result": "byte-identical Build Contract verification result"
+    }
+  ],
+  "return_to_owner_conditions": [
+    "observable behavior not authorized by the Build Contract",
+    "required work outside an applicable bounded delegation",
+    "a verification cannot objectively determine its acceptance predicate",
+    "the recommended approach is infeasible without changing the Build Contract"
+  ]
 }
 ```
 
-The return is implementer-authored evidence, not authority or final evaluation. `contract_digest`
-must match the complete sealed contract. Outcome maps contain every and only contract REQ or VER
-ID. Paths are normalized relative repository paths without absolute, traversal, dot, backslash,
-or wildcard values; path, command-result, decision-reference, and decision requirement-reference
-duplicates are invalid. Every non-passing outcome has a corresponding nonempty explanatory lane;
-every passed outcome requires a command result or existing evidence artifact. A decision reference
-is digest-bound and names only known requirements. Postmortem consumers must use
-`authority_compiler.validate_implementation_return` and must not upgrade self-reported `passed`
-to observed success without direct verification evidence.
+The draft is closed and nonempty: at least one `IMP-NNN`, one `STEP-NNN`, and one test-realization row are required. Every implementation decision uses an active entry in `bounded_implementation_delegations`; repository evidence and model preference cannot replace delegation. `affected_surfaces` are normalized repository-relative paths or stable named components without absolute paths, traversal, dot segments, backslashes, or wildcards. `observable_impact` is the exact literal `none beyond the Build Contract`; anything else returns to the owner.
+
+Decision, step, acceptance, and verification references must exist and remain requirement-consistent. Every decision is consumed by a step. Across all steps, every and only Build Contract requirement, acceptance, and verification is covered. `depends_on` names earlier or later steps as a directed acyclic graph; unknown, self, duplicate, or cyclic dependencies fail closed. `test_realization` contains every and only contract verification once, and its `expected_result` is byte-identical to that verification's expected result. Working directory, target, and procedure are all required and nonempty. The return-to-owner list is fixed and exact.
+
+Compile from the skill directory:
+
+```text
+python3 scripts/implementation_plan.py <implementation-plan-draft.json> --build-contract <build-contract.json> --output <implementation-plan.json>
+```
+
+The compiler validates the complete Build Contract digest, normalizes the closed draft, replaces `schema` with `ultimateinterview.implementation-plan.v1`, adds `plan_digest`, and writes deterministic two-space UTF-8 JSON with one LF. `plan_digest` is the canonical SHA-256 of the complete compiled plan after removing only `plan_digest`. The compiled plan is derived guidance, not authority, and may be replaced without recompiling the Build Contract only while the same contract digest remains valid. Consumers validate an on-disk plan and its complete structural equality with a fresh compile by running `python3 scripts/implementation_plan.py <implementation-plan.json> --build-contract <build-contract.json> --check`.
 
 ## Compiler Postmortem Evidence Bundle
 
@@ -269,7 +305,6 @@ Schema identifier: `ultimateinterview.compiler-postmortem-evidence.v1`. It is pr
   },
   "scope_paths": ["normalized repository path"],
   "build_contract": "verified complete Build Contract object",
-  "implementation_return": "digest-bound object or null",
   "decisions": ["validated decision records"],
   "repository_evidence": {
     "source": "diff source",

@@ -20,7 +20,6 @@ AUTHORITY_REGISTER_FILENAME = "authority-register.json"
 CONTRACT_FILENAME = "build-contract.json"
 EXECUTION_CONTRACT_FILENAME = "execution-contract.md"
 DECISION_FILENAME = "decision.jsonl"
-RETURN_FILENAME = "implementation-return.json"
 MAX_TEXT_BYTES = 128_000
 REQUIRED_DECISION_FIELDS = frozenset(
     {
@@ -167,7 +166,6 @@ def native_compiler() -> Any:
         "CompilerError",
         "compile_discovery_record",
         "validate_authority_register",
-        "validate_implementation_return",
     ):
         if not hasattr(authority_compiler, name):
             raise SessionError(f"native authority compiler lacks {name}")
@@ -440,14 +438,12 @@ def main(argv: list[str] | None = None) -> int:
         authority_register_path = session_dir / AUTHORITY_REGISTER_FILENAME
         execution_contract_path = session_dir / EXECUTION_CONTRACT_FILENAME
         decision_path = session_dir / DECISION_FILENAME
-        implementation_return_path = session_dir / RETURN_FILENAME
         input_artifacts = {
             DISCOVERY_FILENAME: file_descriptor(discovery_path, required=True),
             AUTHORITY_REGISTER_FILENAME: file_descriptor(authority_register_path, required=True),
             CONTRACT_FILENAME: file_descriptor(contract_path, required=True),
             EXECUTION_CONTRACT_FILENAME: file_descriptor(execution_contract_path, required=False),
             DECISION_FILENAME: file_descriptor(decision_path, required=False),
-            RETURN_FILENAME: file_descriptor(implementation_return_path, required=True),
         }
         discovery = load_object(discovery_path, DISCOVERY_FILENAME)
         authority_register = load_object(authority_register_path, AUTHORITY_REGISTER_FILENAME)
@@ -477,17 +473,6 @@ def main(argv: list[str] | None = None) -> int:
         )
         ids = validate_trace(contract)
         decisions = parse_decisions(decision_path, claimed_digest, set(ids["requirements"]))
-        implementation_return = load_object(implementation_return_path, RETURN_FILENAME)
-        try:
-            normalized_return = compiler.validate_implementation_return(
-                implementation_return,
-                contract=contract,
-            )
-        except compiler.CompilerError as error:
-            raise SessionError(
-                f"implementation-return.json is invalid: {native_error(error)}"
-            ) from error
-
         scopes = scope_paths(contract)
         repository, repository_inputs = collect_repository_evidence(
             arguments.repo_root.resolve(), scopes, arguments.diff_range, arguments.diff_file
@@ -508,7 +493,6 @@ def main(argv: list[str] | None = None) -> int:
             "ids": ids,
             "scope_paths": scopes,
             "build_contract": contract,
-            "implementation_return": normalized_return,
             "decisions": decisions,
             "repository_evidence": repository,
             "missing_evidence": missing_evidence,

@@ -21,7 +21,6 @@ from authority_compiler import (
     contract_digest,
     sha256_canonical_json,
     reconcile_authority_register,
-    validate_implementation_return,
 )
 
 
@@ -190,24 +189,6 @@ def compile_record(record: dict[str, Any]) -> dict[str, Any]:
     register = reconcile_authority_register(authority_reconciliation(record))
     record["authority_register_digest"] = register["authority_register_digest"]
     return compile_discovery_record(record, register)
-
-
-def valid_implementation_return(contract: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "schema": "ultimateinterview.implementation-return.v1",
-        "contract_digest": contract["contract_digest"],
-        "status": "implemented",
-        "changed_repository_paths": ["todo_cli.py"],
-        "requirement_outcomes": {"R-list": "passed"},
-        "verification_outcomes": {"V-list": "passed"},
-        "commands": [{"command": "python3 -m unittest", "result": "passed"}],
-        "existing_evidence_artifacts": [],
-        "non_contract_implementation_decisions": [],
-        "not_run": [],
-        "blocked": [],
-        "failed": [],
-    }
-
 
 
 class AuthorityCompilerTests(unittest.TestCase):
@@ -599,47 +580,6 @@ class AuthorityCompilerTests(unittest.TestCase):
             compile_discovery_record(record, register)
         self.assertEqual(raised.exception.code, "AUTHORITY_REGISTER_MISMATCH")
 
-    def test_implementation_return_is_complete_digest_bound_and_closed(self) -> None:
-        contract = compile_record(valid_record())
-        returned = valid_implementation_return(contract)
-
-        self.assertEqual(validate_implementation_return(returned, contract), returned)
-
-        partial = copy.deepcopy(returned)
-        del partial["verification_outcomes"]["V-list"]
-        with self.assertRaises(CompilerError) as raised:
-            validate_implementation_return(partial, contract)
-        self.assertEqual(raised.exception.code, "OUTCOME_COVERAGE_MISMATCH")
-
-        unknown = copy.deepcopy(returned)
-        unknown["requirement_outcomes"]["R-unknown"] = "passed"
-        with self.assertRaises(CompilerError) as raised:
-            validate_implementation_return(unknown, contract)
-        self.assertEqual(raised.exception.code, "UNKNOWN_REFERENCE")
-
-        duplicate = copy.deepcopy(returned)
-        duplicate["changed_repository_paths"] = ["todo_cli.py", "todo_cli.py"]
-        with self.assertRaises(CompilerError) as raised:
-            validate_implementation_return(duplicate, contract)
-        self.assertEqual(raised.exception.code, "DUPLICATE_REFERENCE")
-
-        unbound = copy.deepcopy(returned)
-        unbound["non_contract_implementation_decisions"] = [
-            {
-                "contract_digest": contract["contract_digest"],
-                "requirement_refs": ["R-unknown"],
-                "decision_ref": "decision.jsonl:1",
-            }
-        ]
-        with self.assertRaises(CompilerError) as raised:
-            validate_implementation_return(unbound, contract)
-        self.assertEqual(raised.exception.code, "UNKNOWN_REFERENCE")
-
-        malformed = copy.deepcopy(returned)
-        malformed["unexpected"] = True
-        with self.assertRaises(CompilerError) as raised:
-            validate_implementation_return(malformed, contract)
-        self.assertEqual(raised.exception.code, "UNKNOWN_FIELD")
     def test_cli_writes_pretty_contract_with_canonical_digest(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

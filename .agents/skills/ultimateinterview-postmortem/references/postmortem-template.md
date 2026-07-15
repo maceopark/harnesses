@@ -30,7 +30,6 @@ Use at most three proposal rows. Remove this placeholder row when no proposal is
 | Build Contract | `.ultimateinterview/<session>/build-contract.json` | `<contract digest>` | sole normative source |
 | Repository evidence | `<explicit diff range or diff file>` | `<bundle repository diff hash>` | scoped by contract |
 | Verification | `<commands/scenarios>` | `<observed result>` | direct evidence |
-| Implementation return | `implementation-return.json` | `<bound digest>` | self-report only |
 | Decision log | `decision.jsonl` or absent | `<row count or absent>` | evidence, never authority |
 
 ## Divergence Table
@@ -55,9 +54,9 @@ Include exactly one row for each escaped requirement, scope drift, divergent imp
 
 Exactly one row per Build Contract verification.
 
-| VER-ID | Procedure | Direct execution | Result | Evidence | Return agreement |
-| --- | --- | --- | --- | --- | --- |
-| VER-001 | `<contract procedure>` | run / not-run / blocked | passed / failed / blocked / not-run | `<direct evidence>` | agrees / contradicts / return absent |
+| VER-ID | Procedure | Direct execution | Result | Evidence |
+| --- | --- | --- | --- | --- |
+| VER-001 | `<contract procedure>` | run / not-run / blocked | passed / failed / blocked / not-run | `<direct evidence>` |
 
 Record substantive mock substitution, tautological assertions, or hardcoded expectations in the affected row's evidence; omit clear/no-signal boilerplate.
 

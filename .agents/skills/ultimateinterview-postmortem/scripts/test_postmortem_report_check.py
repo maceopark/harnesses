@@ -59,7 +59,6 @@ def _report(
             "run",
             "passed",
             "command output",
-            "agrees",
         ]
     ]
     proposal_rows = proposal_rows if proposal_rows is not None else [
@@ -113,7 +112,6 @@ def _report(
                     ["Build Contract", "session", CONTRACT_DIGEST, "sole normative source"],
                     ["Repository evidence", "scoped diff", "diff hash", "contract scope"],
                     ["Verification", "VER-001", "passed", "direct evidence"],
-                    ["Implementation return", "session", CONTRACT_DIGEST, "self-report only"],
                     ["Decision log", "session", "absent", "evidence only"],
                 ],
             ),
@@ -151,7 +149,7 @@ def _report(
             "## Verification Execution",
             "",
             _table(
-                ["VER-ID", "Procedure", "Direct execution", "Result", "Evidence", "Return agreement"],
+                ["VER-ID", "Procedure", "Direct execution", "Result", "Evidence"],
                 verification_rows,
             ),
             "",

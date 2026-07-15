@@ -161,28 +161,6 @@ def _authority_reconciliation(record: dict[str, Any]) -> dict[str, Any]:
 
 
 
-def _implementation_return(contract_digest: str) -> dict[str, Any]:
-    return {
-        "schema": "ultimateinterview.implementation-return.v1",
-        "contract_digest": contract_digest,
-        "status": "implemented",
-        "changed_repository_paths": ["benchmark/todo-cli-app-6/todo_cli.py"],
-        "requirement_outcomes": {"REQ-001": "passed"},
-        "verification_outcomes": {"VER-001": "passed"},
-        "commands": [
-            {
-                "command": "python -m pytest tests/test_todo_cli.py",
-                "result": "passed",
-            }
-        ],
-        "existing_evidence_artifacts": ["benchmark/todo-cli-app-6/tests/test_todo_cli.py"],
-        "non_contract_implementation_decisions": [],
-        "not_run": [],
-        "blocked": [],
-        "failed": [],
-    }
-
-
 def _execution_contract(statement: str = "Keep all task data local.") -> str:
     manifest = {
         "schema": "ultimateinterview.material-decisions.v1",
@@ -232,11 +210,6 @@ def _write_session(root: Path) -> Path:
     (session / "build-contract.json").write_text(
         json.dumps(contract, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
-    (session / "implementation-return.json").write_text(
-        json.dumps(_implementation_return(contract["contract_digest"]), ensure_ascii=False, indent=2)
-        + "\n",
-        encoding="utf-8",
-    )
     return session
 
 
@@ -258,7 +231,7 @@ def _run(session: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_compiler_session_bundle_accepts_complete_digest_bound_artifacts(tmp_path: Path) -> None:
+def test_compiler_session_bundle_accepts_complete_sealed_session(tmp_path: Path) -> None:
     session = _write_session(tmp_path)
     output = session / "bundle.json"
 
@@ -271,13 +244,9 @@ def test_compiler_session_bundle_accepts_complete_digest_bound_artifacts(tmp_pat
         (session / "build-contract.json").read_text(encoding="utf-8")
     )["contract_digest"]
     assert bundle["ids"]["requirements"] == ["REQ-001"]
-    assert bundle["implementation_return"]["requirement_outcomes"] == {"REQ-001": "passed"}
     assert bundle["input_artifacts"]["discovery-record.json"]["byte_length"] > 0
     assert bundle["input_artifacts"]["authority-register.json"]["sha256"] == hashlib.sha256(
         (session / "authority-register.json").read_bytes()
-    ).hexdigest()
-    assert bundle["input_artifacts"]["implementation-return.json"]["sha256"] == hashlib.sha256(
-        (session / "implementation-return.json").read_bytes()
     ).hexdigest()
     assert bundle["projection_gate"] is None
 
@@ -327,30 +296,6 @@ def test_compiler_session_requires_discovery_record(tmp_path: Path) -> None:
     assert "discovery-record.json not found" in result.stderr
 
 
-def test_compiler_session_rejects_partial_implementation_return(tmp_path: Path) -> None:
-    session = _write_session(tmp_path)
-    implementation_return = json.loads((session / "implementation-return.json").read_text())
-    del implementation_return["verification_outcomes"]
-    (session / "implementation-return.json").write_text(json.dumps(implementation_return), encoding="utf-8")
-
-    result = _run(session)
-
-    assert result.returncode == 1
-    assert "implementation-return.json is invalid" in result.stderr
-
-
-def test_compiler_session_rejects_unbound_implementation_return(tmp_path: Path) -> None:
-    session = _write_session(tmp_path)
-    implementation_return = json.loads((session / "implementation-return.json").read_text())
-    implementation_return["contract_digest"] = "f" * 64
-    (session / "implementation-return.json").write_text(json.dumps(implementation_return), encoding="utf-8")
-
-    result = _run(session)
-
-    assert result.returncode == 1
-    assert "implementation-return.json is invalid" in result.stderr
-
-
 def test_compiler_session_rejects_contract_recompile_drift(tmp_path: Path) -> None:
     session = _write_session(tmp_path)
     contract = json.loads((session / "build-contract.json").read_text())
@@ -359,9 +304,6 @@ def test_compiler_session_rejects_contract_recompile_drift(tmp_path: Path) -> No
     digest_payload.pop("contract_digest")
     contract["contract_digest"] = hashlib.sha256(_canonical(digest_payload).encode()).hexdigest()
     (session / "build-contract.json").write_text(json.dumps(contract), encoding="utf-8")
-    implementation_return = _implementation_return(contract["contract_digest"])
-    (session / "implementation-return.json").write_text(json.dumps(implementation_return), encoding="utf-8")
-
     result = _run(session)
 
     assert result.returncode == 1
