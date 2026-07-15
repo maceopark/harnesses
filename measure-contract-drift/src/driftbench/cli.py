@@ -1397,9 +1397,10 @@ def _interview_eval_exit(run_dir: Path) -> int:
 def _cmd_interview_eval_run(args: argparse.Namespace) -> int:
     interview_eval = importlib.import_module(".interview_eval", __package__)
     run_dir = interview_eval.run(
-        Path(args.policy),
-        max_cells=args.max_cells,
-        max_parallel=args.max_parallel,
+        Path(args.study),
+        max_generations=args.max_generations,
+        max_candidates=args.max_candidates,
+        smoke=args.smoke,
     )
     return _interview_eval_exit(run_dir)
 
@@ -1408,8 +1409,9 @@ def _cmd_interview_eval_resume(args: argparse.Namespace) -> int:
     interview_eval = importlib.import_module(".interview_eval", __package__)
     run_dir = interview_eval.resume(
         Path(args.run_dir),
-        max_cells=args.max_cells,
-        max_parallel=args.max_parallel,
+        max_generations=args.max_generations,
+        max_candidates=args.max_candidates,
+        smoke=args.smoke,
     )
     return _interview_eval_exit(run_dir)
 
@@ -1440,18 +1442,16 @@ def build_parser() -> DriftArgumentParser:
         dest="interview_eval_command", required=True
     )
     interview_run = interview_commands.add_parser("run")
-    interview_run.add_argument("--policy", required=True)
-    interview_run.add_argument("--max-cells", type=int, choices=range(1, 7))
-    interview_run.add_argument(
-        "--max-parallel", type=int, choices=range(1, 7), default=1
-    )
+    interview_run.add_argument("--study", required=True)
+    interview_run.add_argument("--max-generations", type=int, choices=range(1, 11))
+    interview_run.add_argument("--max-candidates", type=int, choices=range(1, 9))
+    interview_run.add_argument("--smoke", action="store_true")
     interview_run.set_defaults(handler=_cmd_interview_eval_run)
     interview_resume = interview_commands.add_parser("resume")
     interview_resume.add_argument("--run-dir", required=True)
-    interview_resume.add_argument("--max-cells", type=int, choices=range(1, 7))
-    interview_resume.add_argument(
-        "--max-parallel", type=int, choices=range(1, 7), default=1
-    )
+    interview_resume.add_argument("--max-generations", type=int, choices=range(1, 11))
+    interview_resume.add_argument("--max-candidates", type=int, choices=range(1, 9))
+    interview_resume.add_argument("--smoke", action="store_true")
     interview_resume.set_defaults(handler=_cmd_interview_eval_resume)
 
     run = commands.add_parser("run")

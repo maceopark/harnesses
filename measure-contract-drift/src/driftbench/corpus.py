@@ -22,16 +22,22 @@ from unicodedata import category, normalize
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 
-DEV_CASE_COUNT = 6
+DEV_CASE_COUNT = 12
 CASE_ID_RE = re.compile(r"[a-z][a-z0-9-]{2,63}\Z")
 OPAQUE_TOKEN_RE = re.compile(r"[a-z0-9]{8,32}\Z")
 SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 REQUIRED_DEV_DOMAINS = frozenset(
     {
         "bookmarks",
+        "access-grant",
+        "appointment-reschedule",
         "config-merge",
         "contacts-csv",
         "expense",
+        "feature-flags",
+        "inventory-transfer",
+        "order-cancel",
+        "playlist-reorder",
         "reminder",
         "todo",
     }
@@ -219,8 +225,8 @@ class PublicCaseRecord(StrictModel):
 
 
 class PublicCorpusDocument(StrictModel):
-    schema_: Literal["DriftBenchPublicCorpus.v2"] = Field(
-        default="DriftBenchPublicCorpus.v2", alias="schema", serialization_alias="schema"
+    schema_: Literal["DriftBenchPublicCorpus.v3"] = Field(
+        default="DriftBenchPublicCorpus.v3", alias="schema", serialization_alias="schema"
     )
     release_id: str
     cases: tuple[PublicCaseRecord, ...]
@@ -244,8 +250,8 @@ class PublicCorpusDocument(StrictModel):
 
 
 class PublicCorpusManifest(StrictModel):
-    schema_: Literal["DriftBenchPublicManifest.v2"] = Field(
-        default="DriftBenchPublicManifest.v2", alias="schema", serialization_alias="schema"
+    schema_: Literal["DriftBenchPublicManifest.v3"] = Field(
+        default="DriftBenchPublicManifest.v3", alias="schema", serialization_alias="schema"
     )
     release_id: str
     cases_file: Literal["cases.json"] = "cases.json"
@@ -443,7 +449,9 @@ def validate_corpus(
         raise CorpusValidationError("manifest release_id does not bind the public case corpus")
     tokens = {case.opaque_token for case in cases}
     if len(manifest.dev_tokens) != DEV_CASE_COUNT:
-        raise CorpusValidationError("manifest must bind exactly six development tokens")
+        raise CorpusValidationError(
+            f"manifest must bind exactly {DEV_CASE_COUNT} development tokens"
+        )
     if tokens != set(manifest.dev_tokens) or tokens != set(manifest.case_digests):
         raise CorpusValidationError("manifest tokens must bind every and only public case")
     for case in cases:

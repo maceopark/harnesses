@@ -23,73 +23,71 @@ uv run --project measure-contract-drift \
   --partition dev
 ```
 
-## Live interview evaluation
+## Live skill evolution evaluation
 
-The live lifecycle is `driftbench interview-eval run` and `driftbench interview-eval resume`. All direct Codex roles use `gpt-5.6-sol` with configurable reasoning effort, defaulting to medium.
+The live lifecycle is `driftbench interview-eval run --study ...` and `driftbench interview-eval resume --run-dir ...`. The study manifest pins the direct Codex model and reasoning effort for every role.
 
-For every selected case, the runtime:
+For every candidate-case repetition, the runtime:
 
 1. copies the public starter into an isolated cell repository;
-2. starts a direct Codex interviewer session and retains its thread only for that interview;
-3. uses the vendored Ultimateinterview skill to produce a Discovery Record;
-4. runs the vendored authority compiler to create the Build Contract;
-5. starts a fresh direct Codex implementation session limited to the starter tree;
-6. validates the implementation return and evidence with the vendored checker; and
-7. starts a fresh direct Codex postmortem session and checks its report.
+2. obtains structured interviewer decisions with explicit recommendations;
+3. submits every compatible recommendation verbatim through the simulator;
+4. seals the implementation spec;
+5. starts a fresh implementer with only that sealed spec;
+6. requires a diff, implementation return, execution evidence, and `decision.jsonl`; and
+7. reconstructs five metrics from deterministic checks, independent execution, and a blinded judge.
 
-The simulator and implementation/postmortem sessions are ephemeral. The implementation session receives the sealed Build Contract rather than the interview transcript.
+The implementer never receives the interview transcript or evaluator feedback. A missing or malformed recommendation, evidence binding, or decision log fails closed.
 
 Start a bounded run:
 
 ```sh
 measure-contract-drift/scripts/run-live.sh \
-  --max-cells 1 \
-  --max-parallel 1
+  --max-generations 10 \
+  --max-candidates 8
 ```
 
 The same CLI can be called directly:
 
 ```sh
 uv run --project measure-contract-drift driftbench interview-eval run \
-  --policy <policy-path> \
-  --max-cells 1 \
-  --max-parallel 1
+  --study measure-contract-drift/configs/evolution-study.json
 ```
 
-The six public cases run once each against one immutable frozen skill, for six case-only cells total. There is no candidate skill or treatment concept. Enrollment, corpus rows, starter trees, and the frozen runtime manifest are bound before execution. Resume validates those pinned inputs and every completed cell before continuing. `--max-cells` and `--max-parallel` both accept 1–6. Earlier twelve-cell state is incompatible and rejected schema-first.
+`--smoke` is the only live-model smoke path. It evaluates one frozen candidate on one train case for two repetitions and explicitly makes no effectiveness claim. Every direct model role fails closed after a five-minute wall-clock limit.
+
+The 12 public cases use a fixed 6 train / 3 validation / 3 final-test split. Generation zero is the frozen baseline plus seven variants; later generations contain eight candidates. Each candidate-case runs 2–5 times. The run stops at 10 generations or after three validation generations without Pareto hypervolume improvement. Final-test evaluates the frozen baseline and selected champion five times per case, then locks mutation and reselection.
+
+All cases are public. Final-test is process-isolated evaluation, not private holdout or generalization evidence. Generator inputs contain train failure taxonomy and at most three suggestions. Validation exposes aggregate selection scores, not detailed case artifacts.
 
 The enrollment file `<project-root>/.measurecontractdrift/live.toml` may set `model_reasoning_effort`. It defaults to `"medium"` when omitted and applies to interviewer, simulator, implementation, and postmortem Codex sessions. The model remains pinned to `gpt-5.6-sol`.
-
-`run-live.sh` requires tmux. Outside tmux it first starts a tmux session and re-runs itself there with the same validated run or resume arguments; missing tmux fails clearly before any interview starts. For an invocation that schedules at least two cells with `--max-parallel` set to 2–6, each executing cell receives one detached pane as its first runtime action. The pane starts at `Preparing` while local interview inputs are set up, then remains through `Interview`, `Contract`, `Implementation`, `Checking`, and `Postmortem`. It shows color-independent `Question` and `Answer` blocks plus live content-free activity categories and lifecycle states. Raw prompts, reasoning text, model messages, command or tool arguments and output, file contents, and secrets are never rendered. The wrapper enables current-window pane borders; each bounded credential-safe title identifies the case and coding task. A pane closes only after its complete cell succeeds. Failed or catchably interrupted cells retain their panes with the safe current stage, exception class, and manual-close instruction; a resume attempt uses a new attempt identity and does not reuse a retained pane. An operational pane failure warns once and preserves the existing case-prefixed stderr fallback for interview exchanges. Pane content is transient: it is not added to transcripts, manifests, receipts, state, or any separate pane artifact. Final compact stdout JSON and existing diagnostics are unchanged.
 
 ## Run output and resume
 
 New runs are written to:
 
 ```text
-<project-root>/.measurecontractdrift/interview-eval/live-<timestamp>-interview-eval/
+<project-root>/.measurecontractdrift/interview-eval/live-<timestamp>-evolution/
 ```
 
 Persisted JSON files are pretty printed with sorted keys and two-space indentation. The run root contains:
 
-- `state.json`: per-cell progress and result;
-- `manifest.json`: hashes for generated files; and
-- `receipt.json`: overall status, completed/total cell counts, and the manifest digest.
-
-Each cell stores its `repo/` and `.ultimateinterview/<case-id>/` session directory, including the Discovery Record, Build Contract, implementation return, diff, checker evidence, and postmortem.
+- `state.json`: digest bindings, candidates, completed cells, archive progress, and final lock;
+- `rubrics/`, `candidates/`, and `cells/`: fixed rubrics and bound candidate evidence;
+- `final-test.json`: public process-isolated baseline/champion comparison; and
+- `receipt.json`: completion and champion identity.
 
 Resume by run directory:
 
 ```sh
 measure-contract-drift/scripts/run-live.sh \
-  --resume <run-directory> \
-  --max-parallel 1
+  --resume <run-directory>
 ```
 
-Completed cells are retained; cells without a completed result are run again. `--max-cells` can also restrict a resume invocation.
+Completed cells are retained only when their artifact hashes still match. Resume rejects drift in the study, corpus, baseline skill, runtime, rubric, or completed cell evidence.
 
 ## Reading results
 
-The CLI emits compact JSON with the run directory and status. `partial` means the bounded invocation succeeded while pending cells remain; `completed` means all six cells completed. `failed` means at least one attempted cell failed; inspect that cell's `state.json` entry and session evidence.
+The CLI emits compact JSON with the run directory and status. Cell effectiveness is the minimum of contract coverage, recommendation integrity, implementation conformance, verification credibility, and decision governance. Invalid evidence or a critical governance failure makes the cell effectiveness zero.
 
 The live path evaluates public development cases only. It does not make claims about private holdouts or general model performance.

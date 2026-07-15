@@ -126,8 +126,8 @@ def test_public_corpus_contains_only_dev_prompts_and_starters() -> None:
     manifest = json.loads((PUBLIC_ROOT / "manifest.json").read_text(encoding="utf-8"))
 
     assert corpus.validate_corpus(PUBLIC_ROOT / "cases.json", PUBLIC_ROOT / "manifest.json", partition="dev")
-    assert document["schema"] == "DriftBenchPublicCorpus.v2"
-    assert len(document["cases"]) == 6
+    assert document["schema"] == "DriftBenchPublicCorpus.v3"
+    assert len(document["cases"]) == 12
     assert all(set(case) == {"schema", "case_id", "opaque_token", "partition", "prompt", "starter_tree", "starter_digest"} for case in document["cases"])
     assert all((PUBLIC_ROOT / case["starter_tree"]).is_dir() for case in document["cases"])
     assert all(corpus.starter_tree_digest(PUBLIC_ROOT / case["starter_tree"]) == case["starter_digest"] for case in document["cases"])
@@ -148,7 +148,9 @@ def test_holdout_boundary_fixture_is_synthetic_and_external_only(capsys) -> None
     assert private_document["schema"] == "DriftBenchPrivateDevelopmentFixture.v2"
     annotations = private_document["development_annotations"]
     assert len(annotations) == 6
-    assert {annotation["case_id"] for annotation in annotations} == corpus.REQUIRED_DEV_DOMAINS
+    assert {annotation["case_id"] for annotation in annotations} == {
+        "bookmarks", "config-merge", "contacts-csv", "expense", "reminder", "todo"
+    }
     assert all(
         set(annotation) == {"case_id", "fact_families", "atoms", "simulator"}
         for annotation in annotations
@@ -250,7 +252,7 @@ def test_fake_run_completes_and_resume_is_idempotent(tmp_path: Path, monkeypatch
     manifest = json.loads((run_dir / "run-manifest.json").read_text(encoding="utf-8"))
     assert state["worker_image"] == WORKER_IMAGE
     assert manifest["worker_image"] == WORKER_IMAGE
-    assert len(state["cells"]) == 18
+    assert len(state["cells"]) == 36
     assert all(cell["status"] == "completed" for cell in state["cells"])
     base_artifacts = {
         "input.json",
@@ -284,8 +286,8 @@ def test_fake_run_completes_and_resume_is_idempotent(tmp_path: Path, monkeypatch
     assert scorecard["scored"] is True
     assert scorecard["claim"] == "deterministic-development-treatment"
     assert scorecard["development_metrics"] == {
-        "case_count": 18,
-        "total_weight": 18.0,
+        "case_count": 36,
+        "total_weight": 36.0,
         "weighted_primary_credit": 1.0,
     }
     assert [score["arm_id"] for score in scorecard["arm_scores"]] == [

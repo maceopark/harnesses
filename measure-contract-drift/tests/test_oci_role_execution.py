@@ -18,26 +18,44 @@ from driftbench.semantic import compare_assertions
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 COMMANDS = {
+    "access-grant": ("access", "grant", "ada", "editor"),
+    "appointment-reschedule": ("appointment", "reschedule", "appt-1", "Tuesday"),
     "bookmarks": ("bookmark", "tag", "bm-1", "reading"),
     "config-merge": ("config", "merge", "team"),
     "contacts-csv": ("contacts", "import", "incoming.csv"),
     "expense": ("expense", "add", "9", "tea"),
+    "feature-flags": ("flag", "set", "dev", "dark_mode", "true"),
+    "inventory-transfer": ("inventory", "transfer", "widget", "east", "west", "2"),
+    "order-cancel": ("order", "cancel", "ord-1", "duplicate"),
+    "playlist-reorder": ("playlist", "move", "track-3", "1"),
     "reminder": ("reminder", "add", "Call Ada", "Monday"),
     "todo": ("todo", "complete", "todo-1"),
 }
 STATE_FILENAMES = {
+    "access-grant": "access.json",
+    "appointment-reschedule": "appointments.json",
     "bookmarks": "bookmarks.json",
     "config-merge": "config.json",
     "contacts-csv": "contacts.json",
     "expense": "expenses.json",
+    "feature-flags": "flags.json",
+    "inventory-transfer": "inventory.json",
+    "order-cancel": "orders.json",
+    "playlist-reorder": "playlist.json",
     "reminder": "reminders.json",
     "todo": "todos.json",
 }
 STATE_EFFECTS = {
+    "access-grant": "role-granted",
+    "appointment-reschedule": "appointment-rescheduled",
     "bookmarks": "bookmark-tag-added",
     "config-merge": "named-overlay-merged",
     "contacts-csv": "csv-contacts-imported",
     "expense": "expense-recorded",
+    "feature-flags": "feature-flag-set",
+    "inventory-transfer": "inventory-transferred",
+    "order-cancel": "order-cancelled",
+    "playlist-reorder": "playlist-track-moved",
     "reminder": "reminder-created",
     "todo": "todo-completed",
 }
@@ -208,14 +226,7 @@ def test_oci_implementer_applies_and_observes_all_public_starter_implementations
         assert observation_receipts["output_read"]["returncode"] == 0
         observed_case_ids.add(case["case_id"])
 
-    assert observed_case_ids == {
-        "bookmarks",
-        "config-merge",
-        "contacts-csv",
-        "expense",
-        "reminder",
-        "todo",
-    }
+    assert observed_case_ids == set(COMMANDS)
 
 
 def test_oci_observation_rejects_an_unimplemented_starter_artifact(
@@ -261,18 +272,30 @@ def test_generated_starters_reject_failed_commands_without_state_mutation(tmp_pa
         (PROJECT_ROOT / "corpus" / "public" / "cases.json").read_text(encoding="utf-8")
     )["cases"]
     failed_commands = {
+        "access-grant": ("access", "grant", "missing", "editor"),
+        "appointment-reschedule": ("appointment", "reschedule", "missing", "Tuesday"),
         "bookmarks": ("bookmark", "tag", "missing", "reading"),
         "config-merge": ("config", "merge", "missing"),
         "contacts-csv": ("contacts", "import", "missing.csv"),
         "expense": ("expense", "add", "-1", "tea"),
+        "feature-flags": ("flag", "set", "missing", "dark_mode", "true"),
+        "inventory-transfer": ("inventory", "transfer", "widget", "east", "west", "999"),
+        "order-cancel": ("order", "cancel", "ord-2", "late"),
+        "playlist-reorder": ("playlist", "move", "missing", "1"),
         "reminder": ("reminder", "add", "Call Ada", ""),
         "todo": ("todo", "complete", "missing"),
     }
     state_files = {
+        "access-grant": "access.json",
+        "appointment-reschedule": "appointments.json",
         "bookmarks": "bookmarks.json",
         "config-merge": "config.json",
         "contacts-csv": "contacts.json",
         "expense": "expenses.json",
+        "feature-flags": "flags.json",
+        "inventory-transfer": "inventory.json",
+        "order-cancel": "orders.json",
+        "playlist-reorder": "playlist.json",
         "reminder": "reminders.json",
         "todo": "todos.json",
     }

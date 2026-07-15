@@ -39,27 +39,45 @@ WORKER_PROVENANCE = "oci-deterministic-worker"
 _PUBLIC_ROOT = Path("/opt/driftbench/corpus/public")
 _NATIVE_ROOT = Path("/opt/driftbench/protocol/ultimateinterview/ui-native-77b0327-r4")
 _COMMANDS: dict[str, tuple[str, ...]] = {
+    "access-grant": ("access", "grant", "ada", "editor"),
+    "appointment-reschedule": ("appointment", "reschedule", "appt-1", "Tuesday"),
     "bookmarks": ("bookmark", "tag", "bm-1", "reading"),
     "config-merge": ("config", "merge", "team"),
     "contacts-csv": ("contacts", "import", "incoming.csv"),
     "expense": ("expense", "add", "9", "tea"),
+    "feature-flags": ("flag", "set", "dev", "dark_mode", "true"),
+    "inventory-transfer": ("inventory", "transfer", "widget", "east", "west", "2"),
+    "order-cancel": ("order", "cancel", "ord-1", "duplicate"),
+    "playlist-reorder": ("playlist", "move", "track-3", "1"),
     "reminder": ("reminder", "add", "Call Ada", "Monday"),
     "todo": ("todo", "complete", "todo-1"),
 }
 
 _STATE_FILENAMES: dict[str, str] = {
+    "access-grant": "access.json",
+    "appointment-reschedule": "appointments.json",
     "bookmarks": "bookmarks.json",
     "config-merge": "config.json",
     "contacts-csv": "contacts.json",
     "expense": "expenses.json",
+    "feature-flags": "flags.json",
+    "inventory-transfer": "inventory.json",
+    "order-cancel": "orders.json",
+    "playlist-reorder": "playlist.json",
     "reminder": "reminders.json",
     "todo": "todos.json",
 }
 _CASE_STATE_EFFECTS: dict[str, str] = {
+    "access-grant": "role-granted",
+    "appointment-reschedule": "appointment-rescheduled",
     "bookmarks": "bookmark-tag-added",
     "config-merge": "named-overlay-merged",
     "contacts-csv": "csv-contacts-imported",
     "expense": "expense-recorded",
+    "feature-flags": "feature-flag-set",
+    "inventory-transfer": "inventory-transferred",
+    "order-cancel": "order-cancelled",
+    "playlist-reorder": "playlist-track-moved",
     "reminder": "reminder-created",
     "todo": "todo-completed",
 }
@@ -79,10 +97,16 @@ from pathlib import Path
 import sys
 
 OPERATIONS = {
+    "access.json": ("access-grant", ("access", "grant"), 4),
+    "appointments.json": ("appointment-reschedule", ("appointment", "reschedule"), 4),
     "bookmarks.json": ("bookmarks", ("bookmark", "tag"), 4),
     "config.json": ("config-merge", ("config", "merge"), 3),
     "contacts.json": ("contacts-csv", ("contacts", "import"), 3),
     "expenses.json": ("expense", ("expense", "add"), 4),
+    "flags.json": ("feature-flags", ("flag", "set"), 5),
+    "inventory.json": ("inventory-transfer", ("inventory", "transfer"), 6),
+    "orders.json": ("order-cancel", ("order", "cancel"), 4),
+    "playlist.json": ("playlist-reorder", ("playlist", "move"), 4),
     "reminders.json": ("reminder", ("reminder", "add"), 4),
     "todos.json": ("todo", ("todo", "complete"), 3),
 }
@@ -240,6 +264,79 @@ def _todo(state: dict[str, object], args: list[str]) -> None:
     todo["done"] = True
 
 
+def _inventory(state: dict[str, object], args: list[str]) -> None:
+    items = state.get("items")
+    locations = state.get("locations")
+    if not isinstance(items, dict) or not isinstance(locations, list):
+        raise OperationError("inventory state is invalid")
+    item = items.get(args[2])
+    if not isinstance(item, dict) or args[3] not in locations or args[4] not in locations:
+        raise OperationError("item or location is unknown")
+    stock = item.get("stock")
+    if not isinstance(stock, dict) or args[3] == args[4]:
+        raise OperationError("inventory stock is invalid")
+    try:
+        quantity = int(args[5])
+    except ValueError as error:
+        raise OperationError("quantity is invalid") from error
+    source = stock.get(args[3])
+    destination = stock.get(args[4])
+    if quantity <= 0 or not isinstance(source, int) or not isinstance(destination, int) or source < quantity:
+        raise OperationError("quantity is invalid or insufficient")
+    stock[args[3]] = source - quantity
+    stock[args[4]] = destination + quantity
+
+
+def _feature_flag(state: dict[str, object], args: list[str]) -> None:
+    environments = state.get("environments")
+    environment = environments.get(args[2]) if isinstance(environments, dict) else None
+    if not isinstance(environment, dict) or args[3] not in environment or args[4] not in {"true", "false"}:
+        raise OperationError("environment, flag, or boolean is invalid")
+    environment[args[3]] = args[4] == "true"
+
+
+def _order_cancel(state: dict[str, object], args: list[str]) -> None:
+    orders = state.get("orders")
+    order = next((row for row in orders if isinstance(row, dict) and row.get("id") == args[2]), None) if isinstance(orders, list) else None
+    if order is None or order.get("status") != "pending" or not args[3].strip():
+        raise OperationError("order is unknown or not cancellable")
+    order["status"] = "cancelled"
+    order["cancellation_reason"] = args[3]
+
+
+def _playlist(state: dict[str, object], args: list[str]) -> None:
+    tracks = state.get("tracks")
+    if not isinstance(tracks, list):
+        raise OperationError("playlist state is invalid")
+    try:
+        position = int(args[3])
+    except ValueError as error:
+        raise OperationError("position is invalid") from error
+    index = next((i for i, row in enumerate(tracks) if isinstance(row, dict) and row.get("id") == args[2]), None)
+    if index is None or not 1 <= position <= len(tracks):
+        raise OperationError("track or position is invalid")
+    track = tracks.pop(index)
+    tracks.insert(position - 1, track)
+
+
+def _access_grant(state: dict[str, object], args: list[str]) -> None:
+    users = state.get("users")
+    supported = state.get("supported_roles")
+    user = users.get(args[2]) if isinstance(users, dict) else None
+    roles = user.get("roles") if isinstance(user, dict) else None
+    if not isinstance(supported, list) or args[3] not in supported or not isinstance(roles, list) or args[3] in roles:
+        raise OperationError("user or role is invalid")
+    roles.append(args[3])
+
+
+def _appointment(state: dict[str, object], args: list[str]) -> None:
+    appointments = state.get("appointments")
+    appointment = next((row for row in appointments if isinstance(row, dict) and row.get("id") == args[2]), None) if isinstance(appointments, list) else None
+    if appointment is None or not args[3].strip():
+        raise OperationError("appointment or due label is invalid")
+    appointment["due"] = args[3]
+
+
 def _apply(root: Path, case_id: str, state: dict[str, object], args: list[str]) -> None:
     if case_id == "bookmarks":
         _bookmarks(state, args)
@@ -249,6 +346,18 @@ def _apply(root: Path, case_id: str, state: dict[str, object], args: list[str]) 
         _contacts(root, state, args)
     elif case_id == "expense":
         _expense(state, args)
+    elif case_id == "inventory-transfer":
+        _inventory(state, args)
+    elif case_id == "feature-flags":
+        _feature_flag(state, args)
+    elif case_id == "order-cancel":
+        _order_cancel(state, args)
+    elif case_id == "playlist-reorder":
+        _playlist(state, args)
+    elif case_id == "access-grant":
+        _access_grant(state, args)
+    elif case_id == "appointment-reschedule":
+        _appointment(state, args)
     elif case_id == "reminder":
         _reminder(state, args)
     elif case_id == "todo":
@@ -901,6 +1010,56 @@ def _expected_post_state(
             if todo is None or todo.get("done") is not False:
                 return None
             todo["done"] = True
+        elif case_id == "inventory-transfer" and len(command) == 6 and command[:2] == ("inventory", "transfer"):
+            items = state.get("items")
+            locations = state.get("locations")
+            item = items.get(command[2]) if isinstance(items, dict) else None
+            stock = item.get("stock") if isinstance(item, dict) else None
+            quantity = int(command[5])
+            if (not isinstance(locations, list) or command[3] not in locations
+                    or command[4] not in locations or command[3] == command[4]
+                    or not isinstance(stock, dict) or quantity <= 0
+                    or not isinstance(stock.get(command[3]), int)
+                    or not isinstance(stock.get(command[4]), int)
+                    or stock[command[3]] < quantity):
+                return None
+            stock[command[3]] -= quantity
+            stock[command[4]] += quantity
+        elif case_id == "feature-flags" and len(command) == 5 and command[:2] == ("flag", "set"):
+            environments = state.get("environments")
+            environment = environments.get(command[2]) if isinstance(environments, dict) else None
+            if not isinstance(environment, dict) or command[3] not in environment or command[4] not in {"true", "false"}:
+                return None
+            environment[command[3]] = command[4] == "true"
+        elif case_id == "order-cancel" and len(command) == 4 and command[:2] == ("order", "cancel"):
+            orders = state.get("orders")
+            order = next((row for row in orders if isinstance(row, dict) and row.get("id") == command[2]), None) if isinstance(orders, list) else None
+            if order is None or order.get("status") != "pending" or not command[3].strip():
+                return None
+            order["status"] = "cancelled"
+            order["cancellation_reason"] = command[3]
+        elif case_id == "playlist-reorder" and len(command) == 4 and command[:2] == ("playlist", "move"):
+            tracks = state.get("tracks")
+            position = int(command[3])
+            index = next((i for i, row in enumerate(tracks) if isinstance(row, dict) and row.get("id") == command[2]), None) if isinstance(tracks, list) else None
+            if not isinstance(tracks, list) or index is None or not 1 <= position <= len(tracks):
+                return None
+            track = tracks.pop(index)
+            tracks.insert(position - 1, track)
+        elif case_id == "access-grant" and len(command) == 4 and command[:2] == ("access", "grant"):
+            users = state.get("users")
+            supported = state.get("supported_roles")
+            user = users.get(command[2]) if isinstance(users, dict) else None
+            roles = user.get("roles") if isinstance(user, dict) else None
+            if not isinstance(supported, list) or command[3] not in supported or not isinstance(roles, list) or command[3] in roles:
+                return None
+            roles.append(command[3])
+        elif case_id == "appointment-reschedule" and len(command) == 4 and command[:2] == ("appointment", "reschedule"):
+            appointments = state.get("appointments")
+            appointment = next((row for row in appointments if isinstance(row, dict) and row.get("id") == command[2]), None) if isinstance(appointments, list) else None
+            if appointment is None or not command[3].strip():
+                return None
+            appointment["due"] = command[3]
         else:
             return None
     except (InvalidOperation, TypeError, ValueError):

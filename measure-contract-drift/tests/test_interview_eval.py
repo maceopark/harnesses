@@ -110,24 +110,25 @@ def test_interview_eval_parser_accepts_bounded_controls() -> None:
         [
             "interview-eval",
             "run",
-            "--policy",
-            "policy.json",
-            "--max-cells",
-            "1",
-            "--max-parallel",
-            "6",
+            "--study",
+            "configs/evolution-study.json",
+            "--max-generations",
+            "10",
+            "--max-candidates",
+            "8",
         ]
     )
-    assert args.policy == "policy.json"
-    assert args.max_cells == 1
-    assert args.max_parallel == 6
+    assert args.study == "configs/evolution-study.json"
+    assert args.max_generations == 10
+    assert args.max_candidates == 8
 
 
 def test_interview_eval_resume_parser_uses_run_dir_only() -> None:
     parser = build_parser()
     args = parser.parse_args(["interview-eval", "resume", "--run-dir", "run"])
     assert args.run_dir == "run"
-    assert args.max_parallel == 1
+    assert args.max_generations is None
+    assert args.max_candidates is None
 
 
 def test_frozen_manifest_binds_vendored_skill_files(tmp_path: Path) -> None:
@@ -259,6 +260,15 @@ def test_run_ignores_activity_callback_failure_without_losing_output(
     )
 
     assert result.stdout == "complete\n"
+
+
+def test_run_fails_closed_when_a_role_exceeds_wall_clock_limit(tmp_path: Path) -> None:
+    with pytest.raises(RuntimeError, match="command timed out"):
+        interview_eval._run(
+            [sys.executable, "-c", "import time; time.sleep(2)"],
+            tmp_path,
+            timeout_seconds=0.01,
+        )
 
 
 @pytest.mark.parametrize(
@@ -600,7 +610,7 @@ def test_run_rejects_candidate_and_unknown_policy_fields(
         ),
         encoding="utf-8",
     )
-    with pytest.raises(RuntimeError, match="exactly the codex"):
+    with pytest.raises(ValueError, match="invalid evolution study manifest"):
         interview_eval.run(policy, max_cells=1)
 
 
@@ -730,10 +740,10 @@ def test_run_limits_cells_writes_pretty_json_and_resumes_completed_cells(
 @pytest.mark.parametrize(
     "arguments",
     [
-        ["interview-eval", "run", "--policy", "policy.json", "--max-cells", "0"],
-        ["interview-eval", "run", "--policy", "policy.json", "--max-cells", "7"],
-        ["interview-eval", "resume", "--run-dir", "run", "--max-parallel", "0"],
-        ["interview-eval", "resume", "--run-dir", "run", "--max-parallel", "7"],
+        ["interview-eval", "run", "--study", "study.json", "--max-generations", "0"],
+        ["interview-eval", "run", "--study", "study.json", "--max-generations", "11"],
+        ["interview-eval", "resume", "--run-dir", "run", "--max-candidates", "0"],
+        ["interview-eval", "resume", "--run-dir", "run", "--max-candidates", "9"],
     ],
 )
 def test_interview_eval_parser_rejects_out_of_range_controls(
@@ -771,31 +781,31 @@ def test_cli_translates_runtime_setup_errors(
     from driftbench import cli
 
     assert (
-        cli.main(["interview-eval", "run", "--policy", "policy.json"])
+        cli.main(["interview-eval", "run", "--study", "study.json"])
         == cli.EXIT_RUNTIME_FAILURE
     )
     assert "setup failed" in capsys.readouterr().err
 
 
 # Build Contract verification entry points. These names are intentionally stable.
-def test_interview_eval_cli_limits_are_one_through_six() -> None:
+def test_interview_eval_cli_limits_match_evolution_bounds() -> None:
     test_interview_eval_parser_accepts_bounded_controls()
-    for value in (0, 7):
+    for value in (0, 9):
         with pytest.raises(CliError):
             build_parser().parse_args(
-                ["interview-eval", "run", "--policy", "p", "--max-cells", str(value)]
+                ["interview-eval", "run", "--study", "p", "--max-candidates", str(value)]
             )
 
 
-def test_frozen_only_user_guides_match_runtime_contract() -> None:
+def test_evolution_user_guides_match_runtime_contract() -> None:
     project = Path(__file__).resolve().parents[1]
     for name in ("README.md", "USER_GUIDE.en.md", "USER_GUIDE.ko.md"):
         text = (project / name).read_text(encoding="utf-8")
-        assert "1–6" in text or "1-6" in text
-        assert "12 cells" not in text
-        assert "12개 cell" not in text
-        assert "candidate_skill" not in text
-    assert "case-only" in (project / "README.md").read_text(encoding="utf-8")
+        assert "12" in text
+        assert "6/3/3" in text or "6 train / 3 validation / 3 final-test" in text
+        assert "final-test" in text
+        assert "private holdout" in text
+    assert "--study" in (project / "README.md").read_text(encoding="utf-8")
 
 
 def test_policy_rejects_candidate_and_unknown_fields_without_run_mutation(
@@ -808,7 +818,7 @@ def test_policy_rejects_candidate_and_unknown_fields_without_run_mutation(
             encoding="utf-8",
         )
         run_dir = tmp_path / f"run-{extra}"
-        with pytest.raises(RuntimeError, match="exactly the codex"):
+        with pytest.raises(ValueError, match="invalid evolution study manifest"):
             interview_eval.run(policy, run_dir=run_dir)
         assert not run_dir.exists()
 
@@ -830,11 +840,11 @@ def test_frozen_snapshot_rejects_substitution_without_mutating_history(
     test_frozen_manifest_binds_vendored_skill_files(tmp_path)
 
 
-def test_frozen_only_run_creates_six_case_id_cells_without_treatment() -> None:
+def test_evolution_run_uses_twelve_case_ids_without_treatment_fields() -> None:
     project = Path(__file__).resolve().parents[1]
     cases = json.loads((project / "corpus/public/cases.json").read_text())["cases"]
-    assert len(cases) == 6
-    assert len({row["case_id"] for row in cases}) == 6
+    assert len(cases) == 12
+    assert len({row["case_id"] for row in cases}) == 12
     assert all("treatment" not in row for row in cases)
 
 
