@@ -6,15 +6,18 @@ import concurrent.futures
 import hashlib
 import json
 import os
+import queue
+import secrets
 import shutil
 import subprocess
 import threading
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from .corpus import starter_tree_digest
+from .tmux_panes import TmuxPresentation
 
 _LOCK = threading.Lock()
 
@@ -137,7 +140,7 @@ def _baseline(project: Path) -> Path:
 
 def _policy_selectors(
     policy_path: Path, enrollment_path: Path | None = None
-) -> tuple[str, str, str, str]:
+) -> tuple[str, str, str, str, str]:
     """Read only executable/model and enrollment selectors; never inspect a version."""
     policy = json.loads(policy_path.read_text(encoding="utf-8"))
     codex = policy.get("codex", {})
@@ -150,9 +153,13 @@ def _policy_selectors(
     model = str(enrolled["model"])
     if model != "gpt-5.6-sol":
         raise RuntimeError("interview evaluation requires gpt-5.6-sol")
+    reasoning_effort = str(enrolled.get("model_reasoning_effort", "medium"))
+    if reasoning_effort not in {"low", "medium", "high"}:
+        raise RuntimeError("live model_reasoning_effort is invalid")
     return (
         str(codex["executable"]),
         model,
+        reasoning_effort,
         str(enrolled["home_selector"]),
         str(enrolled["codex_home_selector"]),
     )
@@ -163,18 +170,102 @@ def _run(
     cwd: Path,
     prompt: str | None = None,
     env: dict[str, str] | None = None,
+    activity_line: Callable[[str], None] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     environment = dict(os.environ if env is None else env)
     environment.setdefault("PYTHONDONTWRITEBYTECODE", "1")
-    result = subprocess.run(
-        argv,
-        cwd=cwd,
-        input=prompt,
-        text=True,
-        capture_output=True,
-        env=environment,
-        check=False,
-    )
+    if activity_line is None:
+        result = subprocess.run(
+            argv,
+            cwd=cwd,
+            input=prompt,
+            text=True,
+            capture_output=True,
+            env=environment,
+            check=False,
+        )
+    else:
+        process = subprocess.Popen(
+            argv,
+            cwd=cwd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=environment,
+        )
+        assert process.stdin is not None
+        assert process.stdout is not None
+        assert process.stderr is not None
+        stdout: list[str] = []
+        stderr: list[str] = []
+        activity_events: queue.Queue[str | None] = queue.Queue(maxsize=64)
+
+        def present_activity() -> None:
+            while (line := activity_events.get()) is not None:
+                try:
+                    activity_line(line)
+                except BaseException:
+                    pass
+
+        def read_stdout() -> None:
+            for line in process.stdout:
+                stdout.append(line)
+                try:
+                    activity_events.put_nowait(line)
+                except queue.Full:
+                    pass
+
+        def read_stderr() -> None:
+            stderr.extend(process.stderr)
+
+        readers = [
+            threading.Thread(target=read_stdout),
+            threading.Thread(target=read_stderr),
+        ]
+        presenter = threading.Thread(target=present_activity, daemon=True)
+        presenter.start()
+        for reader in readers:
+            reader.start()
+        try:
+            if prompt is not None:
+                try:
+                    process.stdin.write(prompt)
+                except BrokenPipeError:
+                    pass
+            try:
+                process.stdin.close()
+            except BrokenPipeError:
+                pass
+            returncode = process.wait()
+        except BaseException:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+            raise
+        finally:
+            for reader in readers:
+                reader.join()
+            last_pending: str | None = None
+            while True:
+                try:
+                    pending = activity_events.get_nowait()
+                except queue.Empty:
+                    break
+                if pending is not None:
+                    last_pending = pending
+            if last_pending is not None:
+                activity_events.put(last_pending)
+            activity_events.put(None)
+            presenter.join()
+            process.stdout.close()
+            process.stderr.close()
+        result = subprocess.CompletedProcess(
+            argv, returncode, "".join(stdout), "".join(stderr)
+        )
     if result.returncode:
         raise RuntimeError(
             f"command failed ({result.returncode}): {' '.join(argv)}\n{result.stderr}"
@@ -221,11 +312,13 @@ def _thread_id(stdout: str) -> str:
 def _codex(
     executable: str,
     model: str,
+    reasoning_effort: str,
     home: str,
     codex_home: str,
     argv: list[str],
     cwd: Path,
     prompt: str,
+    activity_line: Callable[[str], None] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     environment = dict(os.environ, HOME=home, CODEX_HOME=codex_home)
     command = [
@@ -237,12 +330,20 @@ def _codex(
         "--config",
         f'model="{model}"',
         "--config",
-        'model_reasoning_effort="low"',
+        f'model_reasoning_effort="{reasoning_effort}"',
         "-",
     ]
     for attempt in range(3):
         try:
-            return _run(command, cwd, prompt=prompt, env=environment)
+            if activity_line is None:
+                return _run(command, cwd, prompt=prompt, env=environment)
+            return _run(
+                command,
+                cwd,
+                prompt=prompt,
+                env=environment,
+                activity_line=activity_line,
+            )
         except RuntimeError as error:
             if "at capacity" not in str(error).lower() or attempt == 2:
                 raise
@@ -251,9 +352,17 @@ def _codex(
 
 
 def _cell(
-    root: Path, cell: dict[str, Any], selectors: tuple[str, str, str, str], frozen: Path
+    root: Path,
+    cell: dict[str, Any],
+    selectors: tuple[str, str, str, str, str],
+    frozen: Path,
+    presentation: TmuxPresentation | None = None,
 ) -> dict[str, Any]:
-    executable, model, home, codex_home = selectors
+    executable, model, reasoning_effort, home, codex_home = selectors
+    pane = presentation.pane_for(cell) if presentation is not None else None
+    if pane is not None:
+        pane.create()
+        pane.stage("Preparing")
     cell_root = root / "cells" / cell["cell_id"]
     repo = cell_root / "repo"
     starter_root = repo / "starters" / cell["case_id"]
@@ -329,91 +438,107 @@ def _cell(
         "Record as JSON text in discovery_record.\n\n"
         f"Vendored JSON contracts:\n{json_contracts}"
     )
-    first = _codex(
-        executable,
-        model,
-        home,
-        codex_home,
-        [
-            "exec",
-            "--json",
-            "--output-schema",
-            str(interview_schema),
-            "--output-last-message",
-            str(final),
-            "-C",
-            str(session),
-        ],
-        session,
-        prompt,
-    )
-    interview = _output(first, final)
-    thread = _thread_id(first.stdout)
-    turns = 0
-    transcript: list[dict[str, str]] = []
-    while not interview["complete"]:
-        turns += 1
-        if turns > 20:
-            raise RuntimeError("interview did not complete")
-        simulator_final = session / "simulator.json"
-        simulator_prompt = (
-            "Act as the user who requested the task below. Answer only from the task and "
-            "the explicit interview history; make a concrete choice when the question asks "
-            "for one. Do not inspect files or the interview skill.\n\n"
-            f"Task:\n{cell['prompt']}\n\n"
-            f"Prior interview:\n{json.dumps(transcript, ensure_ascii=False)}\n\n"
-            f"Question:\n{interview['question']}"
-        )
-        simulator = _codex(
+    if pane is not None:
+        pane.stage("Interview")
+    activity_line = pane.activity_line if pane is not None else None
+    try:
+        first = _codex(
             executable,
             model,
+            reasoning_effort,
             home,
             codex_home,
             [
                 "exec",
-                "--ephemeral",
-                "--json",
-                "--output-schema",
-                str(answer_schema),
-                "--output-last-message",
-                str(simulator_final),
-                "-C",
-                str(session),
-            ],
-            session,
-            simulator_prompt,
-        )
-        answer = _output(simulator, simulator_final)["answer"]
-        transcript.append({"question": interview["question"], "answer": answer})
-        _pretty(session / "transcript.json", transcript)
-        resumed = _codex(
-            executable,
-            model,
-            home,
-            codex_home,
-            [
-                "exec",
-                "resume",
-                thread,
                 "--json",
                 "--output-schema",
                 str(interview_schema),
                 "--output-last-message",
                 str(final),
+                "-C",
+                str(session),
             ],
             session,
-            f"Simulator answer: {answer}\nContinue the interview and return the required JSON.",
+            prompt,
+            activity_line,
         )
-        interview = _output(resumed, final)
-    discovery_text = interview["discovery_record"]
-    if not isinstance(discovery_text, str):
-        raise RuntimeError("completed interviewer output lacks a Discovery Record")
-    try:
-        discovery = json.loads(discovery_text)
-    except json.JSONDecodeError as error:
-        raise RuntimeError("completed Discovery Record is not JSON") from error
-    if not isinstance(discovery, dict):
-        raise RuntimeError("completed Discovery Record is not an object")
+        interview = _output(first, final)
+        thread = _thread_id(first.stdout)
+        turns = 0
+        transcript: list[dict[str, str]] = []
+        while not interview["complete"]:
+            turns += 1
+            if turns > 20:
+                raise RuntimeError("interview did not complete")
+            simulator_final = session / "simulator.json"
+            simulator_prompt = (
+                "Act as the user who requested the task below. Answer only from the task and "
+                "the explicit interview history; make a concrete choice when the question asks "
+                "for one. Do not inspect files or the interview skill.\n\n"
+                f"Task:\n{cell['prompt']}\n\n"
+                f"Prior interview:\n{json.dumps(transcript, ensure_ascii=False)}\n\n"
+                f"Question:\n{interview['question']}"
+            )
+            simulator = _codex(
+                executable,
+                model,
+                reasoning_effort,
+                home,
+                codex_home,
+                [
+                    "exec",
+                    "--ephemeral",
+                    "--json",
+                    "--output-schema",
+                    str(answer_schema),
+                    "--output-last-message",
+                    str(simulator_final),
+                    "-C",
+                    str(session),
+                ],
+                session,
+                simulator_prompt,
+                activity_line,
+            )
+            answer = _output(simulator, simulator_final)["answer"]
+            if pane is not None:
+                pane.exchange(interview["question"], answer)
+            transcript.append({"question": interview["question"], "answer": answer})
+            _pretty(session / "transcript.json", transcript)
+            resumed = _codex(
+                executable,
+                model,
+                reasoning_effort,
+                home,
+                codex_home,
+                [
+                    "exec",
+                    "resume",
+                    thread,
+                    "--json",
+                    "--output-schema",
+                    str(interview_schema),
+                    "--output-last-message",
+                    str(final),
+                ],
+                session,
+                f"Simulator answer: {answer}\nContinue the interview and return the required JSON.",
+                activity_line,
+            )
+            interview = _output(resumed, final)
+        discovery_text = interview["discovery_record"]
+        if not isinstance(discovery_text, str):
+            raise RuntimeError("completed interviewer output lacks a Discovery Record")
+        try:
+            discovery = json.loads(discovery_text)
+        except json.JSONDecodeError as error:
+            raise RuntimeError("completed Discovery Record is not JSON") from error
+        if not isinstance(discovery, dict):
+            raise RuntimeError("completed Discovery Record is not an object")
+    except BaseException:
+        raise
+    if pane is not None:
+        pane.stage("Contract")
     discovery_path = session / "discovery-record.json"
     contract = session / "build-contract.json"
     compiler_argv = [
@@ -445,6 +570,7 @@ def _cell(
             correction = _codex(
                 executable,
                 model,
+                reasoning_effort,
                 home,
                 codex_home,
                 [
@@ -461,6 +587,7 @@ def _cell(
                 "The vendored authority compiler rejected the Discovery Record. "
                 "Correct the record using the vendored JSON contract and return complete=true "
                 f"with the full corrected JSON text.\n\nCompiler result:\n{error}",
+                activity_line,
             )
             corrected = _output(correction, final)
             if not corrected["complete"]:
@@ -504,14 +631,18 @@ def _cell(
         "Do not inspect the parent project or any .agents directory.\n\n"
         f"Vendored JSON contracts:\n{json_contracts}"
     )
+    if pane is not None:
+        pane.stage("Implementation")
     _codex(
         executable,
         model,
+        reasoning_effort,
         home,
         codex_home,
         [
             "exec",
             "--ephemeral",
+            "--json",
             "--sandbox",
             "workspace-write",
             "--output-last-message",
@@ -521,6 +652,7 @@ def _cell(
         ],
         starter_root,
         implementation_prompt,
+        activity_line,
     )
     try:
         implementation_return_document = json.loads(
@@ -575,6 +707,8 @@ def _cell(
             "implementation did not complete: "
             + "; ".join(implementation_return.get("blocked", []))
         )
+    if pane is not None:
+        pane.stage("Checking")
     post_script = frozen / ".agents/skills/ultimateinterview-postmortem/scripts"
     pre_report_bundle = session / "compiler-evidence-bundle.pre-report.json"
     _run(
@@ -611,14 +745,18 @@ def _cell(
         "from the Divergence Table so every row contributes to exactly one class. "
     )
     report_path = session / "postmortem.md"
+    if pane is not None:
+        pane.stage("Postmortem")
     _codex(
         executable,
         model,
+        reasoning_effort,
         home,
         codex_home,
         [
             "exec",
             "--ephemeral",
+            "--json",
             "--sandbox",
             "read-only",
             "--output-last-message",
@@ -628,6 +766,7 @@ def _cell(
         ],
         session,
         post_prompt,
+        activity_line,
     )
     _run(
         [
@@ -690,11 +829,13 @@ def _cell(
             _codex(
                 executable,
                 model,
+                reasoning_effort,
                 home,
                 codex_home,
                 [
                     "exec",
                     "--ephemeral",
+                    "--json",
                     "--sandbox",
                     "read-only",
                     "--output-last-message",
@@ -704,6 +845,7 @@ def _cell(
                 ],
                 session,
                 correction_prompt,
+                activity_line,
             )
     files = _artifact_files(cell_root)
     return {
@@ -806,18 +948,6 @@ def run(
         raise RuntimeError("resume cell inventory is invalid")
     _pretty(state_path, state)
 
-    def work(cell: dict[str, Any]) -> None:
-        try:
-            cell_root = root / "cells" / cell["cell_id"]
-            if cell_root.exists():
-                shutil.rmtree(cell_root)
-            result = _cell(root, cell, selectors, frozen)
-        except Exception as error:
-            result = {"status": "failed", "error": str(error)}
-        with _LOCK:
-            state["cells"][cell["cell_id"]] = result
-            _pretty(state_path, state)
-
     pending = [
         cell
         for cell in cells
@@ -825,8 +955,50 @@ def run(
     ]
     if max_cells is not None:
         pending = pending[:max_cells]
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_parallel) as pool:
+    presentation = TmuxPresentation.detect(
+        scheduled_cells=len(pending),
+        max_parallel=max_parallel,
+        run_id=root.name,
+        attempt_id=secrets.token_hex(8),
+    )
+
+    def work(cell: dict[str, Any]) -> None:
+        try:
+            cell_root = root / "cells" / cell["cell_id"]
+            if cell_root.exists():
+                shutil.rmtree(cell_root)
+            result = _cell(root, cell, selectors, frozen, presentation)
+        except BaseException as error:
+            if presentation is not None:
+                presentation.cell_failed(cell, error)
+            if not isinstance(error, Exception):
+                raise
+            result = {"status": "failed", "error": str(error)}
+            with _LOCK:
+                state["cells"][cell["cell_id"]] = result
+                _pretty(state_path, state)
+            return
+        try:
+            with _LOCK:
+                state["cells"][cell["cell_id"]] = result
+                _pretty(state_path, state)
+        except BaseException as error:
+            if presentation is not None:
+                presentation.cell_failed(cell, error)
+            raise
+        if presentation is not None:
+            presentation.cell_succeeded(cell)
+
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=max_parallel)
+    try:
         list(pool.map(work, pending))
+    except BaseException as error:
+        if presentation is not None:
+            presentation.invocation_failed(error)
+        pool.shutdown(wait=True, cancel_futures=True)
+        raise
+    else:
+        pool.shutdown()
     _pretty(root / "state.json", state)
     statuses = [item["status"] for item in state["cells"].values()]
     receipt_status = (

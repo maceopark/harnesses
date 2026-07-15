@@ -28,10 +28,48 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 
+if [ -z "${TMUX-}" ]; then
+    if ! command -v tmux >/dev/null 2>&1; then
+        printf '%s\n' "run-live requires tmux, but tmux was not found in PATH" >&2
+        exit 1
+    fi
+    set -- --max-parallel "$MAX_PARALLEL"
+    if [ -n "$MAX_CELLS" ]; then
+        set -- "$@" --max-cells "$MAX_CELLS"
+    fi
+    if [ -n "$RESUME" ]; then
+        set -- "$@" --resume "$RESUME"
+    fi
+    exec tmux new-session "$0" "$@"
+fi
+
 CELL_ARGS=
 if [ -n "$MAX_CELLS" ]; then
     CELL_ARGS="--max-cells $MAX_CELLS"
 fi
+
+configure_tmux_pane_titles() {
+    case "$MAX_PARALLEL" in
+        2|3|4|5|6|7|8|9|10|11|12) ;;
+        *) return 0 ;;
+    esac
+    case "$MAX_CELLS" in
+        2|3|4|5|6|7|8|9|10|11|12) ;;
+        *) return 0 ;;
+    esac
+    if [ -z "${TMUX-}" ] || [ -z "${TMUX_PANE-}" ]; then
+        return 0
+    fi
+    if ! command -v tmux >/dev/null 2>&1; then
+        return 0
+    fi
+    tmux set-option -w -t "$TMUX_PANE" pane-border-status top \
+        >/dev/null 2>&1 || return 0
+    tmux set-option -w -t "$TMUX_PANE" pane-border-format ' #{pane_title} ' \
+        >/dev/null 2>&1 || return 0
+}
+
+configure_tmux_pane_titles
 
 if [ -n "$RESUME" ]; then
     exec uv run --project "$PROJECT_ROOT" driftbench interview-eval resume \
