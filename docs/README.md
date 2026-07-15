@@ -6,6 +6,7 @@ Documentation for the compiler-only `ultimateinterview` workflow. The executable
 
 | Document | Purpose |
 | --- | --- |
+| `ultimateinterview-pitch-deck.html` · `.ko.html` · `.hi.html` | Current English, Korean, and Hindi pitch decks. They explain the shift from exhaustive exception hunting and three-reviewer ceremony to material questions, a deterministic stop rule, implementation decision receipts, and contract-drift detection. |
 | `reference/ultimateinterview-creative-discovery-strict-handoff.md` | Design rationale for creative discovery, authority compilation, sealed Build Contracts, substrate-neutral implementation returns, and the separate postmortem boundary. |
 | `reference/ultimateinterview-evidence-authority-model-revision.md` | Minimal evidence-scope, counterfactual-discriminator, and authority-routing model. |
 | `reference/requirements-gap-discovery.md` | Reusable requirements-gap discovery method independent of the retired session protocol. |
