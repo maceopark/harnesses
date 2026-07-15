@@ -18,6 +18,7 @@ BUNDLE_FILENAME = "compiler-evidence-bundle.json"
 DISCOVERY_FILENAME = "discovery-record.json"
 AUTHORITY_REGISTER_FILENAME = "authority-register.json"
 CONTRACT_FILENAME = "build-contract.json"
+EXECUTION_CONTRACT_FILENAME = "execution-contract.md"
 DECISION_FILENAME = "decision.jsonl"
 RETURN_FILENAME = "implementation-return.json"
 MAX_TEXT_BYTES = 128_000
@@ -171,6 +172,40 @@ def native_compiler() -> Any:
         if not hasattr(authority_compiler, name):
             raise SessionError(f"native authority compiler lacks {name}")
     return authority_compiler
+
+
+def native_projection_checker() -> Any:
+    sibling_scripts = Path(__file__).resolve().parents[2] / "ultimateinterview" / "scripts"
+    sibling_path = str(sibling_scripts)
+    if sibling_path not in sys.path:
+        sys.path.insert(0, sibling_path)
+    try:
+        import projection_check
+    except ImportError as error:
+        raise SessionError("native projection checker cannot be imported") from error
+    for name in ("ProjectionError", "validate_projection"):
+        if not hasattr(projection_check, name):
+            raise SessionError(f"native projection checker lacks {name}")
+    return projection_check
+
+
+def validate_execution_projection(
+    path: Path,
+    discovery: Mapping[str, Any],
+    authority_register: Mapping[str, Any],
+    contract: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    if not path.is_file():
+        return None
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as error:
+        raise SessionError(f"{EXECUTION_CONTRACT_FILENAME} is not valid UTF-8") from error
+    checker = native_projection_checker()
+    try:
+        return checker.validate_projection(text, discovery, authority_register, contract)
+    except checker.ProjectionError as error:
+        raise SessionError(f"{EXECUTION_CONTRACT_FILENAME} projection is invalid: {error}") from error
 
 
 def native_error(error: BaseException) -> str:
@@ -403,12 +438,14 @@ def main(argv: list[str] | None = None) -> int:
         discovery_path = session_dir / DISCOVERY_FILENAME
         contract_path = session_dir / CONTRACT_FILENAME
         authority_register_path = session_dir / AUTHORITY_REGISTER_FILENAME
+        execution_contract_path = session_dir / EXECUTION_CONTRACT_FILENAME
         decision_path = session_dir / DECISION_FILENAME
         implementation_return_path = session_dir / RETURN_FILENAME
         input_artifacts = {
             DISCOVERY_FILENAME: file_descriptor(discovery_path, required=True),
             AUTHORITY_REGISTER_FILENAME: file_descriptor(authority_register_path, required=True),
             CONTRACT_FILENAME: file_descriptor(contract_path, required=True),
+            EXECUTION_CONTRACT_FILENAME: file_descriptor(execution_contract_path, required=False),
             DECISION_FILENAME: file_descriptor(decision_path, required=False),
             RETURN_FILENAME: file_descriptor(implementation_return_path, required=True),
         }
@@ -432,6 +469,12 @@ def main(argv: list[str] | None = None) -> int:
                 f"{AUTHORITY_REGISTER_FILENAME} is invalid: {native_error(error)}"
             ) from error
         recompile_discovery(discovery, authority_register, contract, compiler)
+        projection = validate_execution_projection(
+            execution_contract_path,
+            discovery,
+            authority_register,
+            contract,
+        )
         ids = validate_trace(contract)
         decisions = parse_decisions(decision_path, claimed_digest, set(ids["requirements"]))
         implementation_return = load_object(implementation_return_path, RETURN_FILENAME)
@@ -461,6 +504,7 @@ def main(argv: list[str] | None = None) -> int:
             "contract_sha256": input_artifacts[CONTRACT_FILENAME]["sha256"],
             "discovery_sha256": input_artifacts[DISCOVERY_FILENAME]["sha256"],
             "authority_register_sha256": input_artifacts[AUTHORITY_REGISTER_FILENAME]["sha256"],
+            "projection_gate": projection,
             "ids": ids,
             "scope_paths": scopes,
             "build_contract": contract,

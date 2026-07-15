@@ -46,7 +46,7 @@ Investigate repository facts yourself. Ask the owner only when different answers
 - ownership or an interface boundary; or
 - acceptance or verification.
 
-Use the runtime's structured question interface when available. Ask dependent decisions one at a time; group only independent decisions. Offer a recommendation only when repository evidence, an applicable canonical contract, or a strong reversible convention supports it. A recommendation remains a proposal until explicitly accepted.
+Use the runtime's structured question interface for every owner question when available. Present concrete choices as a multi-select that allows one or more selections, and mark exactly one supported choice as recommended and preselected. Keep selectable combinations compatible; ask dependent decisions one at a time and group only independent decisions. Offer that recommendation only when repository evidence, an applicable canonical contract, or a strong reversible convention supports it. The preselection remains a proposal and is not an owner decision until the owner submits it. If the runtime lacks multi-select or preselection, use the closest available structured control, put the recommended choice first and label it clearly, state the capability limitation, and do not silently fall back to an unstructured prose question.
 
 Use three material owner decisions as a soft reassessment point, not a question-message limit, hard cap, or quota. Clarifications of the same decision do not count again. After the third decision is resolved, continue only for a remaining material blocker under the criteria above.
 
@@ -63,11 +63,13 @@ If yes, resolve only the authority or decision causing that difference. If no, s
 Write `execution-contract.md` with exactly four substantive sections:
 
 1. `Outcome & Boundaries` — outcome, in-scope boundaries, and non-goals.
-2. `Decisions & Defaults` — each normative decision, applicable boundary, observable failure behavior when relevant, `authority: owner-decision | canonical-contract | bounded-delegation`, and `choice: explicit | delegated-default`.
+2. `Decisions & Defaults` — one closed `ultimateinterview-material-decisions` JSON block containing each normative decision, applicable boundary, authority, compiler lineage references, and `choice: explicit | delegated-default`.
 3. `Acceptance` — each predicate as `precondition/input -> action -> observable success -> applicable failure result`.
 4. `Verification` — context-complete commands or scenarios with working directory, target, and the acceptance predicate verified.
 
 Do not create a separate interview ledger, ambiguity score, transcript snapshot, approval brief, or duplicated human-authored Authority Register. Treat the small contract as the human source of truth. When the current compiler requires normalized Discovery and Authority Register JSON, project the inline authority and contract data into those machine artifacts without asking the owner to restate it or adding decisions.
+
+Assign stable `DEC-NNN` IDs and do not renumber them within a session. Each decision block row must use the closed format in `references/json-contracts.md`. Keep its `statement` atomic and byte-identical in the selected authority's and requirement's `constraints` or `preserved_behaviors`; this is the deterministic projection anchor. Every requirement-authority pair must have a decision row. Acceptance and verification references must cover every and only the rows belonging to that requirement.
 
 ## 5. One Fresh Handoff Check
 
@@ -90,8 +92,9 @@ Before creating compiler JSON, read `references/json-contracts.md`. Generate the
 ```text
 python3 scripts/authority_reconcile.py <authority-reconciliation.json> --output <authority-register.json>
 python3 scripts/authority_compiler.py <discovery-record.json> --authority-register <authority-register.json> --output <build-contract.json>
+python3 scripts/projection_check.py <execution-contract.md> --discovery <discovery-record.json> --authority-register <authority-register.json> --build-contract <build-contract.json>
 ```
 
-Do not hand-author, edit, or post-process the sealed output. Compiler failure means the contract is not ready: correct only the projection, resolve missing authority, or finish incomplete. Successful compilation must preserve complete `authority -> requirement -> acceptance -> verification` traceability.
+Do not hand-author, edit, or post-process the sealed output. Compiler or projection-gate failure means the contract is not ready: correct only the projection, resolve missing authority, or finish incomplete. Do not rerun the fresh reviewer. The gate must prove complete `material decision -> authority -> requirement -> acceptance -> verification` traceability and structural equality with a fresh compile before handoff.
 
 Hand the implementing agent the sealed Build Contract and repository access. Internal choices may proceed only within bounded delegation; substantive unmapped behavior returns for authority and recompilation. Request a digest-bound implementation return using the formats in `references/json-contracts.md`.

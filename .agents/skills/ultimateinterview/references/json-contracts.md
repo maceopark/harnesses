@@ -8,7 +8,7 @@ All JSON files are UTF-8. Compiler-produced JSON is deterministic, two-space-ind
 
 ```text
 .ultimateinterview/<session>/
-  execution-contract.md          # unsealed human-facing four-section contract, optional for legacy sessions
+  execution-contract.md          # unsealed four-section contract with mandatory DEC manifest in v3; absent only in legacy sessions
   evidence-map.md                # compact observed evidence for the one-time handoff check, optional for legacy sessions
   authority-reconciliation.json # owner-approved reconciliation input
   authority-register.json       # sealed native Authority Register
@@ -30,6 +30,42 @@ Canonical JSON is `json.dumps(value, ensure_ascii=False, sort_keys=True, separat
 - Acceptance binding digest: owned by `authority_compiler.py`; consumers must verify by recompiling rather than reproducing a partial algorithm.
 
 Formatting does not affect these canonical content digests.
+
+## Material decision projection manifest
+
+The `Decisions & Defaults` section of every new `execution-contract.md` contains exactly one fenced JSON block whose info string is `ultimateinterview-material-decisions`. It is the deterministic source for projection checking, not a separate artifact:
+
+````text
+```ultimateinterview-material-decisions
+{
+  "schema": "ultimateinterview.material-decisions.v1",
+  "decisions": [
+    {
+      "id": "DEC-001",
+      "statement": "Exact atomic normative obligation.",
+      "choice": "explicit",
+      "authority_ref": "AUTH-001",
+      "requirement_ref": "REQ-001",
+      "applicable_boundary": ["normalized/scope"],
+      "acceptance_refs": ["ACC-001"],
+      "verification_refs": ["VER-001"]
+    }
+  ]
+}
+```
+````
+
+The manifest is closed and nonempty, and it is the only content allowed in `Decisions & Defaults`; prose decisions outside it fail the gate. IDs match `DEC-NNN`, remain stable within the session, and are unique. `choice` is `explicit` only with active owner-decision or canonical-contract authority and `delegated-default` only with active bounded-delegation authority.
+
+The `statement` is an atomic projection anchor. It must occur byte-for-byte in both the referenced authority's and requirement's `constraints` or `preserved_behaviors`. `applicable_boundary` exactly equals the requirement scope. The acceptance and verification references cover every and only those attached to the requirement, and the compiler trace contains every applicable authority-requirement-acceptance-verification row. Across all decision rows, every requirement-authority pair is covered; missing and invented pairs fail closed.
+
+After reconciliation and compilation, run:
+
+```text
+python3 scripts/projection_check.py <execution-contract.md> --discovery <discovery-record.json> --authority-register <authority-register.json> --build-contract <build-contract.json>
+```
+
+The gate strictly parses the manifest, revalidates the Authority Register, freshly recompiles Discovery, requires structural equality with the sealed Build Contract, and validates the complete decision lineage. It writes nothing. Legacy sessions without `execution-contract.md` remain compiler-auditable, but no new v3 session may hand off implementation until this gate passes.
 
 ## Authority reconciliation
 
@@ -223,6 +259,8 @@ Schema identifier: `ultimateinterview.compiler-postmortem-evidence.v1`. It is pr
   "contract_digest": "verified digest",
   "contract_sha256": "on-disk artifact hash",
   "discovery_sha256": "on-disk hash or null",
+  "authority_register_sha256": "on-disk artifact hash",
+  "projection_gate": "validated material-decision summary or null for a legacy session",
   "ids": {
     "requirements": ["REQ-ID"],
     "acceptances": ["ACC-ID"],

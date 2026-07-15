@@ -183,6 +183,34 @@ def _implementation_return(contract_digest: str) -> dict[str, Any]:
     }
 
 
+def _execution_contract(statement: str = "Keep all task data local.") -> str:
+    manifest = {
+        "schema": "ultimateinterview.material-decisions.v1",
+        "decisions": [
+            {
+                "id": "DEC-001",
+                "statement": statement,
+                "choice": "explicit",
+                "authority_ref": "AUTH-001",
+                "requirement_ref": "REQ-001",
+                "applicable_boundary": ["benchmark/todo-cli-app-6"],
+                "acceptance_refs": ["ACC-001"],
+                "verification_refs": ["VER-001"],
+            }
+        ],
+    }
+    return (
+        "# Execution Contract\n\n"
+        "## Outcome & Boundaries\n\nLocal task CLI.\n\n"
+        "## Decisions & Defaults\n\n"
+        "```ultimateinterview-material-decisions\n"
+        + json.dumps(manifest, ensure_ascii=False, indent=2)
+        + "\n```\n\n"
+        "## Acceptance\n\nACC-001.\n\n"
+        "## Verification\n\nVER-001.\n"
+    )
+
+
 def _write_session(root: Path) -> Path:
     session = root / ".ultimateinterview" / "demo"
     session.mkdir(parents=True)
@@ -251,6 +279,33 @@ def test_compiler_session_bundle_accepts_complete_digest_bound_artifacts(tmp_pat
     assert bundle["input_artifacts"]["implementation-return.json"]["sha256"] == hashlib.sha256(
         (session / "implementation-return.json").read_bytes()
     ).hexdigest()
+    assert bundle["projection_gate"] is None
+
+
+def test_compiler_session_validates_present_execution_contract_projection(tmp_path: Path) -> None:
+    session = _write_session(tmp_path)
+    (session / "execution-contract.md").write_text(_execution_contract(), encoding="utf-8")
+    output = session / "bundle.json"
+
+    result = _run(session, "--output", str(output))
+
+    assert result.returncode == 0, result.stderr
+    bundle = json.loads(output.read_text(encoding="utf-8"))
+    assert bundle["projection_gate"]["decision_ids"] == ["DEC-001"]
+    assert bundle["input_artifacts"]["execution-contract.md"]["state"] == "present"
+
+
+def test_compiler_session_rejects_lost_execution_contract_decision(tmp_path: Path) -> None:
+    session = _write_session(tmp_path)
+    (session / "execution-contract.md").write_text(
+        _execution_contract("The owner requires exact exit status 78."),
+        encoding="utf-8",
+    )
+
+    result = _run(session)
+
+    assert result.returncode == 1
+    assert "DECISION_LOST_FROM_AUTHORITY" in result.stderr
 
 def test_compiler_session_requires_authority_register(tmp_path: Path) -> None:
     session = _write_session(tmp_path)
