@@ -136,6 +136,27 @@ def build_generator_prompt(seed_skill: str, runtime_contract: str = RUNTIME_CONT
             + "\n\nRUNTIME CONTRACT:\n" + runtime_contract)
 
 
+def build_evolution_prompt(parent_skill: str, train_feedback: Mapping[str, Any],
+                           runtime_contract: str = RUNTIME_CONTRACT) -> str:
+    """Build the complete mutation input without exposing validation details."""
+    feedback = {
+        "schema": train_feedback.get("schema"),
+        "generation": train_feedback.get("generation"),
+        "root_causes": train_feedback.get("root_causes"),
+        "evidence": train_feedback.get("evidence"),
+    }
+    return (
+        "Create one evolved interview skill. Improve the parent against the train-only feedback "
+        "while preserving any useful behavior. The call is independent: do not assume candidate "
+        "identity, rankings, validation findings, a corpus, evaluator internals, or other mutations. "
+        "Keep the result compact: return one non-empty SKILL.md of at most 6144 UTF-8 bytes "
+        "(the runtime hard limit is 8192 bytes).\n\nPARENT SKILL:\n"
+        + parent_skill + "\n\nTRAIN-ONLY FEEDBACK:\n"
+        + json.dumps(feedback, ensure_ascii=False, sort_keys=True)
+        + "\n\nRUNTIME CONTRACT:\n" + runtime_contract
+    )
+
+
 def build_evaluator_prompt(*, request: str, transcript: Sequence[Mapping[str, Any]],
                            compiler_bundle: Mapping[str, Any], implementation_return: Mapping[str, Any],
                            implementation_diff: str, execution_evidence: Sequence[Mapping[str, Any]]) -> str:
@@ -403,6 +424,24 @@ class DirectCodexDiscoveryBackend:
             raise RuntimeError("invalid generated skill")
         return value
 
+    def evolve(self, *, parent_skill: str, train_feedback: Mapping[str, Any],
+               runtime_digest: str) -> str:
+        schema = {"type": "object", "additionalProperties": False,
+                  "properties": {"SKILL.md": {"type": "string", "minLength": 1,
+                                                "maxLength": 6144}},
+                  "required": ["SKILL.md"]}
+        empty = self.workspace / "generator-empty"
+        empty.mkdir(parents=True, exist_ok=True)
+        prompt = build_evolution_prompt(
+            parent_skill, train_feedback,
+            RUNTIME_CONTRACT + f"\nPinned runtime digest: {runtime_digest}",
+        )
+        role = "evolver-" + hashlib.sha256(os.urandom(32)).hexdigest()[:16]
+        value = self._invoke(role, empty, prompt, schema).value["SKILL.md"]
+        if not value.strip() or len(value.encode()) > 8192:
+            raise RuntimeError("invalid evolved skill")
+        return value
+
     def interview(self, *, candidate_id: str, skill: str, case_id: str, request: str,
                   repetition: int, repository: Path, answer_seed: str,
                   pane: Any | None = None
@@ -582,5 +621,6 @@ class DirectCodexDiscoveryBackend:
 
 __all__ = ["CellBackendResult", "DirectCodexDiscoveryBackend", "RUNTIME_CONTRACT",
            "TURN_SCHEMA", "build_compiler_inputs", "build_evaluator_prompt", "build_generator_prompt",
+           "build_evolution_prompt",
            "normalize_compiler_inputs", "parse_postmortem_markdown",
            "verify_compiled_selection_lineage"]

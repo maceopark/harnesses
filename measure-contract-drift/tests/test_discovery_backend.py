@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from driftbench.discovery_backend import (
-    RUNTIME_CONTRACT, build_evaluator_prompt, build_generator_prompt,
+    RUNTIME_CONTRACT, build_evaluator_prompt, build_evolution_prompt, build_generator_prompt,
     _run_isolated, normalize_compiler_inputs, parse_postmortem_markdown,
     verify_compiled_selection_lineage,
 )
@@ -48,6 +48,16 @@ def test_generator_input_contains_only_seed_and_runtime_contract() -> None:
     assert "Ask material questions" in prompt
     assert "runtime-xyz" in prompt
     for forbidden in ("bookmarks", "validation finding", "postmortem score", "candidate rank"):
+        assert forbidden not in prompt
+
+
+def test_evolution_input_contains_parent_and_train_feedback_but_no_validation_surface() -> None:
+    feedback = {"schema": "DiscoveryGenerationFeedback.v1", "generation": 0,
+                "root_causes": ["decision-miss"], "evidence": ["duplicate policy escaped"]}
+    prompt = build_evolution_prompt("# Parent\nAsk precisely.", feedback, "runtime-xyz")
+    assert "Ask precisely" in prompt and "decision-miss" in prompt
+    assert "duplicate policy escaped" in prompt and "runtime-xyz" in prompt
+    for forbidden in ("fidelity_lcb", "pareto_archive", "validation score", "candidate_id"):
         assert forbidden not in prompt
 
 

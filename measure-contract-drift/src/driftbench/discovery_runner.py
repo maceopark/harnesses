@@ -1,4 +1,4 @@
-"""Standalone generation-zero discovery scheduler.
+"""Standalone generational discovery scheduler.
 
 The runner deliberately has no dependency on the legacy evolution runtime. Backends
 own model interaction; workers own isolated cell directories; only the coordinator
@@ -87,6 +87,9 @@ def load_manifest(path: Path) -> DiscoveryManifest:
 class DiscoveryBackend(Protocol):
     def generate(self, *, seed_skill: str, runtime_digest: str) -> str: ...
 
+    def evolve(self, *, parent_skill: str, train_feedback: Mapping[str, Any],
+               runtime_digest: str) -> str: ...
+
     def evaluate(self, *, cell: CellSpec, prompt: str, skill: str, repo: Path,
                  attempt_dir: Path, answer_seed: str, pane: Any | None = None
                  ) -> Mapping[str, Any]: ...
@@ -151,29 +154,100 @@ def _verify_inventory(cell_root: Path) -> dict[str, str]:
 
 class DiscoveryRunner:
     def __init__(self, manifest_path: Path, run_dir: Path,
-                 backend: DiscoveryBackend, dashboard: Any | None = None) -> None:
+                 backend: DiscoveryBackend, dashboard: Any | None = None, *,
+                 generation: int = 0, parent_run: Path | None = None) -> None:
         self.manifest_path = manifest_path.resolve(strict=True)
         self.manifest = load_manifest(self.manifest_path)
         self.source_root = self.manifest_path.parent
         self.run_dir = run_dir.resolve()
         self.backend = backend
         self.dashboard = dashboard
+        if generation < 0 or (generation == 0) != (parent_run is None):
+            raise ValueError("generation zero must not have a parent; evolved generations require one")
+        self.generation = generation
+        self.parent_run = parent_run.resolve(strict=True) if parent_run is not None else None
         self.state_path = self.run_dir / "state.json"
         self._candidate_lock = threading.Lock()
 
     def _skill_path(self, candidate_id: str) -> Path:
         return self.run_dir / "candidates" / candidate_id / "SKILL.md"
 
-    def _initialize_candidates(self, effective_candidates: int) -> dict[str, str]:
+    def _evolution_context(self, effective_candidates: int) -> dict[str, Any] | None:
+        if self.generation == 0:
+            return None
+        assert self.parent_run is not None
+        required = ("receipt.json", "generation-feedback.json", "pareto-archive.json",
+                    "candidate-manifest.json")
+        documents = {}
+        for name in required:
+            path = self.parent_run / name
+            if not path.is_file():
+                raise ValueError(f"parent generation artifact is absent: {name}")
+            documents[name] = json.loads(path.read_text(encoding="utf-8"))
+        receipt = documents["receipt.json"]
+        feedback = documents["generation-feedback.json"]
+        archive = documents["pareto-archive.json"]
+        candidates = documents["candidate-manifest.json"]
+        if (receipt.get("status") != "generation-complete"
+                or receipt.get("resumable") is not True
+                or receipt.get("final_test_executed") is not False
+                or receipt.get("generation") != self.generation - 1):
+            raise ValueError("parent generation receipt is not eligible for evolution")
+        if feedback.get("generation") != self.generation - 1:
+            raise ValueError("parent train feedback generation is invalid")
+        allowed_feedback = {"schema", "generation", "root_causes", "evidence"}
+        if set(feedback) != allowed_feedback:
+            raise ValueError("parent feedback contains non-train evolution inputs")
+        parent_ids = archive.get("archive")
+        if archive.get("generation") != self.generation - 1 or not isinstance(parent_ids, list) \
+                or not parent_ids:
+            raise ValueError("parent Pareto archive is invalid")
+        if not isinstance(candidates, dict):
+            raise ValueError("parent candidate manifest is invalid")
+        parent_skills: dict[str, str] = {}
+        for candidate_id in parent_ids:
+            path = self.parent_run / "candidates" / candidate_id / "SKILL.md"
+            if candidate_id not in candidates or not path.is_file():
+                raise ValueError(f"parent candidate is absent: {candidate_id}")
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            if candidates[candidate_id] != digest:
+                raise ValueError(f"parent candidate binding is invalid: {candidate_id}")
+            parent_skills[candidate_id] = digest
+        assignments = [parent_ids[index % len(parent_ids)] for index in range(effective_candidates)]
+        artifact_digests = {
+            name: hashlib.sha256((self.parent_run / name).read_bytes()).hexdigest()
+            for name in required
+        }
+        return {
+            "schema": "DiscoveryEvolutionContext.v1", "generation": self.generation,
+            "parent_generation": self.generation - 1,
+            "parent_run": str(self.parent_run), "parent_artifact_digests": artifact_digests,
+            "train_feedback": feedback, "train_feedback_digest": canonical_digest(feedback),
+            "parent_archive": parent_ids, "parent_skill_digests": parent_skills,
+            "assignments": assignments,
+        }
+
+    def _initialize_candidates(self, effective_candidates: int,
+                               context: Mapping[str, Any] | None) -> dict[str, str]:
         candidates: dict[str, str] = {}
         seed = (self.source_root / self.manifest.seed_skill).read_text(encoding="utf-8")
         if not seed.strip():
             raise ValueError("seed skill must not be empty")
         for index in range(effective_candidates):
-            candidate_id = f"g00-c{index:02d}"
-            skill = seed if index == 0 else self.backend.generate(
-                seed_skill=seed, runtime_digest=self.manifest.runtime_digest
-            )
+            candidate_id = f"g{self.generation:02d}-c{index:02d}"
+            if self.generation == 0:
+                skill = seed if index == 0 else self.backend.generate(
+                    seed_skill=seed, runtime_digest=self.manifest.runtime_digest
+                )
+            else:
+                assert context is not None and self.parent_run is not None
+                parent_id = context["assignments"][index]
+                parent_skill = (self.parent_run / "candidates" / parent_id / "SKILL.md").read_text(
+                    encoding="utf-8")
+                skill = self.backend.evolve(
+                    parent_skill=parent_skill, train_feedback=context["train_feedback"],
+                    runtime_digest=self.manifest.runtime_digest,
+                )
             if not isinstance(skill, str) or not skill.strip() or len(skill.encode()) > 8192:
                 raise ValueError("generator output must be one non-empty SKILL.md up to 8 KiB")
             path = self._skill_path(candidate_id)
@@ -184,10 +258,13 @@ class DiscoveryRunner:
 
     def _load_or_initialize(self, effective_candidates: int,
                             effective_workers: int) -> tuple[CoordinatorState, dict[str, str]]:
+        context = self._evolution_context(effective_candidates)
+        context_digest = canonical_digest(context) if context is not None else None
         binding = canonical_digest({
             "manifest": self.manifest.manifest_digest,
             "candidates": effective_candidates, "workers": effective_workers,
             "repetitions": self.manifest.repetitions,
+            "generation": self.generation, "evolution_context": context_digest,
         })
         candidate_manifest_path = self.run_dir / "candidate-manifest.json"
         if self.state_path.exists():
@@ -197,6 +274,13 @@ class DiscoveryRunner:
             candidates = json.loads(candidate_manifest_path.read_text())
             if not isinstance(candidates, dict) or len(candidates) != effective_candidates:
                 raise ValueError("resume candidate inventory is invalid")
+            context_path = self.run_dir / "generation-context.json"
+            if context is None:
+                if context_path.exists():
+                    raise ValueError("generation-zero resume has an unexpected parent context")
+            elif (not context_path.is_file()
+                  or json.loads(context_path.read_text(encoding="utf-8")) != context):
+                raise ValueError("resume evolution context binding is invalid")
             for candidate_id, digest in candidates.items():
                 if hashlib.sha256(self._skill_path(candidate_id).read_bytes()).hexdigest() != digest:
                     raise ValueError(f"resume candidate binding is invalid: {candidate_id}")
@@ -204,8 +288,21 @@ class DiscoveryRunner:
         if self.run_dir.exists() and any(self.run_dir.iterdir()):
             raise ValueError("new discovery run directory is not empty")
         self.run_dir.mkdir(parents=True, exist_ok=True)
-        candidates = self._initialize_candidates(effective_candidates)
+        if context is not None:
+            _write_json(self.run_dir / "generation-context.json", context)
+        candidates = self._initialize_candidates(effective_candidates, context)
         _write_json(candidate_manifest_path, candidates)
+        if context is not None:
+            _write_json(self.run_dir / "candidate-lineage.json", {
+                "schema": "DiscoveryCandidateLineage.v1", "generation": self.generation,
+                "train_feedback_digest": context["train_feedback_digest"],
+                "candidates": [{
+                    "candidate_id": f"g{self.generation:02d}-c{index:02d}",
+                    "parent_candidate_id": parent_id,
+                    "parent_skill_digest": context["parent_skill_digests"][parent_id],
+                    "skill_digest": candidates[f"g{self.generation:02d}-c{index:02d}"],
+                } for index, parent_id in enumerate(context["assignments"])],
+            })
         state = CoordinatorState(manifest_digest=binding, cells={})
         write_coordinator_state(self.state_path, state)
         return state, candidates
@@ -381,7 +478,7 @@ class DiscoveryRunner:
                 feedback = [result for cell_id, result in results.items()
                             if "--train--" in cell_id]
                 _write_json(self.run_dir / "generation-feedback.json", {
-                    "schema": "DiscoveryGenerationFeedback.v1", "generation": 0,
+                    "schema": "DiscoveryGenerationFeedback.v1", "generation": self.generation,
                     "root_causes": sorted({item for row in feedback
                                            for item in row.failure_taxonomy}),
                     "evidence": sorted({shortened for row in feedback
@@ -405,13 +502,13 @@ class DiscoveryRunner:
             ))
         archive = pareto_archive(summaries)
         _write_json(self.run_dir / "pareto-archive.json", {
-            "schema": "DiscoveryParetoArchive.v1", "generation": 0,
+            "schema": "DiscoveryParetoArchive.v1", "generation": self.generation,
             "candidates": [row.model_dump(mode="json") for row in summaries],
             "archive": [row.candidate_id for row in archive],
         })
         _write_json(self.run_dir / "receipt.json", {
             "schema": "DiscoveryGenerationReceipt.v1", "status": "generation-complete",
-            "generation": 0, "resumable": True, "final_test_executed": False,
+            "generation": self.generation, "resumable": True, "final_test_executed": False,
             "champion_id": None, "effective_candidates": effective_candidates,
             "effective_workers": effective_workers, "terminal_cells": len(state.cells),
             "pareto_archive": [row.candidate_id for row in archive],

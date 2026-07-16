@@ -40,6 +40,31 @@ def _run(args: argparse.Namespace) -> int:
     return 0
 
 
+def _evolve(args: argparse.Namespace) -> int:
+    manifest_path = Path(args.manifest).resolve(strict=True)
+    manifest = load_manifest(manifest_path)
+    project = _project(manifest_path)
+    parent_run = Path(args.parent_run).resolve(strict=True)
+    parent_receipt = json.loads((parent_run / "receipt.json").read_text(encoding="utf-8"))
+    generation = int(parent_receipt["generation"]) + 1
+    run_dir = Path(args.run_dir).resolve() if args.run_dir else (
+        project / ".measurecontractdrift/discovery" /
+        (f"g{generation:02d}-" + datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ"))
+    )
+    dashboard = DiscoveryDashboard.require(run_id=run_dir.name, worker_count=4)
+    backend = DirectCodexDiscoveryBackend(
+        project, run_dir / "backend", answer_seed=manifest.answer_seed,
+        codex=os.environ.get("CODEX", shutil.which("codex") or "codex"),
+        model=manifest.model, reasoning_effort=manifest.reasoning_effort,
+    )
+    result = DiscoveryRunner(
+        manifest_path, run_dir, backend, dashboard,
+        generation=generation, parent_run=parent_run,
+    ).run(max_candidates=args.max_candidates, max_parallel=args.max_parallel)
+    print(result)
+    return 0
+
+
 def _resume(args: argparse.Namespace) -> int:
     run_dir = Path(args.run_dir).resolve(strict=True)
     state = json.loads((run_dir / "state.json").read_text(encoding="utf-8"))
@@ -47,13 +72,24 @@ def _resume(args: argparse.Namespace) -> int:
     manifest = load_manifest(manifest_path)
     if not isinstance(state, dict):
         raise RuntimeError("resume state is invalid")
+    context_path = run_dir / "generation-context.json"
+    if context_path.is_file():
+        context = json.loads(context_path.read_text(encoding="utf-8"))
+        generation = int(context["generation"])
+        parent_run = Path(context["parent_run"])
+    else:
+        generation = 0
+        parent_run = None
     dashboard = DiscoveryDashboard.require(run_id=run_dir.name, worker_count=4)
     backend = DirectCodexDiscoveryBackend(
         _project(manifest_path), run_dir / "backend", answer_seed=manifest.answer_seed,
         codex=os.environ.get("CODEX", shutil.which("codex") or "codex"),
         model=manifest.model, reasoning_effort=manifest.reasoning_effort,
     )
-    result = DiscoveryRunner(manifest_path, run_dir, backend, dashboard).run(
+    result = DiscoveryRunner(
+        manifest_path, run_dir, backend, dashboard,
+        generation=generation, parent_run=parent_run,
+    ).run(
         max_candidates=args.max_candidates, max_parallel=args.max_parallel,
     )
     print(result)
@@ -72,6 +108,14 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--max-candidates", type=int, choices=range(1, 5))
     run.add_argument("--max-parallel", type=int, choices=range(1, 5))
     run.set_defaults(handler=_run)
+    evolve = actions.add_parser("evolve")
+    evolve.add_argument("--manifest", required=True)
+    evolve.add_argument("--parent-run", required=True)
+    evolve.add_argument("--run-dir")
+    evolve.add_argument("--one-generation", action="store_true", required=True)
+    evolve.add_argument("--max-candidates", type=int, choices=range(1, 5))
+    evolve.add_argument("--max-parallel", type=int, choices=range(1, 5))
+    evolve.set_defaults(handler=_evolve)
     resume = actions.add_parser("resume")
     resume.add_argument("--manifest", required=True)
     resume.add_argument("--run-dir", required=True)

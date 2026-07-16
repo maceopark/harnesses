@@ -6,6 +6,8 @@ import threading
 import time
 from pathlib import Path
 
+import pytest
+
 from driftbench.discovery import canonical_digest
 from driftbench.discovery_runner import (
     DiscoveryRunner, _hash_inventory, _short_evidence, load_manifest,
@@ -16,6 +18,7 @@ class FakeBackend:
     def __init__(self, fail_once: str | None = None, always_fail: str | None = None,
                  expect_feedback_at: Path | None = None) -> None:
         self.generations: list[str] = []
+        self.evolutions: list[dict] = []
         self.calls: list[str] = []
         self.attempts: dict[str, int] = {}
         self.fail_once = fail_once
@@ -28,6 +31,11 @@ class FakeBackend:
     def generate(self, *, seed_skill: str, runtime_digest: str) -> str:
         self.generations.append(runtime_digest)
         return seed_skill + f"\nvariant-{len(self.generations)}\n"
+
+    def evolve(self, *, parent_skill: str, train_feedback, runtime_digest: str) -> str:
+        self.evolutions.append({"parent_skill": parent_skill, "feedback": train_feedback,
+                                "runtime_digest": runtime_digest})
+        return parent_skill + f"\nevolved-{len(self.evolutions)}\n"
 
     def evaluate(self, *, cell, prompt, skill, repo, attempt_dir, answer_seed, pane=None):
         if cell.partition == "validation" and self.expect_feedback_at is not None:
@@ -113,6 +121,53 @@ def test_resume_reuses_digest_bound_terminal_cells(tmp_path: Path) -> None:
     DiscoveryRunner(manifest, run_dir, backend).run(max_candidates=1, max_parallel=1)
     assert backend.calls == []
     assert backend.generations == []
+
+
+def test_generation_one_uses_train_feedback_and_runs_a_fresh_72_cell_cycle(tmp_path: Path) -> None:
+    manifest = _manifest(tmp_path)
+    parent = tmp_path / "g00"
+    DiscoveryRunner(manifest, parent, FakeBackend()).run()
+    child = tmp_path / "g01"
+    backend = FakeBackend(expect_feedback_at=child / "generation-feedback.json")
+    DiscoveryRunner(manifest, child, backend, generation=1, parent_run=parent).run()
+
+    receipt = json.loads((child / "receipt.json").read_text())
+    state = json.loads((child / "state.json").read_text())
+    context = json.loads((child / "generation-context.json").read_text())
+    lineage = json.loads((child / "candidate-lineage.json").read_text())
+    parent_feedback = json.loads((parent / "generation-feedback.json").read_text())
+    assert receipt["generation"] == 1 and receipt["terminal_cells"] == 72
+    assert len(state["cells"]) == 72
+    assert all(cell.startswith("g01-c") for cell in state["cells"])
+    assert len(backend.evolutions) == 4 and backend.generations == []
+    assert all(call["feedback"] == parent_feedback for call in backend.evolutions)
+    assert all("secret-validation" not in json.dumps(call["feedback"])
+               for call in backend.evolutions)
+    assert context["train_feedback"] == parent_feedback
+    assert len(lineage["candidates"]) == 4
+    assert {row["parent_candidate_id"] for row in lineage["candidates"]} <= set(
+        json.loads((parent / "pareto-archive.json").read_text())["archive"])
+
+
+def test_generation_one_resume_reuses_cells_and_rejects_parent_feedback_drift(tmp_path: Path) -> None:
+    manifest = _manifest(tmp_path)
+    parent = tmp_path / "g00"
+    child = tmp_path / "g01"
+    DiscoveryRunner(manifest, parent, FakeBackend()).run(max_candidates=1, max_parallel=1)
+    DiscoveryRunner(manifest, child, FakeBackend(), generation=1, parent_run=parent).run(
+        max_candidates=1, max_parallel=1)
+    backend = FakeBackend()
+    DiscoveryRunner(manifest, child, backend, generation=1, parent_run=parent).run(
+        max_candidates=1, max_parallel=1)
+    assert backend.calls == [] and backend.evolutions == []
+
+    feedback_path = parent / "generation-feedback.json"
+    feedback = json.loads(feedback_path.read_text())
+    feedback["evidence"].append("tampered")
+    feedback_path.write_text(json.dumps(feedback))
+    with pytest.raises(ValueError, match="binding"):
+        DiscoveryRunner(manifest, child, FakeBackend(), generation=1, parent_run=parent).run(
+            max_candidates=1, max_parallel=1)
 
 
 def test_artifact_inventory_ignores_ephemeral_git_metadata(tmp_path: Path) -> None:

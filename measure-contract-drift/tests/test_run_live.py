@@ -47,8 +47,21 @@ def test_wrapper_resumes_and_forwards_safe_limits(tmp_path: Path) -> None:
     ]
 
 
+def test_wrapper_evolves_exactly_one_generation(tmp_path: Path) -> None:
+    project = Path(__file__).resolve().parents[1]
+    assert _run(tmp_path, "--evolve", "/tmp/g00 run", "--one-generation") == [
+        f"<run><--project><{project}><driftbench><discovery><evolve>"
+        "<--parent-run></tmp/g00 run>"
+        f"<--manifest><{project}/discovery-study.json><--one-generation>"
+    ]
+
+
 def test_wrapper_rejects_missing_generation_and_bad_limits(tmp_path: Path) -> None:
     assert _run(tmp_path, expected=2) == []
     other = tmp_path / "other"
     other.mkdir()
     assert _run(other, "--one-generation", "--max-parallel", "5", expected=2) == []
+    third = tmp_path / "third"
+    third.mkdir()
+    assert _run(third, "--resume", "a", "--evolve", "b", "--one-generation",
+                expected=2) == []
