@@ -42,10 +42,28 @@ STATE_FILES = {
     "reminder": "reminders.json",
     "todo": "todos.json",
 }
+PROMPTS = {
+    "access-grant": "Support granting a role to a user. Use python cli.py access grant USER ROLE.",
+    "appointment-reschedule": "Support rescheduling an appointment. Use python cli.py appointment reschedule ID DUE.",
+    "bookmarks": "Support adding a tag to a bookmark. Use python cli.py bookmark tag ID TAG.",
+    "config-merge": "Support merging a named configuration overlay. Use python cli.py config merge NAME.",
+    "contacts-csv": "Support importing contacts from CSV. Use python cli.py contacts import FILE.",
+    "expense": "Support recording an expense. Use python cli.py expense add AMOUNT NOTE.",
+    "feature-flags": "Support setting a feature flag. Use python cli.py flag set ENV NAME VALUE.",
+    "inventory-transfer": "Support transferring inventory between locations. Use python cli.py inventory transfer ITEM FROM TO QUANTITY.",
+    "order-cancel": "Support cancelling an order. Use python cli.py order cancel ID REASON.",
+    "playlist-reorder": "Support moving a track within a playlist. Use python cli.py playlist move ID POSITION.",
+    "reminder": "Support creating a reminder. Use python cli.py reminder add TEXT DUE.",
+    "todo": "Support completing a todo item. Use python cli.py todo complete ID.",
+}
 
 
 def _public_cases() -> dict[str, corpus.PublicCaseRecord]:
     return {case.case_id: case for case in corpus.validate_corpus(PUBLIC_ROOT / "cases.json")}
+
+
+def test_public_prompts_expose_only_goal_and_cli_surface() -> None:
+    assert {case_id: case.prompt for case_id, case in _public_cases().items()} == PROMPTS
 
 
 @pytest.mark.parametrize("case_id", sorted(COMMANDS))

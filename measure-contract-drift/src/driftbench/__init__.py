@@ -1,29 +1,3 @@
-"""Deterministic, fail-closed controller for contract-drift benchmark runs."""
+"""Minimal-seed interview discovery benchmark."""
 
-from .models import (
-    ArmDefinition,
-    CellIdentity,
-    CellRecord,
-    CellStatus,
-    EvaluationStatusReceipt,
-    RunConfig,
-    RunManifest,
-    RunMode,
-    RunState,
-    RunStatus,
-    Scorecard,
-)
-
-__all__ = [
-    "ArmDefinition",
-    "CellIdentity",
-    "CellRecord",
-    "CellStatus",
-    "EvaluationStatusReceipt",
-    "RunConfig",
-    "RunManifest",
-    "RunMode",
-    "RunState",
-    "RunStatus",
-    "Scorecard",
-]
+__all__: tuple[str, ...] = ()

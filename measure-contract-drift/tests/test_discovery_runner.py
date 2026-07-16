@@ -1,0 +1,145 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import threading
+import time
+from pathlib import Path
+
+from driftbench.discovery import canonical_digest
+from driftbench.discovery_runner import (
+    DiscoveryRunner, _hash_inventory, _short_evidence, load_manifest,
+)
+
+
+class FakeBackend:
+    def __init__(self, fail_once: str | None = None, always_fail: str | None = None,
+                 expect_feedback_at: Path | None = None) -> None:
+        self.generations: list[str] = []
+        self.calls: list[str] = []
+        self.attempts: dict[str, int] = {}
+        self.fail_once = fail_once
+        self.always_fail = always_fail
+        self.expect_feedback_at = expect_feedback_at
+        self.active = 0
+        self.maximum_active = 0
+        self.lock = threading.Lock()
+
+    def generate(self, *, seed_skill: str, runtime_digest: str) -> str:
+        self.generations.append(runtime_digest)
+        return seed_skill + f"\nvariant-{len(self.generations)}\n"
+
+    def evaluate(self, *, cell, prompt, skill, repo, attempt_dir, answer_seed, pane=None):
+        if cell.partition == "validation" and self.expect_feedback_at is not None:
+            assert self.expect_feedback_at.is_file()
+        with self.lock:
+            self.active += 1
+            self.maximum_active = max(self.maximum_active, self.active)
+            self.calls.append(cell.cell_id)
+            self.attempts[cell.cell_id] = self.attempts.get(cell.cell_id, 0) + 1
+        try:
+            time.sleep(.002)
+            if cell.cell_id == self.always_fail:
+                raise RuntimeError("always")
+            if cell.cell_id == self.fail_once and self.attempts[cell.cell_id] == 1:
+                raise RuntimeError("once")
+            (attempt_dir / "transcript.json").write_text("{}\n")
+            (attempt_dir / "selections.json").write_text("{}\n")
+            (attempt_dir / "implementation.diff").write_text("diff\n")
+            (attempt_dir / "postmortem.md").write_text("# report\n")
+            (attempt_dir / "postmortem-result.json").write_text("{}\n")
+            session = attempt_dir / ".ultimateinterview" / cell.cell_id
+            session.mkdir(parents=True)
+            (session / "build-contract.json").write_text("{}\n")
+            return {"fulfilled": 2, "contract_requirements": 2,
+                    "escaped_requirements": 0, "material_decisions": 1,
+                    "failure_taxonomy": ["train-cause"] if cell.partition == "train" else ["secret-validation"],
+                    "failure_evidence": ["train evidence"] if cell.partition == "train" else ["secret evidence"]}
+        finally:
+            with self.lock:
+                self.active -= 1
+
+
+def _manifest(tmp_path: Path) -> Path:
+    seed = tmp_path / "seed.md"
+    seed.write_text("# Interview\n")
+    cases = []
+    for partition, count in (("train", 6), ("validation", 3)):
+        for index in range(count):
+            case_id = f"{partition}-{index}"
+            starter = tmp_path / "starters" / case_id
+            starter.mkdir(parents=True)
+            (starter / "cli.py").write_text("print('ok')\n")
+            cases.append({"case_id": case_id, "partition": partition,
+                          "prompt": f"Support {case_id}", "starter": f"starters/{case_id}"})
+    value = {"schema": "DiscoveryManifest.v1", "study_id": "test", "answer_seed": "seed",
+             "seed_skill": "seed.md", "runtime_digest": "a" * 64,
+             "model": "test-model", "reasoning_effort": "medium", "cases": cases,
+             "candidates": 4, "repetitions": 2, "workers": 4}
+    value["manifest_digest"] = canonical_digest(value)
+    path = tmp_path / "manifest.json"
+    path.write_text(json.dumps(value))
+    return path
+
+
+def test_runner_completes_72_cells_with_independent_generation_parallelism_and_no_final(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    backend = FakeBackend(fail_once="g00-c00--train--train-0--r1",
+                          always_fail="g00-c01--train--train-0--r1",
+                          expect_feedback_at=run_dir / "generation-feedback.json")
+    runner = DiscoveryRunner(_manifest(tmp_path), run_dir, backend)
+    result = runner.run()
+    receipt = json.loads((result / "receipt.json").read_text())
+    state = json.loads((result / "state.json").read_text())
+    feedback = json.loads((result / "generation-feedback.json").read_text())
+    assert len(backend.generations) == 3
+    assert len(state["cells"]) == 72
+    assert receipt["terminal_cells"] == 72
+    assert receipt["final_test_executed"] is False and receipt["champion_id"] is None
+    assert backend.maximum_active <= 4 and backend.maximum_active > 1
+    assert state["cells"]["g00-c00--train--train-0--r1"]["attempts"] == 2
+    assert state["cells"]["g00-c01--train--train-0--r1"]["status"] == "invalid"
+    assert "train-cause" in feedback["root_causes"]
+    assert "secret-validation" not in feedback["root_causes"]
+    first_validation = next(index for index, cell in enumerate(backend.calls) if "--validation--" in cell)
+    assert all("--train--" in cell for cell in backend.calls[:first_validation])
+
+
+def test_resume_reuses_digest_bound_terminal_cells(tmp_path: Path) -> None:
+    manifest = _manifest(tmp_path)
+    run_dir = tmp_path / "run"
+    DiscoveryRunner(manifest, run_dir, FakeBackend()).run(max_candidates=1, max_parallel=1)
+    backend = FakeBackend()
+    DiscoveryRunner(manifest, run_dir, backend).run(max_candidates=1, max_parallel=1)
+    assert backend.calls == []
+    assert backend.generations == []
+
+
+def test_artifact_inventory_ignores_ephemeral_git_metadata(tmp_path: Path) -> None:
+    (tmp_path / "result.json").write_text("{}\n")
+    metadata = tmp_path / "attempts" / "attempt-1" / "repo" / ".git"
+    metadata.mkdir(parents=True)
+    (metadata / "HEAD").write_text("ref: refs/heads/main\n")
+
+    assert _hash_inventory(tmp_path) == {
+        "result.json": hashlib.sha256(b"{}\n").hexdigest()
+    }
+
+
+def test_generation_feedback_evidence_is_single_line_and_bounded() -> None:
+    value = "\nRuntimeError: model at capacity\n" + "diagnostic " * 100
+    assert _short_evidence(value) == "RuntimeError: model at capacity"
+    assert len(_short_evidence("x" * 500)) == 240
+
+
+def test_checked_in_manifest_binds_generation_zero_inventory() -> None:
+    project = Path(__file__).resolve().parents[1]
+    manifest = load_manifest(project / "discovery-study.json")
+    assert manifest.candidates == 4 and manifest.repetitions == 2 and manifest.workers == 4
+    assert [case.case_id for case in manifest.cases if case.partition == "train"] == [
+        "bookmarks", "contacts-csv", "expense", "inventory-transfer",
+        "feature-flags", "playlist-reorder",
+    ]
+    assert [case.case_id for case in manifest.cases if case.partition == "validation"] == [
+        "config-merge", "reminder", "order-cancel",
+    ]
