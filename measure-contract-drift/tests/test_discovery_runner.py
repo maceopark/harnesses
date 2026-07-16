@@ -32,10 +32,18 @@ class FakeBackend:
         self.generations.append(runtime_digest)
         return seed_skill + f"\nvariant-{len(self.generations)}\n"
 
-    def evolve(self, *, parent_skill: str, train_feedback, runtime_digest: str) -> str:
+    def evolve(self, *, parent_skill: str, train_feedback, mutation_intent,
+               runtime_digest: str) -> str:
         self.evolutions.append({"parent_skill": parent_skill, "feedback": train_feedback,
+                                "mutation_intent": mutation_intent,
                                 "runtime_digest": runtime_digest})
         return parent_skill + f"\nevolved-{len(self.evolutions)}\n"
+
+    def summarize_skill_change(self, *, parent_skill: str, candidate_skill: str,
+                               mutation_intent):
+        return {"parent_summary": "Parent strategy.",
+                "candidate_summary": "Candidate strategy.",
+                "change_summary": f"Applied {mutation_intent['intent_id']}."}
 
     def evaluate(self, *, cell, prompt, skill, repo, attempt_dir, answer_seed, pane=None):
         if cell.partition == "validation" and self.expect_feedback_at is not None:
@@ -80,10 +88,20 @@ def _manifest(tmp_path: Path) -> Path:
             (starter / "cli.py").write_text("print('ok')\n")
             cases.append({"case_id": case_id, "partition": partition,
                           "prompt": f"Support {case_id}", "starter": f"starters/{case_id}"})
-    value = {"schema": "DiscoveryManifest.v1", "study_id": "test", "answer_seed": "seed",
+    value = {"schema": "DiscoveryManifest.v2", "study_id": "test", "answer_seed": "seed",
              "seed_skill": "seed.md", "runtime_digest": "a" * 64,
              "model": "test-model", "reasoning_effort": "medium", "cases": cases,
-             "candidates": 4, "repetitions": 2, "workers": 4}
+             "candidates": 4, "repetitions": 2, "workers": 4,
+             "mutation_intents": [
+                 {"intent_id": value, "label": value, "directive": f"Change {value}"}
+                 for value in ("fidelity-repair", "question-compression",
+                               "interaction-redesign", "novel-structure")],
+             "stopping": {"schema": "DiscoveryStoppingPolicy.v1",
+                          "maximum_generation": 9, "minimum_generation": 2,
+                          "patience": 2, "fidelity_epsilon_ppm": 25000,
+                          "decision_epsilon_milli": 500, "skill_bytes_epsilon": 256,
+                          "require_full_candidate_inventory": True,
+                          "full_candidate_count": 4}}
     value["manifest_digest"] = canonical_digest(value)
     path = tmp_path / "manifest.json"
     path.write_text(json.dumps(value))
@@ -144,9 +162,18 @@ def test_generation_one_uses_train_feedback_and_runs_a_fresh_72_cell_cycle(tmp_p
     assert all("secret-validation" not in json.dumps(call["feedback"])
                for call in backend.evolutions)
     assert context["train_feedback"] == parent_feedback
+    assert [call["mutation_intent"]["intent_id"] for call in backend.evolutions] == [
+        "fidelity-repair", "question-compression", "interaction-redesign", "novel-structure"]
+    assert [row["parent_candidate_id"] for row in context["assignments"]] == [
+        context["parent_archive"][index % len(context["parent_archive"])] for index in range(4)]
     assert len(lineage["candidates"]) == 4
     assert {row["parent_candidate_id"] for row in lineage["candidates"]} <= set(
         json.loads((parent / "pareto-archive.json").read_text())["archive"])
+    assert (child / "generation-comparison.html").is_file()
+    assert (child / "generation-comparison.json").is_file()
+    summaries = json.loads((child / "skill-change-summaries.json").read_text())
+    assert summaries["summaries"]["g01-c00"]["change_summary"] == "Applied fidelity-repair."
+    assert json.loads((child / "receipt.json").read_text())["comparison_report_digest"]
 
 
 def test_generation_one_resume_reuses_cells_and_rejects_parent_feedback_drift(tmp_path: Path) -> None:
@@ -166,6 +193,19 @@ def test_generation_one_resume_reuses_cells_and_rejects_parent_feedback_drift(tm
     feedback["evidence"].append("tampered")
     feedback_path.write_text(json.dumps(feedback))
     with pytest.raises(ValueError, match="binding"):
+        DiscoveryRunner(manifest, child, FakeBackend(), generation=1, parent_run=parent).run(
+            max_candidates=1, max_parallel=1)
+
+
+def test_resume_rejects_tampered_mutation_lineage(tmp_path: Path) -> None:
+    manifest = _manifest(tmp_path); parent = tmp_path / "g00"; child = tmp_path / "g01"
+    DiscoveryRunner(manifest, parent, FakeBackend()).run(max_candidates=1, max_parallel=1)
+    DiscoveryRunner(manifest, child, FakeBackend(), generation=1, parent_run=parent).run(
+        max_candidates=1, max_parallel=1)
+    path = child / "candidate-lineage.json"; value = json.loads(path.read_text())
+    value["candidates"][0]["mutation_intent_id"] = "novel-structure"
+    path.write_text(json.dumps(value))
+    with pytest.raises(ValueError, match="lineage binding"):
         DiscoveryRunner(manifest, child, FakeBackend(), generation=1, parent_run=parent).run(
             max_candidates=1, max_parallel=1)
 
@@ -191,6 +231,9 @@ def test_checked_in_manifest_binds_generation_zero_inventory() -> None:
     project = Path(__file__).resolve().parents[1]
     manifest = load_manifest(project / "discovery-study.json")
     assert manifest.candidates == 4 and manifest.repetitions == 2 and manifest.workers == 4
+    assert [row.intent_id for row in manifest.mutation_intents] == [
+        "fidelity-repair", "question-compression", "interaction-redesign", "novel-structure"]
+    assert manifest.stopping.patience == 2 and manifest.stopping.maximum_generation == 9
     assert [case.case_id for case in manifest.cases if case.partition == "train"] == [
         "bookmarks", "contacts-csv", "expense", "inventory-transfer",
         "feature-flags", "playlist-reorder",

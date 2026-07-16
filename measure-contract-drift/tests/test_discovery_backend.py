@@ -54,9 +54,12 @@ def test_generator_input_contains_only_seed_and_runtime_contract() -> None:
 def test_evolution_input_contains_parent_and_train_feedback_but_no_validation_surface() -> None:
     feedback = {"schema": "DiscoveryGenerationFeedback.v1", "generation": 0,
                 "root_causes": ["decision-miss"], "evidence": ["duplicate policy escaped"]}
-    prompt = build_evolution_prompt("# Parent\nAsk precisely.", feedback, "runtime-xyz")
+    intent = {"intent_id": "interaction-redesign", "label": "Redesign",
+              "directive": "Change ordering and termination."}
+    prompt = build_evolution_prompt("# Parent\nAsk precisely.", feedback, intent, "runtime-xyz")
     assert "Ask precisely" in prompt and "decision-miss" in prompt
     assert "duplicate policy escaped" in prompt and "runtime-xyz" in prompt
+    assert "interaction-redesign" in prompt and "Change ordering and termination" in prompt
     for forbidden in ("fidelity_lcb", "pareto_archive", "validation score", "candidate_id"):
         assert forbidden not in prompt
 

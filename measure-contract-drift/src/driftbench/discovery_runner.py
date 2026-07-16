@@ -26,6 +26,7 @@ from .discovery import (
     merge_receipt, pareto_archive, schedule_cells, summarize_candidate,
     write_coordinator_state,
 )
+from .evolution import convergence_decision, write_comparison_report
 
 
 REQUIRED_CELL_ARTIFACTS = (
@@ -41,9 +42,34 @@ class DiscoveryCase(ClosedModel):
     starter: str = Field(min_length=1)
 
 
+class MutationIntent(ClosedModel):
+    intent_id: str = Field(pattern=r"^[a-z][a-z0-9-]*$")
+    label: str = Field(min_length=1)
+    directive: str = Field(min_length=1)
+
+
+class StoppingPolicy(ClosedModel):
+    schema_: Literal["DiscoveryStoppingPolicy.v1"] = Field(
+        default="DiscoveryStoppingPolicy.v1", alias="schema", serialization_alias="schema")
+    maximum_generation: int = Field(ge=2, le=30)
+    minimum_generation: int = Field(ge=2)
+    patience: int = Field(ge=2)
+    fidelity_epsilon_ppm: int = Field(ge=0, le=1_000_000)
+    decision_epsilon_milli: int = Field(ge=0)
+    skill_bytes_epsilon: int = Field(ge=0)
+    require_full_candidate_inventory: bool = True
+    full_candidate_count: Literal[4] = 4
+
+    @model_validator(mode="after")
+    def validate_window(self) -> "StoppingPolicy":
+        if self.minimum_generation > self.maximum_generation:
+            raise ValueError("minimum generation exceeds generation limit")
+        return self
+
+
 class DiscoveryManifest(ClosedModel):
-    schema_: Literal["DiscoveryManifest.v1"] = Field(
-        default="DiscoveryManifest.v1", alias="schema", serialization_alias="schema"
+    schema_: Literal["DiscoveryManifest.v2"] = Field(
+        default="DiscoveryManifest.v2", alias="schema", serialization_alias="schema"
     )
     study_id: str = Field(min_length=1)
     answer_seed: str = Field(min_length=1)
@@ -55,6 +81,8 @@ class DiscoveryManifest(ClosedModel):
     candidates: int = Field(default=4, ge=1, le=4)
     repetitions: Literal[2] = 2
     workers: int = Field(default=4, ge=1, le=4)
+    mutation_intents: tuple[MutationIntent, ...] = Field(min_length=4, max_length=4)
+    stopping: StoppingPolicy
     manifest_digest: str = Field(pattern=r"[0-9a-f]{64}")
 
     @model_validator(mode="after")
@@ -66,6 +94,9 @@ class DiscoveryManifest(ClosedModel):
             raise ValueError("manifest requires six train cases")
         if sum(case.partition == "validation" for case in self.cases) != 3:
             raise ValueError("manifest requires three validation cases")
+        intent_ids = [intent.intent_id for intent in self.mutation_intents]
+        if len(set(intent_ids)) != 4:
+            raise ValueError("manifest requires four unique mutation intents")
         return self
 
 
@@ -88,7 +119,10 @@ class DiscoveryBackend(Protocol):
     def generate(self, *, seed_skill: str, runtime_digest: str) -> str: ...
 
     def evolve(self, *, parent_skill: str, train_feedback: Mapping[str, Any],
-               runtime_digest: str) -> str: ...
+               mutation_intent: Mapping[str, Any], runtime_digest: str) -> str: ...
+
+    def summarize_skill_change(self, *, parent_skill: str, candidate_skill: str,
+                               mutation_intent: Mapping[str, Any]) -> Mapping[str, str]: ...
 
     def evaluate(self, *, cell: CellSpec, prompt: str, skill: str, repo: Path,
                  attempt_dir: Path, answer_seed: str, pane: Any | None = None
@@ -193,6 +227,17 @@ class DiscoveryRunner:
                 or receipt.get("final_test_executed") is not False
                 or receipt.get("generation") != self.generation - 1):
             raise ValueError("parent generation receipt is not eligible for evolution")
+        convergence_path = self.parent_run / "convergence.json"
+        if convergence_path.is_file():
+            parent_convergence = json.loads(convergence_path.read_text(encoding="utf-8"))
+            expected = receipt.get("convergence_decision_digest")
+            actual = hashlib.sha256(convergence_path.read_bytes()).hexdigest()
+            if expected != actual:
+                raise ValueError("parent convergence binding is invalid")
+            if parent_convergence.get("stop") is True:
+                raise ValueError(f"parent generation requested stop: {parent_convergence.get('reason')}")
+        if self.generation > self.manifest.stopping.maximum_generation:
+            raise ValueError("generation limit reached")
         if feedback.get("generation") != self.generation - 1:
             raise ValueError("parent train feedback generation is invalid")
         allowed_feedback = {"schema", "generation", "root_causes", "evidence"}
@@ -213,17 +258,28 @@ class DiscoveryRunner:
             if candidates[candidate_id] != digest:
                 raise ValueError(f"parent candidate binding is invalid: {candidate_id}")
             parent_skills[candidate_id] = digest
-        assignments = [parent_ids[index % len(parent_ids)] for index in range(effective_candidates)]
+        assignments = []
+        for index in range(effective_candidates):
+            intent = self.manifest.mutation_intents[index]
+            assignments.append({
+                "slot_index": index, "candidate_id": f"g{self.generation:02d}-c{index:02d}",
+                "parent_candidate_id": parent_ids[index % len(parent_ids)],
+                "mutation_intent_id": intent.intent_id,
+                "mutation_intent_digest": canonical_digest(intent.model_dump()),
+            })
         artifact_digests = {
             name: hashlib.sha256((self.parent_run / name).read_bytes()).hexdigest()
             for name in required
         }
         return {
-            "schema": "DiscoveryEvolutionContext.v1", "generation": self.generation,
+            "schema": "DiscoveryEvolutionContext.v2", "generation": self.generation,
             "parent_generation": self.generation - 1,
             "parent_run": str(self.parent_run), "parent_artifact_digests": artifact_digests,
             "train_feedback": feedback, "train_feedback_digest": canonical_digest(feedback),
             "parent_archive": parent_ids, "parent_skill_digests": parent_skills,
+            "effective_candidates": effective_candidates,
+            "mutation_policy_digest": canonical_digest(
+                [row.model_dump() for row in self.manifest.mutation_intents]),
             "assignments": assignments,
         }
 
@@ -241,11 +297,14 @@ class DiscoveryRunner:
                 )
             else:
                 assert context is not None and self.parent_run is not None
-                parent_id = context["assignments"][index]
+                assignment = context["assignments"][index]
+                parent_id = assignment["parent_candidate_id"]
+                intent = self.manifest.mutation_intents[index]
                 parent_skill = (self.parent_run / "candidates" / parent_id / "SKILL.md").read_text(
                     encoding="utf-8")
                 skill = self.backend.evolve(
                     parent_skill=parent_skill, train_feedback=context["train_feedback"],
+                    mutation_intent=intent.model_dump(),
                     runtime_digest=self.manifest.runtime_digest,
                 )
             if not isinstance(skill, str) or not skill.strip() or len(skill.encode()) > 8192:
@@ -281,6 +340,16 @@ class DiscoveryRunner:
             elif (not context_path.is_file()
                   or json.loads(context_path.read_text(encoding="utf-8")) != context):
                 raise ValueError("resume evolution context binding is invalid")
+            lineage_path = self.run_dir / "candidate-lineage.json"
+            if context is not None:
+                if not lineage_path.is_file():
+                    raise ValueError("resume candidate lineage is absent")
+                lineage = json.loads(lineage_path.read_text(encoding="utf-8"))
+                for assignment, row in zip(context["assignments"], lineage.get("candidates", ())):
+                    for key in ("candidate_id", "parent_candidate_id", "mutation_intent_id",
+                                "mutation_intent_digest"):
+                        if row.get(key) != assignment[key]:
+                            raise ValueError("resume candidate lineage binding is invalid")
             for candidate_id, digest in candidates.items():
                 if hashlib.sha256(self._skill_path(candidate_id).read_bytes()).hexdigest() != digest:
                     raise ValueError(f"resume candidate binding is invalid: {candidate_id}")
@@ -294,14 +363,17 @@ class DiscoveryRunner:
         _write_json(candidate_manifest_path, candidates)
         if context is not None:
             _write_json(self.run_dir / "candidate-lineage.json", {
-                "schema": "DiscoveryCandidateLineage.v1", "generation": self.generation,
+                "schema": "DiscoveryCandidateLineage.v2", "generation": self.generation,
                 "train_feedback_digest": context["train_feedback_digest"],
                 "candidates": [{
                     "candidate_id": f"g{self.generation:02d}-c{index:02d}",
                     "parent_candidate_id": parent_id,
                     "parent_skill_digest": context["parent_skill_digests"][parent_id],
                     "skill_digest": candidates[f"g{self.generation:02d}-c{index:02d}"],
-                } for index, parent_id in enumerate(context["assignments"])],
+                    "mutation_intent_id": assignment["mutation_intent_id"],
+                    "mutation_intent_digest": assignment["mutation_intent_digest"],
+                } for index, assignment in enumerate(context["assignments"])
+                  for parent_id in (assignment["parent_candidate_id"],)],
             })
         state = CoordinatorState(manifest_digest=binding, cells={})
         write_coordinator_state(self.state_path, state)
@@ -315,6 +387,50 @@ class DiscoveryRunner:
             "manifest": self.manifest.manifest_digest, "cell": cell.model_dump(),
             "skill": skill_digest, "prompt": case.prompt, "starter": starter_hashes,
         })
+
+    def _skill_change_summaries(self, context: Mapping[str, Any]) -> dict[str, Any]:
+        assert self.parent_run is not None
+        path = self.run_dir / "skill-change-summaries.json"
+        assignments = context["assignments"]
+        expected_inputs = {
+            row["candidate_id"]: {
+                "parent_candidate_id": row["parent_candidate_id"],
+                "parent_skill_digest": context["parent_skill_digests"][row["parent_candidate_id"]],
+                "candidate_skill_digest": hashlib.sha256(
+                    self._skill_path(row["candidate_id"]).read_bytes()).hexdigest(),
+                "mutation_intent_id": row["mutation_intent_id"],
+                "mutation_intent_digest": row["mutation_intent_digest"],
+            } for row in assignments
+        }
+        if path.is_file():
+            value = json.loads(path.read_text(encoding="utf-8"))
+            if value.get("inputs") != expected_inputs:
+                raise ValueError("skill change summary binding is invalid")
+            return value
+
+        def summarize(row: Mapping[str, Any]) -> tuple[str, Mapping[str, str]]:
+            candidate_id = row["candidate_id"]
+            parent_id = row["parent_candidate_id"]
+            intent = next(item for item in self.manifest.mutation_intents
+                          if item.intent_id == row["mutation_intent_id"])
+            result = self.backend.summarize_skill_change(
+                parent_skill=(self.parent_run / "candidates" / parent_id / "SKILL.md").read_text(
+                    encoding="utf-8"),
+                candidate_skill=self._skill_path(candidate_id).read_text(encoding="utf-8"),
+                mutation_intent=intent.model_dump(),
+            )
+            required = ("parent_summary", "candidate_summary", "change_summary")
+            if any(not isinstance(result.get(key), str) or not result[key].strip()
+                   for key in required):
+                raise ValueError("skill change summary is malformed")
+            return candidate_id, {key: result[key].strip() for key in required}
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(4, len(assignments))) as pool:
+            summaries = dict(pool.map(summarize, assignments))
+        value = {"schema": "DiscoverySkillChangeSummaries.v1", "generation": self.generation,
+                 "inputs": expected_inputs, "summaries": summaries}
+        _write_json(path, value)
+        return value
 
     def _work(self, cell: CellSpec, skill_digest: str, pane: Any | None = None) -> WorkerResult:
         started = time.monotonic()
@@ -435,7 +551,8 @@ class DiscoveryRunner:
                         contract_requirements=int(result.get("contract_requirements", 1)),
                         escaped_requirements=int(result.get("escaped_requirements", 0)),
                         material_decisions=int(result.get("material_decisions", 0)),
-                        tokens=int(result.get("tokens", 0)), wall_clock_ms=0,
+                        tokens=int(result.get("tokens", 0)),
+                        wall_clock_ms=int(result.get("wall_clock_ms", 0)),
                         authority_expansion=bool(result.get("authority_expansion", False)),
                         lineage_valid=bool(result.get("lineage_valid", receipt.status == "completed")),
                         failure_taxonomy=tuple(result.get("failure_taxonomy", ())),
@@ -506,12 +623,35 @@ class DiscoveryRunner:
             "candidates": [row.model_dump(mode="json") for row in summaries],
             "archive": [row.candidate_id for row in archive],
         })
+        convergence = convergence_decision(
+            self.run_dir, self.manifest.stopping.model_dump(mode="json", by_alias=True),
+            effective_candidates=effective_candidates, terminal_cells=len(state.cells),
+            expected_cells=effective_candidates * len(self.manifest.cases) * self.manifest.repetitions,
+        )
+        _write_json(self.run_dir / "convergence.json", convergence)
+        comparison_digest = None
+        if self.parent_run is not None:
+            evolution_context = self._evolution_context(effective_candidates)
+            assert evolution_context is not None
+            skill_summaries = self._skill_change_summaries(evolution_context)
+            comparison_digest = write_comparison_report(
+                self.parent_run, self.run_dir, convergence,
+                {row.intent_id: row.model_dump() for row in self.manifest.mutation_intents},
+                skill_summaries["summaries"])
+        convergence_digest = hashlib.sha256(
+            (self.run_dir / "convergence.json").read_bytes()).hexdigest()
         _write_json(self.run_dir / "receipt.json", {
             "schema": "DiscoveryGenerationReceipt.v1", "status": "generation-complete",
             "generation": self.generation, "resumable": True, "final_test_executed": False,
             "champion_id": None, "effective_candidates": effective_candidates,
             "effective_workers": effective_workers, "terminal_cells": len(state.cells),
             "pareto_archive": [row.candidate_id for row in archive],
+            "convergence_decision_digest": convergence_digest,
+            "stop_requested": convergence["stop"], "stop_reason": convergence["reason"],
+            "comparison_report_digest": comparison_digest,
+            "skill_change_summaries_digest": (hashlib.sha256(
+                (self.run_dir / "skill-change-summaries.json").read_bytes()).hexdigest()
+                if self.parent_run is not None else None),
         })
         if self.dashboard is not None:
             self.dashboard.finish(

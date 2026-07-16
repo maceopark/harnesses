@@ -25,6 +25,14 @@ Pareto archive, and makes four independent mutation calls. Each call receives on
 It then runs a fresh 72-cell generation. Parent artifacts, feedback, lineage, generated skills,
 effective limits, and every cell input are digest-bound for fail-closed resume.
 
+The four candidate slots are manifest-bound structural mutations: fidelity repair, question
+compression, interaction redesign, and novel structure. Parents are assigned round-robin from the
+previous Pareto archive, so empty slots retain distinct mutation purposes rather than becoming
+unconstrained copies. After each evolved generation, `generation-comparison.html` provides a
+self-contained parent comparison and `convergence.json` records the early-stop decision. Evolution
+stops before generation 9 when the historical Pareto frontier epsilon-covers every new frontier for
+two consecutive full generations; reduced diagnostic runs never trigger convergence.
+
 Tests:
 
 ```sh

@@ -137,6 +137,7 @@ def build_generator_prompt(seed_skill: str, runtime_contract: str = RUNTIME_CONT
 
 
 def build_evolution_prompt(parent_skill: str, train_feedback: Mapping[str, Any],
+                           mutation_intent: Mapping[str, Any],
                            runtime_contract: str = RUNTIME_CONTRACT) -> str:
     """Build the complete mutation input without exposing validation details."""
     feedback = {
@@ -149,10 +150,14 @@ def build_evolution_prompt(parent_skill: str, train_feedback: Mapping[str, Any],
         "Create one evolved interview skill. Improve the parent against the train-only feedback "
         "while preserving any useful behavior. The call is independent: do not assume candidate "
         "identity, rankings, validation findings, a corpus, evaluator internals, or other mutations. "
+        "The bound mutation intent is normative: make a structural change that implements it; "
+        "train feedback is evidence, not permission to alter the runtime contract. "
         "Keep the result compact: return one non-empty SKILL.md of at most 6144 UTF-8 bytes "
         "(the runtime hard limit is 8192 bytes).\n\nPARENT SKILL:\n"
         + parent_skill + "\n\nTRAIN-ONLY FEEDBACK:\n"
         + json.dumps(feedback, ensure_ascii=False, sort_keys=True)
+        + "\n\nBOUND MUTATION INTENT:\n"
+        + json.dumps(dict(mutation_intent), ensure_ascii=False, sort_keys=True)
         + "\n\nRUNTIME CONTRACT:\n" + runtime_contract
     )
 
@@ -425,7 +430,7 @@ class DirectCodexDiscoveryBackend:
         return value
 
     def evolve(self, *, parent_skill: str, train_feedback: Mapping[str, Any],
-               runtime_digest: str) -> str:
+               mutation_intent: Mapping[str, Any], runtime_digest: str) -> str:
         schema = {"type": "object", "additionalProperties": False,
                   "properties": {"SKILL.md": {"type": "string", "minLength": 1,
                                                 "maxLength": 6144}},
@@ -433,7 +438,7 @@ class DirectCodexDiscoveryBackend:
         empty = self.workspace / "generator-empty"
         empty.mkdir(parents=True, exist_ok=True)
         prompt = build_evolution_prompt(
-            parent_skill, train_feedback,
+            parent_skill, train_feedback, mutation_intent,
             RUNTIME_CONTRACT + f"\nPinned runtime digest: {runtime_digest}",
         )
         role = "evolver-" + hashlib.sha256(os.urandom(32)).hexdigest()[:16]
@@ -441,6 +446,31 @@ class DirectCodexDiscoveryBackend:
         if not value.strip() or len(value.encode()) > 8192:
             raise RuntimeError("invalid evolved skill")
         return value
+
+    def summarize_skill_change(self, *, parent_skill: str, candidate_skill: str,
+                               mutation_intent: Mapping[str, Any]) -> Mapping[str, str]:
+        schema = {"type": "object", "additionalProperties": False,
+                  "properties": {
+                      "parent_summary": {"type": "string", "minLength": 1, "maxLength": 400},
+                      "candidate_summary": {"type": "string", "minLength": 1, "maxLength": 400},
+                      "change_summary": {"type": "string", "minLength": 1, "maxLength": 500}},
+                  "required": ["parent_summary", "candidate_summary", "change_summary"]}
+        empty = self.workspace / "report-empty"
+        empty.mkdir(parents=True, exist_ok=True)
+        prompt = (
+            "Summarize this interview-skill evolution for a human comparison report. "
+            "Use plain, concrete language. Explain the operating strategy, not formatting trivia. "
+            "The change summary must say what the candidate added, removed, reordered, compressed, "
+            "or made stricter relative to the parent. Do not score either skill and do not infer "
+            "behavior absent from the text. Return only the requested JSON.\n\n"
+            "MUTATION INTENT:\n" + json.dumps(dict(mutation_intent), ensure_ascii=False,
+                                                sort_keys=True)
+            + "\n\nPARENT SKILL:\n" + parent_skill
+            + "\n\nCANDIDATE SKILL:\n" + candidate_skill)
+        role = "skill-summary-" + hashlib.sha256(os.urandom(32)).hexdigest()[:16]
+        value = self._invoke(role, empty, prompt, schema).value
+        return {key: str(value[key]) for key in (
+            "parent_summary", "candidate_summary", "change_summary")}
 
     def interview(self, *, candidate_id: str, skill: str, case_id: str, request: str,
                   repetition: int, repository: Path, answer_seed: str,
