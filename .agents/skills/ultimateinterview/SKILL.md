@@ -5,7 +5,7 @@ description: Agent-agnostic material-decision interview and implementation plann
 
 # Ultimateinterview
 
-Produce a small, authorized, verifiable execution contract and a derived implementation plan. Ground briefly, ask only decisions that can materially change implementation, compile the contract, plan the implementation within bounded delegation, run one fresh handoff check, then finalize, print a copy-ready implementation prompt, and stop.
+Produce a small, authorized, verifiable execution contract and a derived implementation plan. Ground briefly, ask only decisions that can materially change implementation, select the least costly safe workflow path, compile the contract, plan the implementation within bounded delegation, run the path-required handoff check, then finalize, print a copy-ready implementation prompt, and stop.
 
 Evidence describes current state; it does not authorize new behavior. Only an explicit `owner-decision`, an applicable `canonical-contract`, or a `bounded-delegation` may authorize a normative decision. A delegated default is a choice made under bounded delegation, never an authority kind.
 
@@ -37,7 +37,26 @@ After minimum grounding, proceed without owner questions when the request and ob
 
 The user's explicit request may authorize what it actually states. Do not expand it into unstated behavior.
 
-## 3. Material Decision Loop
+## 3. Risk-Routed Workflow
+
+After minimum grounding and before asking questions, classify the session as `lightweight`, `standard`, or `high-risk`. Record the selected path and concise evidence-backed reasons at the top of `evidence-map.md`. Classification controls process cost only; it never supplies product authority or weakens compilation, projection, plan binding, or final deterministic gates.
+
+Use `lightweight` only when every condition below is established:
+
+- the request and repository evidence require no new material owner decision;
+- observable behavior, boundaries, applicable failures, and verification are already explicit and coherent;
+- the change is reversible, confined to one subsystem, and uses no new public interface, schema, protocol, lifecycle, migration, compatibility policy, authorization boundary, or cross-system ownership boundary;
+- it cannot cause irreversible data effects, credential or security exposure, material privacy impact, or unsafe operational behavior;
+- an existing objective verification path covers the requested outcome and applicable failure result; and
+- implementation planning exposes no material internal choice outside one active bounded delegation.
+
+If any lightweight condition is unknown or false, do not infer it: use `standard` unless a high-risk trigger applies. Upgrade immediately if later grounding, questioning, compilation, or planning invalidates a lightweight condition. Never downgrade after an owner decision is requested or a high-risk trigger is found.
+
+Use `high-risk` when the change affects authorization or security boundaries, credentials or sensitive data, irreversible data mutation, migration or compatibility guarantees, a public API or protocol, safety-critical behavior, multiple owning systems, or a failure/recovery policy whose alternatives can materially change harm. Follow additional applicable repository controls and inspect the extra surfaces needed to resolve that risk. Use `standard` for every remaining session.
+
+All paths produce the same sealed Build Contract and digest-bound Implementation Plan. They also preserve the complete repository-local lineage required by `ultimateinterview-postmortem`; routing must not depend on a particular agent vendor, model, UI, or orchestration feature. The lightweight path keeps grounding to the minimum governing surfaces, uses a compact plan with only necessary `IMP-NNN` and `STEP-NNN` rows, and skips the fresh handoff reviewer. Standard and high-risk paths require the fresh handoff check in Section 8. High-risk classification does not authorize extra behavior or extra owner questions.
+
+## 4. Material Decision Loop
 
 Investigate repository facts yourself. Ask the owner only when different answers can change at least one of:
 
@@ -58,7 +77,7 @@ Use this termination test throughout:
 
 If yes, resolve only the authority or decision causing that difference. If no, stop interviewing. If required authority is unavailable, finish as `incomplete` rather than guessing.
 
-## 4. Small Execution Contract
+## 5. Small Execution Contract
 
 Write `execution-contract.md` with exactly four substantive sections:
 
@@ -71,7 +90,7 @@ Do not create a separate interview ledger, ambiguity score, transcript snapshot,
 
 Assign stable `DEC-NNN` IDs and do not renumber them within a session. Use `ultimateinterview.material-decisions.v2` for every new contract. Treat each decision as one independently adjudicable postmortem verdict unit: if two clauses could be fulfilled or diverge independently, split them before compilation. Map each `DEC-NNN` to exactly one dedicated `REQ-NNN`, exactly one applicable authority, and that requirement's complete acceptance and verification rows; never map two decisions to the same requirement. The requirement's combined `constraints` and `preserved_behaviors` must contain exactly the byte-identical decision `statement`, with either array allowed to be empty. Across the requirement set, retain every obligation from each referenced authority. The projection gate enforces these atomicity and coverage rules; v1 manifests are legacy validation inputs only.
 
-## 5. Compile the Candidate Contract
+## 6. Compile the Candidate Contract
 
 Before creating compiler JSON, read `references/json-contracts.md`. Generate the compiler inputs from the accepted small contract, then run from this skill directory:
 
@@ -83,7 +102,7 @@ python3 scripts/projection_check.py <execution-contract.md> --discovery <discove
 
 Do not hand-author, edit, or post-process the sealed output. Compiler or projection-gate failure means the contract is not ready: correct only the projection, resolve missing authority, or finish incomplete. The gate must prove complete `material decision -> authority -> requirement -> acceptance -> verification` traceability and structural equality with a fresh compile before implementation planning.
 
-## 6. Implementation Planning
+## 7. Implementation Planning
 
 Treat the Build Contract as immutable product intent. Inspect the affected implementation surfaces and produce `implementation-plan-draft.json` using the closed format in `references/json-contracts.md`. Do not repeat the behavioral interview or ask the owner for repository facts. Ask the owner only when planning exposes a new observable, policy, scope, lifecycle, failure, compatibility, data-loss, ownership, or out-of-delegation decision; return that gap to the Material Decision Loop and compile a new contract before continuing.
 
@@ -99,9 +118,9 @@ python3 scripts/implementation_plan.py <implementation-plan-draft.json> --build-
 
 The compiler validates references, delegation, coverage, dependency order, context-complete test realization, contract binding, and the fixed return-to-owner boundary. It adds `plan_digest`. It does not authorize the plan or change the Build Contract.
 
-## 7. One Fresh Handoff Check
+## 8. Path-Required Fresh Handoff Check
 
-Run exactly one fresh-context reviewer after compiling the candidate contract and implementation plan. Give it `execution-contract.md`, `evidence-map.md`, `build-contract.json`, `implementation-plan.json`, and repository access; do not provide the interview transcript, interviewer conclusions, or intended answer. The check measures lineage loss and whether the derived plan is executable in the repository. It does not prove discovery completeness or authorize product behavior.
+For `standard` and `high-risk`, run exactly one fresh-context reviewer after compiling the candidate contract and implementation plan. For `lightweight`, do not run a reviewer; recheck every lightweight condition against the compiled contract and plan, and upgrade to `standard` before finalization if any condition no longer holds. Give a required reviewer `execution-contract.md`, `evidence-map.md`, `build-contract.json`, `implementation-plan.json`, and repository access; do not provide the interview transcript, interviewer conclusions, or intended answer. The check measures lineage loss and whether the derived plan is executable in the repository. It does not prove discovery completeness or authorize product behavior.
 
 Allow at most three blockers, limited to:
 
@@ -113,11 +132,11 @@ Allow at most three blockers, limited to:
 
 The reviewer may inspect only repository surfaces needed to test feasibility. It must not invent product requirements, choose a replacement architecture, critique general architecture, report immaterial delegated variation, or treat evidence as authority.
 
-Resolve admissible blockers as needed, but never rerun the reviewer for the same contract digest. Correct delegated plan defects and recompile the plan; return authority gaps to the owner and compile a new contract. If the contract digest changes materially, the prior review is stale and exactly one new fresh check is required for that new digest. If a material owner decision remains unresolved, finish as `incomplete`.
+Resolve admissible blockers as needed, but never rerun the reviewer for the same contract digest. Correct delegated plan defects and recompile the plan; return authority gaps to the owner and compile a new contract. If the contract digest changes materially, the prior review is stale and exactly one new fresh check is required for that new digest unless the reclassified final path is demonstrably `lightweight`. If a material owner decision remains unresolved, finish as `incomplete`.
 
 ## Finalize and Hand Off
 
-After resolving the fresh check, rerun the deterministic gates against the final artifacts:
+After completing the path-required review or lightweight recheck, rerun the deterministic gates against the final artifacts:
 
 ```text
 python3 scripts/authority_compiler.py <discovery-record.json> --authority-register <authority-register.json> --output <build-contract.json>

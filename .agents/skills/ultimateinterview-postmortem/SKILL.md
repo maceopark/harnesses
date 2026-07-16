@@ -9,7 +9,7 @@ Compare the sealed Build Contract with the implementation and attribute each mat
 
 ## Preconditions and Evidence Boundary
 
-Read `../ultimateinterview/references/json-contracts.md`. Require a repository-local `.ultimateinterview/<session>/` containing a valid `build-contract.json`, `discovery-record.json`, and `authority-register.json`. New v3 sessions also require `execution-contract.md` with its deterministic DEC manifest; legacy compiler-only sessions remain auditable when it is absent. Treat `evidence-map.md` as preferred v3 lineage evidence when present. Never fabricate missing `decision.jsonl`.
+Read `../ultimateinterview/references/json-contracts.md`. Require a repository-local `.ultimateinterview/<session>/` containing a valid `build-contract.json`, `discovery-record.json`, and `authority-register.json`. New v3 sessions also require `execution-contract.md` with its deterministic DEC manifest; legacy compiler-only sessions remain auditable when it is absent. Treat `evidence-map.md` as preferred v3 lineage evidence when present. Its `Workflow Path` record is process metadata rather than a product fact: preserve it as routing evidence, and do not treat a correctly classified lightweight session's omitted pre-implementation reviewer as missing product evidence. Apply the same postmortem checks to `lightweight`, `standard`, and `high-risk`; the routing path never changes the sealed authority or verdict classes. Never fabricate missing `decision.jsonl`.
 
 The sealed Build Contract is the sole normative source. The evidence map, Discovery Record, repository state, tests, decision log, prior conversation, and reviewer output are evidence only. Evidence may reveal an unexplained mismatch but cannot authorize product behavior.
 
