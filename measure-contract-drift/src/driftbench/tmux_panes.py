@@ -20,6 +20,7 @@ _DISCOVERY_REQUIRED_COMMANDS = {
     "new-window",
     "select-layout",
     "select-pane",
+    "select-window",
     "send-keys",
     "set-option",
     "split-window",
@@ -47,6 +48,7 @@ class DiscoveryDashboard:
         execution_pane: str,
         run_id: str,
         worker_count: int,
+        pane_labels: tuple[str, ...] | None = None,
         *,
         runner: Runner | None = None,
     ) -> None:
@@ -54,6 +56,7 @@ class DiscoveryDashboard:
         self.execution_pane = execution_pane
         self.run_id = run_id
         self.worker_count = worker_count
+        self.pane_labels = pane_labels or tuple(f"worker-{index + 1}" for index in range(worker_count))
         self._runner = runner or _default_runner
         self._lock = threading.RLock()
         self.window_id = ""
@@ -64,12 +67,15 @@ class DiscoveryDashboard:
         cls,
         *,
         run_id: str,
-        worker_count: int = 4,
+        worker_count: int = 12,
+        pane_labels: tuple[str, ...] | None = None,
         environment: Mapping[str, str] | None = None,
         runner: Runner | None = None,
     ) -> DiscoveryDashboard:
-        if not 1 <= worker_count <= 4:
-            raise DiscoveryDashboardError("discovery worker count must be between one and four")
+        if not 1 <= worker_count <= 12:
+            raise DiscoveryDashboardError("discovery worker count must be between one and twelve")
+        if pane_labels is not None and len(pane_labels) != worker_count:
+            raise DiscoveryDashboardError("pane labels must match the worker count")
         environment = os.environ if environment is None else environment
         execution_pane = environment.get("TMUX_PANE", "")
         if not environment.get("TMUX") or _PANE_ID.fullmatch(execution_pane) is None:
@@ -77,7 +83,8 @@ class DiscoveryDashboard:
         executable = shutil.which("tmux", path=environment.get("PATH"))
         if executable is None:
             raise DiscoveryDashboardError("tmux executable is unavailable")
-        dashboard = cls(executable, execution_pane, run_id, worker_count, runner=runner)
+        dashboard = cls(executable, execution_pane, run_id, worker_count,
+                        pane_labels=pane_labels, runner=runner)
         dashboard._create()
         return dashboard
 
@@ -113,12 +120,18 @@ class DiscoveryDashboard:
                 if _PANE_ID.fullmatch(target) is None or target in pane_ids:
                     raise DiscoveryDashboardError("tmux returned an invalid worker pane")
                 pane_ids.append(target)
+                # Rebalance before the next split. Without this, detached tmux keeps
+                # splitting the same active pane until it reaches its minimum size.
+                self._call("select-layout", "-t", self.window_id, "tiled")
             self._call("select-layout", "-t", self.window_id, "tiled")
+            self._call("set-option", "-w", "-t", self.window_id, "pane-border-status", "top")
             for index, pane_id in enumerate(pane_ids):
                 self._call("set-option", "-p", "-t", pane_id, "@driftbench_run", _encoded(self.run_id))
                 self._call("set-option", "-p", "-t", pane_id, "@driftbench_worker", str(index))
-                self._call("select-pane", "-t", pane_id, "-T", f"Discovery worker {index + 1}")
+                self._call("select-pane", "-t", pane_id, "-T",
+                           f"Case: {_safe_text(self.pane_labels[index], title=True)}")
             self.pane_ids = tuple(pane_ids)
+            self._call("select-window", "-t", self.window_id)
         except (OSError, ValueError, DiscoveryDashboardError) as error:
             if self.window_id:
                 try:
@@ -133,6 +146,11 @@ class DiscoveryDashboard:
         if not 0 <= index < len(self.pane_ids):
             raise DiscoveryDashboardError("worker index is out of range")
         return DiscoveryWorkerPane(self, index, self.pane_ids[index])
+
+    def broadcast(self, message: object) -> None:
+        block = f"Status: {_safe_exchange_text(message)}\n"
+        for pane_id in self.pane_ids:
+            self._write(pane_id, block)
 
     def finish(self, *, pareto: object, run_directory: object) -> None:
         block = (
@@ -166,6 +184,38 @@ class DiscoveryWorkerPane:
     def stage(self, name: object) -> None:
         self.dashboard._write(self.pane_id, f"Stage: {_safe_exchange_text(name)}\n")
 
+    def role(self, name: object) -> None:
+        self.dashboard._write(
+            self.pane_id, f"\n--- {_safe_exchange_text(name)} ---\n"
+        )
+
+    def tool_call(self, summary: object) -> None:
+        self.dashboard._write(
+            self.pane_id, f"  tool> {_safe_exchange_text(summary)}\n"
+        )
+
+    def question(
+        self,
+        *,
+        decision_id: object,
+        question: object,
+        options: object,
+        recommended: object,
+    ) -> None:
+        self.dashboard._write(
+            self.pane_id,
+            "\n"
+            f"Question {_safe_exchange_text(decision_id)}: {_safe_exchange_text(question)}\n"
+            f"Options: {_safe_exchange_text(options)}\n"
+            f"Recommended: {_safe_exchange_text(recommended)}\n",
+        )
+
+    def answer(self, *, decision_id: object, selected: object) -> None:
+        self.dashboard._write(
+            self.pane_id,
+            f"Answer {_safe_exchange_text(decision_id)}: {_safe_exchange_text(selected)}\n",
+        )
+
     def decision(
         self,
         *,
@@ -175,11 +225,13 @@ class DiscoveryWorkerPane:
         recommended: object,
         selected: object,
     ) -> None:
+        """Backward-compatible combined rendering for non-live callers."""
+        self.question(
+            decision_id=decision_id, question=question, options=options,
+            recommended=recommended,
+        )
         self.dashboard._write(
             self.pane_id,
-            f"Question {_safe_exchange_text(decision_id)}: {_safe_exchange_text(question)}\n"
-            f"Options: {_safe_exchange_text(options)}\n"
-            f"Recommended: {_safe_exchange_text(recommended)}\n"
             f"Selected answer: {_safe_exchange_text(selected)}\n",
         )
 

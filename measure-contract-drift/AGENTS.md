@@ -1,11 +1,13 @@
 # PROJECT GUIDE
 
-This project is a single generation-zero interview-discovery experiment.
+This project is a generational interview-discovery experiment with an immutable seed and
+parent-copy-then-edit replacement overlays.
 
-- `discovery-study.json` binds the minimal seed, nine public cases, answer seed, and defaults.
+- `discovery-study.json` binds the minimal seed, twelve public cases, fixed Markdown owner world
+  models, and defaults.
 - `src/driftbench/discovery*.py` owns strict contracts, scheduling, direct model roles, receipts,
   resume, feedback, and Pareto evaluation.
-- `src/driftbench/tmux_panes.py` is the mandatory four-pane presentation boundary.
+- `src/driftbench/tmux_panes.py` is the mandatory twelve-pane, one-pane-per-case presentation boundary.
 - `protocol/ultimateinterview/schema3-discovery/` is immutable vendored measurement infrastructure.
 - `corpus/public/` contains the public prompts and starter repositories.
 

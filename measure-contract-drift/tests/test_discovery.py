@@ -6,9 +6,9 @@ import pytest
 from pydantic import ValidationError
 
 from driftbench.discovery import (
-    AuthorityEntry, CellReceipt, CoordinatorState, InterviewDecisionV2,
+    AuthorityEntry, CellReceipt, CoordinatorState, InterviewDecisionV2, OwnerCard, OwnerExchange,
     StructuredInterviewTurnV2, authority_register, fidelity, merge_receipt,
-    pareto_archive, schedule_cells, select_option, summarize_candidate,
+    discovery_result, pareto_archive, schedule_cells, select_option, selection_from_owner_exchange, summarize_candidate,
     validate_turn_sequence, verify_authority_projection, write_coordinator_state,
 )
 
@@ -68,6 +68,22 @@ def test_seeded_selection_is_stable_and_authority_projection_is_tamper_evident()
         verify_authority_projection(register, ({
             "authority_id": first.authority_id, "statement": "tampered",
         },))
+
+
+def test_owner_card_grants_only_unique_card_authority_and_vetoes_critical_misses() -> None:
+    card = OwnerCard.model_validate({"schema": "DiscoveryOwnerCard.v1", "case_id": "bookmarks",
+        "items": [{"item_id": "duplicate", "owner_statement": "Reject duplicate tags.",
+                   "materiality": "critical", "forbidden_outcomes": []}]})
+    decision = InterviewDecisionV2.model_validate(_decision())
+    matched = OwnerExchange(decision_id="DEC-1", verdict="matched", item_id="duplicate",
+                           option_id="a", answer="Reject duplicate tags.")
+    selection = selection_from_owner_exchange(card, decision, matched)
+    assert selection is not None and selection.normative_statement == "Reject duplicate tags."
+    assert selection_from_owner_exchange(card, decision, OwnerExchange(
+        decision_id="DEC-1", verdict="not-specified", answer="Not specified.")) is None
+    assert discovery_result(card, (matched,)).hard_veto is False
+    missed = discovery_result(card, ())
+    assert missed.hard_veto and missed.critical_miss_ids == ("duplicate",)
 
 
 def test_scheduler_is_repetition_case_candidate_round_robin_and_complete() -> None:

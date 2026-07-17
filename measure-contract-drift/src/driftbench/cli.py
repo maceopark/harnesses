@@ -6,11 +6,12 @@ import argparse
 import json
 import os
 import shutil
+import signal
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .discovery_backend import DirectCodexDiscoveryBackend
+from .discovery_backend import DirectCodexDiscoveryBackend, terminate_active_model_processes
 from .discovery_runner import DiscoveryRunner, load_manifest
 from .tmux_panes import DiscoveryDashboard
 
@@ -27,11 +28,14 @@ def _run(args: argparse.Namespace) -> int:
         project / ".measurecontractdrift/discovery" /
         ("g00-" + datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ"))
     )
-    dashboard = DiscoveryDashboard.require(run_id=run_dir.name, worker_count=4)
+    dashboard = DiscoveryDashboard.require(
+        run_id=run_dir.name, worker_count=12,
+        pane_labels=tuple(case.case_id for case in manifest.cases))
     backend = DirectCodexDiscoveryBackend(
-        project, run_dir / "backend", answer_seed=manifest.answer_seed,
+        project, run_dir / "backend",
         codex=os.environ.get("CODEX", shutil.which("codex") or "codex"),
         model=manifest.model, reasoning_effort=manifest.reasoning_effort,
+        runtime_digest=manifest.runtime_digest,
     )
     result = DiscoveryRunner(manifest_path, run_dir, backend, dashboard).run(
         max_candidates=args.max_candidates, max_parallel=args.max_parallel,
@@ -51,11 +55,14 @@ def _evolve(args: argparse.Namespace) -> int:
         project / ".measurecontractdrift/discovery" /
         (f"g{generation:02d}-" + datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ"))
     )
-    dashboard = DiscoveryDashboard.require(run_id=run_dir.name, worker_count=4)
+    dashboard = DiscoveryDashboard.require(
+        run_id=run_dir.name, worker_count=12,
+        pane_labels=tuple(case.case_id for case in manifest.cases))
     backend = DirectCodexDiscoveryBackend(
-        project, run_dir / "backend", answer_seed=manifest.answer_seed,
+        project, run_dir / "backend",
         codex=os.environ.get("CODEX", shutil.which("codex") or "codex"),
         model=manifest.model, reasoning_effort=manifest.reasoning_effort,
+        runtime_digest=manifest.runtime_digest,
     )
     result = DiscoveryRunner(
         manifest_path, run_dir, backend, dashboard,
@@ -80,11 +87,14 @@ def _resume(args: argparse.Namespace) -> int:
     else:
         generation = 0
         parent_run = None
-    dashboard = DiscoveryDashboard.require(run_id=run_dir.name, worker_count=4)
+    dashboard = DiscoveryDashboard.require(
+        run_id=run_dir.name, worker_count=12,
+        pane_labels=tuple(case.case_id for case in manifest.cases))
     backend = DirectCodexDiscoveryBackend(
-        _project(manifest_path), run_dir / "backend", answer_seed=manifest.answer_seed,
+        _project(manifest_path), run_dir / "backend",
         codex=os.environ.get("CODEX", shutil.which("codex") or "codex"),
         model=manifest.model, reasoning_effort=manifest.reasoning_effort,
+        runtime_digest=manifest.runtime_digest,
     )
     result = DiscoveryRunner(
         manifest_path, run_dir, backend, dashboard,
@@ -106,7 +116,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--run-dir")
     run.add_argument("--one-generation", action="store_true", required=True)
     run.add_argument("--max-candidates", type=int, choices=range(1, 5))
-    run.add_argument("--max-parallel", type=int, choices=range(1, 5))
+    run.add_argument("--max-parallel", type=int, choices=range(1, 13))
     run.set_defaults(handler=_run)
     evolve = actions.add_parser("evolve")
     evolve.add_argument("--manifest", required=True)
@@ -114,19 +124,27 @@ def build_parser() -> argparse.ArgumentParser:
     evolve.add_argument("--run-dir")
     evolve.add_argument("--one-generation", action="store_true", required=True)
     evolve.add_argument("--max-candidates", type=int, choices=range(1, 5))
-    evolve.add_argument("--max-parallel", type=int, choices=range(1, 5))
+    evolve.add_argument("--max-parallel", type=int, choices=range(1, 13))
     evolve.set_defaults(handler=_evolve)
     resume = actions.add_parser("resume")
     resume.add_argument("--manifest", required=True)
     resume.add_argument("--run-dir", required=True)
     resume.add_argument("--one-generation", action="store_true", required=True)
     resume.add_argument("--max-candidates", type=int, choices=range(1, 5))
-    resume.add_argument("--max-parallel", type=int, choices=range(1, 5))
+    resume.add_argument("--max-parallel", type=int, choices=range(1, 13))
     resume.set_defaults(handler=_resume)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
+    def stop_model_processes(signum: int, _frame: object) -> None:
+        terminate_active_model_processes()
+        if signum == signal.SIGINT:
+            raise KeyboardInterrupt
+        raise SystemExit(128 + signum)
+
+    signal.signal(signal.SIGINT, stop_model_processes)
+    signal.signal(signal.SIGTERM, stop_model_processes)
     try:
         args = build_parser().parse_args(argv)
         return int(args.handler(args))

@@ -39,11 +39,11 @@ def generation_chain(run_dir: Path) -> list[Path]:
 
 
 def _axes(row: Mapping[str, Any]) -> tuple[int, int, int]:
-    lcb = row.get("fidelity_lcb")
+    lcb = row.get("discovery_lcb", row.get("fidelity_lcb"))
     decisions = row.get("median_material_decisions")
     size = row.get("skill_bytes")
     if not isinstance(lcb, (int, float)) or not 0 <= lcb <= 1:
-        raise ValueError("candidate fidelity LCB is invalid")
+        raise ValueError("candidate discovery LCB is invalid")
     if not isinstance(decisions, (int, float)) or decisions < 0:
         raise ValueError("candidate decision median is invalid")
     if not isinstance(size, int) or size < 1:
@@ -57,9 +57,11 @@ def convergence_decision(run_dir: Path, policy: Mapping[str, Any], *,
     chain = generation_chain(run_dir)
     generation = len(chain) - 1
     policy_digest = canonical_digest(policy)
-    eps_lcb = int(policy["fidelity_epsilon_ppm"])
+    eps_lcb = int(policy["discovery_epsilon_ppm"] if "discovery_epsilon_ppm" in policy
+                  else policy["fidelity_epsilon_ppm"])
     eps_decisions = int(policy["decision_epsilon_milli"])
-    eps_bytes = int(policy["skill_bytes_epsilon"])
+    eps_bytes = int(policy["turn_epsilon_milli"] if "turn_epsilon_milli" in policy
+                   else policy["skill_bytes_epsilon"])
     transitions: list[dict[str, Any]] = []
     historical: list[tuple[int, Mapping[str, Any]]] = []
     history: list[dict[str, Any]] = []
@@ -101,9 +103,15 @@ def convergence_decision(run_dir: Path, policy: Mapping[str, Any], *,
         if transition["novel_frontier"]:
             break
         streak += 1
-    full_inventory = (effective_candidates == int(policy["full_candidate_count"])
+    expected_inventory = int(policy["full_mutation_count"] if "full_mutation_count" in policy
+                             else policy["full_candidate_count"])
+    # v3 counts the always-present control in effective_candidates; v2 did not.
+    full_inventory = (effective_candidates in {expected_inventory, expected_inventory + 1}
                       and terminal_cells == expected_cells)
-    eligible = full_inventory or not bool(policy["require_full_candidate_inventory"])
+    require_full = bool(policy["require_full_mutation_inventory"]
+                        if "require_full_mutation_inventory" in policy
+                        else policy["require_full_candidate_inventory"])
+    eligible = full_inventory or not require_full
     limit = generation >= int(policy["maximum_generation"])
     stagnated = (eligible and generation >= int(policy["minimum_generation"])
                  and streak >= int(policy["patience"]));

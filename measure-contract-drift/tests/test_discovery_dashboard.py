@@ -60,7 +60,23 @@ def test_creates_exactly_four_fixed_tiled_panes(monkeypatch: pytest.MonkeyPatch)
     assert sum(call[1] == "new-window" for call in runner.calls) == 1
     assert sum(call[1] == "split-window" for call in runner.calls) == 3
     assert [call for call in runner.calls if call[1] == "select-layout"][-1][-1] == "tiled"
+    assert [call for call in runner.calls if call[1] == "select-window"][-1][-1] == "@2"
     assert not any(call[1] in {"kill-pane", "kill-window"} for call in runner.calls)
+
+
+def test_creates_twelve_case_labeled_panes(monkeypatch: pytest.MonkeyPatch) -> None:
+    runner = DashboardTmux()
+    labels = tuple(f"case-{index}" for index in range(12))
+    monkeypatch.setattr(tmux_panes.shutil, "which", lambda *_args, **_kwargs: "/tmux")
+    dashboard = tmux_panes.DiscoveryDashboard.require(
+        run_id="run-12", worker_count=12, pane_labels=labels,
+        environment={"TMUX": "active", "TMUX_PANE": "%1", "PATH": "/bin"}, runner=runner)
+
+    assert len(dashboard.pane_ids) == 12
+    assert sum(call[1] == "split-window" for call in runner.calls) == 11
+    assert sum(call[1] == "select-layout" for call in runner.calls) == 12
+    titles = [call[-1] for call in runner.calls if call[1] == "select-pane"]
+    assert titles == [f"Case: {label}" for label in labels]
 
 
 def test_worker_output_is_cumulative_structured_and_redacted(
@@ -72,6 +88,8 @@ def test_worker_output_is_cumulative_structured_and_redacted(
 
     worker.start_cell(candidate="g00-c01", case="bookmarks", repetition=2)
     worker.stage("Interview")
+    worker.role("Q&A")
+    worker.tool_call("command: rg --files")
     worker.decision(
         decision_id="DEC-1",
         question="Which behavior? token=supersecret",
@@ -83,12 +101,33 @@ def test_worker_output_is_cumulative_structured_and_redacted(
     text = "".join(block for pane, block in runner.writes if pane == "%2")
     assert "Candidate: g00-c01" in text
     assert "Stage: Interview" in text
+    assert "--- Q&A ---" in text
+    assert "tool> command: rg --files" in text
     assert "Question DEC-1" in text
     assert "Options: safe, strict" in text
     assert "Recommended: strict" in text
     assert "Selected answer: safe" in text
     assert "supersecret" not in text
     assert "token=[redacted]" in text
+
+
+def test_live_question_is_visible_before_owner_answer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runner = DashboardTmux()
+    worker = _dashboard(monkeypatch, runner).worker(0)
+
+    worker.question(
+        decision_id="DEC-2", question="Duplicate policy?",
+        options=["reject", "merge"], recommended="reject",
+    )
+    before_answer = "".join(block for pane, block in runner.writes if pane == "%2")
+    assert "Question DEC-2: Duplicate policy?" in before_answer
+    assert "Answer DEC-2" not in before_answer
+
+    worker.answer(decision_id="DEC-2", selected="matched: Reject duplicates.")
+    complete = "".join(block for pane, block in runner.writes if pane == "%2")
+    assert "Answer DEC-2: matched: Reject duplicates." in complete
 
 
 def test_finish_writes_all_panes_and_preserves_window(
@@ -103,3 +142,17 @@ def test_finish_writes_all_panes_and_preserves_window(
     assert {pane for pane, _ in runner.writes} == set(dashboard.pane_ids)
     assert all("Generation complete" in block and "/tmp/run" in block for _, block in runner.writes)
     assert not any(call[1] in {"kill-pane", "kill-window"} for call in runner.calls)
+
+
+def test_broadcast_writes_startup_progress_to_every_worker(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runner = DashboardTmux()
+    dashboard = _dashboard(monkeypatch, runner)
+
+    dashboard.broadcast("generating mutation 1/4")
+
+    status_writes = [(pane, block) for pane, block in runner.writes
+                     if "generating mutation 1/4" in block]
+    assert {pane for pane, _ in status_writes} == set(dashboard.pane_ids)
+    assert all(block.startswith("Status: ") for _, block in status_writes)

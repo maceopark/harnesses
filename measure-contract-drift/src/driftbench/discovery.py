@@ -101,6 +101,148 @@ class SeededSelection(ClosedModel):
     authority_id: str
 
 
+class OwnerCardItem(ClosedModel):
+    """A sealed, candidate-independent unit of owner authority.
+
+    Cards deliberately contain outcomes and policies, never preferred questions or
+    interview tactics.  They live outside starter repositories and are only read
+    by the controller-owned owner responder.
+    """
+
+    item_id: str = Field(min_length=1)
+    owner_statement: str = Field(min_length=1)
+    materiality: Literal["critical", "material"]
+    forbidden_outcomes: tuple[str, ...] = ()
+
+
+class OwnerProbe(ClosedModel):
+    """Optional hidden executable outcome supplied by the card author."""
+
+    probe_id: str = Field(min_length=1)
+    command: tuple[str, ...] = Field(min_length=1)
+    expected_exit: int = 0
+    stdout_contains: str | None = None
+
+
+class OwnerCard(ClosedModel):
+    schema_: Literal["DiscoveryOwnerCard.v1"] = Field(
+        default="DiscoveryOwnerCard.v1", alias="schema", serialization_alias="schema"
+    )
+    case_id: str = Field(min_length=1)
+    items: tuple[OwnerCardItem, ...] = Field(min_length=1)
+    probes: tuple[OwnerProbe, ...] = ()
+    source_markdown: str = Field(default="", min_length=0)
+
+    @model_validator(mode="after")
+    def unique_ids(self) -> "OwnerCard":
+        ids = [item.item_id for item in self.items]
+        if len(ids) != len(set(ids)):
+            raise ValueError("owner card item IDs must be unique")
+        probe_ids = [probe.probe_id for probe in self.probes]
+        if len(probe_ids) != len(set(probe_ids)):
+            raise ValueError("owner card probe IDs must be unique")
+        return self
+
+
+def load_owner_card_markdown(path: Path) -> OwnerCard:
+    """Load one fixed Markdown world model and its machine-readable authority block."""
+
+    text = path.read_text(encoding="utf-8")
+    marker = "```owner-card\n"
+    start = text.find(marker)
+    if start < 0:
+        raise ValueError(f"owner world model has no owner-card block: {path.name}")
+    start += len(marker)
+    end = text.find("\n```", start)
+    if end < 0:
+        raise ValueError(f"owner world model has an unterminated owner-card block: {path.name}")
+    try:
+        payload = json.loads(text[start:end])
+    except json.JSONDecodeError as error:
+        raise ValueError(f"owner world model authority block is invalid: {path.name}") from error
+    if "source_markdown" in payload:
+        raise ValueError("source_markdown is controller-owned")
+    return OwnerCard.model_validate({**payload, "source_markdown": text})
+
+
+class OwnerExchange(ClosedModel):
+    decision_id: str = Field(min_length=1)
+    verdict: Literal["matched", "irrelevant", "ambiguous", "not-specified"]
+    item_id: str | None = None
+    option_id: str | None = None
+    answer: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_match(self) -> "OwnerExchange":
+        matched = self.verdict == "matched"
+        if matched != (self.item_id is not None and self.option_id is not None):
+            raise ValueError("matched owner exchanges require exactly one item and option")
+        return self
+
+
+class DiscoveryResult(ClosedModel):
+    schema_: Literal["DiscoveryResult.v1"] = Field(
+        default="DiscoveryResult.v1", alias="schema", serialization_alias="schema"
+    )
+    case_id: str
+    applicable_item_ids: tuple[str, ...]
+    resolved_item_ids: tuple[str, ...]
+    critical_miss_ids: tuple[str, ...]
+    ambiguous_decision_ids: tuple[str, ...]
+    hard_veto: bool
+    veto_reasons: tuple[str, ...]
+    probe_failures: tuple[str, ...] = ()
+
+
+def owner_authority_id(case_id: str, item_id: str) -> str:
+    bound = f"{case_id}\x1f{item_id}".encode("utf-8")
+    return "OWNER-" + hashlib.sha256(b"owner-card\0" + bound).hexdigest()[:16]
+
+
+def selection_from_owner_exchange(card: OwnerCard, decision: InterviewDecisionV2,
+                                  exchange: OwnerExchange) -> SeededSelection | None:
+    """Convert a unique owner-card match into compiler authority.
+
+    Critically, the normative statement comes from the owner card, not from the
+    candidate-authored option.  A non-match grants no authority.
+    """
+
+    if exchange.verdict != "matched":
+        return None
+    if exchange.decision_id != decision.decision_id:
+        raise ValueError("owner exchange is bound to a different decision")
+    item = next((row for row in card.items if row.item_id == exchange.item_id), None)
+    option = next((row for row in decision.options if row.option_id == exchange.option_id), None)
+    if item is None or option is None or not option.compatible:
+        raise ValueError("owner exchange references an invalid item or option")
+    return SeededSelection(
+        decision_id=decision.decision_id, option_id=option.option_id,
+        normative_statement=item.owner_statement,
+        authority_id=owner_authority_id(card.case_id, item.item_id),
+    )
+
+
+def discovery_result(card: OwnerCard, exchanges: Sequence[OwnerExchange], *,
+                     probe_failures: Sequence[str] = ()) -> DiscoveryResult:
+    item_ids = tuple(item.item_id for item in card.items)
+    resolved = tuple(sorted({row.item_id for row in exchanges if row.verdict == "matched"
+                             and row.item_id is not None}))
+    critical = tuple(item.item_id for item in card.items
+                     if item.materiality == "critical" and item.item_id not in resolved)
+    ambiguous = tuple(row.decision_id for row in exchanges if row.verdict == "ambiguous")
+    reasons = tuple(sorted(
+        ([f"critical-miss:{item}" for item in critical]
+         + [f"ambiguous-owner-response:{decision}" for decision in ambiguous]
+         + [f"probe-failed:{probe}" for probe in probe_failures])
+    ))
+    return DiscoveryResult(
+        case_id=card.case_id, applicable_item_ids=item_ids, resolved_item_ids=resolved,
+        critical_miss_ids=critical, ambiguous_decision_ids=ambiguous,
+        hard_veto=bool(reasons), veto_reasons=reasons,
+        probe_failures=tuple(probe_failures),
+    )
+
+
 def select_option(
     manifest_seed: str, candidate_id: str, case_id: str, repetition: int,
     decision: InterviewDecisionV2,
@@ -266,8 +408,8 @@ def wilson_interval(values: Sequence[float], z: float = 1.959963984540054) -> tu
 
 class DiscoveryCandidateSummary(ClosedModel):
     candidate_id: str
-    fidelity_lcb: float = Field(ge=0, le=1)
-    fidelity_ucb: float = Field(ge=0, le=1)
+    discovery_lcb: float = Field(ge=0, le=1)
+    discovery_ucb: float = Field(ge=0, le=1)
     median_material_decisions: float = Field(ge=0)
     skill_bytes: int = Field(ge=1)
     total_tokens: int = Field(ge=0)
@@ -281,7 +423,7 @@ def summarize_candidate(candidate_id: str, fidelities: Sequence[float], decision
         raise ValueError("candidate observations must be non-empty and aligned")
     lower, upper = wilson_interval(fidelities)
     return DiscoveryCandidateSummary(
-        candidate_id=candidate_id, fidelity_lcb=lower, fidelity_ucb=upper,
+        candidate_id=candidate_id, discovery_lcb=lower, discovery_ucb=upper,
         median_material_decisions=float(median(decisions)), skill_bytes=skill_bytes,
         total_tokens=total_tokens, wall_clock_ms=wall_clock_ms,
     )
@@ -289,12 +431,12 @@ def summarize_candidate(candidate_id: str, fidelities: Sequence[float], decision
 
 def dominates(left: DiscoveryCandidateSummary, right: DiscoveryCandidateSummary) -> bool:
     no_worse = (
-        left.fidelity_lcb >= right.fidelity_lcb
+        left.discovery_lcb >= right.discovery_lcb
         and left.median_material_decisions <= right.median_material_decisions
         and left.skill_bytes <= right.skill_bytes
     )
     strict = (
-        left.fidelity_lcb > right.fidelity_lcb
+        left.discovery_lcb > right.discovery_lcb
         or left.median_material_decisions < right.median_material_decisions
         or left.skill_bytes < right.skill_bytes
     )
@@ -308,6 +450,6 @@ def pareto_archive(
         (candidate for candidate in candidates if not any(
             dominates(other, candidate) for other in candidates if other != candidate
         )),
-        key=lambda row: (-row.fidelity_lcb, row.median_material_decisions, row.skill_bytes,
+        key=lambda row: (-row.discovery_lcb, row.median_material_decisions, row.skill_bytes,
                          row.total_tokens, row.wall_clock_ms, row.candidate_id),
     ))

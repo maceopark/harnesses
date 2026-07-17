@@ -21,6 +21,12 @@ All JSON files are UTF-8. Compiler-produced JSON is deterministic, two-space-ind
   postmortem.md                 # independent evaluator report, optional
 ```
 
+## Workflow routing record
+
+Every new `evidence-map.md` starts with a `Workflow Path` record naming exactly one of `lightweight`, `standard`, or `high-risk`, followed by concise evidence-backed reasons. This record is process evidence, not product authority, and is not copied into the Authority Register or Build Contract.
+
+`lightweight` is fail-closed: every eligibility condition in `SKILL.md` must be established, it must be rechecked against the compiled Build Contract and Implementation Plan, and any unknown or violated condition upgrades the session to `standard` or `high-risk`. Lightweight sessions skip only the fresh-context reviewer. They still produce and validate all compiler inputs, the sealed Build Contract, the projection result, and the digest-bound Implementation Plan. Standard and high-risk sessions require the path-defined fresh review. Every path preserves the same session lineage consumed by `ultimateinterview-postmortem`; no path may replace these portable artifacts with vendor-, model-, UI-, or orchestrator-specific state.
+
 ## Canonical digest algorithm
 
 Canonical JSON is `json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"`, encoded as UTF-8 and hashed with SHA-256.

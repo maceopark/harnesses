@@ -60,7 +60,7 @@ def test_wrapper_rejects_missing_generation_and_bad_limits(tmp_path: Path) -> No
     assert _run(tmp_path, expected=2) == []
     other = tmp_path / "other"
     other.mkdir()
-    assert _run(other, "--one-generation", "--max-parallel", "5", expected=2) == []
+    assert _run(other, "--one-generation", "--max-parallel", "13", expected=2) == []
     third = tmp_path / "third"
     third.mkdir()
     assert _run(third, "--resume", "a", "--evolve", "b", "--one-generation",
