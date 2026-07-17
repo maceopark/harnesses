@@ -52,6 +52,8 @@ Use `lightweight` only when every condition below is established:
 
 If any lightweight condition is unknown or false, do not infer it: use `standard` unless a high-risk trigger applies. Upgrade immediately if later grounding, questioning, compilation, or planning invalidates a lightweight condition. Never downgrade after an owner decision is requested or a high-risk trigger is found.
 
+Lightweight is a zero-follow-up path. If any confirmation, material-decision question, or pressure test is needed, upgrade to `standard` or `high-risk` before asking and never downgrade.
+
 Use `high-risk` when the change affects authorization or security boundaries, credentials or sensitive data, irreversible data mutation, migration or compatibility guarantees, a public API or protocol, safety-critical behavior, multiple owning systems, or a failure/recovery policy whose alternatives can materially change harm. Follow additional applicable repository controls and inspect the extra surfaces needed to resolve that risk. Use `standard` for every remaining session.
 
 All paths produce the same sealed Build Contract and digest-bound Implementation Plan. They also preserve the complete repository-local lineage required by `ultimateinterview-postmortem`; routing must not depend on a particular agent vendor, model, UI, or orchestration feature. The lightweight path keeps grounding to the minimum governing surfaces, uses a compact plan with only necessary `IMP-NNN` and `STEP-NNN` rows, and skips the fresh handoff reviewer. Standard and high-risk paths require the fresh handoff check in Section 8. High-risk classification does not authorize extra behavior or extra owner questions.
@@ -67,7 +69,15 @@ Investigate repository facts yourself. Ask the owner only when different answers
 
 Use the runtime's structured question interface for every owner question when available. Present concrete choices as a multi-select that allows one or more selections, and mark exactly one supported choice as recommended and preselected. Keep selectable combinations compatible; ask dependent decisions one at a time and group only independent decisions. Offer that recommendation only when repository evidence, an applicable canonical contract, or a strong reversible convention supports it. The preselection remains a proposal and is not an owner decision until the owner submits it. If the runtime lacks multi-select or preselection, use the closest available structured control, put the recommended choice first and label it clearly, state the capability limitation, and do not silently fall back to an unstructured prose question.
 
-Use three material owner decisions as a soft reassessment point, not a question-message limit, hard cap, or quota. Clarifications of the same decision do not count again. After the third decision is resolved, continue only for a remaining material blocker under the criteria above.
+Before compilation, perform one bounded blind-spot check over the testable owner-stated obligations already present in the request and accepted answers: observable outcomes, boundaries and explicit non-goals, applicable failure results, and verification. Preserve each in the contract or record it as explicitly out of scope, without claiming discovery completeness.
+
+Do not reinterpret decision-bearing owner language when projecting it into a normative statement. Preserve its modality, scope, exceptions, failure result, and verification meaning. Ask for correction only if faithful projection is not possible; on `lightweight`, upgrade before asking.
+
+For `standard` and `high-risk`, resolve safety or irreversibility gaps first, then interface or ownership gaps, then choose among remaining gaps by dependency leverage. In addition to questions required for known material authority gaps, ask at most one conditional pressure test per material owner decision only when the accepted answer could hide a material exception, boundary, or failure case:
+
+> What concrete case would make this answer wrong, unsafe, or out of scope, and what should happen then?
+
+After the pressure test, immediately reapply the termination test below. Do not add ambiguity scores, mandatory rounds, ledgers, panels, extra artifacts, or runtime state for this interaction rule.
 
 Apply the safest reversible default only to internal choices covered by an explicit bounded delegation. Never invent observable behavior, authorization, retry or recovery, retention, compatibility, migration, or API/protocol semantics as a default.
 
