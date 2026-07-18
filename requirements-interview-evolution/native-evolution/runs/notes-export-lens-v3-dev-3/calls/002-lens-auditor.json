@@ -1,0 +1,64 @@
+{
+  "role": "lens-auditor",
+  "prompt_sha256": "fdd38a12906e828b435eddc6f0030ac010ff5343aa65c37cc9a81d0b59e2538e",
+  "input": {
+    "proposed_lenses": [
+      {
+        "id": "scope-ambiguity-omitted",
+        "stage": "discovery",
+        "failure_description": "Material ambiguity about which saved notes are exported, what “compact” means, and whether metadata is included remains unresolved.",
+        "observable_signal": "Different reasonable readers produce exports with different note sets, field inclusion, or formatting while each believes the request is satisfied.",
+        "why_material": "The command’s output contract is not implementable consistently without clear selection and representation boundaries.",
+        "minimal_test_shape": "Give the handoff to two independent implementers and compare their stated export scope and output shape."
+      },
+      {
+        "id": "content-preservation-not-operationalized",
+        "stage": "interaction",
+        "failure_description": "The requirement to preserve existing note content is accepted without defining which content transformations or mutations would violate it.",
+        "observable_signal": "The resulting behavior normalizes whitespace, changes line breaks or encoding, omits content, or modifies stored notes without an explicit requirement authorizing that behavior.",
+        "why_material": "Preservation is the central safety constraint, and an undefined interpretation risks irreversible or user-visible content changes.",
+        "minimal_test_shape": "Use saved notes containing multiline text, leading and trailing whitespace, special characters, and empty content; compare stored content before and after export and inspect exported content."
+      },
+      {
+        "id": "decisions-lost-in-synthesis",
+        "stage": "synthesis",
+        "failure_description": "Material decisions elicited during discovery are absent, contradictory, or weakened in the synthesized requirements.",
+        "observable_signal": "The final handoff leaves previously settled behavior open again or contains acceptance criteria inconsistent with recorded decisions.",
+        "why_material": "Implementation will follow the handoff, so lost decisions recreate ambiguity and permit divergent behavior.",
+        "minimal_test_shape": "Trace every material decision from discovery into a corresponding requirement, non-goal, constraint, or acceptance criterion in the handoff."
+      },
+      {
+        "id": "existing-behavior-regression",
+        "stage": "implementation",
+        "failure_description": "Adding the export command changes existing note creation, reading, updating, deletion, storage, or command behavior outside the requested scope.",
+        "observable_signal": "Previously valid note operations produce different stored content, output, exit behavior, or errors after the export feature is added.",
+        "why_material": "The change must be additive; unrelated regressions violate the preservation intent and expand the effective scope of the change.",
+        "minimal_test_shape": "Run representative existing note workflows before and after the change and compare stored notes, command outputs, and failure behavior."
+      },
+      {
+        "id": "verification-covers-only-happy-path",
+        "stage": "verification",
+        "failure_description": "Verification demonstrates export for a simple note but does not establish behavior for material boundaries or failure cases.",
+        "observable_signal": "Acceptance passes despite undefined or broken behavior for no saved notes, multiple notes, unusual content, destination conflicts, or interrupted export.",
+        "why_material": "A narrow demonstration cannot support confidence that the handoff’s preservation and export requirements hold under realistic conditions.",
+        "minimal_test_shape": "Exercise a matrix covering empty, single-note, multi-note, unusual-content, conflict, and export-failure cases while checking both output and unchanged stored content."
+      }
+    ],
+    "acceptance_rule": "distinct, externally observable, materially outcome-changing, solution-neutral"
+  },
+  "output": {
+    "accepted_lens_ids": [
+      "scope-ambiguity-omitted",
+      "content-preservation-not-operationalized",
+      "decisions-lost-in-synthesis",
+      "existing-behavior-regression"
+    ],
+    "rejected_lenses": [
+      {
+        "id": "verification-covers-only-happy-path",
+        "reason": "Reject as a broad verification-quality claim rather than one distinct failure lens. It bundles several unrelated boundaries and failure cases, some not established as requirements, without defining a single expected externally observable outcome."
+      }
+    ],
+    "audit_summary": "Accepted four materially distinct lenses covering an ambiguous output contract, content-preservation violations, loss of settled decisions in the handoff, and regressions to existing behavior. Rejected the happy-path verification lens because it aggregates unspecified behaviors and evaluates test breadth rather than a discrete solution-neutral failure."
+  }
+}

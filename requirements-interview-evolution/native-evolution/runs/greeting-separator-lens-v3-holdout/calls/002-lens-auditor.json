@@ -1,0 +1,60 @@
+{
+  "role": "lens-auditor",
+  "prompt_sha256": "055e6479945573b17d39f3e6dc1210fa2f2326641fb6980d8ad4590f1b593d29",
+  "input": {
+    "proposed_lenses": [
+      {
+        "id": "discovery-separator-scope-undefined",
+        "stage": "discovery",
+        "failure_description": "The requested 'optional separator' is not concretely defined, so teams may proceed with different assumptions about what counts as a separator, where it appears, and when it should be omitted.",
+        "observable_signal": "Different stakeholders describe different example outputs for the same greeting input, or raise late questions about punctuation, spacing, or supported separator values.",
+        "why_material": "If the option's scope is unclear, the resulting handoff is not implementable without inventing behavior, which undermines the goal of surfacing material ambiguity early.",
+        "minimal_test_shape": "Present one greeting-with-name example and ask for the exact output with the option enabled and disabled; ambiguity is exposed if multiple outputs seem equally valid."
+      },
+      {
+        "id": "interaction-missing-decision-on-default-behavior",
+        "stage": "interaction",
+        "failure_description": "The conversation fails to pin down the default behavior when the new option is not provided, leaving uncertainty about backward compatibility and caller expectations.",
+        "observable_signal": "Reviewers ask whether existing outputs should change, or whether callers must opt in, after the discussion is supposedly complete.",
+        "why_material": "An implementable handoff must state the baseline behavior clearly; otherwise implementation may silently alter current behavior or preserve the wrong default.",
+        "minimal_test_shape": "Ask what output should be produced for an existing greeting call that does not pass the new option; failure exists if the answer is deferred or disputed."
+      },
+      {
+        "id": "synthesis-edge-case-rules-collapsed",
+        "stage": "synthesis",
+        "failure_description": "The handoff summarizes the feature at a high level but drops observable edge cases such as missing names, empty separators, repeated punctuation, or whitespace handling.",
+        "observable_signal": "The requirement reads cleanly in one sentence, but engineers or testers immediately generate unanswered examples involving blank or irregular inputs.",
+        "why_material": "A handoff that omits edge-case behavior is not fully implementable because those cases force downstream invention during coding or testing.",
+        "minimal_test_shape": "List a small set of inputs like empty name, separator as empty string, and separator with surrounding spaces; failure is present if expected outputs cannot be stated exactly."
+      },
+      {
+        "id": "handoff-acceptance-criteria-not-observable",
+        "stage": "handoff",
+        "failure_description": "The final handoff describes intent but does not express acceptance criteria in externally checkable terms, making it unclear how to tell whether the feature is done.",
+        "observable_signal": "Two independent readers agree on the goal but produce different test cases or completion checks from the same handoff.",
+        "why_material": "The fixed goal requires an implementable requirements handoff; without observable acceptance criteria, the handoff cannot reliably drive implementation or review.",
+        "minimal_test_shape": "Give the handoff to a fresh reader and ask them to write three expected input-output examples; failure exists if their examples materially differ from the author's intent."
+      },
+      {
+        "id": "verification-optionality-never-proven",
+        "stage": "verification",
+        "failure_description": "Validation checks only that a separator can appear, but never proves that the feature remains optional across relevant cases.",
+        "observable_signal": "Evidence of completion includes only enabled examples, with no explicit checks showing unchanged output when the option is absent or disabled.",
+        "why_material": "The core request is not merely adding a separator but making it optional; if optionality is unverified, the delivered behavior may not satisfy the request.",
+        "minimal_test_shape": "Require one enabled example and one disabled-or-omitted example for the same greeting and name; failure exists if only the enabled case is specified or tested."
+      }
+    ],
+    "acceptance_rule": "distinct, externally observable, materially outcome-changing, solution-neutral"
+  },
+  "output": {
+    "accepted_lens_ids": [
+      "discovery-separator-scope-undefined",
+      "interaction-missing-decision-on-default-behavior",
+      "synthesis-edge-case-rules-collapsed",
+      "handoff-acceptance-criteria-not-observable",
+      "verification-optionality-never-proven"
+    ],
+    "rejected_lenses": [],
+    "audit_summary": "Accepted all five lenses. They are materially distinct across requirement definition, default behavior, edge-case completeness, observability of acceptance criteria, and proof that optionality is preserved. None depends on a specific implementation or named product, and each is externally observable and outcome-changing."
+  }
+}

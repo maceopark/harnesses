@@ -1,0 +1,67 @@
+{
+  "role": "owner",
+  "prompt_sha256": "a136711c980a4422433db87ff09f700c272d62a0b5c1feffea7634f23e3ef9ed",
+  "input": {
+    "oracle": {
+      "material_decisions": [
+        {
+          "id": "boundary_contract",
+          "answer": "The farewell, when enabled, is part of the same text output as the greeting and appears as a second line immediately after the greeting line. The greeting remains the first line. No separate message, channel, or inline same-line variant is allowed.",
+          "why_material": "This removes ambiguity about the output boundary and makes implementations converge on one observable shape."
+        },
+        {
+          "id": "optionality_trigger",
+          "answer": "The farewell is controlled by a single boolean input flag named `includeFarewell`. When `includeFarewell` is `true`, the farewell line is included; when `false`, it is omitted. The default is `false` if the flag is not provided.",
+          "why_material": "This defines who decides the conditional behavior and prevents incompatible assumptions about context, configuration, or heuristics."
+        },
+        {
+          "id": "farewell_content_contract",
+          "answer": "The farewell line is exactly `Goodbye.` including capitalization and the period, with no added names, emojis, or alternate punctuation.",
+          "why_material": "A fixed literal contract is necessary so reviewers can distinguish intended output from arbitrary variants."
+        },
+        {
+          "id": "acceptance_examples",
+          "answer": "Canonical examples: with input name `Sam` and `includeFarewell=true`, output is exactly `Hello, Sam!\\nGoodbye.`. With the same name and `includeFarewell=false`, output is exactly `Hello, Sam!`. No extra trailing line is emitted when the flag is false.",
+          "why_material": "Matched positive and negative examples prove both the changed and unchanged behaviors and make regression checks straightforward."
+        }
+      ],
+      "owner_rules": [
+        "Accept only answers that make the output reproducible verbatim from the stated rules and examples.",
+        "Reject answers that use words like optional, maybe, or if needed without an explicit activation mechanism.",
+        "Reject answers that describe the farewell conceptually but do not freeze its exact text and punctuation.",
+        "Reject answers that provide only the enabled case or only the disabled case."
+      ]
+    },
+    "owner_rules": [
+      "Accept only answers that make the output reproducible verbatim from the stated rules and examples.",
+      "Reject answers that use words like optional, maybe, or if needed without an explicit activation mechanism.",
+      "Reject answers that describe the farewell conceptually but do not freeze its exact text and punctuation.",
+      "Reject answers that provide only the enabled case or only the disabled case."
+    ],
+    "transcript": [],
+    "question": {
+      "header": "Farewell Shape",
+      "prompt": "This changes the exact observable output and acceptance tests. Choose the farewell line behavior when the optional farewell is enabled.",
+      "options": [
+        {
+          "label": "New line: Goodbye!",
+          "description": "Append a second line exactly `Goodbye!` after the greeting; simplest and most judgeable.",
+          "recommended": true
+        },
+        {
+          "label": "Same line: Goodbye!",
+          "description": "Append ` Goodbye!` on the same line as the greeting; shorter output but different formatting contract.",
+          "recommended": false
+        },
+        {
+          "label": "Custom text/placement",
+          "description": "Provide your own exact farewell text and whether it appears on a new line or the same line.",
+          "recommended": false
+        }
+      ]
+    }
+  },
+  "output": {
+    "answer": "When enabled, append a second line immediately after the greeting line. The farewell line is exactly `Goodbye.`. The greeting remains the first line.\n\nActivation: controlled only by `includeFarewell`; default `false` when omitted.\n\nExamples:\n- `name=Sam, includeFarewell=true` -> `Hello, Sam!\\nGoodbye.`\n- `name=Sam, includeFarewell=false` -> `Hello, Sam!`"
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "role": "failure-lens-proposer",
+  "prompt_sha256": "c6d2709b787d0323e08f6c2e2754a929cbafc21fa1df60a3273fecb40d9eab68",
+  "input": {
+    "seed_category": "Add an optional capitalization style to greeting output.",
+    "fixed_goal": "surface material ambiguity and produce an implementable requirements handoff"
+  },
+  "output": {
+    "lenses": [
+      {
+        "id": "ambiguous-style-scope",
+        "stage": "discovery",
+        "failure_description": "The requested capitalization style is not defined precisely enough, so different readers could reasonably interpret it as affecting different parts of the greeting or different style variants.",
+        "observable_signal": "Two implementers produce different greeting outputs for the same input while both claim to support the optional capitalization style.",
+        "why_material": "If the scope of the option is unclear, the handoff is not implementable because output behavior cannot be predicted or tested consistently.",
+        "minimal_test_shape": "Provide one greeting input and one style selection with no further explanation; check whether multiple plausible outputs remain."
+      },
+      {
+        "id": "option-not-user-visible",
+        "stage": "interaction",
+        "failure_description": "The optional capitalization style exists conceptually, but the user-facing way to request or omit it is unclear or inconsistent.",
+        "observable_signal": "A caller cannot tell from the interface or request shape how to enable the style, disable it, or rely on the default.",
+        "why_material": "An implementable handoff must define externally observable invocation behavior, not just internal intent.",
+        "minimal_test_shape": "Ask a fresh reader to construct one request using the default behavior and one request using the optional style; observe whether they choose the same request shape."
+      },
+      {
+        "id": "default-behavior-regression-risk",
+        "stage": "synthesis",
+        "failure_description": "The handoff does not make clear what output should occur when no capitalization style is provided, leaving the baseline greeting behavior open to accidental change.",
+        "observable_signal": "Reviewers disagree on whether existing greeting output should remain unchanged when the new option is absent.",
+        "why_material": "Without a stable default, the requirement cannot be implemented safely because adding an option may silently alter existing behavior.",
+        "minimal_test_shape": "Compare expected output for an existing greeting request before and after introducing the optional style, with the option omitted."
+      },
+      {
+        "id": "edge-case-output-gaps",
+        "stage": "handoff",
+        "failure_description": "The handoff does not specify how capitalization style applies to multi-word greetings, punctuation, mixed-case names, or non-letter characters.",
+        "observable_signal": "Acceptance discussion stalls on examples such as names with existing capitalization, punctuation, or greetings containing more than one word.",
+        "why_material": "These cases are externally observable output decisions; if they are unspecified, implementation and verification will diverge.",
+        "minimal_test_shape": "Test a small set of greetings including punctuation, a mixed-case name, and a multi-word phrase under the optional style and check whether expected outputs are fully determined."
+      },
+      {
+        "id": "unverifiable-acceptance",
+        "stage": "verification",
+        "failure_description": "The requirement is stated at a high level but lacks concrete output examples or pass-fail criteria for each supported capitalization behavior.",
+        "observable_signal": "A tester can only say the output 'looks right' rather than evaluate it against explicit expected strings.",
+        "why_material": "If correctness is subjective, the handoff is not truly implementable because completion cannot be verified reliably.",
+        "minimal_test_shape": "For each supported mode, require at least one exact input-output example and check whether a tester can mark pass or fail without interpretation."
+      }
+    ]
+  }
+}

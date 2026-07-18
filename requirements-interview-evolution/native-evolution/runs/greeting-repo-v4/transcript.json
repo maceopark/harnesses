@@ -1,0 +1,120 @@
+[
+  {
+    "turn": 1,
+    "open_material_decisions": [
+      "The exact usage/error text and exit behavior for invalid flag-aware invocations.",
+      "Where `--uppercase` may appear relative to `NAME`, whether it may repeat, and whether it can be interpreted as a literal name.",
+      "Whether `--uppercase` uppercases the entire greeting or only the supplied name."
+    ],
+    "question": {
+      "header": "Uppercase scope",
+      "prompt": "What should `python greet.py --uppercase Ada` print? This determines the flag’s core observable behavior.",
+      "options": [
+        {
+          "label": "Entire greeting",
+          "description": "Print `HELLO, ADA!`; this follows the conventional meaning of uppercasing command output.",
+          "recommended": true
+        },
+        {
+          "label": "Name only",
+          "description": "Print `Hello, ADA!`; this preserves the greeting template while transforming only the user-provided value.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Entire greeting"
+  },
+  {
+    "turn": 2,
+    "open_material_decisions": [
+      "The exact usage/error text and exit behavior for invalid flag-aware invocations.",
+      "Where `--uppercase` may appear relative to `NAME`, whether it may repeat, and whether it can be interpreted as a literal name."
+    ],
+    "question": {
+      "header": "Flag syntax",
+      "prompt": "Which argument forms should the CLI accept? This determines whether flag position, repetition, and a literal name of `--uppercase` are valid.",
+      "options": [
+        {
+          "label": "Either side, once",
+          "description": "Accept `--uppercase NAME` and `NAME --uppercase`; reject repetition, and always treat `--uppercase` as an option rather than a literal name.",
+          "recommended": true
+        },
+        {
+          "label": "Prefix only, once",
+          "description": "Accept only `--uppercase NAME`; reject a trailing or repeated flag, and always treat it as an option.",
+          "recommended": false
+        },
+        {
+          "label": "Either side, repeatable",
+          "description": "Accept the flag before or after `NAME` and allow repetitions; always treat it as an option.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Either side, once"
+  },
+  {
+    "turn": 3,
+    "open_material_decisions": [
+      "The exact usage/error text and exit behavior for invalid invocations, including missing NAME, extra names, repeated `--uppercase`, and unknown options."
+    ],
+    "question": {
+      "header": "Usage errors",
+      "prompt": "How should invalid invocations behave? This determines the CLI’s stderr contract and compatibility for all rejected flag forms.",
+      "options": [
+        {
+          "label": "Updated usage, status 2",
+          "description": "Write exactly `usage: greet.py [--uppercase] NAME` to stderr and return status 2 for every invalid invocation.",
+          "recommended": true
+        },
+        {
+          "label": "Keep old usage text",
+          "description": "Continue writing exactly `usage: greet.py NAME` to stderr and return status 2, even when the invalid invocation involves options.",
+          "recommended": false
+        },
+        {
+          "label": "Detailed error messages",
+          "description": "Return status 2 but emit reason-specific stderr messages, making errors clearer while creating a larger new output contract.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Updated usage, status 2"
+  },
+  {
+    "turn": 4,
+    "interviewer": {
+      "action": "complete",
+      "reason": "All material observable behavior is confirmed; repository evidence safely determines that the existing no-flag behavior and `greeting(name)` contract must remain compatible.",
+      "open_material_decisions": [],
+      "question": null,
+      "contract": {
+        "summary": "Add an optional `--uppercase` CLI flag. With the flag, print the entire greeting in uppercase; without it, preserve existing behavior exactly. Accept the flag once, either before or after NAME. Every invalid invocation must write exactly `usage: greet.py [--uppercase] NAME` to stderr and return status 2. The requested change authorizes implementation.",
+        "implementation_ready": true,
+        "confirmed_decisions": [
+          "`--uppercase` uppercases the entire rendered greeting, so `python greet.py --uppercase Ada` prints `HELLO, ADA!`.",
+          "Accept exactly one NAME with at most one `--uppercase`, positioned either before or after NAME.",
+          "Always interpret `--uppercase` as an option, not as a literal name.",
+          "Reject missing NAME, extra names, repeated `--uppercase`, and unknown options.",
+          "For every invalid invocation, write exactly `usage: greet.py [--uppercase] NAME` to stderr and return status 2.",
+          "Without the flag, preserve the exact existing output `Hello, {name}!`, including the supplied name's case.",
+          "Preserve the existing `greeting(name)` behavior and public signature; flag handling and whole-output transformation belong to the CLI path.",
+          "Successful invocations return status 0; usage errors return status 2.",
+          "Update CLI documentation and tests for the new syntax and behavior.",
+          "Do not add unrelated flags, reason-specific errors, or broader argument-parsing behavior."
+        ],
+        "open_material_decisions": [],
+        "acceptance_checks": [
+          "`greeting(\"Ada\") == \"Hello, Ada!\"` remains true.",
+          "`main([\"Ada\"])` prints exactly `Hello, Ada!` followed by a newline, writes nothing to stderr, and returns 0.",
+          "`main([\"--uppercase\", \"Ada\"])` and `main([\"Ada\", \"--uppercase\"])` each print exactly `HELLO, ADA!` followed by a newline, write nothing to stderr, and return 0.",
+          "Mixed- or lowercase names remain unchanged when the flag is absent, while the entire rendered greeting is uppercased when it is present.",
+          "Zero arguments, extra names, repeated `--uppercase`, an unknown option, and `--uppercase` without NAME each print exactly `usage: greet.py [--uppercase] NAME` to stderr and return 2.",
+          "Script execution exits with the status returned by `main()`.",
+          "README usage documents `python greet.py [--uppercase] NAME`, both accepted flag positions, uppercase behavior, and invalid-invocation behavior.",
+          "All existing and new tests pass."
+        ]
+      }
+    }
+  }
+]

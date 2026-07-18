@@ -1,0 +1,52 @@
+{
+  "public_request": "Add an optional emoji marker before greeting output.",
+  "target_lens_ids": [
+    "discovery-optional-scope",
+    "interaction-greeting-boundary",
+    "synthesis-format-placement",
+    "handoff-acceptance-gap",
+    "verification-edge-output"
+  ],
+  "objective_failure_signals": [
+    "The implementation request does not state what controls whether the emoji marker is enabled, so two reasonable readers can choose different activation conditions.",
+    "The request does not define which outputs count as greeting output, so different greeting strings can be treated inconsistently.",
+    "The observable output contract is underspecified for marker choice, placement, or spacing, allowing multiple different rendered strings for the same input.",
+    "The disabled case is not specified with a concrete unchanged output expectation for the same greeting text.",
+    "Verification omits obvious adjacent outputs such as empty text, greetings already starting with a symbol, or greetings already starting with an emoji."
+  ],
+  "oracle": {
+    "material_decisions": [
+      {
+        "id": "optional-scope",
+        "answer": "The emoji marker is controlled per call by a single boolean option named conceptually as marker enabled. When true, the marker is added. When false or omitted, no marker is added.",
+        "why_material": "This removes the ambiguity about whether optional behavior is a runtime parameter, a user preference, or a static default."
+      },
+      {
+        "id": "greeting-boundary",
+        "answer": "Greeting output means the exact final string returned by the greeting-producing function for a salutation. The change applies to every greeting variant that function can return, not to unrelated first-line text elsewhere.",
+        "why_material": "This fixes the target surface so implementations and tests evaluate the same outputs."
+      },
+      {
+        "id": "format-contract",
+        "answer": "When enabled, prepend exactly one emoji, specifically \"👋\", followed by exactly one ASCII space, before the existing greeting string. Example: \"Hello\" becomes \"👋 Hello\".",
+        "why_material": "This makes the visible output objectively judgeable by fixing emoji choice, position, and spacing."
+      },
+      {
+        "id": "disabled-baseline",
+        "answer": "When the marker is not enabled, output must remain byte-for-byte identical to the prior greeting output. Example: \"Hello\" stays \"Hello\".",
+        "why_material": "This defines the acceptance condition for the disabled path and prevents accidental formatting drift."
+      },
+      {
+        "id": "edge-cases",
+        "answer": "If the greeting output is an empty string, enabled output is also the empty string. If the greeting already begins with a symbol or emoji, the enabled behavior still prepends \"👋 \" to the existing string without deduplication or normalization. Whitespace-only output is preserved unchanged when disabled and becomes \"👋 \" followed by the original whitespace when enabled.",
+        "why_material": "These cases are needed so verification covers obvious observable boundaries instead of only the happy path."
+      }
+    ],
+    "owner_rules": [
+      "Judge correctness against externally visible output strings only.",
+      "Treat omission of the enable flag the same as disabled.",
+      "Do not rewrite, trim, normalize, or deduplicate the existing greeting text except for the specified enabled prefix.",
+      "Require tests or examples covering enabled, disabled, already-emoji-leading, and empty or whitespace-only greeting outputs."
+    ]
+  }
+}

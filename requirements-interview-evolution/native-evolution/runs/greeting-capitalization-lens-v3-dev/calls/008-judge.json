@@ -1,0 +1,185 @@
+{
+  "role": "judge",
+  "prompt_sha256": "d85bd579e6d26b9eacb0b877a6e1feefca7113b33ae5554b54d4dac298dafdda",
+  "input": {
+    "owner_oracle": {
+      "material_decisions": [
+        {
+          "id": "style-scope",
+          "answer": "The optional style is `uppercase`, and it applies to the entire final greeting string after all other formatting is complete. All alphabetic characters in both the greeting words and the recipient name are converted to uppercase. Punctuation, spaces, digits, and other non-letter characters remain unchanged.",
+          "why_material": "This removes ambiguity about whether the style affects only the greeting prefix, only the name, only the first letter of each word, or the full rendered output."
+        },
+        {
+          "id": "request-shape",
+          "answer": "The caller may provide an optional field named `capitalizationStyle`. Supported values are `default` and `uppercase`. If the field is omitted, behavior is the same as `default`. No other values are supported.",
+          "why_material": "This makes the option externally invokable and testable, instead of leaving enablement implicit or implementation-defined."
+        },
+        {
+          "id": "default-behavior",
+          "answer": "When `capitalizationStyle` is omitted or set to `default`, greeting output must remain exactly the same as before this feature was added, with no capitalization changes introduced by default.",
+          "why_material": "This protects backward compatibility and prevents accidental regression in baseline greeting behavior."
+        },
+        {
+          "id": "edge-cases",
+          "answer": "For multi-word greetings, every alphabetic character in every word is uppercased. Existing mixed-case names are normalized by uppercasing all letters. Punctuation and symbols are preserved in place. Examples: `Hello, Ada` with `uppercase` becomes `HELLO, ADA`; `Good morning, McCloud` becomes `GOOD MORNING, MCCLOUD`; `Hi, J.P.!` becomes `HI, J.P.!`; `Hello, A1ex` becomes `HELLO, A1EX`.",
+          "why_material": "These cases are externally visible and otherwise invite divergent implementations and test expectations."
+        },
+        {
+          "id": "acceptance-examples",
+          "answer": "Exact acceptance examples are: with `capitalizationStyle` omitted, input producing `Hello, Ada` must still produce `Hello, Ada`; with `capitalizationStyle: default`, the same input must produce `Hello, Ada`; with `capitalizationStyle: uppercase`, the same input must produce `HELLO, ADA`. A tester should be able to mark pass or fail by exact string comparison.",
+          "why_material": "Concrete examples turn a subjective feature request into an objectively judgeable requirement."
+        }
+      ],
+      "owner_rules": [
+        "Treat the seed public request as intentionally under-specified; a strong response should close the listed gaps with explicit, externally testable behavior.",
+        "Do not accept vague phrases such as 'capitalize the greeting appropriately' unless exact affected output characters and invocation shape are defined.",
+        "Require that omission of the option preserves prior behavior exactly.",
+        "Require at least one exact input-output example for each supported mode, and reject responses that rely only on descriptive prose without exact expected strings."
+      ]
+    },
+    "audited_repository_evidence": {
+      "scope_summary": "greenfield; no repository evidence",
+      "facts": [],
+      "unknowns": [],
+      "unresolved_conflicts": [],
+      "audit_summary": "not applicable"
+    },
+    "public_request": "Add an optional capitalization style to greeting output.",
+    "transcript": [
+      {
+        "turn": 1,
+        "open_material_decisions": [
+          "Which capitalization styles must the optional greeting setting support, and what should each style do to the greeting text?"
+        ],
+        "question": {
+          "header": "Capitalization Style",
+          "prompt": "This changes the visible output and the API/UX surface, so the supported styles need to be explicit. Which capitalization behavior should the optional setting support?",
+          "options": [
+            {
+              "label": "Single alternate (Recommended)",
+              "description": "Support one non-default style in addition to current behavior, which keeps scope small but limits flexibility.",
+              "recommended": true
+            },
+            {
+              "label": "Small fixed set",
+              "description": "Support 2-3 named styles such as lowercase, uppercase, and title case, which is more flexible but expands scope and tests.",
+              "recommended": false
+            },
+            {
+              "label": "Exact styles specified by you",
+              "description": "You define the precise style names and transformations now, which removes ambiguity but may take longer to specify.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Support a single alternate style. The optional request field is `capitalizationStyle` with supported values `default` and `uppercase`; if omitted, behavior is exactly the same as `default`. `uppercase` applies to the entire final rendered greeting string after all other formatting is complete, converting all alphabetic characters in both the greeting text and recipient name to uppercase while preserving punctuation, spaces, digits, and other non-letter characters. Exact examples: omitted -> `Hello, Ada`; `capitalizationStyle: default` -> `Hello, Ada`; `capitalizationStyle: uppercase` -> `HELLO, ADA`."
+      },
+      {
+        "turn": 2,
+        "interviewer": {
+          "action": "complete",
+          "reason": "The only material ambiguity was the supported capitalization style behavior, and the transcript confirms it precisely enough to distinguish success from failure.",
+          "open_material_decisions": [],
+          "question": null,
+          "contract": {
+            "summary": "Add an optional `capitalizationStyle` request field to greeting output. Supported values are `default` and `uppercase`. If omitted, behavior must match `default`. `uppercase` must transform the entire final rendered greeting string to uppercase after all other formatting is complete.",
+            "implementation_ready": true,
+            "confirmed_decisions": [
+              "Outcome: greeting output gains an optional capitalization setting without changing existing behavior by default.",
+              "API surface: the optional request field is named `capitalizationStyle`.",
+              "Supported values: `default` and `uppercase` only.",
+              "Defaulting: if `capitalizationStyle` is omitted, output must be exactly the same as `capitalizationStyle: default`.",
+              "Transformation point: `uppercase` applies to the entire final rendered greeting string after all other formatting is complete.",
+              "Transformation behavior: `uppercase` converts all alphabetic characters in both greeting text and recipient name to uppercase while preserving punctuation, spaces, digits, and other non-letter characters.",
+              "Examples: omitted -> `Hello, Ada`; `capitalizationStyle: default` -> `Hello, Ada`; `capitalizationStyle: uppercase` -> `HELLO, ADA`.",
+              "Scope control: support a single alternate style only; do not add lowercase, title case, or other styles."
+            ],
+            "open_material_decisions": [],
+            "acceptance_checks": [
+              "A request with no `capitalizationStyle` returns the same greeting output as current behavior.",
+              "A request with `capitalizationStyle: default` returns the same output as omission.",
+              "A request with `capitalizationStyle: uppercase` returns the fully rendered greeting uppercased, including the recipient name.",
+              "With `uppercase`, punctuation, spaces, digits, and other non-letter characters remain unchanged except for letter casing.",
+              "No additional capitalization style values are supported by this change."
+            ]
+          }
+        }
+      }
+    ],
+    "final_contract": {
+      "summary": "Add an optional `capitalizationStyle` request field to greeting output. Supported values are `default` and `uppercase`. If omitted, behavior must match `default`. `uppercase` must transform the entire final rendered greeting string to uppercase after all other formatting is complete.",
+      "implementation_ready": true,
+      "confirmed_decisions": [
+        "Outcome: greeting output gains an optional capitalization setting without changing existing behavior by default.",
+        "API surface: the optional request field is named `capitalizationStyle`.",
+        "Supported values: `default` and `uppercase` only.",
+        "Defaulting: if `capitalizationStyle` is omitted, output must be exactly the same as `capitalizationStyle: default`.",
+        "Transformation point: `uppercase` applies to the entire final rendered greeting string after all other formatting is complete.",
+        "Transformation behavior: `uppercase` converts all alphabetic characters in both greeting text and recipient name to uppercase while preserving punctuation, spaces, digits, and other non-letter characters.",
+        "Examples: omitted -> `Hello, Ada`; `capitalizationStyle: default` -> `Hello, Ada`; `capitalizationStyle: uppercase` -> `HELLO, ADA`.",
+        "Scope control: support a single alternate style only; do not add lowercase, title case, or other styles."
+      ],
+      "open_material_decisions": [],
+      "acceptance_checks": [
+        "A request with no `capitalizationStyle` returns the same greeting output as current behavior.",
+        "A request with `capitalizationStyle: default` returns the same output as omission.",
+        "A request with `capitalizationStyle: uppercase` returns the fully rendered greeting uppercased, including the recipient name.",
+        "With `uppercase`, punctuation, spaces, digits, and other non-letter characters remain unchanged except for letter casing.",
+        "No additional capitalization style values are supported by this change."
+      ]
+    },
+    "termination_reason": "completed",
+    "frozen_failure_lenses": [
+      {
+        "id": "ambiguous-style-scope",
+        "stage": "discovery",
+        "failure_description": "The requested capitalization style is not defined precisely enough, so different readers could reasonably interpret it as affecting different parts of the greeting or different style variants.",
+        "observable_signal": "Two implementers produce different greeting outputs for the same input while both claim to support the optional capitalization style.",
+        "why_material": "If the scope of the option is unclear, the handoff is not implementable because output behavior cannot be predicted or tested consistently.",
+        "minimal_test_shape": "Provide one greeting input and one style selection with no further explanation; check whether multiple plausible outputs remain."
+      },
+      {
+        "id": "option-not-user-visible",
+        "stage": "interaction",
+        "failure_description": "The optional capitalization style exists conceptually, but the user-facing way to request or omit it is unclear or inconsistent.",
+        "observable_signal": "A caller cannot tell from the interface or request shape how to enable the style, disable it, or rely on the default.",
+        "why_material": "An implementable handoff must define externally observable invocation behavior, not just internal intent.",
+        "minimal_test_shape": "Ask a fresh reader to construct one request using the default behavior and one request using the optional style; observe whether they choose the same request shape."
+      },
+      {
+        "id": "default-behavior-regression-risk",
+        "stage": "synthesis",
+        "failure_description": "The handoff does not make clear what output should occur when no capitalization style is provided, leaving the baseline greeting behavior open to accidental change.",
+        "observable_signal": "Reviewers disagree on whether existing greeting output should remain unchanged when the new option is absent.",
+        "why_material": "Without a stable default, the requirement cannot be implemented safely because adding an option may silently alter existing behavior.",
+        "minimal_test_shape": "Compare expected output for an existing greeting request before and after introducing the optional style, with the option omitted."
+      },
+      {
+        "id": "edge-case-output-gaps",
+        "stage": "handoff",
+        "failure_description": "The handoff does not specify how capitalization style applies to multi-word greetings, punctuation, mixed-case names, or non-letter characters.",
+        "observable_signal": "Acceptance discussion stalls on examples such as names with existing capitalization, punctuation, or greetings containing more than one word.",
+        "why_material": "These cases are externally observable output decisions; if they are unspecified, implementation and verification will diverge.",
+        "minimal_test_shape": "Test a small set of greetings including punctuation, a mixed-case name, and a multi-word phrase under the optional style and check whether expected outputs are fully determined."
+      },
+      {
+        "id": "unverifiable-acceptance",
+        "stage": "verification",
+        "failure_description": "The requirement is stated at a high level but lacks concrete output examples or pass-fail criteria for each supported capitalization behavior.",
+        "observable_signal": "A tester can only say the output 'looks right' rather than evaluate it against explicit expected strings.",
+        "why_material": "If correctness is subjective, the handoff is not truly implementable because completion cannot be verified reliably.",
+        "minimal_test_shape": "For each supported mode, require at least one exact input-output example and check whether a tester can mark pass or fail without interpretation."
+      }
+    ]
+  },
+  "output": {
+    "implementation_ready": true,
+    "repository_fidelity": 1,
+    "owner_decision_recall": 0.96,
+    "invented_requirements": [],
+    "question_count": 1,
+    "unnecessary_questions": [],
+    "failures": [],
+    "summary": "The transcript resolved the only material ambiguity with one necessary question, and the final contract is implementation-ready. Repository fidelity is effectively complete because there was no repository evidence to constrain or contradict the contract. Owner-decision recall is very high: the contract captures the request shape, supported values, default-preservation rule, full-string uppercase transformation point, non-letter preservation, exact examples, and scope control, with only minor loss of the oracle’s broader illustrative edge-case examples."
+  }
+}

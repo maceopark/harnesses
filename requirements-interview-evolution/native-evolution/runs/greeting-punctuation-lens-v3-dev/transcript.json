@@ -1,0 +1,96 @@
+[
+  {
+    "turn": 1,
+    "open_material_decisions": [
+      "How invalid or unsupported punctuation style values must be handled.",
+      "How the optional punctuation style is selected by callers (for example, parameter/flag/config shape and default behavior when omitted).",
+      "Which punctuation styles must be supported, and what exact greeting output should each style produce."
+    ],
+    "question": {
+      "header": "Punctuation styles",
+      "prompt": "This answer changes the public behavior and test cases. Which punctuation styles must the feature support in greeting output?",
+      "options": [
+        {
+          "label": "Two styles",
+          "description": "Support exactly two styles: `default` and one alternate style, which keeps scope small but requires you to name the alternate and its exact output.",
+          "recommended": true
+        },
+        {
+          "label": "Several named styles",
+          "description": "Support a fixed set of multiple named styles, which is more flexible but expands API and acceptance coverage.",
+          "recommended": false
+        },
+        {
+          "label": "Caller-defined punctuation",
+          "description": "Let callers supply punctuation directly, which is most flexible but changes the feature from a style option into custom output control.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Several named styles: support exactly `default`, `period`, `exclamation`, and `ellipsis`. Their outputs must be `Hello, {name}!`, `Hello, {name}.`, `Hello, {name}!`, and `Hello, {name}...` respectively."
+  },
+  {
+    "turn": 2,
+    "open_material_decisions": [
+      "How invalid or unsupported punctuation style values must be handled.",
+      "How the optional punctuation style is selected by callers (for example, parameter/flag/config shape and default behavior when omitted)."
+    ],
+    "question": {
+      "header": "Style selection",
+      "prompt": "This answer changes the public interface and the default behavior when callers do not specify a style. How must callers choose the optional punctuation style?",
+      "options": [
+        {
+          "label": "Optional parameter",
+          "description": "Add an optional `punctuationStyle` argument/property and default to `default` when omitted; this is the most conventional and easiest to test.",
+          "recommended": true
+        },
+        {
+          "label": "Separate entry points",
+          "description": "Expose distinct APIs per style, which makes call sites explicit but expands surface area and duplicates acceptance coverage.",
+          "recommended": false
+        },
+        {
+          "label": "Config only",
+          "description": "Select style through configuration rather than per call, which narrows runtime flexibility but may fit a centralized settings model.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Callers choose the style by optionally providing a `punctuation_style` field on the request. If the field is absent, the system uses the default behavior and returns `Hello, {name}!`. If the field is present, it must be one of `default`, `period`, `exclamation`, or `ellipsis`, and its value determines only the terminal punctuation of the greeting."
+  },
+  {
+    "termination": "safety_ceiling",
+    "interviewer": {
+      "action": "complete",
+      "reason": "Force-close applied at safety ceiling. One material decision remains open, so the contract is not implementation-ready.",
+      "open_material_decisions": [
+        "How invalid or unsupported `punctuation_style` values must be handled."
+      ],
+      "question": null,
+      "contract": {
+        "summary": "Feature request: add an optional `punctuation_style` to greeting output. Confirmed so far: callers may provide an optional `punctuation_style` field on the request; when omitted, output must remain `Hello, {name}!`; when provided, supported values are exactly `default`, `period`, `exclamation`, and `ellipsis`; those produce `Hello, {name}!`, `Hello, {name}.`, `Hello, {name}!`, and `Hello, {name}...` respectively; the style affects only terminal punctuation. Blocking gap: behavior for invalid or unsupported `punctuation_style` values is unspecified, which materially affects observable behavior and pass/fail acceptance checks.",
+        "implementation_ready": false,
+        "confirmed_decisions": [
+          "Outcome: add an optional punctuation-style feature to greeting output.",
+          "Request shape: callers select behavior with an optional `punctuation_style` field on the request.",
+          "Default behavior: if `punctuation_style` is absent, return `Hello, {name}!`.",
+          "Supported values: exactly `default`, `period`, `exclamation`, and `ellipsis`.",
+          "Output mapping: `default` -> `Hello, {name}!`, `period` -> `Hello, {name}.`, `exclamation` -> `Hello, {name}!`, `ellipsis` -> `Hello, {name}...`.",
+          "Scope constraint: `punctuation_style` changes only terminal punctuation of the greeting."
+        ],
+        "open_material_decisions": [
+          "How invalid or unsupported `punctuation_style` values must be handled."
+        ],
+        "acceptance_checks": [
+          "When the request omits `punctuation_style`, the response is `Hello, {name}!`.",
+          "When `punctuation_style` is `default`, the response is `Hello, {name}!`.",
+          "When `punctuation_style` is `period`, the response is `Hello, {name}.`.",
+          "When `punctuation_style` is `exclamation`, the response is `Hello, {name}!`.",
+          "When `punctuation_style` is `ellipsis`, the response is `Hello, {name}...`.",
+          "Changing `punctuation_style` must not alter any part of the greeting other than terminal punctuation.",
+          "A final acceptance check for invalid `punctuation_style` input cannot be written until its required handling is specified."
+        ]
+      }
+    }
+  }
+]

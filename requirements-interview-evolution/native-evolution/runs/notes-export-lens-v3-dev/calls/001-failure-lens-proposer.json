@@ -1,0 +1,92 @@
+{
+  "role": "failure-lens-proposer",
+  "prompt_sha256": "b989bc9c19a251638ed7e4627cfaf33aa7d700a02f2e1ed07bd14f40a05a2f4f",
+  "input": {
+    "seed_category": "Add a compact export command for saved notes while preserving existing note content.",
+    "fixed_goal": "surface material ambiguity and produce an implementable requirements handoff"
+  },
+  "output": {
+    "lenses": [
+      {
+        "id": "discovery-export-scope-omission",
+        "stage": "discovery",
+        "failure_description": "The handoff does not establish which saved notes are included when the command is invoked without an explicit selection.",
+        "observable_signal": "Two conforming implementations export different note sets from the same saved-note state.",
+        "why_material": "Export scope determines the command's primary output and can cause unintended disclosure or incomplete exports.",
+        "minimal_test_shape": "Create multiple saved notes across plausible scopes, invoke the command without a selection, and compare the exported set with the stated requirement."
+      },
+      {
+        "id": "discovery-content-boundary-ambiguity",
+        "stage": "discovery",
+        "failure_description": "The handoff leaves unclear whether existing note content includes only the visible body or also titles, metadata, formatting, attachments, and exact text structure.",
+        "observable_signal": "An exported note is readable but omits or transforms information that users regard as part of the saved note.",
+        "why_material": "The preservation goal cannot be implemented consistently without an observable boundary for note content.",
+        "minimal_test_shape": "Save a note containing a title, structured text, metadata, and an attachment reference, then inspect which elements survive export."
+      },
+      {
+        "id": "interaction-invocation-ambiguity",
+        "stage": "interaction",
+        "failure_description": "The command's accepted invocation forms, required arguments, and behavior for invalid or missing arguments are not specified.",
+        "observable_signal": "Users cannot predict whether an invocation will export, reject input, or select an unintended note.",
+        "why_material": "Ambiguous command interaction makes otherwise correct export behavior inaccessible or unsafe.",
+        "minimal_test_shape": "Exercise the command with no arguments, a valid selector, an unknown selector, and extra arguments; compare each visible outcome with the handoff."
+      },
+      {
+        "id": "interaction-output-destination-ambiguity",
+        "stage": "interaction",
+        "failure_description": "The handoff does not define where exported data appears or how an output destination is communicated to the user.",
+        "observable_signal": "A successful invocation produces data in an unexpected location or gives no observable way to find it.",
+        "why_material": "An export that cannot be reliably located is not operationally usable and may overwrite or expose data unexpectedly.",
+        "minimal_test_shape": "Invoke export under default and explicitly targeted conditions, then observe where data is written and what destination information is reported."
+      },
+      {
+        "id": "synthesis-preservation-contradiction",
+        "stage": "synthesis",
+        "failure_description": "The synthesized requirements demand compact output while also requiring content preservation, but do not resolve conflicts between compaction and exact retention.",
+        "observable_signal": "Implementers either remove content to achieve compactness or retain everything while violating the intended compact representation.",
+        "why_material": "The central constraints can drive incompatible implementations unless their externally observable priority is clear.",
+        "minimal_test_shape": "Export notes containing repeated whitespace, formatting markers, long lines, and empty sections; check whether the result satisfies both stated compactness and preservation expectations."
+      },
+      {
+        "id": "handoff-export-format-underdetermined",
+        "stage": "handoff",
+        "failure_description": "The handoff does not specify a sufficiently determinate export structure, ordering, encoding, or separation between multiple notes.",
+        "observable_signal": "Independent implementations produce mutually incompatible outputs that each appear consistent with the handoff.",
+        "why_material": "Consumers cannot reliably read, compare, or reuse exported notes when the representation is underdetermined.",
+        "minimal_test_shape": "Export multiple notes containing non-ASCII text and delimiter-like content, then assess whether ordering, boundaries, and character representation are uniquely inferable from the requirements."
+      },
+      {
+        "id": "implementation-source-content-mutation",
+        "stage": "implementation",
+        "failure_description": "Running the export command alters saved note content or persistent note state.",
+        "observable_signal": "A note differs before and after export despite no user request to edit it.",
+        "why_material": "This directly violates preservation and turns a read-oriented action into a destructive one.",
+        "minimal_test_shape": "Record saved note content and relevant persistent state, run export, then compare the stored note byte-for-byte or field-for-field afterward."
+      },
+      {
+        "id": "implementation-partial-export-misreported",
+        "stage": "implementation",
+        "failure_description": "The command produces only part of the requested export while presenting the operation as fully successful.",
+        "observable_signal": "One or more requested notes or content segments are absent, yet the visible status indicates success.",
+        "why_material": "Silent incompleteness undermines backup, transfer, and trust in the exported artifact.",
+        "minimal_test_shape": "Request export of several notes while inducing a failure on one item, then compare the artifact and reported status with the requested set."
+      },
+      {
+        "id": "verification-happy-path-only",
+        "stage": "verification",
+        "failure_description": "Verification demonstrates export only for a simple note and does not test preservation-sensitive or failure conditions.",
+        "observable_signal": "Acceptance evidence passes while notes with empty content, Unicode, multiline text, formatting, large bodies, or unavailable destinations fail in use.",
+        "why_material": "The fixed goal centers on preserved content, so narrow verification can conceal material data loss or misleading outcomes.",
+        "minimal_test_shape": "Run a small matrix covering empty, Unicode, multiline, formatted, large, and destination-failure cases, and inspect both artifacts and visible statuses."
+      },
+      {
+        "id": "learning-unclassified-user-failures",
+        "stage": "learning",
+        "failure_description": "Observed export failures are recorded without distinguishing selection errors, destination errors, serialization loss, partial output, or source mutation.",
+        "observable_signal": "Repeated incidents cannot be tied to a specific requirement gap or reproducible behavior.",
+        "why_material": "Undifferentiated feedback prevents later discovery from identifying which ambiguity or implementation behavior remains material.",
+        "minimal_test_shape": "Review a sample of reported export failures and determine whether each can be assigned an observable failure type and reproduced from the retained evidence."
+      }
+    ]
+  }
+}

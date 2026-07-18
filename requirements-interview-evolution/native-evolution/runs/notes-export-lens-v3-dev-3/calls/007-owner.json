@@ -1,0 +1,121 @@
+{
+  "role": "owner",
+  "prompt_sha256": "282c3aeef3608d3c8a4cdc6fa5408b865d0eb42ecba65747ab1e184934a5c4cb",
+  "input": {
+    "oracle": {
+      "material_decisions": [
+        {
+          "id": "DEC-001",
+          "answer": "Export every note present in the saved-note store at command start, including notes with empty content.",
+          "why_material": "Selecting all notes establishes the export boundary and prevents implementations from choosing different subsets."
+        },
+        {
+          "id": "DEC-002",
+          "answer": "Emit UTF-8 JSON Lines to standard output, with exactly one compact JSON object per note and a single LF after each object; do not pretty-print or add headings, summaries, or other output.",
+          "why_material": "This makes “compact” an objective output-shape requirement."
+        },
+        {
+          "id": "DEC-003",
+          "answer": "Each exported object contains exactly two fields: \"id\" and \"content\". Include no timestamps, tags, storage paths, derived values, or other metadata.",
+          "why_material": "Exact field inclusion is part of the public output contract."
+        },
+        {
+          "id": "DEC-004",
+          "answer": "Order exported notes by ascending Unicode code-point order of their \"id\" values.",
+          "why_material": "A deterministic order makes identical saved state produce objectively comparable output."
+        },
+        {
+          "id": "DEC-005",
+          "answer": "The decoded JSON string value of each exported \"content\" field must equal the stored content exactly, including empty content, spaces, tabs, line breaks, Unicode characters, and leading or trailing whitespace. JSON-required escaping is allowed only when decoding restores the exact stored string.",
+          "why_material": "This operationalizes content preservation without confusing serialization escapes with content changes."
+        },
+        {
+          "id": "DEC-006",
+          "answer": "Export is read-only: it must not create, update, delete, reorder, normalize, rewrite, or persist any change to saved notes or their metadata.",
+          "why_material": "This defines the central data-safety boundary."
+        },
+        {
+          "id": "DEC-007",
+          "answer": "If the saved-note store cannot be read completely, emit no export records, write a diagnostic to standard error, return a nonzero exit status, and leave the store unchanged.",
+          "why_material": "Partial output and failure behavior affect whether consumers can trust an export as complete."
+        },
+        {
+          "id": "DEC-008",
+          "answer": "Adding export must not change the stored data, standard output, standard error, or exit status of existing create, read, update, delete, list, and persistence workflows for the same inputs and initial state.",
+          "why_material": "The feature is additive and must not alter established note behavior outside export."
+        }
+      ],
+      "owner_rules": [
+        "Treat each material decision as independently required and preserve it without broadening or weakening its modality, scope, exceptions, failure result, or verification meaning.",
+        "Require acceptance coverage for multiline content, empty content, leading and trailing spaces, tabs, non-ASCII Unicode, JSON-special characters, and notes with metadata that must not be exported.",
+        "Require a before-and-after stored-state comparison proving that both successful and failed exports leave all note content and metadata unchanged.",
+        "Require regression verification for representative successful and failing create, read, update, delete, list, and persistence workflows, comparing stored state, standard output, standard error, and exit status.",
+        "Do not infer additional export fields, filtering options, alternate formats, file output, compression, import behavior, or changes to existing commands."
+      ]
+    },
+    "owner_rules": [
+      "Treat each material decision as independently required and preserve it without broadening or weakening its modality, scope, exceptions, failure result, or verification meaning.",
+      "Require acceptance coverage for multiline content, empty content, leading and trailing spaces, tabs, non-ASCII Unicode, JSON-special characters, and notes with metadata that must not be exported.",
+      "Require a before-and-after stored-state comparison proving that both successful and failed exports leave all note content and metadata unchanged.",
+      "Require regression verification for representative successful and failing create, read, update, delete, list, and persistence workflows, comparing stored state, standard output, standard error, and exit status.",
+      "Do not infer additional export fields, filtering options, alternate formats, file output, compression, import behavior, or changes to existing commands."
+    ],
+    "transcript": [
+      {
+        "turn": 1,
+        "open_material_decisions": [
+          "Behavior when the destination already exists or cannot be written",
+          "Export output contract: format and destination",
+          "Meaning of “compact”: compact command syntax, compact serialized output, or both",
+          "Which saved notes are exported: all notes or a selected subset"
+        ],
+        "question": {
+          "header": "Export output",
+          "prompt": "What should the export command produce? This choice changes how users invoke it and how the exported notes can be consumed.",
+          "options": [
+            {
+              "label": "JSON to stdout",
+              "description": "Emit compact machine-readable JSON to standard output, allowing redirection to a file without modifying saved notes.",
+              "recommended": true
+            },
+            {
+              "label": "JSON file",
+              "description": "Require a destination path and write compact machine-readable JSON directly to that file.",
+              "recommended": false
+            },
+            {
+              "label": "Plain text",
+              "description": "Emit a concise human-readable representation that is easier to inspect but less reliable for reprocessing.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "JSON to stdout"
+      }
+    ],
+    "question": {
+      "header": "Export scope",
+      "prompt": "Should one invocation export every saved note or only notes explicitly selected by the user? This determines whether selection arguments and partial-export behavior are required.",
+      "options": [
+        {
+          "label": "All notes",
+          "description": "Export every saved note with the smallest command surface and no selection syntax.",
+          "recommended": true
+        },
+        {
+          "label": "Selected notes",
+          "description": "Require one or more note identifiers so users can export a precise subset.",
+          "recommended": false
+        },
+        {
+          "label": "Both modes",
+          "description": "Export all notes by default while optionally accepting identifiers for a subset, increasing interface and testing scope.",
+          "recommended": false
+        }
+      ]
+    }
+  },
+  "output": {
+    "answer": "All notes"
+  }
+}

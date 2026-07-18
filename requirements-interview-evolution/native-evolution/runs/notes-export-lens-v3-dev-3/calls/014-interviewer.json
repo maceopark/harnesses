@@ -1,0 +1,201 @@
+{
+  "role": "interviewer",
+  "prompt_sha256": "684993aae3bec0c1b8a7d2f98514c5a72a1c763b551c71a32738d49e2a3b2467",
+  "input": {
+    "skill_md": "---\nname: clarify-requirements\ndescription: Turn ambiguous product, software, workflow, or change requests into an agreed and testable contract before planning or implementation. Use when requirements are vague, behavior or scope has multiple plausible interpretations, acceptance criteria are missing, consequential defaults would otherwise be invented, or the user asks for an interview, clarification, specification, PRD, or implementation handoff.\n---\n\n# Clarify Requirements\n\nResolve only ambiguity that can materially change the result. Do not implement unless the user separately authorizes implementation.\n\n## Build the decision map\n\n1. Restate the requested outcome in one sentence.\n2. Inspect user-authorized context for answers that are safely discoverable. Do not ask the user to repeat facts already established.\n3. List plausible interpretations privately. Treat a choice as material when it changes observable behavior, scope, safety, compatibility, cost, reversibility, or acceptance.\n4. Track each material decision as `confirmed`, `inferred`, or `open`, with its evidence. Never silently default an open material decision.\n\nConsider these lenses only when relevant: actors and permissions; inputs and outputs; happy path; edge, failure, and misuse behavior; data lifecycle; compatibility; operational constraints; rollout and rollback; acceptance evidence.\n\n## Interview\n\nAsk the highest-leverage open question first. Ask one bounded decision per turn unless the user explicitly prefers batching.\n\nUse the runtime's structured question UI whenever it is available. Put the decision in a short header, state the material consequence in the prompt, provide two or three mutually exclusive choices, mark the recommended choice, give each choice a one-sentence tradeoff, and preserve a free-form answer path. Fall back to the same structure in plain text only when the runtime has no structured question mechanism.\n\nFor each question:\n\n- explain in one short sentence why the answer changes the result;\n- offer two or three concrete, mutually exclusive options when the space is known;\n- recommend one option and state its tradeoff when evidence supports a recommendation;\n- accept a free-form answer;\n- update the decision map before selecting the next question.\n\nDo not ask about low-impact preferences one at a time. When several low-risk choices are conventional, reversible, and do not alter the core outcome or safety posture, collect two to five recommended defaults into one structured approval question. Show the bundle explicitly, let the user approve all defaults or identify exceptions, and record the approved items separately. Never bundle a destructive, security-sensitive, irreversible, costly, or scope-changing decision.\n\nDo not convert examples into requirements, infer permission for destructive behavior, or widen the requested scope. If the user cannot decide, record an explicit assumption only after explaining its consequence and obtaining approval.\n\n## Challenge the emerging contract\n\nBefore closing, assess implementation readiness from multiple relevant angles: representative happy path, edge case, failure case, misuse case, data lifecycle, compatibility, operability, and acceptance evidence. Reopen only a material decision exposed by this challenge.\n\n## Close\n\nStop when every material decision is confirmed or explicitly approved as an assumption and the acceptance criteria can distinguish success from failure. More questions are not evidence of a better interview.\n\nReturn a compact contract containing:\n\n- outcome and success measure;\n- in-scope and out-of-scope behavior;\n- confirmed decisions and approved assumptions;\n- failure, edge, and misuse behavior where relevant;\n- constraints and acceptance checks;\n- unresolved non-blocking items;\n- whether implementation is authorized.\n\nUse [references/contract-template.md](references/contract-template.md) when a durable prose contract is requested.\n\nWhen the contract is implementation-ready, create `build-contract.json`. Make `implementation_agent_directive` the first top-level field. In that directive, require the implementing agent to append one JSON object per line to `decision.jsonl` before making any implementation decision forced by a specification gap. Require at least `timestamp`, `gap`, `options_considered`, `choice`, `reason`, `observable_impact`, and `reversibility`. The agent must not use the log to override confirmed requirements, and must stop for owner input instead of choosing when the gap is destructive, security-sensitive, irreversible, costly, or scope-changing.\n\nInclude requirements, non-goals, confirmed decisions, approved defaults, acceptance checks, remaining non-blocking gaps, evidence provenance, and implementation authorization in the JSON contract. Validate the JSON before presenting it.\n\nMake the best evidence-based readiness judgment; do not ask the user to approve whether the specification is sufficient. If a material decision remains open, continue the interview. Otherwise seal the contract and allow corrections without adding an approval gate. Label anything not confirmed by the user or authoritative evidence. Preserve the user's terminology and distinguish `must`, `should`, and `could`.\n\nAfter the interview is complete, print an implementation-start prompt that points to the contract path, declares it authoritative, repeats the `decision.jsonl` rule, forbids widening scope, names the required verification, and states whether implementation is authorized.\n",
+    "public_request": "Add a compact export command for saved notes while preserving existing note content.",
+    "audited_repository_evidence": {
+      "scope_summary": "greenfield; no repository evidence",
+      "facts": [],
+      "unknowns": [],
+      "unresolved_conflicts": [],
+      "audit_summary": "not applicable"
+    },
+    "transcript": [
+      {
+        "turn": 1,
+        "open_material_decisions": [
+          "Behavior when the destination already exists or cannot be written",
+          "Export output contract: format and destination",
+          "Meaning of “compact”: compact command syntax, compact serialized output, or both",
+          "Which saved notes are exported: all notes or a selected subset"
+        ],
+        "question": {
+          "header": "Export output",
+          "prompt": "What should the export command produce? This choice changes how users invoke it and how the exported notes can be consumed.",
+          "options": [
+            {
+              "label": "JSON to stdout",
+              "description": "Emit compact machine-readable JSON to standard output, allowing redirection to a file without modifying saved notes.",
+              "recommended": true
+            },
+            {
+              "label": "JSON file",
+              "description": "Require a destination path and write compact machine-readable JSON directly to that file.",
+              "recommended": false
+            },
+            {
+              "label": "Plain text",
+              "description": "Emit a concise human-readable representation that is easier to inspect but less reliable for reprocessing.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "JSON to stdout"
+      },
+      {
+        "turn": 2,
+        "open_material_decisions": [
+          "Exact command name and meaning of “compact” for command syntax",
+          "Failure behavior if notes cannot be read or stdout cannot be written",
+          "JSON document shape and which note fields/metadata must be included",
+          "Which saved notes are exported: all notes or an explicitly selected subset"
+        ],
+        "question": {
+          "header": "Export scope",
+          "prompt": "Should one invocation export every saved note or only notes explicitly selected by the user? This determines whether selection arguments and partial-export behavior are required.",
+          "options": [
+            {
+              "label": "All notes",
+              "description": "Export every saved note with the smallest command surface and no selection syntax.",
+              "recommended": true
+            },
+            {
+              "label": "Selected notes",
+              "description": "Require one or more note identifiers so users can export a precise subset.",
+              "recommended": false
+            },
+            {
+              "label": "Both modes",
+              "description": "Export all notes by default while optionally accepting identifiers for a subset, increasing interface and testing scope.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "All notes"
+      },
+      {
+        "turn": 3,
+        "open_material_decisions": [
+          "Exact command name and invocation syntax",
+          "Failure behavior if saved notes cannot be read or stdout cannot be written",
+          "JSON document shape and which note fields or metadata must be included",
+          "Meaning of “compact”: minified JSON output, short command syntax, or both"
+        ],
+        "question": {
+          "header": "JSON shape",
+          "prompt": "What should each exported JSON entry contain? This changes whether exports preserve only note content or also retain identity and available metadata.",
+          "options": [
+            {
+              "label": "Full note records",
+              "description": "Export an array of objects containing each note’s exact content plus its identifier and all existing metadata, preserving the most information.",
+              "recommended": true
+            },
+            {
+              "label": "ID and content",
+              "description": "Export an array of objects containing only each note’s identifier and exact content, yielding a smaller stable schema but omitting metadata.",
+              "recommended": false
+            },
+            {
+              "label": "Content only",
+              "description": "Export an array of exact note-content values, producing the smallest output but losing identifiers and metadata.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "ID and content"
+      },
+      {
+        "turn": 4,
+        "open_material_decisions": [
+          "Exact command name and invocation syntax",
+          "Failure behavior if saved notes cannot be read or stdout cannot be written",
+          "Meaning of “compact”: minified JSON output, short command syntax, or both"
+        ],
+        "question": {
+          "header": "Compactness",
+          "prompt": "What must be compact? This determines whether compactness applies to the CLI surface, the emitted JSON, or both.",
+          "options": [
+            {
+              "label": "Both",
+              "description": "Use a short invocation and emit minified JSON with no insignificant whitespace.",
+              "recommended": true
+            },
+            {
+              "label": "Minified JSON",
+              "description": "Require compact serialized output, while allowing a conventional descriptive command name.",
+              "recommended": false
+            },
+            {
+              "label": "Short command",
+              "description": "Require a terse invocation, while allowing human-readable pretty-printed JSON.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Minified JSON"
+      },
+      {
+        "turn": 5,
+        "open_material_decisions": [
+          "Exact command name and invocation syntax",
+          "Failure behavior if saved notes cannot be read or stdout cannot be written"
+        ],
+        "question": {
+          "header": "Invocation",
+          "prompt": "What exact command should export all saved notes? This choice determines the public CLI syntax users and tests will rely on.",
+          "options": [
+            {
+              "label": "notes export",
+              "description": "Use a clear namespaced command that leaves room for other note operations.",
+              "recommended": true
+            },
+            {
+              "label": "export",
+              "description": "Use the shortest command, with greater risk of ambiguity if the CLI later exports other data.",
+              "recommended": false
+            },
+            {
+              "label": "notes --export",
+              "description": "Use a flag-style invocation, which is terse but less conventional for a distinct operation.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "notes export"
+      }
+    ],
+    "turn": 6,
+    "safety_turns_remaining": 3,
+    "force_close": false
+  },
+  "output": {
+    "action": "question",
+    "reason": "The export’s failure contract remains material because it determines observable exit status and whether errors can be mistaken for successful or valid JSON output.",
+    "open_material_decisions": [
+      "Failure behavior when saved notes cannot be read or JSON cannot be fully written to stdout"
+    ],
+    "question": {
+      "header": "Export errors",
+      "prompt": "How should `notes export` behave if it cannot read saved notes or cannot complete writing valid JSON to stdout? This determines whether callers can reliably detect a failed or incomplete export.",
+      "options": [
+        {
+          "label": "Fail nonzero",
+          "description": "Write diagnostics to stderr, return a nonzero exit status, and never intentionally emit JSON when reading notes fails; a stdout write failure also returns nonzero.",
+          "recommended": true
+        },
+        {
+          "label": "JSON error",
+          "description": "Emit a JSON error object to stdout and return nonzero, keeping output machine-readable but mixing success and error schemas.",
+          "recommended": false
+        },
+        {
+          "label": "Best effort",
+          "description": "Export readable notes and report skipped or unwritten data, which may produce incomplete results and requires a partial-success contract.",
+          "recommended": false
+        }
+      ]
+    },
+    "contract": null
+  }
+}

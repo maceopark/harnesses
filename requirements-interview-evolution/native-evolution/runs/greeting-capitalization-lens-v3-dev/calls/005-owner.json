@@ -1,0 +1,72 @@
+{
+  "role": "owner",
+  "prompt_sha256": "56b51e6b9b30f6ba70c279078ea0c779a45861e147164b32c5203543a04eec7c",
+  "input": {
+    "oracle": {
+      "material_decisions": [
+        {
+          "id": "style-scope",
+          "answer": "The optional style is `uppercase`, and it applies to the entire final greeting string after all other formatting is complete. All alphabetic characters in both the greeting words and the recipient name are converted to uppercase. Punctuation, spaces, digits, and other non-letter characters remain unchanged.",
+          "why_material": "This removes ambiguity about whether the style affects only the greeting prefix, only the name, only the first letter of each word, or the full rendered output."
+        },
+        {
+          "id": "request-shape",
+          "answer": "The caller may provide an optional field named `capitalizationStyle`. Supported values are `default` and `uppercase`. If the field is omitted, behavior is the same as `default`. No other values are supported.",
+          "why_material": "This makes the option externally invokable and testable, instead of leaving enablement implicit or implementation-defined."
+        },
+        {
+          "id": "default-behavior",
+          "answer": "When `capitalizationStyle` is omitted or set to `default`, greeting output must remain exactly the same as before this feature was added, with no capitalization changes introduced by default.",
+          "why_material": "This protects backward compatibility and prevents accidental regression in baseline greeting behavior."
+        },
+        {
+          "id": "edge-cases",
+          "answer": "For multi-word greetings, every alphabetic character in every word is uppercased. Existing mixed-case names are normalized by uppercasing all letters. Punctuation and symbols are preserved in place. Examples: `Hello, Ada` with `uppercase` becomes `HELLO, ADA`; `Good morning, McCloud` becomes `GOOD MORNING, MCCLOUD`; `Hi, J.P.!` becomes `HI, J.P.!`; `Hello, A1ex` becomes `HELLO, A1EX`.",
+          "why_material": "These cases are externally visible and otherwise invite divergent implementations and test expectations."
+        },
+        {
+          "id": "acceptance-examples",
+          "answer": "Exact acceptance examples are: with `capitalizationStyle` omitted, input producing `Hello, Ada` must still produce `Hello, Ada`; with `capitalizationStyle: default`, the same input must produce `Hello, Ada`; with `capitalizationStyle: uppercase`, the same input must produce `HELLO, ADA`. A tester should be able to mark pass or fail by exact string comparison.",
+          "why_material": "Concrete examples turn a subjective feature request into an objectively judgeable requirement."
+        }
+      ],
+      "owner_rules": [
+        "Treat the seed public request as intentionally under-specified; a strong response should close the listed gaps with explicit, externally testable behavior.",
+        "Do not accept vague phrases such as 'capitalize the greeting appropriately' unless exact affected output characters and invocation shape are defined.",
+        "Require that omission of the option preserves prior behavior exactly.",
+        "Require at least one exact input-output example for each supported mode, and reject responses that rely only on descriptive prose without exact expected strings."
+      ]
+    },
+    "owner_rules": [
+      "Treat the seed public request as intentionally under-specified; a strong response should close the listed gaps with explicit, externally testable behavior.",
+      "Do not accept vague phrases such as 'capitalize the greeting appropriately' unless exact affected output characters and invocation shape are defined.",
+      "Require that omission of the option preserves prior behavior exactly.",
+      "Require at least one exact input-output example for each supported mode, and reject responses that rely only on descriptive prose without exact expected strings."
+    ],
+    "transcript": [],
+    "question": {
+      "header": "Capitalization Style",
+      "prompt": "This changes the visible output and the API/UX surface, so the supported styles need to be explicit. Which capitalization behavior should the optional setting support?",
+      "options": [
+        {
+          "label": "Single alternate (Recommended)",
+          "description": "Support one non-default style in addition to current behavior, which keeps scope small but limits flexibility.",
+          "recommended": true
+        },
+        {
+          "label": "Small fixed set",
+          "description": "Support 2-3 named styles such as lowercase, uppercase, and title case, which is more flexible but expands scope and tests.",
+          "recommended": false
+        },
+        {
+          "label": "Exact styles specified by you",
+          "description": "You define the precise style names and transformations now, which removes ambiguity but may take longer to specify.",
+          "recommended": false
+        }
+      ]
+    }
+  },
+  "output": {
+    "answer": "Support a single alternate style. The optional request field is `capitalizationStyle` with supported values `default` and `uppercase`; if omitted, behavior is exactly the same as `default`. `uppercase` applies to the entire final rendered greeting string after all other formatting is complete, converting all alphabetic characters in both the greeting text and recipient name to uppercase while preserving punctuation, spaces, digits, and other non-letter characters. Exact examples: omitted -> `Hello, Ada`; `capitalizationStyle: default` -> `Hello, Ada`; `capitalizationStyle: uppercase` -> `HELLO, ADA`."
+  }
+}

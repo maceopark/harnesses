@@ -1,0 +1,52 @@
+{
+  "role": "failure-lens-proposer",
+  "prompt_sha256": "38326385ed1a871d528e8d3883bcf0aa8ff149ece0a233928b0df11200ca874e",
+  "input": {
+    "seed_category": "Add an optional label to a generated greeting.",
+    "fixed_goal": "surface material ambiguity and produce an implementable requirements handoff"
+  },
+  "output": {
+    "lenses": [
+      {
+        "id": "optional-state-collapse",
+        "stage": "discovery",
+        "failure_description": "The requirements do not distinguish an omitted label from a present but empty or whitespace-only label.",
+        "observable_signal": "The same input state produces inconsistent greeting output across examples, implementations, or runs.",
+        "why_material": "These states can change whether separators, spacing, or fallback text appear in the generated greeting.",
+        "minimal_test_shape": "Compare generated greetings for an omitted label, an empty label, a whitespace-only label, and a non-empty label."
+      },
+      {
+        "id": "label-placement-ambiguity",
+        "stage": "interaction",
+        "failure_description": "The intended position and relationship of the label to the greeting are not established.",
+        "observable_signal": "Plausible outputs place the label before, after, or inside the greeting text with different punctuation.",
+        "why_material": "Placement is part of the externally visible output contract and cannot be inferred reliably from label optionality alone.",
+        "minimal_test_shape": "Present one greeting and label input and compare candidate outputs that vary only in label position and punctuation."
+      },
+      {
+        "id": "format-contract-loss",
+        "stage": "synthesis",
+        "failure_description": "The handoff states that a label is supported but omits its exact rendering rules, including separators, whitespace, and line breaks.",
+        "observable_signal": "Two conforming-looking implementations emit byte-different greeting strings for the same labeled input.",
+        "why_material": "Downstream consumers may depend on exact string output, and underspecified formatting prevents deterministic acceptance.",
+        "minimal_test_shape": "Assert the exact generated string for one labeled greeting containing ordinary text."
+      },
+      {
+        "id": "unsafe-label-rendering",
+        "stage": "implementation",
+        "failure_description": "User-provided label characters are altered, interpreted, or allowed to break the greeting structure unexpectedly.",
+        "observable_signal": "Labels containing punctuation, delimiter-like text, Unicode, or line breaks produce corrupted, truncated, or structurally different greetings.",
+        "why_material": "The optional field expands the accepted input surface and can visibly damage output for otherwise valid labels.",
+        "minimal_test_shape": "Generate greetings with labels containing punctuation, Unicode, leading or trailing spaces, and a line break; observe the exact output."
+      },
+      {
+        "id": "unlabeled-regression-gap",
+        "stage": "verification",
+        "failure_description": "Verification covers labeled greetings but fails to establish that existing unlabeled greetings remain unchanged.",
+        "observable_signal": "Adding label support changes the text, spacing, punctuation, or API shape when no label is supplied.",
+        "why_material": "Optional behavior must preserve the prior externally observable path unless the handoff explicitly authorizes a breaking change.",
+        "minimal_test_shape": "Compare the no-label output and invocation shape before and after the change using the same greeting input."
+      }
+    ]
+  }
+}

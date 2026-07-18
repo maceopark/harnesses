@@ -1,0 +1,194 @@
+{
+  "implementation_agent_directive": {
+    "authority": "This file is the authoritative specification for the Todo CLI implementation. Do not widen or reinterpret confirmed scope.",
+    "specification_gap_protocol": {
+      "log_path": "decision.jsonl",
+      "required_action": "Before implementing a behavior that this contract does not determine, append exactly one JSON object as one line to decision.jsonl at the implementation project root.",
+      "required_fields": [
+        "timestamp",
+        "gap",
+        "options_considered",
+        "choice",
+        "reason",
+        "observable_impact",
+        "reversibility"
+      ],
+      "example": {
+        "timestamp": "RFC-3339 timestamp",
+        "gap": "Exact unspecified behavior or implementation constraint",
+        "options_considered": ["option A", "option B"],
+        "choice": "selected option",
+        "reason": "why this is the smallest safe choice",
+        "observable_impact": "none or a precise user-visible effect",
+        "reversibility": "easy, moderate, or hard"
+      },
+      "constraints": [
+        "Never use decision.jsonl to override a confirmed requirement or non-goal.",
+        "Choose the smallest conventional and reversible option for a non-material gap.",
+        "Stop for owner input instead of choosing when a gap is destructive, security-sensitive, irreversible, costly, or scope-changing."
+      ]
+    }
+  },
+  "schema": "BuildContract.v1",
+  "contract_id": "todo-cli-cleanroom-v1",
+  "status": "implementation_ready",
+  "readiness": {
+    "decision": "ready",
+    "reason": "All material product behavior, persistence semantics, failure boundaries, scope, and observable acceptance criteria required for an MVP are determined.",
+    "audited_angles": [
+      "happy_path",
+      "edge_cases",
+      "failure_cases",
+      "misuse_and_destructive_action",
+      "data_lifecycle",
+      "cli_compatibility",
+      "operability",
+      "acceptance_testability"
+    ]
+  },
+  "implementation_authorization": {
+    "current_state": "not_started",
+    "start_condition": "Submitting the generated implementation-start prompt authorizes implementation. Contract creation alone does not start implementation."
+  },
+  "outcome": "Provide a small installable Todo CLI for managing a persistent list scoped to the current working directory.",
+  "success_measure": "The documented commands and edge behaviors are distinguishable by automated tests, persistence survives process restarts, and failures do not silently damage existing data.",
+  "constraints": [
+    "Use Python and only the Python standard library at runtime.",
+    "Expose an installed executable named todo.",
+    "Store data in todos.json in the current working directory.",
+    "Multiple-process concurrent modification safety is out of scope."
+  ],
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "text": "Support todo add --title TITLE.",
+      "acceptance": "The command creates one incomplete item and exits 0. Omitting --title is a usage error with a non-zero exit code."
+    },
+    {
+      "id": "REQ-002",
+      "text": "Preserve the exact title string supplied to --title, including an empty string or leading and trailing whitespace.",
+      "acceptance": "Round-trip persistence and list output do not trim or normalize the stored title."
+    },
+    {
+      "id": "REQ-003",
+      "text": "Assign monotonically increasing integer IDs beginning at 1 and never reuse an ID after deletion.",
+      "acceptance": "After deleting the highest assigned item, the next added item receives a larger ID. This remains true across restarts, including after all items are deleted."
+    },
+    {
+      "id": "REQ-004",
+      "text": "Support todo list and todo list --all.",
+      "acceptance": "todo list shows only incomplete items; --all shows complete and incomplete items; both order items by ascending ID."
+    },
+    {
+      "id": "REQ-005",
+      "text": "Render each listed item on one line as ID [ ] TITLE when incomplete or ID [x] TITLE when complete.",
+      "acceptance": "Exact status markers and ascending order are covered by tests."
+    },
+    {
+      "id": "REQ-006",
+      "text": "Support todo complete --id ID.",
+      "acceptance": "An incomplete item becomes complete and the command exits 0. Repeating the command on an already completed item preserves state, prints an informational message, and exits 0."
+    },
+    {
+      "id": "REQ-007",
+      "text": "Support todo delete --id ID and todo delete --id ID --yes.",
+      "acceptance": "Without --yes the command requests confirmation before permanent deletion. With --yes it deletes without prompting. A declined confirmation leaves data unchanged and exits 0."
+    },
+    {
+      "id": "REQ-008",
+      "text": "Treat an unknown ID passed to complete or delete as an error.",
+      "acceptance": "The command emits an error, exits non-zero, and leaves todos.json unchanged."
+    },
+    {
+      "id": "REQ-009",
+      "text": "Persist items and ID allocation state in the current directory's todos.json using UTF-8 JSON.",
+      "acceptance": "A new process in the same directory observes prior mutations; a process in a different directory observes a different list."
+    },
+    {
+      "id": "REQ-010",
+      "text": "Fail closed when an existing todos.json cannot be parsed or violates the implementation's required storage shape.",
+      "acceptance": "The command emits an error, exits non-zero, and does not overwrite or modify the corrupt file."
+    },
+    {
+      "id": "REQ-011",
+      "text": "Treat a missing todos.json as an empty list with the next ID equal to 1.",
+      "acceptance": "list exits 0 with no item rows and the first successful add creates ID 1."
+    },
+    {
+      "id": "REQ-012",
+      "text": "Write state through a temporary file followed by replacement so an interrupted write is less likely to corrupt an existing valid file.",
+      "acceptance": "The persistence implementation does not truncate the live file before a complete replacement payload is ready."
+    }
+  ],
+  "readiness_defaults": [
+    {
+      "decision": "A declined deletion confirmation is a successful no-op with exit code 0.",
+      "basis": "Low-risk, conventional, and reversible CLI behavior selected during readiness audit."
+    },
+    {
+      "decision": "An empty list prints no item rows and exits 0.",
+      "basis": "Keeps the contracted line-oriented output composable without inventing a non-item sentinel line."
+    },
+    {
+      "decision": "Persist the next unused ID explicitly or equivalently preserve it across deletion of all items.",
+      "basis": "Required to satisfy the confirmed no-ID-reuse behavior across restarts."
+    },
+    {
+      "decision": "Use atomic replacement for writes within the limits of the standard library and local filesystem.",
+      "basis": "Supports the confirmed fail-closed data-safety posture without adding product scope."
+    }
+  ],
+  "non_goals": [
+    "Editing an existing Todo title",
+    "Priorities or due dates",
+    "Archiving or restoring deleted items",
+    "Multiple-process concurrent modification safety",
+    "JSON command output",
+    "Configurable data-file location",
+    "Interactive menu UI",
+    "Network synchronization or multi-user behavior"
+  ],
+  "verification": {
+    "required": [
+      "Automated tests for every REQ acceptance statement",
+      "A CLI smoke test using the installed todo executable in a temporary working directory",
+      "A restart persistence test",
+      "A corrupt-file preservation test",
+      "A delete confirmation and --yes test",
+      "A test proving IDs are not reused after all items are deleted"
+    ],
+    "completion_rule": "Do not report completion unless all required verification passes and any decision.jsonl entries are reported in the handoff."
+  },
+  "remaining_non_blocking_gaps": [
+    "Exact wording of success, informational, confirmation, and error messages",
+    "Internal JSON object and field layout beyond required semantics",
+    "Python packaging file layout and build backend",
+    "Accepted affirmative and negative confirmation tokens"
+  ],
+  "evidence_provenance": {
+    "confirmed_by_user_interview": [
+      "MVP commands",
+      "JSON persistence",
+      "option-based CLI syntax",
+      "integer IDs",
+      "default and --all listing behavior",
+      "delete confirmation and --yes",
+      "Python standard-library runtime",
+      "current-directory storage",
+      "unknown-ID failure",
+      "exact title preservation",
+      "ascending list order",
+      "line-oriented output",
+      "idempotent complete",
+      "corrupt-file fail-closed behavior",
+      "installed todo executable",
+      "concurrent modification out of scope"
+    ],
+    "selected_by_readiness_audit": [
+      "missing-file behavior",
+      "declined-delete exit behavior",
+      "empty-list output",
+      "atomic replacement write strategy"
+    ]
+  }
+}

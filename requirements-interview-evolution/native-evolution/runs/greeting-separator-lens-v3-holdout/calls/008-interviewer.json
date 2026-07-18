@@ -1,0 +1,104 @@
+{
+  "role": "interviewer",
+  "prompt_sha256": "f2c030f00a1fc7ee0f46690ba6823eb49cbc76015bb911f6e02cbe72010ec6f1",
+  "input": {
+    "skill_md": "---\nname: clarify-requirements\ndescription: Turn ambiguous product, software, workflow, or change requests into an agreed and testable contract before planning or implementation. Use when requirements are vague, behavior or scope has multiple plausible interpretations, acceptance criteria are missing, consequential defaults would otherwise be invented, or the user asks for an interview, clarification, specification, PRD, or implementation handoff.\n---\n\n# Clarify Requirements\n\nResolve only ambiguity that can materially change the result. Do not implement unless the user separately authorizes implementation.\n\n## Build the decision map\n\n1. Restate the requested outcome in one sentence.\n2. Inspect user-authorized context for answers that are safely discoverable. Do not ask the user to repeat facts already established.\n3. List plausible interpretations privately. Treat a choice as material when it changes observable behavior, scope, safety, compatibility, cost, reversibility, or acceptance.\n4. Track each material decision as `confirmed`, `inferred`, or `open`, with its evidence. Never silently default an open material decision.\n\nConsider these lenses only when relevant: actors and permissions; inputs and outputs; happy path; edge, failure, and misuse behavior; data lifecycle; compatibility; operational constraints; rollout and rollback; acceptance evidence.\n\n## Interview\n\nAsk the highest-leverage open question first. Ask one bounded decision per turn unless the user explicitly prefers batching.\n\nUse the runtime's structured question UI whenever it is available. Put the decision in a short header, state the material consequence in the prompt, provide two or three mutually exclusive choices, mark the recommended choice, give each choice a one-sentence tradeoff, and preserve a free-form answer path. Fall back to the same structure in plain text only when the runtime has no structured question mechanism.\n\nFor each question:\n\n- explain in one short sentence why the answer changes the result;\n- offer two or three concrete, mutually exclusive options when the space is known;\n- recommend one option and state its tradeoff when evidence supports a recommendation;\n- accept a free-form answer;\n- update the decision map before selecting the next question.\n\nDo not ask about low-impact preferences one at a time. When several low-risk choices are conventional, reversible, and do not alter the core outcome or safety posture, collect two to five recommended defaults into one structured approval question. Show the bundle explicitly, let the user approve all defaults or identify exceptions, and record the approved items separately. Never bundle a destructive, security-sensitive, irreversible, costly, or scope-changing decision.\n\nDo not convert examples into requirements, infer permission for destructive behavior, or widen the requested scope. If the user cannot decide, record an explicit assumption only after explaining its consequence and obtaining approval.\n\n## Challenge the emerging contract\n\nBefore closing, assess implementation readiness from multiple relevant angles: representative happy path, edge case, failure case, misuse case, data lifecycle, compatibility, operability, and acceptance evidence. Reopen only a material decision exposed by this challenge.\n\n## Close\n\nStop when every material decision is confirmed or explicitly approved as an assumption and the acceptance criteria can distinguish success from failure. More questions are not evidence of a better interview.\n\nReturn a compact contract containing:\n\n- outcome and success measure;\n- in-scope and out-of-scope behavior;\n- confirmed decisions and approved assumptions;\n- failure, edge, and misuse behavior where relevant;\n- constraints and acceptance checks;\n- unresolved non-blocking items;\n- whether implementation is authorized.\n\nUse [references/contract-template.md](references/contract-template.md) when a durable prose contract is requested.\n\nWhen the contract is implementation-ready, create `build-contract.json`. Make `implementation_agent_directive` the first top-level field. In that directive, require the implementing agent to append one JSON object per line to `decision.jsonl` before making any implementation decision forced by a specification gap. Require at least `timestamp`, `gap`, `options_considered`, `choice`, `reason`, `observable_impact`, and `reversibility`. The agent must not use the log to override confirmed requirements, and must stop for owner input instead of choosing when the gap is destructive, security-sensitive, irreversible, costly, or scope-changing.\n\nInclude requirements, non-goals, confirmed decisions, approved defaults, acceptance checks, remaining non-blocking gaps, evidence provenance, and implementation authorization in the JSON contract. Validate the JSON before presenting it.\n\nMake the best evidence-based readiness judgment; do not ask the user to approve whether the specification is sufficient. If a material decision remains open, continue the interview. Otherwise seal the contract and allow corrections without adding an approval gate. Label anything not confirmed by the user or authoritative evidence. Preserve the user's terminology and distinguish `must`, `should`, and `could`.\n\nAfter the interview is complete, print an implementation-start prompt that points to the contract path, declares it authoritative, repeats the `decision.jsonl` rule, forbids widening scope, names the required verification, and states whether implementation is authorized.\n",
+    "public_request": "Produce an implementable requirements handoff for this change: Add an optional separator between a greeting and its name.",
+    "audited_repository_evidence": {
+      "scope_summary": "greenfield; no repository evidence",
+      "facts": [],
+      "unknowns": [],
+      "unresolved_conflicts": [],
+      "audit_summary": "not applicable"
+    },
+    "transcript": [
+      {
+        "turn": 1,
+        "open_material_decisions": [
+          "Separator semantics: whether the feature is a boolean toggle for a fixed default separator or an input that allows a caller-configurable separator string."
+        ],
+        "question": {
+          "header": "Separator Type",
+          "prompt": "This changes the public behavior of the greeting format. Should the new optional separator be a fixed default or caller-provided?",
+          "options": [
+            {
+              "label": "Caller-provided separator",
+              "description": "Add an optional separator input; when omitted, greeting behavior stays unchanged. This is the most flexible but slightly expands the interface.",
+              "recommended": true
+            },
+            {
+              "label": "Fixed separator toggle",
+              "description": "Add an optional on/off setting that inserts one predefined separator. This keeps the interface smaller but hard-codes the formatting choice.",
+              "recommended": false
+            },
+            {
+              "label": "Always use one default separator",
+              "description": "Change greetings to always include one predefined separator. This is simplest but is a breaking behavior change from the current format.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Caller-provided separator"
+      },
+      {
+        "turn": 2,
+        "open_material_decisions": [
+          "Separator formatting: whether the caller-provided separator is inserted exactly as supplied or treated as a token that the system formats with spaces between the greeting and name."
+        ],
+        "question": {
+          "header": "Separator Format",
+          "prompt": "This changes the exact rendered greeting output. Should the provided separator be used literally, or should the system add spacing around it automatically?",
+          "options": [
+            {
+              "label": "Literal separator",
+              "description": "Insert the separator exactly as provided between greeting and name; callers control any spaces themselves.",
+              "recommended": true
+            },
+            {
+              "label": "Auto-space separator",
+              "description": "Treat the separator as a token and render it with built-in spacing, such as `Hello, Alice`, which is simpler for callers but less flexible.",
+              "recommended": false
+            },
+            {
+              "label": "Always single space",
+              "description": "Ignore separator-specific spacing and always place exactly one space on each side when a separator is present, which is predictable but restrictive.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Literal separator"
+      }
+    ],
+    "turn": 3,
+    "safety_turns_remaining": 0,
+    "force_close": true,
+    "force_close_reason": "safety_ceiling"
+  },
+  "output": {
+    "action": "complete",
+    "reason": "No open material decision remains after resolving separator configurability and formatting; the request is implementation-ready, and force-close was invoked at the safety ceiling.",
+    "open_material_decisions": [],
+    "question": null,
+    "contract": {
+      "summary": "Outcome: add support for an optional separator between the greeting text and the name. The separator must be caller-provided and inserted literally exactly as supplied. When the separator is omitted, existing greeting behavior must remain unchanged. In scope: formatting the greeting output with an optional separator value. Out of scope: changing the default greeting format when no separator is provided, introducing predefined separator presets, normalizing or auto-spacing the separator, or widening the feature beyond greeting/name formatting. Edge behavior: empty-string separators behave as supplied literally and therefore produce no additional characters; whitespace-only separators are preserved literally; no automatic trimming, escaping, or punctuation rules are added. Acceptance must verify unchanged output when no separator is passed and exact literal insertion when it is passed. Implementation is not authorized by this handoff alone; this contract is the requirements authority for any later implementation step.",
+      "implementation_ready": true,
+      "confirmed_decisions": [
+        "The feature adds an optional separator between a greeting and its name.",
+        "The separator is caller-provided rather than a fixed built-in toggle or always-on default.",
+        "The provided separator is inserted literally exactly as supplied.",
+        "If no separator is provided, existing greeting behavior remains unchanged.",
+        "No automatic spacing is added around the separator.",
+        "No breaking change to existing default greeting output is allowed."
+      ],
+      "open_material_decisions": [],
+      "acceptance_checks": [
+        "Without a separator argument, greeting output matches current behavior exactly.",
+        "With a separator value such as `, `, the output places that exact string between greeting and name.",
+        "With a separator value such as ` - `, the output places that exact string between greeting and name with no normalization.",
+        "With an empty-string separator, output reflects literal insertion of an empty string and does not add extra characters.",
+        "With whitespace-only separators, output preserves the supplied whitespace exactly.",
+        "The change does not introduce automatic trimming, spacing, or replacement of the separator value."
+      ]
+    }
+  }
+}

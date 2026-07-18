@@ -1,0 +1,133 @@
+{
+  "role": "lens-auditor",
+  "prompt_sha256": "4a79ece7485c0e2e174b5367f71255935ca0fbf8cb7bf423ccd260c13342fcdc",
+  "input": {
+    "proposed_lenses": [
+      {
+        "id": "discovery-export-scope",
+        "stage": "discovery",
+        "failure_description": "The handoff does not establish which saved notes are included when no explicit selection or filter is supplied.",
+        "observable_signal": "Two implementers can reasonably produce commands that export different note sets from the same saved-note state.",
+        "why_material": "Export scope determines the command's core behavior and can cause missing or unexpectedly disclosed note content.",
+        "minimal_test_shape": "Create multiple saved notes with differing states, invoke the command without a selection, and compare the exported set with the stated requirement."
+      },
+      {
+        "id": "discovery-content-fidelity",
+        "stage": "discovery",
+        "failure_description": "The handoff leaves ambiguous what preserving existing note content means for whitespace, line breaks, markup, Unicode, metadata, and ordering.",
+        "observable_signal": "An exported note differs from its stored representation even though no content-changing operation was requested.",
+        "why_material": "Silent normalization or omission can corrupt user-authored information and defeat the preservation constraint.",
+        "minimal_test_shape": "Save a note containing significant whitespace, multiline text, markup-like characters, Unicode, and metadata; export it and compare every required field and character."
+      },
+      {
+        "id": "interaction-command-collision",
+        "stage": "interaction",
+        "failure_description": "The new compact command conflicts with an existing command, alias, argument, or parsing rule.",
+        "observable_signal": "An input that previously triggered one behavior now exports notes, or the export command is interpreted as an older operation.",
+        "why_material": "The change can break established workflows and make the new behavior inaccessible or unsafe.",
+        "minimal_test_shape": "Run the proposed command and all preexisting commands or aliases with overlapping prefixes and argument shapes; observe which action each invokes."
+      },
+      {
+        "id": "interaction-output-destination",
+        "stage": "interaction",
+        "failure_description": "The handoff does not define whether export output is displayed, streamed, or written to a destination, nor what happens when that destination already contains data.",
+        "observable_signal": "The same invocation can reasonably overwrite a file, append to it, emit to standard output, or stop for confirmation.",
+        "why_material": "Destination ambiguity creates data-loss risk and prevents dependable scripting.",
+        "minimal_test_shape": "Invoke export with no destination, with a new destination, and with an existing nonempty destination; compare the observed outputs and mutations with the requirement."
+      },
+      {
+        "id": "interaction-empty-state",
+        "stage": "interaction",
+        "failure_description": "Behavior is unspecified when there are no saved notes or when a requested subset matches none.",
+        "observable_signal": "The command alternately succeeds with empty output, reports an error, or creates an empty artifact depending on implementation.",
+        "why_material": "Exit behavior and artifact creation affect both user understanding and automation reliability.",
+        "minimal_test_shape": "Invoke export against an empty store and against a filter with zero matches; record output, exit status, and created artifacts."
+      },
+      {
+        "id": "synthesis-format-contract",
+        "stage": "synthesis",
+        "failure_description": "The synthesized requirements name an export capability without fixing the externally observable output structure and escaping rules.",
+        "observable_signal": "Independent implementations produce incompatible representations of the same notes.",
+        "why_material": "Consumers cannot reliably read or reuse exports without a stable format contract.",
+        "minimal_test_shape": "Export notes containing delimiters, quotes, embedded newlines, and empty fields; determine whether one unambiguous expected representation follows from the handoff."
+      },
+      {
+        "id": "synthesis-ordering",
+        "stage": "synthesis",
+        "failure_description": "The synthesized handoff omits the required order of notes and of any fields within each exported note.",
+        "observable_signal": "Repeated exports of unchanged data differ in order, or implementations choose creation order, update order, title order, or storage order independently.",
+        "why_material": "Unstable ordering produces noisy diffs and can make output-dependent workflows nondeterministic.",
+        "minimal_test_shape": "Save notes whose creation, modification, and lexical orders differ; export repeatedly and compare sequence stability with the stated contract."
+      },
+      {
+        "id": "handoff-backward-compatibility",
+        "stage": "handoff",
+        "failure_description": "The handoff does not enumerate existing note operations and outputs that must remain unchanged after adding export.",
+        "observable_signal": "Saving, reading, listing, or editing notes changes behavior even though the export command is not invoked.",
+        "why_material": "The requested addition can regress established behavior outside its intended scope.",
+        "minimal_test_shape": "Capture observable results of existing note commands before the change, repeat them after the change without invoking export, and compare results."
+      },
+      {
+        "id": "implementation-source-mutation",
+        "stage": "implementation",
+        "failure_description": "Executing export mutates saved notes, their metadata, their order, or their persisted representation.",
+        "observable_signal": "A read, list, checksum, or later export shows changed note state immediately after export.",
+        "why_material": "An export operation that alters its source violates the preservation goal and can cause irreversible user-visible changes.",
+        "minimal_test_shape": "Snapshot all stored note content and metadata, invoke export, then compare the complete saved-note state with the snapshot."
+      },
+      {
+        "id": "implementation-partial-failure",
+        "stage": "implementation",
+        "failure_description": "A failure during export leaves a destination that appears complete but contains only part of the requested notes.",
+        "observable_signal": "After an induced write or serialization failure, a normal-looking export artifact remains with missing or truncated content.",
+        "why_material": "Users or downstream consumers may trust an incomplete export as a valid backup or transfer.",
+        "minimal_test_shape": "Induce failure after some notes have been emitted and inspect artifact presence, contents, command output, and exit status."
+      },
+      {
+        "id": "verification-adversarial-content",
+        "stage": "verification",
+        "failure_description": "Verification covers ordinary notes but not content that can be misparsed, truncated, transformed, or interpreted as control data.",
+        "observable_signal": "Notes with boundary-size text, embedded separators, null-like values, terminal control characters, or unusual Unicode fail round-trip comparison while simple notes pass.",
+        "why_material": "Real note content can expose preservation defects hidden by happy-path examples.",
+        "minimal_test_shape": "Export a corpus containing empty, very large, delimiter-heavy, control-character, bidirectional, and non-BMP Unicode notes; compare required content exactly."
+      },
+      {
+        "id": "learning-unsupported-assumption",
+        "stage": "learning",
+        "failure_description": "Post-implementation findings reveal that consumers interpret the export differently, but the handoff record does not identify which original ambiguity or assumption caused the mismatch.",
+        "observable_signal": "A reported export defect cannot be traced to a stated requirement, decision, or explicit unknown in the handoff.",
+        "why_material": "Without observable traceability, recurring ambiguity cannot be distinguished from implementation error, and later revisions may repeat the same failure.",
+        "minimal_test_shape": "Take a representative post-implementation export complaint and attempt to map it to a specific handoff statement, acceptance condition, or documented unresolved question."
+      }
+    ],
+    "acceptance_rule": "distinct, externally observable, materially outcome-changing, solution-neutral"
+  },
+  "output": {
+    "accepted_lens_ids": [
+      "discovery-export-scope",
+      "discovery-content-fidelity",
+      "interaction-command-collision",
+      "interaction-output-destination",
+      "interaction-empty-state",
+      "synthesis-format-contract",
+      "synthesis-ordering",
+      "implementation-source-mutation",
+      "implementation-partial-failure"
+    ],
+    "rejected_lenses": [
+      {
+        "id": "handoff-backward-compatibility",
+        "reason": "Rejected as an overbroad regression umbrella. Its concrete command-routing case is already covered by interaction-command-collision; the remaining claim does not identify a distinct failure mode."
+      },
+      {
+        "id": "verification-adversarial-content",
+        "reason": "Merged into discovery-content-fidelity and synthesis-format-contract. The proposed corpus strengthens testing but does not define a materially distinct externally observable failure."
+      },
+      {
+        "id": "learning-unsupported-assumption",
+        "reason": "Rejected as a process-traceability quality claim rather than a distinct, externally observable export failure with a direct material outcome."
+      }
+    ],
+    "audit_summary": "Accepted nine materially distinct lenses covering export scope, content preservation, command routing, destination behavior, empty results, representation, ordering, source immutability, and incomplete artifacts. All twelve proposals were dispositioned; two were rejected as vague or overbroad and one was merged as duplicate test coverage."
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "role": "owner",
+  "prompt_sha256": "882fd0a3b23b6ef60b3f2a7a1222c1dc936f823a7694e78105cf05ffb1d251d6",
+  "input": {
+    "oracle": {
+      "material_decisions": [
+        {
+          "id": "optional-scope",
+          "answer": "The emoji marker is controlled per call by a single boolean option named conceptually as marker enabled. When true, the marker is added. When false or omitted, no marker is added.",
+          "why_material": "This removes the ambiguity about whether optional behavior is a runtime parameter, a user preference, or a static default."
+        },
+        {
+          "id": "greeting-boundary",
+          "answer": "Greeting output means the exact final string returned by the greeting-producing function for a salutation. The change applies to every greeting variant that function can return, not to unrelated first-line text elsewhere.",
+          "why_material": "This fixes the target surface so implementations and tests evaluate the same outputs."
+        },
+        {
+          "id": "format-contract",
+          "answer": "When enabled, prepend exactly one emoji, specifically \"👋\", followed by exactly one ASCII space, before the existing greeting string. Example: \"Hello\" becomes \"👋 Hello\".",
+          "why_material": "This makes the visible output objectively judgeable by fixing emoji choice, position, and spacing."
+        },
+        {
+          "id": "disabled-baseline",
+          "answer": "When the marker is not enabled, output must remain byte-for-byte identical to the prior greeting output. Example: \"Hello\" stays \"Hello\".",
+          "why_material": "This defines the acceptance condition for the disabled path and prevents accidental formatting drift."
+        },
+        {
+          "id": "edge-cases",
+          "answer": "If the greeting output is an empty string, enabled output is also the empty string. If the greeting already begins with a symbol or emoji, the enabled behavior still prepends \"👋 \" to the existing string without deduplication or normalization. Whitespace-only output is preserved unchanged when disabled and becomes \"👋 \" followed by the original whitespace when enabled.",
+          "why_material": "These cases are needed so verification covers obvious observable boundaries instead of only the happy path."
+        }
+      ],
+      "owner_rules": [
+        "Judge correctness against externally visible output strings only.",
+        "Treat omission of the enable flag the same as disabled.",
+        "Do not rewrite, trim, normalize, or deduplicate the existing greeting text except for the specified enabled prefix.",
+        "Require tests or examples covering enabled, disabled, already-emoji-leading, and empty or whitespace-only greeting outputs."
+      ]
+    },
+    "owner_rules": [
+      "Judge correctness against externally visible output strings only.",
+      "Treat omission of the enable flag the same as disabled.",
+      "Do not rewrite, trim, normalize, or deduplicate the existing greeting text except for the specified enabled prefix.",
+      "Require tests or examples covering enabled, disabled, already-emoji-leading, and empty or whitespace-only greeting outputs."
+    ],
+    "transcript": [
+      {
+        "turn": 1,
+        "open_material_decisions": [
+          "Exact output formatting when enabled, including spacing and whether the marker appears before all greeting variants.",
+          "How the optional emoji marker is controlled/enabled by the caller or configuration.",
+          "What emoji should be shown when the marker is enabled, if it is not caller-specified."
+        ],
+        "question": {
+          "header": "Emoji Control",
+          "prompt": "The way the emoji marker is enabled changes the API/CLI surface and default behavior. How should callers turn it on?",
+          "options": [
+            {
+              "label": "Explicit flag/param",
+              "description": "Add a dedicated optional argument or setting to enable the emoji marker per greeting call; recommended because it keeps the feature reversible and clear.",
+              "recommended": true
+            },
+            {
+              "label": "Always on when configured",
+              "description": "Use a global configuration setting so greetings include the emoji marker whenever that config is enabled.",
+              "recommended": false
+            },
+            {
+              "label": "Caller supplies prefix",
+              "description": "Treat the emoji marker as a caller-provided prefix string rather than a built-in toggle, which is more flexible but broader in scope.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "{\"selected_option\":\"Explicit flag/param\",\"answer\":\"Callers should enable it per greeting call with a single optional boolean flag/parameter. When true, prepend exactly \\\"👋 \\\" to the existing greeting string; when false or omitted, leave the output unchanged.\"}"
+      }
+    ],
+    "question": {
+      "header": "Emoji Choice",
+      "prompt": "The specific emoji changes the visible output and acceptance criteria. Which built-in emoji should the optional marker use when enabled?",
+      "options": [
+        {
+          "label": "Wave hand",
+          "description": "Use exactly `👋` as the built-in marker; recommended because it matches greeting semantics and the prior example.",
+          "recommended": true
+        },
+        {
+          "label": "Sparkles",
+          "description": "Use exactly `✨` as the built-in marker; this is more decorative but changes the tone of the feature.",
+          "recommended": false
+        },
+        {
+          "label": "Custom per caller",
+          "description": "Let the caller choose the emoji value each time; this is more flexible but expands scope beyond a simple optional marker.",
+          "recommended": false
+        }
+      ]
+    }
+  },
+  "output": {
+    "answer": "{\"selected_option\":\"Wave hand\",\"answer\":\"Use exactly \\\"👋\\\" as the built-in optional marker when enabled.\"}"
+  }
+}

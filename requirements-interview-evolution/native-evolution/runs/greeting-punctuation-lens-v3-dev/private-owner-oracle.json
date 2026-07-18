@@ -1,0 +1,41 @@
+{
+  "material_decisions": [
+    {
+      "id": "greeting-baseline",
+      "answer": "The existing greeting format is `Hello, {name}!` and the feature must preserve that exact output when no punctuation style is provided.",
+      "why_material": "A receiver cannot define default behavior or backward compatibility without a fixed baseline output."
+    },
+    {
+      "id": "punctuation-scope",
+      "answer": "`punctuation_style` changes only the terminal punctuation at the end of the greeting. The comma after `Hello` and all words remain unchanged.",
+      "why_material": "This removes the core ambiguity around what counts as punctuation style and prevents examples from drifting beyond the written rule."
+    },
+    {
+      "id": "interface-boundary",
+      "answer": "The caller may optionally provide a `punctuation_style` field. If the field is absent, the system uses the default behavior. If the field is present, its value determines the terminal punctuation.",
+      "why_material": "The optional behavior must be externally observable at the request boundary so implementers know exactly when the feature is active."
+    },
+    {
+      "id": "supported-values",
+      "answer": "Supported `punctuation_style` values are `default`, `period`, `exclamation`, and `ellipsis`. Their outputs are `Hello, {name}!`, `Hello, {name}.`, `Hello, {name}!`, and `Hello, {name}...` respectively.",
+      "why_material": "Supported values and exact outputs are required for implementation and pass/fail verification."
+    },
+    {
+      "id": "invalid-input",
+      "answer": "If `punctuation_style` is provided with any unsupported value, the system must reject the request with the exact error code `INVALID_PUNCTUATION_STYLE` and must not return a greeting string.",
+      "why_material": "Invalid-input behavior is a key omitted decision point that otherwise forces downstream invention."
+    },
+    {
+      "id": "acceptance-checks",
+      "answer": "The handoff must include exact acceptance examples covering at least: no option provided => `Hello, Maya!`; `period` => `Hello, Maya.`; `exclamation` => `Hello, Maya!`; `ellipsis` => `Hello, Maya...`; invalid value such as `question` => error `INVALID_PUNCTUATION_STYLE` with no greeting output.",
+      "why_material": "Exact examples make verification objective and expose any conflict between prose rules and sample outputs."
+    }
+  ],
+  "owner_rules": [
+    "Judge the response only on the self-contained handoff it produces, not on unstated assumptions about common greeting behavior.",
+    "A correct handoff must specify exact externally visible behavior for default, opted-in, and invalid-option cases.",
+    "Treat any ambiguity about punctuation scope, option selection, or output formatting as a failure even if the response sounds reasonable.",
+    "Treat examples and rules as co-equal artifacts: if they disagree, the handoff fails.",
+    "Pass/fail evaluation must be possible from exact outputs or exact error outcomes rather than qualitative wording."
+  ]
+}

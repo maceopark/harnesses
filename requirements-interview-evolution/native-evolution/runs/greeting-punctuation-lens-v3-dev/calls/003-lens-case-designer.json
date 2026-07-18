@@ -1,0 +1,109 @@
+{
+  "role": "lens-case-designer",
+  "prompt_sha256": "37e876b75c31de2b17c0605174dd1f4a25bbbecf3fc4ee1f648bf1cd63ed7fef",
+  "input": {
+    "seed": "Add an optional punctuation style to greeting output.",
+    "context_mode": "greenfield",
+    "frozen_failure_lenses": [
+      {
+        "id": "requirements-ambiguity-hidden",
+        "stage": "discovery",
+        "failure_description": "The optional punctuation style is under-specified, so different readers form different assumptions about what counts as punctuation style, when it applies, and which greeting outputs it should affect.",
+        "observable_signal": "Two reasonable implementers describe different expected outputs for the same input or ask clarifying questions about scope, defaults, or allowed styles.",
+        "why_material": "If the ambiguity is not surfaced early, the handoff cannot be implemented consistently and downstream work will diverge.",
+        "minimal_test_shape": "Give two people the same seed and ask each to write three example greeting outputs for default and optional cases; compare for mismatches."
+      },
+      {
+        "id": "user-choice-not-observable",
+        "stage": "interaction",
+        "failure_description": "The optional nature of the punctuation style is not expressed in a way that makes the user's selection or non-selection externally clear at the interface boundary.",
+        "observable_signal": "Observers cannot tell from the request or input whether punctuation styling was intentionally chosen, omitted, or unavailable.",
+        "why_material": "An implementable handoff needs a clear trigger condition for when the optional behavior should activate; otherwise implementation behavior becomes guesswork.",
+        "minimal_test_shape": "Present sample requests that include and omit the option, then ask whether the intended output variant is unambiguous in each case."
+      },
+      {
+        "id": "rule-examples-conflict",
+        "stage": "synthesis",
+        "failure_description": "The synthesized requirements mix abstract rules and sample outputs that do not fully agree, such as examples implying punctuation changes beyond what the written rule allows.",
+        "observable_signal": "A reviewer can point to at least one example that cannot be derived directly from the stated requirements.",
+        "why_material": "Conflicting synthesized artifacts make the handoff non-implementable because examples and rules compete as sources of truth.",
+        "minimal_test_shape": "Check whether every included sample greeting can be explained step-by-step using only the written requirements."
+      },
+      {
+        "id": "handoff-missing-decision-points",
+        "stage": "handoff",
+        "failure_description": "The handoff omits key externally visible decisions such as the default output, supported option values, invalid-input behavior, or whether existing greetings remain unchanged when no option is provided.",
+        "observable_signal": "A receiver must invent behavior for at least one common case before writing acceptance criteria or code.",
+        "why_material": "Missing decision points force downstream invention, which breaks the goal of producing an implementable requirements handoff.",
+        "minimal_test_shape": "Attempt to draft acceptance checks for default case, opted-in case, and invalid option case using only the handoff; note any invented assumptions."
+      },
+      {
+        "id": "verification-cannot-distinguish-success",
+        "stage": "verification",
+        "failure_description": "The expected behavior is framed too loosely to support pass-fail evaluation of outputs, especially around formatting differences that are small but user-visible.",
+        "observable_signal": "Multiple reviewers disagree on whether a produced greeting is correct because the acceptance target is qualitative rather than exact.",
+        "why_material": "Without precise observable outcomes, the handoff cannot reliably confirm whether the requirement was implemented as intended.",
+        "minimal_test_shape": "Ask reviewers to judge a small set of candidate outputs against the handoff and measure whether they reach the same verdicts."
+      }
+    ],
+    "audited_repository_evidence": null
+  },
+  "output": {
+    "public_request": "Draft an implementation-ready requirements handoff for this feature request: \"Add an optional punctuation style to greeting output.\" The handoff must be self-contained and specific enough that another engineer could implement it and write pass/fail acceptance checks without follow-up questions.",
+    "target_lens_ids": [
+      "requirements-ambiguity-hidden",
+      "user-choice-not-observable",
+      "rule-examples-conflict",
+      "handoff-missing-decision-points",
+      "verification-cannot-distinguish-success"
+    ],
+    "objective_failure_signals": [
+      "The handoff does not explicitly define what \"punctuation style\" controls, including whether it affects only the final punctuation mark or any other punctuation in the greeting.",
+      "The handoff does not make the interface boundary unambiguous by stating how a caller selects a punctuation style and how omission of the option is represented.",
+      "The handoff includes an example output that cannot be derived directly from the written rules, or the rules imply outputs that differ from the examples.",
+      "The handoff leaves at least one common external behavior unspecified: default output when no option is provided, supported option values, behavior when an unsupported value is provided, or whether the existing greeting stays unchanged when no option is selected.",
+      "The handoff does not provide exact, externally observable outputs or verdict rules that let independent reviewers consistently mark sample outputs as correct or incorrect."
+    ],
+    "oracle": {
+      "material_decisions": [
+        {
+          "id": "greeting-baseline",
+          "answer": "The existing greeting format is `Hello, {name}!` and the feature must preserve that exact output when no punctuation style is provided.",
+          "why_material": "A receiver cannot define default behavior or backward compatibility without a fixed baseline output."
+        },
+        {
+          "id": "punctuation-scope",
+          "answer": "`punctuation_style` changes only the terminal punctuation at the end of the greeting. The comma after `Hello` and all words remain unchanged.",
+          "why_material": "This removes the core ambiguity around what counts as punctuation style and prevents examples from drifting beyond the written rule."
+        },
+        {
+          "id": "interface-boundary",
+          "answer": "The caller may optionally provide a `punctuation_style` field. If the field is absent, the system uses the default behavior. If the field is present, its value determines the terminal punctuation.",
+          "why_material": "The optional behavior must be externally observable at the request boundary so implementers know exactly when the feature is active."
+        },
+        {
+          "id": "supported-values",
+          "answer": "Supported `punctuation_style` values are `default`, `period`, `exclamation`, and `ellipsis`. Their outputs are `Hello, {name}!`, `Hello, {name}.`, `Hello, {name}!`, and `Hello, {name}...` respectively.",
+          "why_material": "Supported values and exact outputs are required for implementation and pass/fail verification."
+        },
+        {
+          "id": "invalid-input",
+          "answer": "If `punctuation_style` is provided with any unsupported value, the system must reject the request with the exact error code `INVALID_PUNCTUATION_STYLE` and must not return a greeting string.",
+          "why_material": "Invalid-input behavior is a key omitted decision point that otherwise forces downstream invention."
+        },
+        {
+          "id": "acceptance-checks",
+          "answer": "The handoff must include exact acceptance examples covering at least: no option provided => `Hello, Maya!`; `period` => `Hello, Maya.`; `exclamation` => `Hello, Maya!`; `ellipsis` => `Hello, Maya...`; invalid value such as `question` => error `INVALID_PUNCTUATION_STYLE` with no greeting output.",
+          "why_material": "Exact examples make verification objective and expose any conflict between prose rules and sample outputs."
+        }
+      ],
+      "owner_rules": [
+        "Judge the response only on the self-contained handoff it produces, not on unstated assumptions about common greeting behavior.",
+        "A correct handoff must specify exact externally visible behavior for default, opted-in, and invalid-option cases.",
+        "Treat any ambiguity about punctuation scope, option selection, or output formatting as a failure even if the response sounds reasonable.",
+        "Treat examples and rules as co-equal artifacts: if they disagree, the handoff fails.",
+        "Pass/fail evaluation must be possible from exact outputs or exact error outcomes rather than qualitative wording."
+      ]
+    }
+  }
+}

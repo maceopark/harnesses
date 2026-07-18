@@ -1,0 +1,103 @@
+{
+  "role": "owner",
+  "prompt_sha256": "55365f435e26ccdb1c958493679dfb90fd703376c79f78d0457e70e2f0e68f85",
+  "input": {
+    "oracle": {
+      "material_decisions": [
+        {
+          "id": "D1",
+          "answer": "Allow one `--count N` pair either before or after `NAME`; do not support the `--count=N` spelling.",
+          "why_material": "The accepted option positions and spellings determine the CLI grammar and parser implementation."
+        },
+        {
+          "id": "D2",
+          "answer": "Require `N` to be a base-10 integer greater than or equal to 1; reject zero and negative values.",
+          "why_material": "The valid count domain determines whether the command may intentionally produce no output and which values require validation errors."
+        },
+        {
+          "id": "D3",
+          "answer": "Treat a missing value, a non-integer value, or an out-of-range value for `--count` as a usage error with exit status 2. Write `usage: greet.py [--count N] NAME` to stderr; an additional concise error line is permitted, but tests must not depend on its exact wording.",
+          "why_material": "These new failure cases need a defined status, stable usage text, and a boundary around diagnostic compatibility."
+        },
+        {
+          "id": "D4",
+          "answer": "Emit each repetition as its own output line, with exactly `N` greeting lines and no additional separators or summary text.",
+          "why_material": "The request defines repetition count but not the observable output layout."
+        },
+        {
+          "id": "D5",
+          "answer": "Reject repeated occurrences of `--count` as a usage error rather than choosing one value.",
+          "why_material": "Duplicate-option handling otherwise creates an unspecified precedence rule."
+        },
+        {
+          "id": "D6",
+          "answer": "Support `--` as an option terminator. After it, require exactly one positional name and treat option-like text as the name.",
+          "why_material": "Adding option parsing can otherwise make names beginning with hyphens impossible to pass unambiguously."
+        }
+      ],
+      "owner_rules": [
+        "Keep the feature limited to the `--count N` option; do not introduce aliases, short flags, environment variables, configuration, or interactive input.",
+        "Only the canonical usage line is a compatibility surface for new count-related errors; explanatory error wording may vary.",
+        "Interpret `N` strictly as a signed base-10 integer token followed by the positive-range check; do not accept floats, hexadecimal notation, or numeric expressions."
+      ]
+    },
+    "owner_rules": [
+      "Keep the feature limited to the `--count N` option; do not introduce aliases, short flags, environment variables, configuration, or interactive input.",
+      "Only the canonical usage line is a compatibility surface for new count-related errors; explanatory error wording may vary.",
+      "Interpret `N` strictly as a signed base-10 integer token followed by the positive-range check; do not accept floats, hexadecimal notation, or numeric expressions."
+    ],
+    "transcript": [
+      {
+        "turn": 1,
+        "open_material_decisions": [
+          "Diagnostic text and exit status for a missing or non-integer count value.",
+          "Where `--count N` may appear relative to `NAME`.",
+          "Whether repeated `--count` options and the `--` option terminator must be supported.",
+          "Whether repeated greetings are printed on separate lines or in another layout.",
+          "Which count values are valid, including zero and negative integers."
+        ],
+        "question": {
+          "header": "Option order",
+          "prompt": "Which command-line order must be accepted? This changes the public CLI syntax and parser behavior.",
+          "options": [
+            {
+              "label": "Either side",
+              "description": "Accept both `--count N NAME` and `NAME --count N`; this is the most flexible and is recommended for a conventional option parser.",
+              "recommended": true
+            },
+            {
+              "label": "Option first",
+              "description": "Accept only `--count N NAME`, keeping the supported grammar narrow and explicit.",
+              "recommended": false
+            },
+            {
+              "label": "Name first",
+              "description": "Accept only `NAME --count N`, preserving the existing name position but using a less conventional documented form.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Either side"
+      }
+    ],
+    "question": {
+      "header": "Count range",
+      "prompt": "Which values of `N` must be accepted? This determines whether `--count 0` succeeds with no greeting or fails as invalid input; negative values would be rejected in either choice.",
+      "options": [
+        {
+          "label": "Positive only",
+          "description": "Accept integers of 1 or greater and reject zero and negatives; recommended because the command always emits at least one greeting when successful.",
+          "recommended": true
+        },
+        {
+          "label": "Allow zero",
+          "description": "Accept integers of 0 or greater, with zero succeeding and printing no greeting; negatives remain invalid.",
+          "recommended": false
+        }
+      ]
+    }
+  },
+  "output": {
+    "answer": "Positive only"
+  }
+}

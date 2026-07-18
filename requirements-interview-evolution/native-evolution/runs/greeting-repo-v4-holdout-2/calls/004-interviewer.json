@@ -1,0 +1,181 @@
+{
+  "role": "interviewer",
+  "prompt_sha256": "cc7e39e5af059997943ac0c65d9cdfc2e8dea050719aabd86f5acbf8a0a047b1",
+  "input": {
+    "skill_md": "---\nname: clarify-requirements\ndescription: Turn ambiguous product, software, workflow, or change requests into an agreed and testable contract before planning or implementation. Use when requirements are vague, behavior or scope has multiple plausible interpretations, acceptance criteria are missing, consequential defaults would otherwise be invented, or the user asks for an interview, clarification, specification, PRD, or implementation handoff.\n---\n\n# Clarify Requirements\n\nResolve only ambiguity that can materially change the result. Do not implement unless the user separately authorizes implementation.\n\n## Build the decision map\n\n1. Restate the requested outcome in one sentence.\n2. Inspect user-authorized context for answers that are safely discoverable. Do not ask the user to repeat facts already established.\n3. List plausible interpretations privately. Treat a choice as material when it changes observable behavior, scope, safety, compatibility, cost, reversibility, or acceptance.\n4. Track each material decision as `confirmed`, `inferred`, or `open`, with its evidence. Never silently default an open material decision.\n\nConsider these lenses only when relevant: actors and permissions; inputs and outputs; happy path; edge, failure, and misuse behavior; data lifecycle; compatibility; operational constraints; rollout and rollback; acceptance evidence.\n\n## Interview\n\nAsk the highest-leverage open question first. Ask one bounded decision per turn unless the user explicitly prefers batching.\n\nUse the runtime's structured question UI whenever it is available. Put the decision in a short header, state the material consequence in the prompt, provide two or three mutually exclusive choices, mark the recommended choice, give each choice a one-sentence tradeoff, and preserve a free-form answer path. Fall back to the same structure in plain text only when the runtime has no structured question mechanism.\n\nFor each question:\n\n- explain in one short sentence why the answer changes the result;\n- offer two or three concrete, mutually exclusive options when the space is known;\n- recommend one option and state its tradeoff when evidence supports a recommendation;\n- accept a free-form answer;\n- update the decision map before selecting the next question.\n\nDo not ask about low-impact preferences one at a time. When several low-risk choices are conventional, reversible, and do not alter the core outcome or safety posture, collect two to five recommended defaults into one structured approval question. Show the bundle explicitly, let the user approve all defaults or identify exceptions, and record the approved items separately. Never bundle a destructive, security-sensitive, irreversible, costly, or scope-changing decision.\n\nDo not convert examples into requirements, infer permission for destructive behavior, or widen the requested scope. If the user cannot decide, record an explicit assumption only after explaining its consequence and obtaining approval.\n\n## Challenge the emerging contract\n\nBefore closing, assess implementation readiness from multiple relevant angles: representative happy path, edge case, failure case, misuse case, data lifecycle, compatibility, operability, and acceptance evidence. Reopen only a material decision exposed by this challenge.\n\n## Close\n\nStop when every material decision is confirmed or explicitly approved as an assumption and the acceptance criteria can distinguish success from failure. More questions are not evidence of a better interview.\n\nReturn a compact contract containing:\n\n- outcome and success measure;\n- in-scope and out-of-scope behavior;\n- confirmed decisions and approved assumptions;\n- failure, edge, and misuse behavior where relevant;\n- constraints and acceptance checks;\n- unresolved non-blocking items;\n- whether implementation is authorized.\n\nUse [references/contract-template.md](references/contract-template.md) when a durable prose contract is requested.\n\nWhen the contract is implementation-ready, create `build-contract.json`. Make `implementation_agent_directive` the first top-level field. In that directive, require the implementing agent to append one JSON object per line to `decision.jsonl` before making any implementation decision forced by a specification gap. Require at least `timestamp`, `gap`, `options_considered`, `choice`, `reason`, `observable_impact`, and `reversibility`. The agent must not use the log to override confirmed requirements, and must stop for owner input instead of choosing when the gap is destructive, security-sensitive, irreversible, costly, or scope-changing.\n\nInclude requirements, non-goals, confirmed decisions, approved defaults, acceptance checks, remaining non-blocking gaps, evidence provenance, and implementation authorization in the JSON contract. Validate the JSON before presenting it.\n\nMake the best evidence-based readiness judgment; do not ask the user to approve whether the specification is sufficient. If a material decision remains open, continue the interview. Otherwise seal the contract and allow corrections without adding an approval gate. Label anything not confirmed by the user or authoritative evidence. Preserve the user's terminology and distinguish `must`, `should`, and `could`.\n\nAfter the interview is complete, print an implementation-start prompt that points to the contract path, declares it authoritative, repeats the `decision.jsonl` rule, forbids widening scope, names the required verification, and states whether implementation is authorized.\n",
+    "public_request": "Add an optional --count N option that prints the existing greeting N times while preserving current behavior when the option is absent.",
+    "audited_repository_evidence": {
+      "scope_summary": "The repository is a three-file Python CLI. It currently accepts exactly one positional name, prints one greeting, and has no option parser or count-related behavior.",
+      "facts": [
+        {
+          "id": "F1",
+          "claim": "The greeting function formats a name as `Hello, NAME!`.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "greet.py",
+              "line_start": 6,
+              "line_end": 7,
+              "quoted_text": "def greeting(name: str) -> str:\n    return f\"Hello, {name}!\"",
+              "quoted_text_sha256": "363dd1d7a6bc583a94b65586481e69d73d726b640e29cf635e2665f63b650833"
+            }
+          ]
+        },
+        {
+          "id": "F2",
+          "claim": "The CLI uses explicit `argv` when supplied and otherwise reads command-line arguments from `sys.argv[1:]`.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "greet.py",
+              "line_start": 10,
+              "line_end": 11,
+              "quoted_text": "def main(argv: list[str] | None = None) -> int:\n    args = sys.argv[1:] if argv is None else argv",
+              "quoted_text_sha256": "56c8ad0933c41b343b2ba3f7f7c7fe621cc6baa630fc3a6cc2a67263487ff18f"
+            }
+          ]
+        },
+        {
+          "id": "F3",
+          "claim": "Current CLI behavior requires exactly one argument; otherwise it writes `usage: greet.py NAME` to stderr and returns exit status 2.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "greet.py",
+              "line_start": 12,
+              "line_end": 14,
+              "quoted_text": "    if len(args) != 1:\n        print(\"usage: greet.py NAME\", file=sys.stderr)\n        return 2",
+              "quoted_text_sha256": "f90ca404c89bb91e554c56d04f1aee64b0342cdb0c0cc3b47b080a47889b9a27"
+            }
+          ]
+        },
+        {
+          "id": "F4",
+          "claim": "With exactly one argument, the CLI prints one greeting for that argument and returns exit status 0.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "greet.py",
+              "line_start": 15,
+              "line_end": 16,
+              "quoted_text": "    print(greeting(args[0]))\n    return 0",
+              "quoted_text_sha256": "81c30a4a510f3fafcedd105d547519df39dc4b4eabea83abea36af24c76d2834"
+            }
+          ]
+        },
+        {
+          "id": "F5",
+          "claim": "Tests fix the exact greeting text for the name `Ada` as `Hello, Ada!`.",
+          "authority": "test",
+          "evidence": [
+            {
+              "path": "test_greet.py",
+              "line_start": 6,
+              "line_end": 8,
+              "quoted_text": "class GreetingTests(unittest.TestCase):\n    def test_exact_output(self) -> None:\n        self.assertEqual(greeting(\"Ada\"), \"Hello, Ada!\")",
+              "quoted_text_sha256": "ff47235b8403456317bf1815d1283af6c9d2f0d3005a4e8dff9e14c9af8754cb"
+            }
+          ]
+        },
+        {
+          "id": "F6",
+          "claim": "Tests require both zero arguments and two positional arguments to return exit status 2.",
+          "authority": "test",
+          "evidence": [
+            {
+              "path": "test_greet.py",
+              "line_start": 10,
+              "line_end": 12,
+              "quoted_text": "    def test_argument_count(self) -> None:\n        self.assertEqual(main([]), 2)\n        self.assertEqual(main([\"Ada\", \"Lovelace\"]), 2)",
+              "quoted_text_sha256": "8955c9f300d1b77e614f51727b4ee95b2c69bbd963c5fc5016c95587c630b217"
+            }
+          ]
+        },
+        {
+          "id": "F7",
+          "claim": "Documentation describes invocation as `python greet.py NAME` and says missing or extra arguments are usage errors.",
+          "authority": "documentation",
+          "evidence": [
+            {
+              "path": "README.md",
+              "line_start": 3,
+              "line_end": 5,
+              "quoted_text": "Run `python greet.py NAME` to print a greeting.\n\nThe command accepts exactly one positional name. Missing or extra arguments are usage errors.",
+              "quoted_text_sha256": "474c16238163473a61a4de660a8f84105a74f8f44adb2a201e80308f1d049c7e"
+            }
+          ]
+        },
+        {
+          "id": "F8",
+          "claim": "Executing the module as a script exits with the return value from `main()`.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "greet.py",
+              "line_start": 19,
+              "line_end": 20,
+              "quoted_text": "if __name__ == \"__main__\":\n    raise SystemExit(main())",
+              "quoted_text_sha256": "0d9048239b79d1a38bd3997865c321d7abc7dcf6708cf2036f21be8a2039d93a"
+            }
+          ]
+        }
+      ],
+      "unknowns": [
+        "The repository does not specify where `--count N` may appear relative to `NAME`.",
+        "The repository does not specify which count values are valid, including zero and negative integers.",
+        "The repository does not specify behavior, diagnostic text, or exit status for a missing or non-integer count value.",
+        "The repository does not specify whether repeated greetings should be emitted as separate lines or by another output layout.",
+        "The repository does not specify whether `--count` may be repeated or whether an option terminator such as `--` must be supported."
+      ],
+      "unresolved_conflicts": [],
+      "resolved_conflicts": [],
+      "audit_summary": "All eight facts are directly supported by the re-opened cited files. The cited file hashes and Git HEAD match the reported repository snapshot. No conflicts were reported, so none required disposition.",
+      "repository_snapshot": {
+        "git_head": "4075238e1a158bc474dcc345cf1b951c4c1ccc3a",
+        "git_status_sha256": "c9a882717c943df04e55201571dc2363f8a6afbc6dbe4f75fc910a20ec378685",
+        "cited_file_sha256": {
+          "greet.py": "14cfff46292161057242f6938be7eaf3639dde9e80a4c2b4e35bc33d5a424108",
+          "test_greet.py": "b8385a8b1b9c806acdc4af4a8050188ac4223100131704f210737a076726c70b",
+          "README.md": "e5b2638ec1f68e4c0496664bd398e0e070e91b274895431a9f871548d44ed676"
+        }
+      }
+    },
+    "transcript": [],
+    "turn": 1,
+    "safety_turns_remaining": 12,
+    "force_close": false
+  },
+  "output": {
+    "action": "question",
+    "reason": "The requested outcome is to add optional `--count N` behavior while preserving the existing one-name invocation. The first material decision is where the option may appear, because it determines which command lines must be accepted and how argument parsing will work.",
+    "open_material_decisions": [
+      "Where `--count N` may appear relative to `NAME`.",
+      "Which count values are valid, including zero and negative integers.",
+      "Diagnostic text and exit status for a missing or non-integer count value.",
+      "Whether repeated greetings are printed on separate lines or in another layout.",
+      "Whether repeated `--count` options and the `--` option terminator must be supported."
+    ],
+    "question": {
+      "header": "Option order",
+      "prompt": "Which command-line order must be accepted? This changes the public CLI syntax and parser behavior.",
+      "options": [
+        {
+          "label": "Either side",
+          "description": "Accept both `--count N NAME` and `NAME --count N`; this is the most flexible and is recommended for a conventional option parser.",
+          "recommended": true
+        },
+        {
+          "label": "Option first",
+          "description": "Accept only `--count N NAME`, keeping the supported grammar narrow and explicit.",
+          "recommended": false
+        },
+        {
+          "label": "Name first",
+          "description": "Accept only `NAME --count N`, preserving the existing name position but using a less conventional documented form.",
+          "recommended": false
+        }
+      ]
+    },
+    "contract": null
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "role": "lens-auditor",
+  "prompt_sha256": "5f3fb446a4742cc908b55bb9beb2365f07630ff3a9a6c52a5f846292076a3326",
+  "input": {
+    "proposed_lenses": [
+      {
+        "id": "observable-boundary-missing",
+        "stage": "discovery",
+        "failure_description": "The task never establishes what counts as the greeting output boundary, so teams cannot tell whether the farewell belongs in the same message, a separate line, or a different channel entirely.",
+        "observable_signal": "Different readers describe the expected output shape differently or sketch incompatible examples without noticing the conflict.",
+        "why_material": "If the output boundary is unclear, the resulting handoff cannot be implemented consistently.",
+        "minimal_test_shape": "Ask two implementers to write the exact expected output for the same simple input and compare whether the farewell placement matches."
+      },
+      {
+        "id": "optionality-trigger-undefined",
+        "stage": "interaction",
+        "failure_description": "The meaning of optional is left unstated, so it is unclear who or what decides when the farewell line appears.",
+        "observable_signal": "Follow-up questions cluster around whether the line is controlled by user input, configuration, context, or default behavior.",
+        "why_material": "An implementable handoff must state the trigger for conditional behavior; otherwise multiple valid but incompatible implementations emerge.",
+        "minimal_test_shape": "Present one greeting scenario and ask when the farewell should appear; failure is visible if answers depend on unstated assumptions."
+      },
+      {
+        "id": "content-contract-underdetermined",
+        "stage": "synthesis",
+        "failure_description": "The handoff captures that a farewell line exists but not what qualifies as that line, leaving wording, formatting, punctuation, and variability unconstrained.",
+        "observable_signal": "Reviewers agree on the feature headline but produce different acceptance examples for the actual farewell text.",
+        "why_material": "Without a concrete content contract, downstream implementation and verification cannot distinguish intended behavior from arbitrary output.",
+        "minimal_test_shape": "Request three canonical output examples and check whether the farewell text and formatting remain stable across them."
+      },
+      {
+        "id": "acceptance-criteria-not-executable",
+        "stage": "handoff",
+        "failure_description": "The requirements handoff describes the change at a high level but omits externally checkable acceptance conditions for presence and absence of the farewell line.",
+        "observable_signal": "A reader can restate the request in prose but cannot derive a small pass/fail test set from the handoff alone.",
+        "why_material": "The fixed goal is not met if the handoff cannot drive implementation and verification without reinterpretation.",
+        "minimal_test_shape": "Try to derive minimal pass cases and fail cases from the handoff; failure occurs if expected outputs are not uniquely determined."
+      },
+      {
+        "id": "negative-case-regression-hidden",
+        "stage": "verification",
+        "failure_description": "Validation covers only the case where the farewell appears and misses cases where greeting output should remain unchanged.",
+        "observable_signal": "Test examples or review notes mention added farewell behavior but provide no explicit unchanged-output scenario.",
+        "why_material": "Conditional output changes are incomplete without proving both activation and non-activation behavior.",
+        "minimal_test_shape": "Check whether the requirement set includes at least one example with the farewell present and one with it absent for otherwise similar greeting flows."
+      }
+    ],
+    "acceptance_rule": "distinct, externally observable, materially outcome-changing, solution-neutral"
+  },
+  "output": {
+    "accepted_lens_ids": [
+      "observable-boundary-missing",
+      "optionality-trigger-undefined",
+      "content-contract-underdetermined",
+      "negative-case-regression-hidden"
+    ],
+    "rejected_lenses": [
+      {
+        "id": "acceptance-criteria-not-executable",
+        "reason": "Rejected as a composite duplicate of more specific accepted lenses. Its non-executable acceptance condition is largely the downstream symptom of missing output boundary, undefined optionality trigger, and underdetermined content contract, rather than a materially distinct failure mode."
+      }
+    ],
+    "audit_summary": "Accepted four materially distinct, externally observable, solution-neutral failure lenses: unclear output boundary, undefined conditional trigger, underdetermined farewell content contract, and missing negative-case coverage. Rejected one meta-level duplicate that restates the combined effect of the more specific lenses rather than identifying a separate observable failure."
+  }
+}

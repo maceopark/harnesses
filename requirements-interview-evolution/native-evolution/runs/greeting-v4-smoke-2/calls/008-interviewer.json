@@ -1,0 +1,112 @@
+{
+  "role": "interviewer",
+  "prompt_sha256": "6fec9b906a149d6e8fe891a6dcfa74605186346583735048c06c7230d87fa91f",
+  "input": {
+    "skill_md": "---\nname: clarify-requirements\ndescription: Turn ambiguous product, software, workflow, or change requests into an agreed and testable contract before planning or implementation. Use when requirements are vague, behavior or scope has multiple plausible interpretations, acceptance criteria are missing, consequential defaults would otherwise be invented, or the user asks for an interview, clarification, specification, PRD, or implementation handoff.\n---\n\n# Clarify Requirements\n\nResolve only ambiguity that can materially change the result. Do not implement unless the user separately authorizes implementation.\n\n## Build the decision map\n\n1. Restate the requested outcome in one sentence.\n2. Inspect user-authorized context for answers that are safely discoverable. Do not ask the user to repeat facts already established.\n3. List plausible interpretations privately. Treat a choice as material when it changes observable behavior, scope, safety, compatibility, cost, reversibility, or acceptance.\n4. Track each material decision as `confirmed`, `inferred`, or `open`, with its evidence. Never silently default an open material decision.\n\nConsider these lenses only when relevant: actors and permissions; inputs and outputs; happy path; edge, failure, and misuse behavior; data lifecycle; compatibility; operational constraints; rollout and rollback; acceptance evidence.\n\n## Interview\n\nAsk the highest-leverage open question first. Ask one bounded decision per turn unless the user explicitly prefers batching.\n\nUse the runtime's structured question UI whenever it is available. Put the decision in a short header, state the material consequence in the prompt, provide two or three mutually exclusive choices, mark the recommended choice, give each choice a one-sentence tradeoff, and preserve a free-form answer path. Fall back to the same structure in plain text only when the runtime has no structured question mechanism.\n\nFor each question:\n\n- explain in one short sentence why the answer changes the result;\n- offer two or three concrete, mutually exclusive options when the space is known;\n- recommend one option and state its tradeoff when evidence supports a recommendation;\n- accept a free-form answer;\n- update the decision map before selecting the next question.\n\nDo not ask about low-impact preferences one at a time. When several low-risk choices are conventional, reversible, and do not alter the core outcome or safety posture, collect two to five recommended defaults into one structured approval question. Show the bundle explicitly, let the user approve all defaults or identify exceptions, and record the approved items separately. Never bundle a destructive, security-sensitive, irreversible, costly, or scope-changing decision.\n\nDo not convert examples into requirements, infer permission for destructive behavior, or widen the requested scope. If the user cannot decide, record an explicit assumption only after explaining its consequence and obtaining approval.\n\n## Challenge the emerging contract\n\nBefore closing, assess implementation readiness from multiple relevant angles: representative happy path, edge case, failure case, misuse case, data lifecycle, compatibility, operability, and acceptance evidence. Reopen only a material decision exposed by this challenge.\n\n## Close\n\nStop when every material decision is confirmed or explicitly approved as an assumption and the acceptance criteria can distinguish success from failure. More questions are not evidence of a better interview.\n\nReturn a compact contract containing:\n\n- outcome and success measure;\n- in-scope and out-of-scope behavior;\n- confirmed decisions and approved assumptions;\n- failure, edge, and misuse behavior where relevant;\n- constraints and acceptance checks;\n- unresolved non-blocking items;\n- whether implementation is authorized.\n\nUse [references/contract-template.md](references/contract-template.md) when a durable prose contract is requested.\n\nWhen the contract is implementation-ready, create `build-contract.json`. Make `implementation_agent_directive` the first top-level field. In that directive, require the implementing agent to append one JSON object per line to `decision.jsonl` before making any implementation decision forced by a specification gap. Require at least `timestamp`, `gap`, `options_considered`, `choice`, `reason`, `observable_impact`, and `reversibility`. The agent must not use the log to override confirmed requirements, and must stop for owner input instead of choosing when the gap is destructive, security-sensitive, irreversible, costly, or scope-changing.\n\nInclude requirements, non-goals, confirmed decisions, approved defaults, acceptance checks, remaining non-blocking gaps, evidence provenance, and implementation authorization in the JSON contract. Validate the JSON before presenting it.\n\nMake the best evidence-based readiness judgment; do not ask the user to approve whether the specification is sufficient. If a material decision remains open, continue the interview. Otherwise seal the contract and allow corrections without adding an approval gate. Label anything not confirmed by the user or authoritative evidence. Preserve the user's terminology and distinguish `must`, `should`, and `could`.\n\nAfter the interview is complete, print an implementation-start prompt that points to the contract path, declares it authoritative, repeats the `decision.jsonl` rule, forbids widening scope, names the required verification, and states whether implementation is authorized.\n",
+    "public_request": "Add a tiny `greet` CLI command that greets a named user. Keep it simple for a single local user, with friendly output and sensible handling when the name is missing or oddly formatted. Include a few tests and a short usage example.",
+    "transcript": [
+      {
+        "turn": 1,
+        "question": {
+          "header": "Name parsing",
+          "prompt": "Which input policy should `greet` use for missing, multiword, and oddly formatted names?",
+          "options": [
+            {
+              "label": "Trim one argument",
+              "description": "Use one positional name, trim surrounding whitespace, preserve case and internal characters, reject blank input, and require quoting for multiword names; this keeps behavior simple and predictable.",
+              "recommended": true
+            },
+            {
+              "label": "Join and normalize",
+              "description": "Join all remaining arguments as the name, trim it, and collapse whitespace, making unquoted multiword names convenient but altering the supplied text.",
+              "recommended": false
+            },
+            {
+              "label": "Validate strictly",
+              "description": "Accept exactly one nonblank argument as written and reject surrounding or suspicious whitespace, favoring precision over friendliness.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Trim one argument"
+      },
+      {
+        "turn": 2,
+        "question": {
+          "header": "Missing name",
+          "prompt": "What should `greet` do when its name argument is missing or becomes blank after trimming?",
+          "options": [
+            {
+              "label": "Error with usage",
+              "description": "Print a friendly error plus `Usage: greet <name>` to stderr and exit nonzero; this is predictable for both people and scripts.",
+              "recommended": true
+            },
+            {
+              "label": "Prompt for name",
+              "description": "Ask interactively for a name, which is friendly at a terminal but complicates automation and testing.",
+              "recommended": false
+            },
+            {
+              "label": "Show help successfully",
+              "description": "Print usage guidance to stdout and exit zero, treating omission as help rather than an error.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Write `error: name is required` followed by one newline to stderr and exit with status 2."
+      },
+      {
+        "turn": 3,
+        "question": {
+          "header": "Greeting text",
+          "prompt": "After trimming the single name argument, what exact text should a successful `greet` command print to stdout?",
+          "options": [
+            {
+              "label": "Hello, NAME!",
+              "description": "Print `Hello, <name>!` followed by one newline; this is concise and friendly.",
+              "recommended": true
+            },
+            {
+              "label": "Hi, NAME!",
+              "description": "Print `Hi, <name>!` followed by one newline for a more casual greeting.",
+              "recommended": false
+            },
+            {
+              "label": "Hello NAME",
+              "description": "Print `Hello <name>` followed by one newline without punctuation beyond the newline.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Write exactly `Hello, <name>!` followed by one newline to stdout."
+      }
+    ],
+    "turn": 4
+  },
+  "output": {
+    "action": "question",
+    "reason": "The success and missing-name behavior are confirmed, but extra positional arguments still need defined observable behavior for a predictable CLI and test suite.",
+    "question": {
+      "header": "Extra args",
+      "prompt": "What should `greet` do when more than one positional argument is supplied, such as `greet Ada Lovelace` without quotes?",
+      "options": [
+        {
+          "label": "Reject extras",
+          "description": "Write `error: expected one name` followed by one newline to stderr and exit with status 2, requiring multiword names to be quoted.",
+          "recommended": true
+        },
+        {
+          "label": "Ignore extras",
+          "description": "Greet using only the first argument and silently discard the rest, which is simple but can conceal user mistakes.",
+          "recommended": false
+        },
+        {
+          "label": "Join extras",
+          "description": "Combine all positional arguments with spaces, which supports unquoted multiword names but conflicts with the chosen single-argument policy.",
+          "recommended": false
+        }
+      ]
+    },
+    "contract": null
+  }
+}

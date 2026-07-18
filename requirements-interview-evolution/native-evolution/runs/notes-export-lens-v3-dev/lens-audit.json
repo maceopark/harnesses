@@ -1,0 +1,83 @@
+{
+  "accepted_lenses": [
+    {
+      "id": "discovery-export-scope-omission",
+      "stage": "discovery",
+      "failure_description": "The required set of saved notes exported when no explicit selection is provided is undefined.",
+      "observable_signal": "The same saved-note state and invocation produce materially different exported note sets across otherwise conforming implementations.",
+      "why_material": "Export scope determines the primary output and can cause incomplete exports or unintended disclosure.",
+      "minimal_test_shape": "Create saved notes across plausible scopes, invoke export without an explicit selection, and compare the resulting set against a single stated scope rule."
+    },
+    {
+      "id": "discovery-content-boundary-ambiguity",
+      "stage": "discovery",
+      "failure_description": "The requirements do not define which user-observable parts of a saved note belong in the export.",
+      "observable_signal": "Exported notes omit or transform titles, body structure, metadata, formatting, or attachment references that users consider part of the saved content.",
+      "why_material": "An undefined content boundary permits material information loss while still appearing compliant.",
+      "minimal_test_shape": "Export a note containing each plausible content category and verify which categories must be retained."
+    },
+    {
+      "id": "interaction-invocation-ambiguity",
+      "stage": "interaction",
+      "failure_description": "The accepted invocation forms and visible outcomes for missing, invalid, or surplus input are undefined.",
+      "observable_signal": "Users cannot predict whether a given invocation will export, reject the input, or select unintended content.",
+      "why_material": "Ambiguous invocation behavior can make export inaccessible or cause unintended data selection.",
+      "minimal_test_shape": "Exercise no-input, valid-input, unknown-input, and surplus-input invocations and verify a determinate visible outcome for each."
+    },
+    {
+      "id": "interaction-output-destination-ambiguity",
+      "stage": "interaction",
+      "failure_description": "The destination of exported data and the means by which users locate it are undefined.",
+      "observable_signal": "A successful export appears in an unexpected location or provides no observable means to find its output.",
+      "why_material": "An unlocatable export is unusable and may create overwrite or disclosure risks.",
+      "minimal_test_shape": "Invoke export using default and explicitly targeted conditions, then verify both the actual destination and the destination information shown to the user."
+    },
+    {
+      "id": "handoff-export-format-underdetermined",
+      "stage": "handoff",
+      "failure_description": "The export representation does not provide determinate note boundaries, ordering, or character preservation.",
+      "observable_signal": "Outputs satisfying the handoff cannot be interpreted consistently or differ materially in note ordering, separation, or represented characters.",
+      "why_material": "Ambiguous representation prevents reliable reading, comparison, or reuse of exported notes.",
+      "minimal_test_shape": "Export multiple notes containing non-ASCII text and delimiter-like content, then verify unambiguous boundaries, defined ordering, and preserved characters."
+    },
+    {
+      "id": "implementation-source-content-mutation",
+      "stage": "implementation",
+      "failure_description": "Exporting changes saved note content or other persistent note state without an edit request.",
+      "observable_signal": "Persistent note state differs before and after export.",
+      "why_material": "A read-oriented export becomes destructive and violates source preservation.",
+      "minimal_test_shape": "Capture relevant persistent note fields, run export, and compare the stored state field-for-field afterward."
+    },
+    {
+      "id": "implementation-partial-export-misreported",
+      "stage": "implementation",
+      "failure_description": "The operation omits requested notes or content while visibly reporting complete success.",
+      "observable_signal": "The artifact lacks requested material, but the reported outcome indicates an unqualified success.",
+      "why_material": "Silent incompleteness undermines backup, transfer, and trust in the artifact.",
+      "minimal_test_shape": "Request several notes, induce failure for one requested item, and compare artifact completeness with the visible status."
+    },
+    {
+      "id": "verification-happy-path-only",
+      "stage": "verification",
+      "failure_description": "Acceptance evidence covers only simple successful input and therefore fails to detect material preservation or failure-reporting defects.",
+      "observable_signal": "Acceptance passes even though supported notes lose content or destination failures produce misleading outcomes.",
+      "why_material": "Insufficient verification can approve behavior that causes data loss or falsely reports success.",
+      "minimal_test_shape": "Verify representative empty, Unicode, multiline, structured, large-content, and destination-failure cases by inspecting both artifacts and visible outcomes."
+    },
+    {
+      "id": "learning-unclassified-user-failures",
+      "stage": "learning",
+      "failure_description": "Retained incident evidence is insufficient to distinguish materially different export failures or reproduce the observed behavior.",
+      "observable_signal": "Repeated incidents cannot be associated with a specific observable failure mode or reproduced from the recorded evidence.",
+      "why_material": "Indistinguishable incidents prevent later work from identifying and correcting the remaining requirement or behavior gap.",
+      "minimal_test_shape": "Review reported incidents and determine whether the retained evidence identifies the invocation, expected output, actual artifact, visible status, and persistent source state needed to distinguish and reproduce each failure."
+    }
+  ],
+  "rejected_lenses": [
+    {
+      "id": "synthesis-preservation-contradiction",
+      "reason": "Rejected as a vague quality conflict rather than a distinct failure lens: “compact” has no externally testable meaning, and every concrete adverse outcome described is already covered by content-boundary or export-representation lenses."
+    }
+  ],
+  "audit_summary": "Accepted nine materially distinct lenses. Rejected one vague, duplicative synthesis claim. All ten proposed lens IDs are dispositioned."
+}

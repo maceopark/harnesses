@@ -1,0 +1,57 @@
+{
+  "public_request": "Produce an implementable requirements handoff for this change: Add an optional separator between a greeting and its name.",
+  "target_lens_ids": [
+    "discovery-separator-scope-undefined",
+    "interaction-missing-decision-on-default-behavior",
+    "synthesis-edge-case-rules-collapsed",
+    "handoff-acceptance-criteria-not-observable",
+    "verification-optionality-never-proven"
+  ],
+  "objective_failure_signals": [
+    "Does not define exactly what the separator is allowed to be, where it is inserted, or when it is omitted.",
+    "Does not state the default behavior when the option is not provided.",
+    "Omits exact expected behavior for edge cases including empty name, empty separator, separator containing surrounding spaces, or repeated punctuation at the boundary.",
+    "Lacks externally checkable acceptance criteria with exact input-output examples.",
+    "Fails to include both enabled and omitted/disabled examples that prove the feature is optional."
+  ],
+  "oracle": {
+    "material_decisions": [
+      {
+        "id": "separator-scope",
+        "answer": "The separator is an optional string inserted exactly once between the greeting text and the name, after the greeting and before the name. It is applied only when a non-empty name is present and the separator option is explicitly provided with a non-empty string value.",
+        "why_material": "This removes ambiguity about what counts as a separator, placement, and omission conditions."
+      },
+      {
+        "id": "default-behavior",
+        "answer": "If the separator option is not provided, provided as null, false, or an empty string, output must match current behavior with no inserted separator. Backward compatibility is preserved by default.",
+        "why_material": "This fixes the baseline behavior for existing callers and makes optionality concrete."
+      },
+      {
+        "id": "missing-name",
+        "answer": "If the name is empty or missing, return the greeting alone with no separator and no extra trailing whitespace or punctuation added by this feature.",
+        "why_material": "This prevents downstream invention for a common edge case."
+      },
+      {
+        "id": "whitespace-and-punctuation",
+        "answer": "The separator string is used verbatim and is not trimmed or normalized. The feature does not deduplicate punctuation. The function still emits exactly one space between the greeting and the separator when a separator is inserted, and no extra space is added after the separator beyond whatever characters the separator itself contains.",
+        "why_material": "This makes edge cases with spaces and repeated punctuation objectively testable."
+      },
+      {
+        "id": "acceptance-examples",
+        "answer": "Required observable examples: greeting='Hello', name='Sam', separator omitted => 'Hello Sam'; greeting='Hello', name='Sam', separator=', ' => 'Hello, Sam'; greeting='Hello', name='Sam', separator=' - ' => 'Hello - Sam'; greeting='Hello', name='', separator=', ' => 'Hello'; greeting='Hello', name='Sam', separator='' => 'Hello Sam'; greeting='Hello', name='Sam', separator=':  ' => 'Hello:  Sam'.",
+        "why_material": "These examples convert intent into checkable acceptance criteria and cover optionality plus edge cases."
+      },
+      {
+        "id": "verification-requirement",
+        "answer": "Verification must include at least one matched pair using the same greeting and name with separator enabled and omitted, demonstrating that enabling changes output and omission preserves prior output.",
+        "why_material": "This proves the feature is optional rather than merely supported when enabled."
+      }
+    ],
+    "owner_rules": [
+      "A correct handoff must explicitly define separator scope, default behavior, edge-case handling, acceptance criteria, and verification of optionality.",
+      "Judge the handoff by whether a fresh implementer could produce the same outputs in the oracle examples without inventing behavior.",
+      "Treat any unspecified behavior for the named edge cases as a material miss, even if the overall intent is described correctly.",
+      "Do not award correctness to handoffs that describe goals abstractly but fail to provide exact observable outputs."
+    ]
+  }
+}

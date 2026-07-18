@@ -1,0 +1,45 @@
+{
+  "role": "designer",
+  "prompt_sha256": "41c847b637e6c82271725ff5feb72c47fb34030ff93816286a64d2fd0955b0a6",
+  "input": {
+    "seed": "A tiny single-user CLI that greets a named user; keep the case compact but materially ambiguous."
+  },
+  "output": {
+    "public_request": "Add a tiny `hello` CLI to this repository. A user should be able to provide their name and receive a friendly greeting. Keep it simple, consistent with the existing project, and include tests and brief usage documentation.",
+    "oracle": {
+      "material_decisions": [
+        {
+          "id": "name_input_contract",
+          "answer": "Accept the name as one required positional argument, with multi-word names supplied using normal shell quoting (for example, `hello \"Ada Lovelace\"`). Do not add interactive prompting or a `--name` option.",
+          "why_material": "The request does not define the command syntax, and positional, flagged, and interactive inputs require different parsing and test behavior."
+        },
+        {
+          "id": "greeting_output",
+          "answer": "On success, print exactly `Hello, <name>!` followed by one newline to standard output.",
+          "why_material": "“Friendly greeting” leaves capitalization, punctuation, wording, and output stream unspecified; exact output is necessary for stable CLI behavior and tests."
+        },
+        {
+          "id": "name_validation",
+          "answer": "Trim leading and trailing whitespace. After trimming, reject an empty name; otherwise preserve the name exactly, including Unicode, spaces, punctuation, and original letter case.",
+          "why_material": "Validation and normalization choices determine which users can be greeted and whether the CLI silently changes supplied names."
+        },
+        {
+          "id": "invalid_usage_behavior",
+          "answer": "For a missing or empty name, print a concise error plus usage guidance to standard error and exit with status 2. Extra positional arguments are invalid unless they form part of one shell-quoted name.",
+          "why_material": "Failure output, exit status, and handling of extra arguments are externally observable API decisions needed for implementation and tests."
+        },
+        {
+          "id": "scope_and_state",
+          "answer": "The command is single-run and stateless: do not save names, read configuration, personalize future greetings, add networking, or introduce third-party dependencies.",
+          "why_material": "“Single-user” could imply a configured or remembered user, which would substantially expand storage, privacy, and lifecycle requirements."
+        }
+      ],
+      "owner_rules": [
+        "Use the repository’s existing language, CLI conventions, test framework, and packaging structure.",
+        "Do not add aliases, optional greeting styles, configuration, persistence, or interactive behavior.",
+        "Treat the exact success text, stderr behavior, and exit statuses as part of the public CLI contract.",
+        "Keep documentation limited to installation or invocation details already customary in the repository plus one successful and one invalid-usage example."
+      ]
+    }
+  }
+}

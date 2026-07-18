@@ -1,0 +1,167 @@
+{
+  "role": "adjudicator",
+  "prompt_sha256": "012e66029497ffb9558e7a8cafad12aafc35dc78d23280b0d9e8ddd531ea12f3",
+  "input": {
+    "public_request": "You are defining a small greenfield feature for a text-only greeter. Produce an implementation-ready requirement for: \"Add an optional farewell line after greeting output.\" Your answer must make the exact output shape judgeable, including where the farewell appears relative to the greeting, what makes it appear or not appear, the exact farewell text/format, and at least one example where the farewell is present and one otherwise similar example where it is absent.",
+    "owner_oracle": {
+      "material_decisions": [
+        {
+          "id": "boundary_contract",
+          "answer": "The farewell, when enabled, is part of the same text output as the greeting and appears as a second line immediately after the greeting line. The greeting remains the first line. No separate message, channel, or inline same-line variant is allowed.",
+          "why_material": "This removes ambiguity about the output boundary and makes implementations converge on one observable shape."
+        },
+        {
+          "id": "optionality_trigger",
+          "answer": "The farewell is controlled by a single boolean input flag named `includeFarewell`. When `includeFarewell` is `true`, the farewell line is included; when `false`, it is omitted. The default is `false` if the flag is not provided.",
+          "why_material": "This defines who decides the conditional behavior and prevents incompatible assumptions about context, configuration, or heuristics."
+        },
+        {
+          "id": "farewell_content_contract",
+          "answer": "The farewell line is exactly `Goodbye.` including capitalization and the period, with no added names, emojis, or alternate punctuation.",
+          "why_material": "A fixed literal contract is necessary so reviewers can distinguish intended output from arbitrary variants."
+        },
+        {
+          "id": "acceptance_examples",
+          "answer": "Canonical examples: with input name `Sam` and `includeFarewell=true`, output is exactly `Hello, Sam!\\nGoodbye.`. With the same name and `includeFarewell=false`, output is exactly `Hello, Sam!`. No extra trailing line is emitted when the flag is false.",
+          "why_material": "Matched positive and negative examples prove both the changed and unchanged behaviors and make regression checks straightforward."
+        }
+      ],
+      "owner_rules": [
+        "Accept only answers that make the output reproducible verbatim from the stated rules and examples.",
+        "Reject answers that use words like optional, maybe, or if needed without an explicit activation mechanism.",
+        "Reject answers that describe the farewell conceptually but do not freeze its exact text and punctuation.",
+        "Reject answers that provide only the enabled case or only the disabled case."
+      ]
+    },
+    "audited_repository_evidence": {
+      "scope_summary": "greenfield; no repository evidence",
+      "facts": [],
+      "unknowns": [],
+      "unresolved_conflicts": [],
+      "audit_summary": "not applicable"
+    },
+    "transcript": [
+      {
+        "turn": 1,
+        "open_material_decisions": [
+          "What exact farewell line should be added, and should it always appear as a new line after the greeting when enabled?"
+        ],
+        "question": {
+          "header": "Farewell Shape",
+          "prompt": "This changes the exact observable output and acceptance tests. Choose the farewell line behavior when the optional farewell is enabled.",
+          "options": [
+            {
+              "label": "New line: Goodbye!",
+              "description": "Append a second line exactly `Goodbye!` after the greeting; simplest and most judgeable.",
+              "recommended": true
+            },
+            {
+              "label": "Same line: Goodbye!",
+              "description": "Append ` Goodbye!` on the same line as the greeting; shorter output but different formatting contract.",
+              "recommended": false
+            },
+            {
+              "label": "Custom text/placement",
+              "description": "Provide your own exact farewell text and whether it appears on a new line or the same line.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "When enabled, append a second line immediately after the greeting line. The farewell line is exactly `Goodbye.`. The greeting remains the first line.\n\nActivation: controlled only by `includeFarewell`; default `false` when omitted.\n\nExamples:\n- `name=Sam, includeFarewell=true` -> `Hello, Sam!\\nGoodbye.`\n- `name=Sam, includeFarewell=false` -> `Hello, Sam!`"
+      },
+      {
+        "turn": 2,
+        "interviewer": {
+          "action": "complete",
+          "reason": "The only material ambiguity was the exact farewell output shape and activation rule. The transcript confirms the farewell text, placement, and control flag, and no further material decision is required to make the requirement judgeable and implementation-ready.",
+          "open_material_decisions": [],
+          "question": null,
+          "contract": {
+            "summary": "Add an optional farewell line to the text-only greeter. The greeting must remain the first line. When `includeFarewell` is `true`, append a second line immediately after the greeting line containing exactly `Goodbye.`. When `includeFarewell` is `false` or omitted, do not append any farewell line.",
+            "implementation_ready": true,
+            "confirmed_decisions": [
+              "Output order: the greeting is always the first line.",
+              "Farewell placement: when enabled, the farewell appears on a second line immediately after the greeting.",
+              "Farewell text: the farewell line is exactly `Goodbye.`",
+              "Activation rule: the farewell is controlled only by `includeFarewell`.",
+              "Default behavior: if `includeFarewell` is omitted, treat it as `false`.",
+              "Example with farewell present: `name=Sam, includeFarewell=true` produces `Hello, Sam!\\nGoodbye.`",
+              "Otherwise similar example with farewell absent: `name=Sam, includeFarewell=false` produces `Hello, Sam!`"
+            ],
+            "open_material_decisions": [],
+            "acceptance_checks": [
+              "Given `name=Sam` and `includeFarewell=true`, output is exactly `Hello, Sam!\\nGoodbye.`",
+              "Given `name=Sam` and `includeFarewell=false`, output is exactly `Hello, Sam!`",
+              "Given `name=Sam` and omitted `includeFarewell`, output is exactly `Hello, Sam!`",
+              "When farewell is enabled, no extra blank line appears between greeting and farewell.",
+              "When farewell is disabled or omitted, no farewell text appears anywhere in the output."
+            ]
+          }
+        }
+      }
+    ],
+    "final_contract": {
+      "summary": "Add an optional farewell line to the text-only greeter. The greeting must remain the first line. When `includeFarewell` is `true`, append a second line immediately after the greeting line containing exactly `Goodbye.`. When `includeFarewell` is `false` or omitted, do not append any farewell line.",
+      "implementation_ready": true,
+      "confirmed_decisions": [
+        "Output order: the greeting is always the first line.",
+        "Farewell placement: when enabled, the farewell appears on a second line immediately after the greeting.",
+        "Farewell text: the farewell line is exactly `Goodbye.`",
+        "Activation rule: the farewell is controlled only by `includeFarewell`.",
+        "Default behavior: if `includeFarewell` is omitted, treat it as `false`.",
+        "Example with farewell present: `name=Sam, includeFarewell=true` produces `Hello, Sam!\\nGoodbye.`",
+        "Otherwise similar example with farewell absent: `name=Sam, includeFarewell=false` produces `Hello, Sam!`"
+      ],
+      "open_material_decisions": [],
+      "acceptance_checks": [
+        "Given `name=Sam` and `includeFarewell=true`, output is exactly `Hello, Sam!\\nGoodbye.`",
+        "Given `name=Sam` and `includeFarewell=false`, output is exactly `Hello, Sam!`",
+        "Given `name=Sam` and omitted `includeFarewell`, output is exactly `Hello, Sam!`",
+        "When farewell is enabled, no extra blank line appears between greeting and farewell.",
+        "When farewell is disabled or omitted, no farewell text appears anywhere in the output."
+      ]
+    },
+    "frozen_failure_lenses": [
+      {
+        "id": "observable-boundary-missing",
+        "stage": "discovery",
+        "failure_description": "The task never establishes what counts as the greeting output boundary, so teams cannot tell whether the farewell belongs in the same message, a separate line, or a different channel entirely.",
+        "observable_signal": "Different readers describe the expected output shape differently or sketch incompatible examples without noticing the conflict.",
+        "why_material": "If the output boundary is unclear, the resulting handoff cannot be implemented consistently.",
+        "minimal_test_shape": "Ask two implementers to write the exact expected output for the same simple input and compare whether the farewell placement matches."
+      },
+      {
+        "id": "optionality-trigger-undefined",
+        "stage": "interaction",
+        "failure_description": "The meaning of optional is left unstated, so it is unclear who or what decides when the farewell line appears.",
+        "observable_signal": "Follow-up questions cluster around whether the line is controlled by user input, configuration, context, or default behavior.",
+        "why_material": "An implementable handoff must state the trigger for conditional behavior; otherwise multiple valid but incompatible implementations emerge.",
+        "minimal_test_shape": "Present one greeting scenario and ask when the farewell should appear; failure is visible if answers depend on unstated assumptions."
+      },
+      {
+        "id": "content-contract-underdetermined",
+        "stage": "synthesis",
+        "failure_description": "The handoff captures that a farewell line exists but not what qualifies as that line, leaving wording, formatting, punctuation, and variability unconstrained.",
+        "observable_signal": "Reviewers agree on the feature headline but produce different acceptance examples for the actual farewell text.",
+        "why_material": "Without a concrete content contract, downstream implementation and verification cannot distinguish intended behavior from arbitrary output.",
+        "minimal_test_shape": "Request three canonical output examples and check whether the farewell text and formatting remain stable across them."
+      },
+      {
+        "id": "negative-case-regression-hidden",
+        "stage": "verification",
+        "failure_description": "Validation covers only the case where the farewell appears and misses cases where greeting output should remain unchanged.",
+        "observable_signal": "Test examples or review notes mention added farewell behavior but provide no explicit unchanged-output scenario.",
+        "why_material": "Conditional output changes are incomplete without proving both activation and non-activation behavior.",
+        "minimal_test_shape": "Check whether the requirement set includes at least one example with the farewell present and one with it absent for otherwise similar greeting flows."
+      }
+    ],
+    "blind_review": {
+      "findings": [],
+      "review_summary": "No material blockers found in the allowed categories. The final contract resolves the frozen failure lenses with judgeable output examples and explicit activation/default rules, including exact output shape, exact farewell text, and both enabled and disabled cases at /implementation_ready, /summary, /confirmed_decisions/0, /confirmed_decisions/1, /confirmed_decisions/2, /confirmed_decisions/3, /confirmed_decisions/4, /confirmed_decisions/5, /confirmed_decisions/6, /acceptance_checks/0, /acceptance_checks/1, /acceptance_checks/2, /acceptance_checks/3, and /acceptance_checks/4."
+    }
+  },
+  "output": {
+    "verdicts": [],
+    "adjudication_summary": "No blind review findings were submitted, so there is nothing to approve or reject."
+  }
+}

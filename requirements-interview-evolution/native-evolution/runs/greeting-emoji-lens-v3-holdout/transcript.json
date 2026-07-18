@@ -1,0 +1,87 @@
+[
+  {
+    "turn": 1,
+    "open_material_decisions": [
+      "Exact output formatting when enabled, including spacing and whether the marker appears before all greeting variants.",
+      "How the optional emoji marker is controlled/enabled by the caller or configuration.",
+      "What emoji should be shown when the marker is enabled, if it is not caller-specified."
+    ],
+    "question": {
+      "header": "Emoji Control",
+      "prompt": "The way the emoji marker is enabled changes the API/CLI surface and default behavior. How should callers turn it on?",
+      "options": [
+        {
+          "label": "Explicit flag/param",
+          "description": "Add a dedicated optional argument or setting to enable the emoji marker per greeting call; recommended because it keeps the feature reversible and clear.",
+          "recommended": true
+        },
+        {
+          "label": "Always on when configured",
+          "description": "Use a global configuration setting so greetings include the emoji marker whenever that config is enabled.",
+          "recommended": false
+        },
+        {
+          "label": "Caller supplies prefix",
+          "description": "Treat the emoji marker as a caller-provided prefix string rather than a built-in toggle, which is more flexible but broader in scope.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "{\"selected_option\":\"Explicit flag/param\",\"answer\":\"Callers should enable it per greeting call with a single optional boolean flag/parameter. When true, prepend exactly \\\"👋 \\\" to the existing greeting string; when false or omitted, leave the output unchanged.\"}"
+  },
+  {
+    "turn": 2,
+    "open_material_decisions": [
+      "Exact output formatting when enabled, including spacing and whether the marker appears before all greeting variants.",
+      "What emoji should be shown when the marker is enabled."
+    ],
+    "question": {
+      "header": "Emoji Choice",
+      "prompt": "The specific emoji changes the visible output and acceptance criteria. Which built-in emoji should the optional marker use when enabled?",
+      "options": [
+        {
+          "label": "Wave hand",
+          "description": "Use exactly `👋` as the built-in marker; recommended because it matches greeting semantics and the prior example.",
+          "recommended": true
+        },
+        {
+          "label": "Sparkles",
+          "description": "Use exactly `✨` as the built-in marker; this is more decorative but changes the tone of the feature.",
+          "recommended": false
+        },
+        {
+          "label": "Custom per caller",
+          "description": "Let the caller choose the emoji value each time; this is more flexible but expands scope beyond a simple optional marker.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "{\"selected_option\":\"Wave hand\",\"answer\":\"Use exactly \\\"👋\\\" as the built-in optional marker when enabled.\"}"
+  },
+  {
+    "turn": 3,
+    "interviewer": {
+      "action": "complete",
+      "reason": "No open material decision remains. The caller control, built-in emoji, and enabled-output formatting are all established by the transcript, and the request is implementation-ready without widening scope.",
+      "open_material_decisions": [],
+      "question": null,
+      "contract": {
+        "summary": "Outcome: add an optional emoji marker before greeting output. Success means a caller can enable the marker per greeting call with a single optional boolean flag/parameter; when enabled, the greeting output is prefixed with exactly `👋 `, and when false or omitted, output remains unchanged.\n\nIn scope: one optional built-in emoji marker for greeting output, enabled explicitly per call. Out of scope: global config-driven behavior, caller-supplied arbitrary prefixes or emojis, and any other output changes.\n\nConfirmed decisions: callers enable the feature with a dedicated optional flag/parameter per greeting call; the built-in marker is exactly `👋`; enabled formatting is exactly the existing greeting string prefixed with `👋 `.\n\nFailure, edge, and misuse behavior: if the flag/parameter is false or omitted, behavior must match current output exactly; no alternative emoji or formatting should be inferred.\n\nConstraints: preserve existing greeting behavior unless explicitly enabled; do not widen the API beyond a single optional boolean control.\n\nImplementation authorization: not authorized by this interview alone.",
+        "implementation_ready": true,
+        "confirmed_decisions": [
+          "Use a dedicated optional boolean flag/parameter to enable the emoji marker per greeting call.",
+          "When enabled, use exactly `👋` as the built-in marker.",
+          "When enabled, prepend exactly `👋 ` to the existing greeting string.",
+          "When the flag/parameter is false or omitted, leave the greeting output unchanged."
+        ],
+        "open_material_decisions": [],
+        "acceptance_checks": [
+          "A greeting call with the emoji flag/parameter omitted produces exactly the same output as before.",
+          "A greeting call with the emoji flag/parameter set to false produces exactly the same output as before.",
+          "A greeting call with the emoji flag/parameter set to true produces the prior greeting output prefixed with exactly `👋 `.",
+          "No global configuration or caller-provided prefix/emojis are required or introduced."
+        ]
+      }
+    }
+  }
+]

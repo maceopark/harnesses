@@ -1,0 +1,113 @@
+{
+  "role": "lens-case-designer",
+  "prompt_sha256": "f00fcc9a9cafd49546010dec552933d316c528ab703a0613413abf1bf2f6fd0a",
+  "input": {
+    "seed": "Add a compact export command for saved notes while preserving existing note content.",
+    "context_mode": "greenfield",
+    "frozen_failure_lenses": [
+      {
+        "id": "scope-ambiguity-omitted",
+        "stage": "discovery",
+        "failure_description": "Material ambiguity about which saved notes are exported, what “compact” means, and whether metadata is included remains unresolved.",
+        "observable_signal": "Different reasonable readers produce exports with different note sets, field inclusion, or formatting while each believes the request is satisfied.",
+        "why_material": "The command’s output contract is not implementable consistently without clear selection and representation boundaries.",
+        "minimal_test_shape": "Give the handoff to two independent implementers and compare their stated export scope and output shape."
+      },
+      {
+        "id": "content-preservation-not-operationalized",
+        "stage": "interaction",
+        "failure_description": "The requirement to preserve existing note content is accepted without defining which content transformations or mutations would violate it.",
+        "observable_signal": "The resulting behavior normalizes whitespace, changes line breaks or encoding, omits content, or modifies stored notes without an explicit requirement authorizing that behavior.",
+        "why_material": "Preservation is the central safety constraint, and an undefined interpretation risks irreversible or user-visible content changes.",
+        "minimal_test_shape": "Use saved notes containing multiline text, leading and trailing whitespace, special characters, and empty content; compare stored content before and after export and inspect exported content."
+      },
+      {
+        "id": "decisions-lost-in-synthesis",
+        "stage": "synthesis",
+        "failure_description": "Material decisions elicited during discovery are absent, contradictory, or weakened in the synthesized requirements.",
+        "observable_signal": "The final handoff leaves previously settled behavior open again or contains acceptance criteria inconsistent with recorded decisions.",
+        "why_material": "Implementation will follow the handoff, so lost decisions recreate ambiguity and permit divergent behavior.",
+        "minimal_test_shape": "Trace every material decision from discovery into a corresponding requirement, non-goal, constraint, or acceptance criterion in the handoff."
+      },
+      {
+        "id": "existing-behavior-regression",
+        "stage": "implementation",
+        "failure_description": "Adding the export command changes existing note creation, reading, updating, deletion, storage, or command behavior outside the requested scope.",
+        "observable_signal": "Previously valid note operations produce different stored content, output, exit behavior, or errors after the export feature is added.",
+        "why_material": "The change must be additive; unrelated regressions violate the preservation intent and expand the effective scope of the change.",
+        "minimal_test_shape": "Run representative existing note workflows before and after the change and compare stored notes, command outputs, and failure behavior."
+      }
+    ],
+    "audited_repository_evidence": null
+  },
+  "output": {
+    "public_request": "Add a compact export command for saved notes while preserving existing note content.",
+    "target_lens_ids": [
+      "scope-ambiguity-omitted",
+      "content-preservation-not-operationalized",
+      "decisions-lost-in-synthesis",
+      "existing-behavior-regression"
+    ],
+    "objective_failure_signals": [
+      "The handoff does not specify that the export includes every currently saved note, including notes whose content is empty.",
+      "The handoff does not define the exported representation as UTF-8 JSON Lines with exactly one object per note and no pretty-printing.",
+      "The handoff does not specify whether note metadata is included or identify the exact exported fields.",
+      "The handoff permits exported content to differ byte-for-byte from stored content, including changes to line endings, whitespace, Unicode characters, escape interpretation, or empty strings.",
+      "The handoff permits the export operation to create, update, delete, reorder, or otherwise mutate stored notes.",
+      "A settled oracle decision is absent from, contradicted by, or weakened in the synthesized requirements, boundaries, acceptance criteria, or verification.",
+      "The verification does not compare representative pre-existing create, read, update, delete, list, persistence, output, error, and exit-status behavior before and after adding export.",
+      "Existing note operations change stored content, command output, error behavior, or exit status after export is added."
+    ],
+    "oracle": {
+      "material_decisions": [
+        {
+          "id": "DEC-001",
+          "answer": "Export every note present in the saved-note store at command start, including notes with empty content.",
+          "why_material": "Selecting all notes establishes the export boundary and prevents implementations from choosing different subsets."
+        },
+        {
+          "id": "DEC-002",
+          "answer": "Emit UTF-8 JSON Lines to standard output, with exactly one compact JSON object per note and a single LF after each object; do not pretty-print or add headings, summaries, or other output.",
+          "why_material": "This makes “compact” an objective output-shape requirement."
+        },
+        {
+          "id": "DEC-003",
+          "answer": "Each exported object contains exactly two fields: \"id\" and \"content\". Include no timestamps, tags, storage paths, derived values, or other metadata.",
+          "why_material": "Exact field inclusion is part of the public output contract."
+        },
+        {
+          "id": "DEC-004",
+          "answer": "Order exported notes by ascending Unicode code-point order of their \"id\" values.",
+          "why_material": "A deterministic order makes identical saved state produce objectively comparable output."
+        },
+        {
+          "id": "DEC-005",
+          "answer": "The decoded JSON string value of each exported \"content\" field must equal the stored content exactly, including empty content, spaces, tabs, line breaks, Unicode characters, and leading or trailing whitespace. JSON-required escaping is allowed only when decoding restores the exact stored string.",
+          "why_material": "This operationalizes content preservation without confusing serialization escapes with content changes."
+        },
+        {
+          "id": "DEC-006",
+          "answer": "Export is read-only: it must not create, update, delete, reorder, normalize, rewrite, or persist any change to saved notes or their metadata.",
+          "why_material": "This defines the central data-safety boundary."
+        },
+        {
+          "id": "DEC-007",
+          "answer": "If the saved-note store cannot be read completely, emit no export records, write a diagnostic to standard error, return a nonzero exit status, and leave the store unchanged.",
+          "why_material": "Partial output and failure behavior affect whether consumers can trust an export as complete."
+        },
+        {
+          "id": "DEC-008",
+          "answer": "Adding export must not change the stored data, standard output, standard error, or exit status of existing create, read, update, delete, list, and persistence workflows for the same inputs and initial state.",
+          "why_material": "The feature is additive and must not alter established note behavior outside export."
+        }
+      ],
+      "owner_rules": [
+        "Treat each material decision as independently required and preserve it without broadening or weakening its modality, scope, exceptions, failure result, or verification meaning.",
+        "Require acceptance coverage for multiline content, empty content, leading and trailing spaces, tabs, non-ASCII Unicode, JSON-special characters, and notes with metadata that must not be exported.",
+        "Require a before-and-after stored-state comparison proving that both successful and failed exports leave all note content and metadata unchanged.",
+        "Require regression verification for representative successful and failing create, read, update, delete, list, and persistence workflows, comparing stored state, standard output, standard error, and exit status.",
+        "Do not infer additional export fields, filtering options, alternate formats, file output, compression, import behavior, or changes to existing commands."
+      ]
+    }
+  }
+}

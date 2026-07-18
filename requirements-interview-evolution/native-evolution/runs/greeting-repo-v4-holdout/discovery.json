@@ -1,0 +1,136 @@
+{
+  "scope_summary": "Inspected the complete three-file repository for the current greeting API, CLI parsing, documentation, and test coverage material to adding optional repetition.",
+  "facts": [
+    {
+      "id": "F1",
+      "claim": "The greeting formatter returns exactly `Hello, {name}!`.",
+      "authority": "code",
+      "evidence": [
+        {
+          "path": "greet.py",
+          "line_start": 6,
+          "line_end": 7,
+          "quoted_text": "def greeting(name: str) -> str:\n    return f\"Hello, {name}!\"",
+          "quoted_text_sha256": "363dd1d7a6bc583a94b65586481e69d73d726b640e29cf635e2665f63b650833"
+        }
+      ]
+    },
+    {
+      "id": "F2",
+      "claim": "`main` accepts an optional argument list and otherwise reads command-line arguments from `sys.argv[1:]`.",
+      "authority": "code",
+      "evidence": [
+        {
+          "path": "greet.py",
+          "line_start": 10,
+          "line_end": 11,
+          "quoted_text": "def main(argv: list[str] | None = None) -> int:\n    args = sys.argv[1:] if argv is None else argv",
+          "quoted_text_sha256": "56c8ad0933c41b343b2ba3f7f7c7fe621cc6baa630fc3a6cc2a67263487ff18f"
+        }
+      ]
+    },
+    {
+      "id": "F3",
+      "claim": "The current CLI requires exactly one argument; otherwise it writes `usage: greet.py NAME` to stderr and returns exit status 2.",
+      "authority": "code",
+      "evidence": [
+        {
+          "path": "greet.py",
+          "line_start": 12,
+          "line_end": 14,
+          "quoted_text": "    if len(args) != 1:\n        print(\"usage: greet.py NAME\", file=sys.stderr)\n        return 2",
+          "quoted_text_sha256": "f90ca404c89bb91e554c56d04f1aee64b0342cdb0c0cc3b47b080a47889b9a27"
+        }
+      ]
+    },
+    {
+      "id": "F4",
+      "claim": "With exactly one argument, the CLI prints one greeting and returns exit status 0.",
+      "authority": "code",
+      "evidence": [
+        {
+          "path": "greet.py",
+          "line_start": 15,
+          "line_end": 16,
+          "quoted_text": "    print(greeting(args[0]))\n    return 0",
+          "quoted_text_sha256": "81c30a4a510f3fafcedd105d547519df39dc4b4eabea83abea36af24c76d2834"
+        }
+      ]
+    },
+    {
+      "id": "F5",
+      "claim": "Direct script execution converts `main`'s return value into the process exit status.",
+      "authority": "code",
+      "evidence": [
+        {
+          "path": "greet.py",
+          "line_start": 19,
+          "line_end": 20,
+          "quoted_text": "if __name__ == \"__main__\":\n    raise SystemExit(main())",
+          "quoted_text_sha256": "0d9048239b79d1a38bd3997865c321d7abc7dcf6708cf2036f21be8a2039d93a"
+        }
+      ]
+    },
+    {
+      "id": "F6",
+      "claim": "The documentation describes invocation as `python greet.py NAME` and says missing or extra arguments are usage errors.",
+      "authority": "documentation",
+      "evidence": [
+        {
+          "path": "README.md",
+          "line_start": 3,
+          "line_end": 5,
+          "quoted_text": "Run `python greet.py NAME` to print a greeting.\n\nThe command accepts exactly one positional name. Missing or extra arguments are usage errors.",
+          "quoted_text_sha256": "474c16238163473a61a4de660a8f84105a74f8f44adb2a201e80308f1d049c7e"
+        }
+      ]
+    },
+    {
+      "id": "F7",
+      "claim": "Tests assert the exact greeting string and exit status 2 for zero or two arguments.",
+      "authority": "test",
+      "evidence": [
+        {
+          "path": "test_greet.py",
+          "line_start": 6,
+          "line_end": 12,
+          "quoted_text": "class GreetingTests(unittest.TestCase):\n    def test_exact_output(self) -> None:\n        self.assertEqual(greeting(\"Ada\"), \"Hello, Ada!\")\n\n    def test_argument_count(self) -> None:\n        self.assertEqual(main([]), 2)\n        self.assertEqual(main([\"Ada\", \"Lovelace\"]), 2)",
+          "quoted_text_sha256": "89ba7c413a0937905299b94b4035a587ec4bfa115036a15d464bab8a7500df72"
+        }
+      ]
+    },
+    {
+      "id": "F8",
+      "claim": "Existing tests do not exercise successful `main` output, stderr contents, command-line option parsing, or repetition behavior.",
+      "authority": "test",
+      "evidence": [
+        {
+          "path": "test_greet.py",
+          "line_start": 6,
+          "line_end": 12,
+          "quoted_text": "class GreetingTests(unittest.TestCase):\n    def test_exact_output(self) -> None:\n        self.assertEqual(greeting(\"Ada\"), \"Hello, Ada!\")\n\n    def test_argument_count(self) -> None:\n        self.assertEqual(main([]), 2)\n        self.assertEqual(main([\"Ada\", \"Lovelace\"]), 2)",
+          "quoted_text_sha256": "89ba7c413a0937905299b94b4035a587ec4bfa115036a15d464bab8a7500df72"
+        }
+      ]
+    }
+  ],
+  "conflicts": [
+    "No internal conflict found: the documented exactly-one-name interface in README.md:3-5 matches the implementation in greet.py:10-16."
+  ],
+  "unknowns": [
+    "The repository does not specify whether `--count` may appear before or after NAME, or whether both positions must work (greet.py:10-16; README.md:3-5).",
+    "The repository does not define behavior for a missing, non-integer, zero, or negative count, including expected stderr text and exit status (greet.py:10-16; README.md:3-5).",
+    "The repository does not define duplicate `--count` handling or `--count=value` syntax (greet.py:10-16; README.md:3-5).",
+    "The repository does not state how names beginning with `-` or `--` should be distinguished from options (greet.py:10-16; README.md:3-5).",
+    "No tests currently establish the exact output stream or line structure for repeated greetings (test_greet.py:6-12)."
+  ],
+  "repository_snapshot": {
+    "git_head": "4075238e1a158bc474dcc345cf1b951c4c1ccc3a",
+    "git_status_sha256": "28e6206eb68ded6119fbd77112de42e431500d48123cf91ed383ba1cf442d9b8",
+    "cited_file_sha256": {
+      "greet.py": "14cfff46292161057242f6938be7eaf3639dde9e80a4c2b4e35bc33d5a424108",
+      "README.md": "e5b2638ec1f68e4c0496664bd398e0e070e91b274895431a9f871548d44ed676",
+      "test_greet.py": "b8385a8b1b9c806acdc4af4a8050188ac4223100131704f210737a076726c70b"
+    }
+  }
+}

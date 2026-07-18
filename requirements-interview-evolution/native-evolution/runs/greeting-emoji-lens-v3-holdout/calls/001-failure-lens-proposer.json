@@ -1,0 +1,52 @@
+{
+  "role": "failure-lens-proposer",
+  "prompt_sha256": "c0d3842edee045dfd60df6f8a758b8ed8aca9942ed0171ae7e9a02980592a650",
+  "input": {
+    "seed_category": "Add an optional emoji marker before greeting output.",
+    "fixed_goal": "surface material ambiguity and produce an implementable requirements handoff"
+  },
+  "output": {
+    "lenses": [
+      {
+        "id": "discovery-optional-scope",
+        "stage": "discovery",
+        "failure_description": "The request leaves \"optional\" undefined, so different readers cannot tell whether the marker is controlled per call, per user setting, or by a static default.",
+        "observable_signal": "Two reasonable implementers describe different activation conditions for when the marker appears, while both claim to satisfy the request.",
+        "why_material": "The handoff is not implementable if the trigger for the optional behavior is unclear.",
+        "minimal_test_shape": "Ask for the greeting output in two cases: with the option enabled and with the option not enabled; if the expected control point cannot be stated unambiguously, discovery failed."
+      },
+      {
+        "id": "interaction-greeting-boundary",
+        "stage": "interaction",
+        "failure_description": "The boundary of what counts as the \"greeting output\" is not established, so participants talk past each other about whether the change applies to one phrase, multiple greeting variants, or any first-line salutation.",
+        "observable_signal": "Clarifying discussion repeatedly uses the term \"greeting\" without converging on a concrete set of affected outputs.",
+        "why_material": "A handoff cannot be implemented reliably when the target surface is ambiguous.",
+        "minimal_test_shape": "List three plausible greeting outputs and ask whether each should receive the marker; if answers are inconsistent or deferred, interaction failed."
+      },
+      {
+        "id": "synthesis-format-placement",
+        "stage": "synthesis",
+        "failure_description": "The synthesized requirement does not pin down externally visible formatting, including whether the marker is always exactly one emoji, where it is placed, and whether spacing is part of the output contract.",
+        "observable_signal": "A written requirement can be read as allowing multiple different rendered strings for the same greeting.",
+        "why_material": "Small formatting ambiguities change observable output and can cause downstream disagreement even when the code behaves consistently.",
+        "minimal_test_shape": "For one greeting string, compare candidate outputs that vary by emoji choice, position, or spacing; if more than one remains valid under the handoff, synthesis failed."
+      },
+      {
+        "id": "handoff-acceptance-gap",
+        "stage": "handoff",
+        "failure_description": "The handoff describes the requested change but omits acceptance conditions for disabled behavior, making it unclear what output must remain unchanged when the marker is not used.",
+        "observable_signal": "A recipient can restate the new behavior but cannot state a concrete before-and-after expectation for the disabled case.",
+        "why_material": "Without a baseline-preservation requirement, the implementable handoff is incomplete and invites unintended output changes.",
+        "minimal_test_shape": "Require two expected outputs for the same greeting: marker off and marker on; if only the enabled case is specified, handoff failed."
+      },
+      {
+        "id": "verification-edge-output",
+        "stage": "verification",
+        "failure_description": "Verification checks only a happy-path greeting and misses observable edge cases such as empty greeting text, existing leading symbols, or outputs that already begin with an emoji.",
+        "observable_signal": "Validation passes based on a single example, while reasonable adjacent cases have no stated expected output.",
+        "why_material": "A handoff that cannot be verified across obvious edge outputs is not materially complete for implementation.",
+        "minimal_test_shape": "Evaluate at least three outputs: plain greeting, greeting already starting with an emoji, and empty or whitespace-only greeting; if expected rendered results are absent, verification failed."
+      }
+    ]
+  }
+}
