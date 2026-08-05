@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "For both histtype='step' and histtype='stepfilled' with vertical orientation, density=True produces an area-one histogram and the autoscaled y-axis upper limit is greater than the maximum rendered density.",
+    "For both histtype='step' and histtype='stepfilled' with horizontal orientation, density=True produces an area-one histogram and the autoscaled x-axis upper limit is greater than the maximum rendered density.",
+    "Regression inputs are linear-scale, unstacked, and use the default zero baseline.",
+    "Rescaling input data may alter density heights according to NumPy semantics, but normalization remains correct and the dependent axis retains positive normal padding around the full histogram.",
+    "Existing histogram tests covering count values and geometry, stacking, nonzero bottom behavior, and logarithmic scales pass without regression.",
+    "The change introduces no public API modification and does not alter computed density values or step/stepfilled polygon geometry.",
+    "Autoscaling behavior outside the shared step-rendering branch remains unchanged."
+  ],
+  "confirmed_decisions": [
+    "The fix covers the shared step-rendering family: step and stepfilled histograms in vertical and horizontal orientations.",
+    "Autoscaled dependent-axis limits must exceed the maximum rendered density with normal Matplotlib padding; exact equality with bar-histogram limits is not required.",
+    "Input rescaling retains NumPy density behavior: density heights may change with units, while area-one normalization and complete autoscale fitting are required.",
+    "New explicit regression assertions cover ordinary linear, unstacked, zero-baseline density histograms.",
+    "Count, stacked, nonzero-bottom, and logarithmic-scale modes are compatibility boundaries verified through the existing regression suite rather than expanded new scenario tests.",
+    "The implementation must be confined to the shared step-rendering path and must preserve the public API, density values, and polygon geometry.",
+    "The owner approved this consolidated contract."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Fix the shared step-rendering path so density=True histograms using histtype='step' or histtype='stepfilled' autoscale with normal Matplotlib padding beyond the maximum rendered density in both vertical and horizontal orientations. Preserve NumPy density semantics: histogram area remains one and density heights may change when input units are rescaled. Add regression coverage for linear, unstacked, zero-baseline cases across both histogram types and orientations, asserting correct normalization and a dependent-axis limit that contains the full rendered histogram with positive normal padding. Existing count, stacked, nonzero-bottom, and logarithmic-scale behavior must remain regression-clean. The implementer may select the smallest internal correction after confirming the clipping cause, but must not change the public API, computed density values, polygon geometry, or autoscaling behavior outside the shared step-rendering branch. Compound density combinations are preservation-only and do not require new explicit assertions."
+}

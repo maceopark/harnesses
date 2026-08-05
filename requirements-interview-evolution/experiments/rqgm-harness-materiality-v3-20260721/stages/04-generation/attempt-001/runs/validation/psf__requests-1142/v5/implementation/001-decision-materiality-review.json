@@ -1,0 +1,170 @@
+{
+  "role": "decision-materiality-review",
+  "model": "gpt-5.6-sol",
+  "model_reasoning_effort": "medium",
+  "command": [
+    "codex",
+    "exec",
+    "--model",
+    "gpt-5.6-sol",
+    "-c",
+    "model_reasoning_effort=\"medium\"",
+    "--ephemeral",
+    "--sandbox",
+    "read-only",
+    "--skip-git-repo-check",
+    "--ignore-user-config",
+    "--color",
+    "never",
+    "--output-schema",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-decision-materiality-review-p5avhi5s/schema.json",
+    "--output-last-message",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-decision-materiality-review-p5avhi5s/output.json",
+    "-C",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-decision-materiality-review-p5avhi5s",
+    "<stdin>"
+  ],
+  "prompt": "Independently review every implementation decision. Logging a decision is never itself a defect. Mark it material only if the chosen option changes or contradicts an authorized initial user decision, crosses a product authority boundary by selecting user-visible behavior not delegated by the contract, or introduces high risk involving security, safety, data loss, irreversible migration, substantial cost, or broad compatibility. Internal, reversible, contract-admissible implementation choices are non-material. Set material to the logical OR of the three boundary flags and review every decision exactly once in input order.\nReturn only the JSON required by the supplied schema.\nINPUT:\n{\"audited_evidence\": {\"audit_summary\": \"All nine facts are directly supported by the cited repository files at base commit 22623bd8c265b78b161542663ee980738441c307.\", \"facts\": [{\"id\": \"F1\", \"line_end\": 55, \"line_start\": 47, \"path\": \"requests/api.py\", \"statement\": \"The public requests.get helper delegates to request('get', url, **kwargs), so GET requests enter the ordinary session request and preparation path.\"}, {\"id\": \"F2\", \"line_end\": 220, \"line_start\": 207, \"path\": \"requests/sessions.py\", \"statement\": \"Session.request defaults data to None, assigns that value to Request.data, and then prepares the Request before sending it.\"}, {\"id\": \"F3\", \"line_end\": 280, \"line_start\": 264, \"path\": \"requests/sessions.py\", \"statement\": \"Session.request assigns the HTTP method and data to the Request, calls req.prepare(), and sends the resulting PreparedRequest.\"}, {\"id\": \"F4\", \"line_end\": 227, \"line_start\": 216, \"path\": \"requests/models.py\", \"statement\": \"Request.prepare prepares headers before preparing the body, so body preparation can modify or replace caller-provided headers.\"}, {\"id\": \"F5\", \"line_end\": 386, \"line_start\": 332, \"path\": \"requests/models.py\", \"statement\": \"For a non-streaming request without truthy data or files, prepare_body leaves body as None and still calls prepare_content_length(body). This logic receives no HTTP-method argument and contains no GET-specific condition.\"}, {\"id\": \"F6\", \"line_end\": 395, \"line_start\": 388, \"path\": \"requests/models.py\", \"statement\": \"prepare_content_length always first sets Content-Length to '0'; it replaces that value only when the body is seekable or non-None. Consequently, a bodyless GET is prepared with Content-Length: 0.\"}, {\"id\": \"F7\", \"line_end\": 411, \"line_start\": 397, \"path\": \"requests/models.py\", \"statement\": \"When authentication is present, prepare_auth recomputes Content-Length after the authenticator modifies the prepared request, again using the unconditional prepare_content_length behavior.\"}, {\"id\": \"F8\", \"line_end\": 171, \"line_start\": 157, \"path\": \"requests/adapters.py\", \"statement\": \"The HTTP adapter passes the PreparedRequest headers directly to urllib3 when the request is not chunked, so the prepared Content-Length header reaches the transport layer.\"}, {\"id\": \"F9\", \"line_end\": 82, \"line_start\": 51, \"path\": \"test_requests.py\", \"statement\": \"Existing prepared-request tests exercise GET preparation and sending but assert URL, body, or response status rather than the presence or absence of Content-Length.\"}], \"scope_summary\": \"Inspected the supplied repository at base commit 22623bd8c265b78b161542663ee980738441c307. The existing request-preparation path unconditionally creates a zero-valued Content-Length header for bodyless, non-streaming requests, independently of the HTTP method.\", \"unknowns\": [\"The repository does not establish or verify the reported external behavior that amazon.com returns HTTP 503 specifically when a GET request contains Content-Length.\"]}, \"contract\": {\"acceptance_checks\": [\"Preparing a GET request with no body produces no Content-Length header.\", \"Preparing a GET request with empty or otherwise falsy data that results in body=None produces no automatically generated Content-Length header.\", \"Preparing a bodyless GET with an explicit Content-Length header preserves the caller-provided value.\", \"Preparing a GET with a non-empty body computes and sends the correct Content-Length.\", \"Preparing a bodyless GET with authentication does not reintroduce Content-Length: 0.\", \"Preparing a bodyless GET with authentication and an explicit Content-Length preserves the explicit value.\", \"Preparing bodyless HEAD and representative non-GET methods retains the existing automatic Content-Length: 0 behavior.\", \"Existing request-preparation and send tests continue to pass.\"], \"confirmed_decisions\": [\"Suppression applies only to GET; bodyless HEAD and other methods retain current behavior.\", \"Only the automatically generated Content-Length: 0 is suppressed.\", \"A caller-provided Content-Length on a bodyless GET is preserved.\", \"GET requests with a non-None body retain normal Content-Length computation.\", \"The behavior applies through ordinary Request and Session preparation, including the authentication recomputation path.\", \"No new public option or API parameter is required.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"Change request preparation so a bodyless GET does not receive an automatically generated Content-Length: 0 header. Preserve an explicitly supplied Content-Length header. Continue computing Content-Length for GET requests with a body, and retain existing behavior for HEAD and every other HTTP method. Ensure authentication-time Content-Length recomputation does not reintroduce the suppressed header or remove an explicit one.\"}, \"decisions\": [{\"choice\": \"Add a GET-specific bodyless guard inside PreparedRequest.prepare_content_length and focused unit tests in the existing test module.\", \"gap\": \"The contract specifies observable Content-Length behavior but not the internal conditional structure or exact regression-test placement.\", \"observable_impact\": \"Bodyless GET requests omit only an automatically generated Content-Length header, explicit GET values remain intact, body-bearing GET requests retain computed lengths, and other methods remain unchanged.\", \"options_considered\": [\"Add a GET-specific guard inside PreparedRequest.prepare_content_length and add focused unit tests\", \"Conditionally skip prepare_content_length from both prepare_body and prepare_auth\", \"Add a new public option controlling Content-Length generation\"], \"reason\": \"A method-aware guard inside PreparedRequest.prepare_content_length is the narrowest shared point covering ordinary preparation and authentication recomputation, while focused preparation tests can verify every contracted branch without network access.\", \"reversibility\": \"The change is localized to one helper and focused tests, so it can be reverted without API or data migration.\", \"timestamp\": \"2026-07-21T07:50:36Z\"}, {\"choice\": \"Use a temporary cgi compatibility shim outside the repository to continue focused tests without broadening the implementation.\", \"gap\": \"The repository targets legacy Python versions, but the available Python 3.13 runtime removed the cgi module and cannot collect the test suite unchanged.\", \"observable_impact\": \"There is no shipped behavior impact; the shim exists only during local test execution and lets the repository tests import under Python 3.13.\", \"options_considered\": [\"Run focused tests with a temporary cgi compatibility shim on PYTHONPATH\", \"Stop after the collection failure and report tests as unavailable\", \"Modify repository compatibility code for Python 3.13\"], \"reason\": \"A temporary out-of-repository compatibility shim allows focused behavioral verification without changing production code or adding a dependency solely for the local runner.\", \"reversibility\": \"The temporary shim is outside the repository and disappears after testing, leaving no project change to revert.\", \"timestamp\": \"2026-07-21T07:51:25Z\"}, {\"choice\": \"Add temporary MutableMapping and Callable aliases through sitecustomize and retry the focused tests.\", \"gap\": \"After restoring cgi compatibility, collection also fails because Python 3.13 no longer exposes legacy collection ABC aliases used by this historical codebase.\", \"observable_impact\": \"There is no shipped behavior impact; only the local Python 3.13 test process receives legacy collections aliases.\", \"options_considered\": [\"Add specific collections ABC aliases in temporary sitecustomize\", \"Modernize all repository imports for Python 3.13\", \"Abandon behavioral tests after the second collection incompatibility\"], \"reason\": \"Extending the temporary test-only compatibility layer with the specific legacy ABC aliases preserves the selected verification approach and avoids unrelated repository modernization.\", \"reversibility\": \"Deleting the temporary sitecustomize file fully removes the test-runner adaptation.\", \"timestamp\": \"2026-07-21T07:51:54Z\"}], \"public_request\": \"requests.get is ALWAYS sending content length\\nHi,\\n\\nIt seems like that request.get always adds 'content-length' header to the request.\\nI think that the right behavior is not to add this header automatically in GET requests or add the possibility to not send it.\\n\\nFor example http://amazon.com returns 503 for every get request that contains 'content-length' header.\\n\\nThanks,\\n\\nOren\\n\\n\"}",
+  "input": {
+    "public_request": "requests.get is ALWAYS sending content length\nHi,\n\nIt seems like that request.get always adds 'content-length' header to the request.\nI think that the right behavior is not to add this header automatically in GET requests or add the possibility to not send it.\n\nFor example http://amazon.com returns 503 for every get request that contains 'content-length' header.\n\nThanks,\n\nOren\n\n",
+    "contract": {
+      "acceptance_checks": [
+        "Preparing a GET request with no body produces no Content-Length header.",
+        "Preparing a GET request with empty or otherwise falsy data that results in body=None produces no automatically generated Content-Length header.",
+        "Preparing a bodyless GET with an explicit Content-Length header preserves the caller-provided value.",
+        "Preparing a GET with a non-empty body computes and sends the correct Content-Length.",
+        "Preparing a bodyless GET with authentication does not reintroduce Content-Length: 0.",
+        "Preparing a bodyless GET with authentication and an explicit Content-Length preserves the explicit value.",
+        "Preparing bodyless HEAD and representative non-GET methods retains the existing automatic Content-Length: 0 behavior.",
+        "Existing request-preparation and send tests continue to pass."
+      ],
+      "confirmed_decisions": [
+        "Suppression applies only to GET; bodyless HEAD and other methods retain current behavior.",
+        "Only the automatically generated Content-Length: 0 is suppressed.",
+        "A caller-provided Content-Length on a bodyless GET is preserved.",
+        "GET requests with a non-None body retain normal Content-Length computation.",
+        "The behavior applies through ordinary Request and Session preparation, including the authentication recomputation path.",
+        "No new public option or API parameter is required."
+      ],
+      "implementation_ready": true,
+      "open_material_decisions": [],
+      "summary": "Change request preparation so a bodyless GET does not receive an automatically generated Content-Length: 0 header. Preserve an explicitly supplied Content-Length header. Continue computing Content-Length for GET requests with a body, and retain existing behavior for HEAD and every other HTTP method. Ensure authentication-time Content-Length recomputation does not reintroduce the suppressed header or remove an explicit one."
+    },
+    "audited_evidence": {
+      "audit_summary": "All nine facts are directly supported by the cited repository files at base commit 22623bd8c265b78b161542663ee980738441c307.",
+      "facts": [
+        {
+          "id": "F1",
+          "line_end": 55,
+          "line_start": 47,
+          "path": "requests/api.py",
+          "statement": "The public requests.get helper delegates to request('get', url, **kwargs), so GET requests enter the ordinary session request and preparation path."
+        },
+        {
+          "id": "F2",
+          "line_end": 220,
+          "line_start": 207,
+          "path": "requests/sessions.py",
+          "statement": "Session.request defaults data to None, assigns that value to Request.data, and then prepares the Request before sending it."
+        },
+        {
+          "id": "F3",
+          "line_end": 280,
+          "line_start": 264,
+          "path": "requests/sessions.py",
+          "statement": "Session.request assigns the HTTP method and data to the Request, calls req.prepare(), and sends the resulting PreparedRequest."
+        },
+        {
+          "id": "F4",
+          "line_end": 227,
+          "line_start": 216,
+          "path": "requests/models.py",
+          "statement": "Request.prepare prepares headers before preparing the body, so body preparation can modify or replace caller-provided headers."
+        },
+        {
+          "id": "F5",
+          "line_end": 386,
+          "line_start": 332,
+          "path": "requests/models.py",
+          "statement": "For a non-streaming request without truthy data or files, prepare_body leaves body as None and still calls prepare_content_length(body). This logic receives no HTTP-method argument and contains no GET-specific condition."
+        },
+        {
+          "id": "F6",
+          "line_end": 395,
+          "line_start": 388,
+          "path": "requests/models.py",
+          "statement": "prepare_content_length always first sets Content-Length to '0'; it replaces that value only when the body is seekable or non-None. Consequently, a bodyless GET is prepared with Content-Length: 0."
+        },
+        {
+          "id": "F7",
+          "line_end": 411,
+          "line_start": 397,
+          "path": "requests/models.py",
+          "statement": "When authentication is present, prepare_auth recomputes Content-Length after the authenticator modifies the prepared request, again using the unconditional prepare_content_length behavior."
+        },
+        {
+          "id": "F8",
+          "line_end": 171,
+          "line_start": 157,
+          "path": "requests/adapters.py",
+          "statement": "The HTTP adapter passes the PreparedRequest headers directly to urllib3 when the request is not chunked, so the prepared Content-Length header reaches the transport layer."
+        },
+        {
+          "id": "F9",
+          "line_end": 82,
+          "line_start": 51,
+          "path": "test_requests.py",
+          "statement": "Existing prepared-request tests exercise GET preparation and sending but assert URL, body, or response status rather than the presence or absence of Content-Length."
+        }
+      ],
+      "scope_summary": "Inspected the supplied repository at base commit 22623bd8c265b78b161542663ee980738441c307. The existing request-preparation path unconditionally creates a zero-valued Content-Length header for bodyless, non-streaming requests, independently of the HTTP method.",
+      "unknowns": [
+        "The repository does not establish or verify the reported external behavior that amazon.com returns HTTP 503 specifically when a GET request contains Content-Length."
+      ]
+    },
+    "decisions": [
+      {
+        "timestamp": "2026-07-21T07:50:36Z",
+        "gap": "The contract specifies observable Content-Length behavior but not the internal conditional structure or exact regression-test placement.",
+        "reason": "A method-aware guard inside PreparedRequest.prepare_content_length is the narrowest shared point covering ordinary preparation and authentication recomputation, while focused preparation tests can verify every contracted branch without network access.",
+        "observable_impact": "Bodyless GET requests omit only an automatically generated Content-Length header, explicit GET values remain intact, body-bearing GET requests retain computed lengths, and other methods remain unchanged.",
+        "reversibility": "The change is localized to one helper and focused tests, so it can be reverted without API or data migration.",
+        "options_considered": [
+          "Add a GET-specific guard inside PreparedRequest.prepare_content_length and add focused unit tests",
+          "Conditionally skip prepare_content_length from both prepare_body and prepare_auth",
+          "Add a new public option controlling Content-Length generation"
+        ],
+        "choice": "Add a GET-specific bodyless guard inside PreparedRequest.prepare_content_length and focused unit tests in the existing test module."
+      },
+      {
+        "timestamp": "2026-07-21T07:51:25Z",
+        "gap": "The repository targets legacy Python versions, but the available Python 3.13 runtime removed the cgi module and cannot collect the test suite unchanged.",
+        "reason": "A temporary out-of-repository compatibility shim allows focused behavioral verification without changing production code or adding a dependency solely for the local runner.",
+        "observable_impact": "There is no shipped behavior impact; the shim exists only during local test execution and lets the repository tests import under Python 3.13.",
+        "reversibility": "The temporary shim is outside the repository and disappears after testing, leaving no project change to revert.",
+        "options_considered": [
+          "Run focused tests with a temporary cgi compatibility shim on PYTHONPATH",
+          "Stop after the collection failure and report tests as unavailable",
+          "Modify repository compatibility code for Python 3.13"
+        ],
+        "choice": "Use a temporary cgi compatibility shim outside the repository to continue focused tests without broadening the implementation."
+      },
+      {
+        "timestamp": "2026-07-21T07:51:54Z",
+        "gap": "After restoring cgi compatibility, collection also fails because Python 3.13 no longer exposes legacy collection ABC aliases used by this historical codebase.",
+        "reason": "Extending the temporary test-only compatibility layer with the specific legacy ABC aliases preserves the selected verification approach and avoids unrelated repository modernization.",
+        "observable_impact": "There is no shipped behavior impact; only the local Python 3.13 test process receives legacy collections aliases.",
+        "reversibility": "Deleting the temporary sitecustomize file fully removes the test-runner adaptation.",
+        "options_considered": [
+          "Add specific collections ABC aliases in temporary sitecustomize",
+          "Modernize all repository imports for Python 3.13",
+          "Abandon behavioral tests after the second collection incompatibility"
+        ],
+        "choice": "Add temporary MutableMapping and Callable aliases through sitecustomize and retry the focused tests."
+      }
+    ]
+  },
+  "exit_code": 0,
+  "stdout": "{\"schema\":\"DecisionMaterialityReview.v1\",\"reviews\":[{\"decision_index\":0,\"changes_initial_decision\":false,\"crosses_authority_boundary\":false,\"high_risk\":false,\"material\":false,\"reason\":\"The GET-specific guard and focused test placement are internal, reversible implementation choices that directly implement the authorized behavior and introduce no public API, user-visible behavior beyond the contract, or high-risk change.\"},{\"decision_index\":1,\"changes_initial_decision\":false,\"crosses_authority_boundary\":false,\"high_risk\":false,\"material\":false,\"reason\":\"The temporary out-of-repository cgi shim affects only local test execution, does not alter shipped behavior or repository compatibility policy, and is fully reversible.\"},{\"decision_index\":2,\"changes_initial_decision\":false,\"crosses_authority_boundary\":false,\"high_risk\":false,\"material\":false,\"reason\":\"The temporary sitecustomize aliases are a local, test-only compatibility measure with no shipped impact; they neither change an authorized decision nor select user-visible behavior or introduce high risk.\"}],\"summary\":\"All three decisions are internal, reversible, contract-admissible implementation or verification choices. None changes an initial decision, crosses a product authority boundary, or introduces high risk; therefore none is material.\"}\n",
+  "stderr": "OpenAI Codex v0.144.6\n--------\nworkdir: /var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-decision-materiality-review-p5avhi5s\nmodel: gpt-5.6-sol\nprovider: openai\napproval: never\nsandbox: read-only\nreasoning effort: medium\nreasoning summaries: none\nsession id: 019f83a9-b6c0-78b0-8e89-209adf35d084\n--------\nuser\nIndependently review every implementation decision. Logging a decision is never itself a defect. Mark it material only if the chosen option changes or contradicts an authorized initial user decision, crosses a product authority boundary by selecting user-visible behavior not delegated by the contract, or introduces high risk involving security, safety, data loss, irreversible migration, substantial cost, or broad compatibility. Internal, reversible, contract-admissible implementation choices are non-material. Set material to the logical OR of the three boundary flags and review every decision exactly once in input order.\nReturn only the JSON required by the supplied schema.\nINPUT:\n{\"audited_evidence\": {\"audit_summary\": \"All nine facts are directly supported by the cited repository files at base commit 22623bd8c265b78b161542663ee980738441c307.\", \"facts\": [{\"id\": \"F1\", \"line_end\": 55, \"line_start\": 47, \"path\": \"requests/api.py\", \"statement\": \"The public requests.get helper delegates to request('get', url, **kwargs), so GET requests enter the ordinary session request and preparation path.\"}, {\"id\": \"F2\", \"line_end\": 220, \"line_start\": 207, \"path\": \"requests/sessions.py\", \"statement\": \"Session.request defaults data to None, assigns that value to Request.data, and then prepares the Request before sending it.\"}, {\"id\": \"F3\", \"line_end\": 280, \"line_start\": 264, \"path\": \"requests/sessions.py\", \"statement\": \"Session.request assigns the HTTP method and data to the Request, calls req.prepare(), and sends the resulting PreparedRequest.\"}, {\"id\": \"F4\", \"line_end\": 227, \"line_start\": 216, \"path\": \"requests/models.py\", \"statement\": \"Request.prepare prepares headers before preparing the body, so body preparation can modify or replace caller-provided headers.\"}, {\"id\": \"F5\", \"line_end\": 386, \"line_start\": 332, \"path\": \"requests/models.py\", \"statement\": \"For a non-streaming request without truthy data or files, prepare_body leaves body as None and still calls prepare_content_length(body). This logic receives no HTTP-method argument and contains no GET-specific condition.\"}, {\"id\": \"F6\", \"line_end\": 395, \"line_start\": 388, \"path\": \"requests/models.py\", \"statement\": \"prepare_content_length always first sets Content-Length to '0'; it replaces that value only when the body is seekable or non-None. Consequently, a bodyless GET is prepared with Content-Length: 0.\"}, {\"id\": \"F7\", \"line_end\": 411, \"line_start\": 397, \"path\": \"requests/models.py\", \"statement\": \"When authentication is present, prepare_auth recomputes Content-Length after the authenticator modifies the prepared request, again using the unconditional prepare_content_length behavior.\"}, {\"id\": \"F8\", \"line_end\": 171, \"line_start\": 157, \"path\": \"requests/adapters.py\", \"statement\": \"The HTTP adapter passes the PreparedRequest headers directly to urllib3 when the request is not chunked, so the prepared Content-Length header reaches the transport layer.\"}, {\"id\": \"F9\", \"line_end\": 82, \"line_start\": 51, \"path\": \"test_requests.py\", \"statement\": \"Existing prepared-request tests exercise GET preparation and sending but assert URL, body, or response status rather than the presence or absence of Content-Length.\"}], \"scope_summary\": \"Inspected the supplied repository at base commit 22623bd8c265b78b161542663ee980738441c307. The existing request-preparation path unconditionally creates a zero-valued Content-Length header for bodyless, non-streaming requests, independently of the HTTP method.\", \"unknowns\": [\"The repository does not establish or verify the reported external behavior that amazon.com returns HTTP 503 specifically when a GET request contains Content-Length.\"]}, \"contract\": {\"acceptance_checks\": [\"Preparing a GET request with no body produces no Content-Length header.\", \"Preparing a GET request with empty or otherwise falsy data that results in body=None produces no automatically generated Content-Length header.\", \"Preparing a bodyless GET with an explicit Content-Length header preserves the caller-provided value.\", \"Preparing a GET with a non-empty body computes and sends the correct Content-Length.\", \"Preparing a bodyless GET with authentication does not reintroduce Content-Length: 0.\", \"Preparing a bodyless GET with authentication and an explicit Content-Length preserves the explicit value.\", \"Preparing bodyless HEAD and representative non-GET methods retains the existing automatic Content-Length: 0 behavior.\", \"Existing request-preparation and send tests continue to pass.\"], \"confirmed_decisions\": [\"Suppression applies only to GET; bodyless HEAD and other methods retain current behavior.\", \"Only the automatically generated Content-Length: 0 is suppressed.\", \"A caller-provided Content-Length on a bodyless GET is preserved.\", \"GET requests with a non-None body retain normal Content-Length computation.\", \"The behavior applies through ordinary Request and Session preparation, including the authentication recomputation path.\", \"No new public option or API parameter is required.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"Change request preparation so a bodyless GET does not receive an automatically generated Content-Length: 0 header. Preserve an explicitly supplied Content-Length header. Continue computing Content-Length for GET requests with a body, and retain existing behavior for HEAD and every other HTTP method. Ensure authentication-time Content-Length recomputation does not reintroduce the suppressed header or remove an explicit one.\"}, \"decisions\": [{\"choice\": \"Add a GET-specific bodyless guard inside PreparedRequest.prepare_content_length and focused unit tests in the existing test module.\", \"gap\": \"The contract specifies observable Content-Length behavior but not the internal conditional structure or exact regression-test placement.\", \"observable_impact\": \"Bodyless GET requests omit only an automatically generated Content-Length header, explicit GET values remain intact, body-bearing GET requests retain computed lengths, and other methods remain unchanged.\", \"options_considered\": [\"Add a GET-specific guard inside PreparedRequest.prepare_content_length and add focused unit tests\", \"Conditionally skip prepare_content_length from both prepare_body and prepare_auth\", \"Add a new public option controlling Content-Length generation\"], \"reason\": \"A method-aware guard inside PreparedRequest.prepare_content_length is the narrowest shared point covering ordinary preparation and authentication recomputation, while focused preparation tests can verify every contracted branch without network access.\", \"reversibility\": \"The change is localized to one helper and focused tests, so it can be reverted without API or data migration.\", \"timestamp\": \"2026-07-21T07:50:36Z\"}, {\"choice\": \"Use a temporary cgi compatibility shim outside the repository to continue focused tests without broadening the implementation.\", \"gap\": \"The repository targets legacy Python versions, but the available Python 3.13 runtime removed the cgi module and cannot collect the test suite unchanged.\", \"observable_impact\": \"There is no shipped behavior impact; the shim exists only during local test execution and lets the repository tests import under Python 3.13.\", \"options_considered\": [\"Run focused tests with a temporary cgi compatibility shim on PYTHONPATH\", \"Stop after the collection failure and report tests as unavailable\", \"Modify repository compatibility code for Python 3.13\"], \"reason\": \"A temporary out-of-repository compatibility shim allows focused behavioral verification without changing production code or adding a dependency solely for the local runner.\", \"reversibility\": \"The temporary shim is outside the repository and disappears after testing, leaving no project change to revert.\", \"timestamp\": \"2026-07-21T07:51:25Z\"}, {\"choice\": \"Add temporary MutableMapping and Callable aliases through sitecustomize and retry the focused tests.\", \"gap\": \"After restoring cgi compatibility, collection also fails because Python 3.13 no longer exposes legacy collection ABC aliases used by this historical codebase.\", \"observable_impact\": \"There is no shipped behavior impact; only the local Python 3.13 test process receives legacy collections aliases.\", \"options_considered\": [\"Add specific collections ABC aliases in temporary sitecustomize\", \"Modernize all repository imports for Python 3.13\", \"Abandon behavioral tests after the second collection incompatibility\"], \"reason\": \"Extending the temporary test-only compatibility layer with the specific legacy ABC aliases preserves the selected verification approach and avoids unrelated repository modernization.\", \"reversibility\": \"Deleting the temporary sitecustomize file fully removes the test-runner adaptation.\", \"timestamp\": \"2026-07-21T07:51:54Z\"}], \"public_request\": \"requests.get is ALWAYS sending content length\\nHi,\\n\\nIt seems like that request.get always adds 'content-length' header to the request.\\nI think that the right behavior is not to add this header automatically in GET requests or add the possibility to not send it.\\n\\nFor example http://amazon.com returns 503 for every get request that contains 'content-length' header.\\n\\nThanks,\\n\\nOren\\n\\n\"}\ncodex\n{\"schema\":\"DecisionMaterialityReview.v1\",\"reviews\":[{\"decision_index\":0,\"changes_initial_decision\":false,\"crosses_authority_boundary\":false,\"high_risk\":false,\"material\":false,\"reason\":\"The GET-specific guard and focused test placement are internal, reversible implementation choices that directly implement the authorized behavior and introduce no public API, user-visible behavior beyond the contract, or high-risk change.\"},{\"decision_index\":1,\"changes_initial_decision\":false,\"crosses_authority_boundary\":false,\"high_risk\":false,\"material\":false,\"reason\":\"The temporary out-of-repository cgi shim affects only local test execution, does not alter shipped behavior or repository compatibility policy, and is fully reversible.\"},{\"decision_index\":2,\"changes_initial_decision\":false,\"crosses_authority_boundary\":false,\"high_risk\":false,\"material\":false,\"reason\":\"The temporary sitecustomize aliases are a local, test-only compatibility measure with no shipped impact; they neither change an authorized decision nor select user-visible behavior or introduce high risk.\"}],\"summary\":\"All three decisions are internal, reversible, contract-admissible implementation or verification choices. None changes an initial decision, crosses a product authority boundary, or introduces high risk; therefore none is material.\"}\ntokens used\n23,713\n"
+}

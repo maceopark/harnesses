@@ -1,0 +1,56 @@
+diff --git a/astropy/io/fits/diff.py b/astropy/io/fits/diff.py
+index 100cdf1..d3608ef 100644
+--- a/astropy/io/fits/diff.py
++++ b/astropy/io/fits/diff.py
+@@ -1449,7 +1449,7 @@ class TableDataDiff(_BaseDiff):
+                 arrb.dtype, np.floating
+             ):
+                 diffs = where_not_allclose(arra, arrb, rtol=self.rtol, atol=self.atol)
+-            elif "P" in col.format:
++            elif "P" in col.format or "Q" in col.format:
+                 diffs = (
+                     [
+                         idx
+diff --git a/astropy/io/fits/tests/test_diff.py b/astropy/io/fits/tests/test_diff.py
+index adfebe6..5bde91f 100644
+--- a/astropy/io/fits/tests/test_diff.py
++++ b/astropy/io/fits/tests/test_diff.py
+@@ -419,6 +419,38 @@ class TestDiff(FitsTestCase):
+         assert diff.diff_ratio == 0
+         assert diff.diff_total == 0
+ 
++    @pytest.mark.parametrize("vla_format", ["PD", "QD"])
++    def test_vla_table_data(self, vla_format):
++        ta = BinTableHDU.from_columns(
++            [Column("a", format=vla_format, array=[[0.0], [0.0, 0.0]])]
++        )
++        tb = BinTableHDU.from_columns(
++            [Column("a", format=vla_format, array=[[0.0], [0.0, 1.0]])]
++        )
++
++        equal = TableDataDiff(ta.data, ta.data.copy())
++        assert equal.identical
++        assert equal.diff_total == 0
++
++        different = TableDataDiff(ta.data, tb.data)
++        assert not different.identical
++        assert different.diff_total == 1
++        assert different.diff_values[0][0] == ("a", 1)
++
++        within_tolerance = TableDataDiff(ta.data, tb.data, atol=1.0)
++        assert within_tolerance.identical
++
++    def test_q_vla_file_self_comparison(self):
++        filename = self.temp("q-vla.fits")
++        hdu = BinTableHDU.from_columns(
++            [Column("a", format="QD", array=[[0], [0, 0]])]
++        )
++        hdu.writeto(filename)
++
++        diff = FITSDiff(filename, filename)
++        assert diff.identical
++        assert "different table data element(s)" not in diff.report()
++
+     def test_diff_empty_tables(self):
+         """
+         Regression test for https://aeon.stsci.edu/ssb/trac/pyfits/ticket/178

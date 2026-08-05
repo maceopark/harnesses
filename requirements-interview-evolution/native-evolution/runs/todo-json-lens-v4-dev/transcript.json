@@ -1,0 +1,160 @@
+[
+  {
+    "turn": 1,
+    "open_material_decisions": [
+      "Empty JSON result representation and whether it emits output.",
+      "JSON serialization defaults: compact versus indented output, newline termination, and whether key order is contractual.",
+      "JSON top-level shape: bare array versus an object containing tasks or metadata.",
+      "Whether --json is list-local only or also accepted before the subcommand."
+    ],
+    "question": {
+      "header": "JSON shape",
+      "prompt": "What top-level JSON shape should `todo list --json` emit? This becomes the machine-consumer compatibility contract.",
+      "options": [
+        {
+          "label": "Bare array",
+          "description": "Emit task records directly, such as `[{\"id\":1,...}]`; this is simplest and naturally represents an empty result as `[]`.",
+          "recommended": true
+        },
+        {
+          "label": "Tasks object",
+          "description": "Emit `{\"tasks\":[...]}`, allowing metadata to be added later but introducing an extra access layer.",
+          "recommended": false
+        },
+        {
+          "label": "Metadata object",
+          "description": "Emit a structured object containing tasks plus fields such as count or active filters, widening the requested output contract.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "{\"selected\":\"Bare array\",\"answer\":\"Emit a bare JSON array of task objects, with no `tasks` wrapper or metadata. Represent an empty result as `[]`.\"}"
+  },
+  {
+    "turn": 2,
+    "open_material_decisions": [
+      "JSON serialization defaults: compact versus indented output, newline termination, and whether object key order is contractual.",
+      "Whether --json is list-local only or also accepted before the subcommand.",
+      "Whether JSON records use the same exact-match filters and post-filter sort order as text output."
+    ],
+    "question": {
+      "header": "Record order",
+      "prompt": "Should `todo list --json` contain exactly the records that text mode would list, in the same filtered and sorted order? This determines whether changing only the output format preserves list semantics for automation.",
+      "options": [
+        {
+          "label": "Same semantics",
+          "description": "Apply the existing filters and sort order, then serialize those task records; only the presentation format changes.",
+          "recommended": true
+        },
+        {
+          "label": "Filter only",
+          "description": "Apply existing filters but emit records in store order, making JSON ordering differ from text output.",
+          "recommended": false
+        },
+        {
+          "label": "Store order",
+          "description": "Emit all stored records in storage order regardless of list filters or text sorting, widening the flag’s behavior.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "{\"selected\":\"Same semantics\",\"answer\":\"Yes. Apply the existing filters and sort order, then serialize exactly those task records in the same order; only the presentation format changes.\"}"
+  },
+  {
+    "turn": 3,
+    "open_material_decisions": [
+      "JSON serialization format: compact versus indented output, newline termination, and whether object key order is contractual.",
+      "Whether --json is list-local only or also accepted before the subcommand."
+    ],
+    "question": {
+      "header": "JSON format",
+      "prompt": "Which serialization contract should `todo list --json` use? This determines the exact bytes automation and tests can expect.",
+      "options": [
+        {
+          "label": "Compact defaults",
+          "description": "Emit one compact JSON array followed by a newline, use standard JSON escaping, and treat object key order as non-contractual while retaining the five existing fields.",
+          "recommended": true
+        },
+        {
+          "label": "Pretty printed",
+          "description": "Emit an indented multi-line JSON array followed by a newline, with standard escaping and non-contractual key order.",
+          "recommended": false
+        },
+        {
+          "label": "Exact ordered keys",
+          "description": "Emit compact newline-terminated JSON and contractually require each record’s keys in id, title, done, due, priority order.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "{\"selected\":\"Exact ordered keys\",\"answer\":\"Emit compact, single-line JSON followed by exactly one newline. Use standards-compliant JSON escaping, and serialize each record’s keys in the stable order `id`, `title`, `done`, `due`, `priority`.\"}"
+  },
+  {
+    "turn": 4,
+    "open_material_decisions": [
+      "Whether `--json` is accepted only after the `list` subcommand or also before it as a global option."
+    ],
+    "question": {
+      "header": "Flag scope",
+      "prompt": "Where should `--json` be accepted? This determines whether the new behavior stays scoped to `list` or expands the CLI’s global option surface.",
+      "options": [
+        {
+          "label": "List-local only",
+          "description": "Accept `todo list --json` and reject `todo --json list`; this matches the request and keeps the flag attached to the only command it affects.",
+          "recommended": true
+        },
+        {
+          "label": "Both positions",
+          "description": "Accept both `todo list --json` and `todo --json list`, adding a global parser option solely for list output.",
+          "recommended": false
+        },
+        {
+          "label": "Global only",
+          "description": "Accept `todo --json list` but reject `todo list --json`, which is less conventional for a command-specific output option.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "{\"selected\":\"List-local only\",\"answer\":\"Accept `todo list --json` and reject `todo --json list`; keep the flag scoped to the `list` subcommand.\"}"
+  },
+  {
+    "turn": 5,
+    "interviewer": {
+      "action": "complete",
+      "reason": "All material decisions are confirmed, and the audited repository evidence plus the interview answers define an implementation-ready, testable contract.",
+      "open_material_decisions": [],
+      "question": null,
+      "contract": {
+        "summary": "Preserve all existing `todo list` behavior and add a list-local `--json` output mode for automation. `todo list --json` must apply the existing exact-match filters and existing post-filter sort order, then emit a bare JSON array containing the same tasks in the same order. Each task object must contain exactly `id`, `title`, `done`, `due`, and `priority` in that contractual key order, preserving native JSON types. Output must be compact, standards-compliantly escaped, single-line JSON followed by exactly one newline; an empty result must emit `[]\\n`. Existing text output, errors, exit codes, storage behavior, and other commands remain unchanged. `todo --json list` is out of scope and must be rejected by argument parsing. Implementation is authorized by the public change request.",
+        "implementation_ready": true,
+        "confirmed_decisions": [
+          "The JSON top-level value is a bare array with no wrapper or metadata.",
+          "An empty filtered result emits `[]` followed by exactly one newline.",
+          "JSON mode uses the same exact-match priority and due filters as text mode, including combined filters.",
+          "JSON mode uses the same post-filter sort order as text mode.",
+          "Each JSON task contains exactly the five existing fields: `id`, `title`, `done`, `due`, and `priority`.",
+          "Task fields preserve their native JSON-compatible types, including Boolean `done` and nullable `due`.",
+          "Each task object's key order is contractually `id`, `title`, `done`, `due`, `priority`.",
+          "Serialization is compact and single-line, uses standards-compliant JSON escaping, and ends with exactly one newline.",
+          "The flag is accepted only as `todo list --json`; it is not a global option and `todo --json list` remains invalid.",
+          "Existing human-readable list output and all existing filtering, sorting, failure, exit-code, and non-mutating storage behavior must be preserved.",
+          "No metadata, global JSON mode, new task fields, dependency additions, or changes to other commands are in scope."
+        ],
+        "open_material_decisions": [],
+        "acceptance_checks": [
+          "`todo list --json` emits a compact bare array followed by exactly one newline.",
+          "A missing or empty store with `todo list --json` emits exactly `[]\\n`, exits 0, writes no stderr, and does not create the store file.",
+          "JSON task objects have keys in the exact order `id`, `title`, `done`, `due`, `priority` and preserve integer, string, Boolean, null/string, and string types respectively.",
+          "Titles and other strings containing quotes, backslashes, tabs, newlines, or other control characters produce valid standards-compliant JSON.",
+          "`todo list --json --priority high --due 2026-07-10` returns only tasks matching both filters, in the existing list sort order.",
+          "Text-mode tests continue to pass unchanged, including the exact row `1\\t[ ]\\thigh\\t-\\talpha\\n` and empty-list no-output behavior.",
+          "`todo --json list` is rejected with the existing argument-parsing usage behavior and exit code 2.",
+          "Invalid list due-date syntax still returns exit code 2.",
+          "A corrupt store in JSON mode returns exit code 3, reports the error on stderr, and leaves the store byte-for-byte unchanged.",
+          "The project retains its standard-library-only runtime constraint and adds no dependency.",
+          "The complete existing test suite and new focused JSON-output tests pass."
+        ]
+      }
+    }
+  }
+]

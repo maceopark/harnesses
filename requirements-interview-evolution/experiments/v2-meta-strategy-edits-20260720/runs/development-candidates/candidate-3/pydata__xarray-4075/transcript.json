@@ -1,0 +1,120 @@
+[
+  {
+    "answer": "Shared path (Recommended)",
+    "open_material_decisions": [
+      "Whether boolean weights must be treated as numeric 0/1 throughout the shared sum-of-weights path for both DataArray and Dataset, or only for the reported DataArray weighted-mean case."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Treat boolean weights as numeric 0/1 in sum_of_weights and mean for both DataArray and Dataset, while preserving existing numeric-weight behavior.",
+          "label": "Shared path (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Require correct boolean-weight sum_of_weights and mean only for DataArray; Dataset behavior is outside the contract.",
+          "label": "DataArray operations",
+          "recommended": false
+        },
+        {
+          "description": "Require only the scalar DataArray weighted-mean MCVE to return 1.0, without broader boolean-weight guarantees.",
+          "label": "Reported case only",
+          "recommended": false
+        }
+      ],
+      "prompt": "What compatibility boundary should the implementation contract require for boolean weights?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Integer count (Recommended)",
+    "open_material_decisions": [
+      "Whether sum_of_weights computed from boolean weights must return an integer count or may return another numeric dtype, provided values and weighted means are correct."
+    ],
+    "question": {
+      "header": "Result dtype",
+      "options": [
+        {
+          "description": "Require boolean weights to behave as 0/1 and sum_of_weights to return an integer count, matching the issue’s proposed conversion and example.",
+          "label": "Integer count (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Require correct numeric values and means, but allow integer or floating-point sum_of_weights results.",
+          "label": "Any numeric dtype",
+          "recommended": false
+        },
+        {
+          "description": "Permit boolean-typed sum_of_weights if its values somehow remain numerically correct, which offers the weakest dtype guarantee.",
+          "label": "Preserve boolean dtype",
+          "recommended": false
+        }
+      ],
+      "prompt": "What dtype contract should apply to sum_of_weights when weights are boolean?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve (Recommended)",
+    "open_material_decisions": [
+      "Owner approval of the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with no remaining material decisions.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Continue clarification because the required observable behavior or compatibility boundary needs changes.",
+          "label": "Revise behavior",
+          "recommended": false
+        },
+        {
+          "description": "Keep the behavior but change the required acceptance coverage before approval.",
+          "label": "Revise tests",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: in the shared DataArray/Dataset weighted path, boolean weights behave as numeric 0/1; sum_of_weights returns integer counts, excluding weights where data are missing and preserving existing zero-total-to-missing behavior; weighted mean uses that corrected denominator, so the reported [1,1,1] with [True,True,False] returns 1.0; existing numeric-weight behavior remains unchanged. Acceptance requires focused tests covering boolean sum_of_weights and mean through both DataArray and Dataset, including missing-data masking and zero-total behavior. Implementation details may be chosen by the implementer within xarray/core/weighted.py without changing the public API or globally changing xarray.dot/einsum semantics. Residual risk is limited to backend-specific integer dtype width; exact integer width is not contracted."
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "The reported DataArray case with values [1.0, 1.0, 1.0] and weights [True, True, False] returns a weighted mean of 1.0.",
+          "Focused DataArray tests verify boolean-weight sum_of_weights returns the correct integer count and weighted mean uses that denominator.",
+          "Focused Dataset tests verify the same boolean-weight sum_of_weights and mean behavior through the shared path.",
+          "Tests verify boolean weights corresponding to missing data are excluded from sum_of_weights.",
+          "Tests verify an all-false or otherwise zero-total boolean weight result retains the existing missing-result behavior.",
+          "Existing numeric-weight tests continue to pass unchanged.",
+          "No public API changes or global dot/einsum semantic changes are introduced."
+        ],
+        "confirmed_decisions": [
+          "Apply the fix through the shared weighted path for both DataArray and Dataset.",
+          "Treat boolean weights as numeric 0/1 for sum_of_weights and weighted mean.",
+          "Require sum_of_weights from boolean weights to have an integer dtype, without requiring a specific integer width.",
+          "Exclude weights where corresponding data values are missing.",
+          "Preserve zero-total-to-missing behavior.",
+          "Preserve existing behavior for numeric weights.",
+          "Do not change the public weighted API.",
+          "Do not globally change xarray.dot or einsum semantics.",
+          "Allow the implementer to choose the specific localized implementation within xarray/core/weighted.py."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "In the shared DataArray/Dataset weighted-reduction path, boolean weights must behave as numeric 0/1. For boolean weights, sum_of_weights must produce integer counts, exclude weights corresponding to missing data, and preserve the existing behavior that converts a zero total to missing. Weighted mean must use the corrected denominator, so DataArray([1.0, 1.0, 1.0]).weighted(DataArray([True, True, False])).mean() returns 1.0. Existing numeric-weight behavior must remain unchanged. The implementation is bounded to xarray/core/weighted.py; it must not change the public API or globally alter xarray.dot/einsum semantics. Exact backend-specific integer width is not contracted."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the proposed contract, and no material decisions remain unresolved."
+    },
+    "turn": 4
+  }
+]

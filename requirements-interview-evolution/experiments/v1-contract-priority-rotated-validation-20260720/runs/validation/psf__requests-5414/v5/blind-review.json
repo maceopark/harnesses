@@ -1,0 +1,30 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/summary",
+          "quoted_value": "At base commit 39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e, change PreparedRequest.prepare_url so an ASCII hostname beginning with '.' is rejected during request preparation with requests.exceptions.InvalidURL and exactly the message 'URL has an invalid label.'. Add focused regression coverage for preparing 'http://.example.com'. Preserve behavior for every other hostname form, including consecutive dots and trailing dots. Make no dependency or adapter changes. Implementation may choose the smallest repository-consistent conditional and test placement, but must not broaden hostname validation. The acknowledged residual risk is that downstream dependencies may reject other malformed ASCII labels differently; that behavior is intentionally outside scope."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/3",
+          "quoted_value": "No validation is added for consecutive-dot or trailing-dot hostnames."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        }
+      ],
+      "description": "Implementation readiness is materially overstated because acceptance cannot verify the contract's universal promise to preserve behavior for every hostname form other than a leading-dot ASCII hostname. The checks cover the target regression and name consecutive-dot and trailing-dot cases, but provide no bounded or executable criterion for the broader compatibility claim.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The contract makes a universal compatibility guarantee but supplies checks for only two example hostname forms, so its stated preservation requirement cannot be established by the acceptance suite.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "The summary requires unchanged behavior for every other hostname form, while the only compatibility-oriented acceptance check merely prohibits added validation for consecutive-dot and trailing-dot hostnames."
+    }
+  ],
+  "summary": "One material readiness failure: the contract's universal compatibility guarantee is broader than its verifiable acceptance coverage."
+}

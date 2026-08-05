@@ -1,0 +1,53 @@
+[
+  {
+    "answer": "All weighted operations",
+    "open_material_decisions": [
+      "Whether boolean weights must behave as numeric 0/1 weights across the weighted API or only for weighted mean."
+    ],
+    "question": {
+      "header": "Boolean scope",
+      "options": [
+        {
+          "description": "Boolean weights behave as 0/1 for weighted mean, sum, and sum_of_weights on DataArray and Dataset objects.",
+          "label": "All weighted operations",
+          "recommended": true
+        },
+        {
+          "description": "Guarantee the corrected behavior only for weighted mean, leaving other weighted operations outside scope.",
+          "label": "Weighted mean only",
+          "recommended": false
+        }
+      ],
+      "prompt": "How broadly should boolean weights be treated as numeric 0/1 weights?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A weighted mean of [1.0, 1.0, 1.0] using boolean weights [true, true, false] equals 1.0.",
+          "Weighted sum with boolean weights produces the same observable result as using equivalent integer 0/1 weights.",
+          "sum_of_weights with boolean weights produces the same observable result as using equivalent integer 0/1 weights, including masking data values that are excluded by existing missing-data semantics.",
+          "DataArray and Dataset weighted operations produce results equivalent to integer 0/1 weights when supplied corresponding boolean weights.",
+          "Existing numeric-weight behavior, including a missing result when the total effective weight is zero, remains unchanged."
+        ],
+        "confirmed_decisions": [
+          "Apply the correction to all weighted operations, including weighted sum, sum_of_weights, and weighted mean.",
+          "Apply the behavior to both DataArray and Dataset weighted operations.",
+          "Treat boolean false and true weights as numeric 0 and 1 respectively.",
+          "For the reported example with data [1.0, 1.0, 1.0] and weights [true, true, false], weighted mean returns 1.0 rather than 2.0.",
+          "Preserve existing behavior for non-boolean weights and all unrelated weighted-operation semantics."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Boolean DataArray weights must behave as numeric 0/1 weights across the weighted API for both DataArray and Dataset objects. In particular, enabled values contribute their data value and one unit of weight, disabled values contribute neither; weighted mean must therefore divide by the count/sum of enabled valid weights. Existing missing-data, dimension-selection, skipna, alignment, and zero-total-weight semantics remain unchanged."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The supplied repository evidence identifies the failure path, and the interview answer resolves the only material scope decision. The contract is implementable without inventing additional behavior."
+    },
+    "turn": 2
+  }
+]

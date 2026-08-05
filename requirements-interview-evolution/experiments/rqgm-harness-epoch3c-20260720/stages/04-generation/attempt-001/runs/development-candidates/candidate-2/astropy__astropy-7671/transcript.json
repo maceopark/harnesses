@@ -1,0 +1,36 @@
+[
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A synthetic or real module reporting version `1.14.3` compared with requirement `1.14dev` through `minversion` returns `True` and does not raise `TypeError`.",
+          "The regression is covered through the public `minversion` behavior.",
+          "Inclusive equality returns `True`, while the same equality check with `inclusive=False` returns `False`.",
+          "The pre-existing passing cases `0.12`, `0.12.1`, and `0.12.0.dev` against installed version `0.12.2` still return `True`.",
+          "The pre-existing failing cases `1` and `1.2rc1` against installed version `0.12.2` still return `False`.",
+          "Calling with a missing module-name string still returns `False`; calling with an unsupported module argument still raises `ValueError`.",
+          "Version retrieval through both a direct attribute and a dotted `version_path` continues to work.",
+          "Astropy's existing NumPy compatibility thresholds and startup minimum-version check remain operational without comparison exceptions."
+        ],
+        "confirmed_decisions": [
+          "`minversion` must not raise the reported `TypeError` when comparing an installed three-component release such as `1.14.3` with a requested development version such as `1.14dev`.",
+          "For an installed version of `1.14.3`, the requirement `1.14dev` is satisfied and `minversion` returns `True`.",
+          "The existing public API remains available as `astropy.utils.minversion` with the current `module`, `version`, `inclusive`, and `version_path` parameters.",
+          "Both inclusive and exclusive modes continue to mean installed version greater than or equal to, and strictly greater than, the requested version respectively.",
+          "Existing module resolution behavior remains unchanged: imported modules and module-name strings are accepted, an unavailable named module returns `False`, and unsupported module argument types raise `ValueError`.",
+          "Existing direct and dotted `version_path` lookup behavior remains unchanged.",
+          "Existing successful and unsuccessful comparisons covered by `test_minversion`, along with Astropy's import-time NumPy minimum-version checks, must continue to produce their current outcomes.",
+          "The contract requires observable comparison behavior, not a particular version-parsing library or implementation mechanism."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Correct `astropy.utils.minversion` so supported version strings are compared without the `LooseVersion` mixed-type failure. In particular, when an installed module reports version `1.14.3`, `minversion(module, '1.14dev')` returns `True` instead of raising `TypeError`. Preserve the public function signature, module-name and imported-module inputs, `version_path` behavior, missing-module result, invalid-module error behavior, and inclusive/exclusive comparison semantics."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The reported failure, affected public API, expected outcome, and compatibility boundaries are sufficiently specified by the request and audited repository evidence; no material product decision remains open."
+    },
+    "turn": 1
+  }
+]

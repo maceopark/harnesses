@@ -1,0 +1,60 @@
+[
+  {
+    "answer": "Only if explicitly matched",
+    "open_material_decisions": [
+      "Package-import boundary during recursive directory collection"
+    ],
+    "question": {
+      "header": "Package import",
+      "options": [
+        {
+          "description": "Import or collect __init__.py only when it is an explicit initial path or matches python_files; merely containing test files does not trigger import.",
+          "label": "Only if explicitly matched",
+          "recommended": true
+        },
+        {
+          "description": "Import __init__.py when the package contains files matching python_files, but do not import packages with no matching tests.",
+          "label": "When tests exist",
+          "recommended": false
+        },
+        {
+          "description": "Never import __init__.py during recursive discovery, even if it matches python_files; require the file to be passed explicitly.",
+          "label": "Never implicitly",
+          "recommended": false
+        }
+      ],
+      "prompt": "During recursive directory collection, when should pytest import a package’s __init__.py?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Running pytest from a directory containing foobar/__init__.py with assert False and no matching tests in that package does not import foobar and does not raise a collection error under default python_files settings.",
+          "Recursively discovering ordinary test_*.py or *_test.py files inside a package does not by itself import that package's non-matching __init__.py during package-root discovery.",
+          "With python_files = *.py, a recursively discovered package __init__.py is imported and tests defined in it are collected.",
+          "Passing a package __init__.py explicitly preserves existing direct-argument behavior: under default patterns its tests are not collected, while with python_files = *.py its tests are collected.",
+          "Existing collection tests covering package discovery, explicit __init__.py arguments, --pyargs/testpaths, collect_ignore, duplicate handling, and normal package-contained test modules continue to pass.",
+          "Add a regression test reproducing the reported failure and proving that an arbitrary non-matching __init__.py beneath the collection directory is not imported."
+        ],
+        "confirmed_decisions": [
+          "Recursive discovery must not import arbitrary __init__.py files that do not match python_files.",
+          "An explicitly supplied __init__.py remains eligible for package import even when it does not match the default python_files patterns.",
+          "A recursively discovered __init__.py remains eligible when it matches a user-configured python_files pattern such as *.py.",
+          "Package initialization and collecting tests defined inside __init__.py remain distinct: tests inside the file run only when python_files matches it.",
+          "Existing pytest_ignore_collect and collect_ignore behavior for non-initial paths must remain effective.",
+          "The fix should target the package-discovery/collector creation boundary rather than changing the default python_files patterns."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Restore pre-5.2.3 recursive discovery behavior so an encountered package __init__.py is not imported merely because pytest needs package structure for files below it. During recursive directory collection, import or collect __init__.py only when it is an explicitly supplied initial path or its filename matches the configured python_files patterns. Preserve explicit-path behavior and custom python_files support."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested behavior and success criteria are sufficiently resolved by the repository evidence and the confirmed package-import boundary; no material ambiguity remains."
+    },
+    "turn": 2
+  }
+]

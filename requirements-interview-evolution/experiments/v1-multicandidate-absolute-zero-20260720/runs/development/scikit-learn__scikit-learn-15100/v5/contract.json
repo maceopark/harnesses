@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "`strip_accents_unicode('ñ') == 'n'`.",
+    "`strip_accents_unicode('n\\u0303') == 'n'`.",
+    "A `CountVectorizer` configured with `strip_accents='unicode'` treats document forms containing composed `ñ` and decomposed `n\\u0303` equivalently after preprocessing or analysis.",
+    "Existing composed Latin, Arabic, mixed-text, and vectorizer accent-stripping behavior remains covered and passing.",
+    "Focused tests for `sklearn/feature_extraction/tests/test_text.py` pass.",
+    "`strip_accents_ascii` remains unchanged."
+  ],
+  "confirmed_decisions": [
+    "Always apply combining-character removal after NFKD normalization; do not retain the normalization-equality early return.",
+    "Remove all characters for which `unicodedata.combining` is nonzero, including combining marks already present in NFKD input.",
+    "Preserve current results for precomposed accented inputs.",
+    "Do not modify `strip_accents_ascii`.",
+    "Cover both direct helper behavior and integration through `CountVectorizer(strip_accents='unicode')`.",
+    "Use composed `ñ` and decomposed `n\\u0303` as the core equivalence regression case.",
+    "Accept the bounded cross-script behavior change for already-NFKD inputs containing combining marks."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update `strip_accents_unicode` so it always NFKD-normalizes its input and removes every Unicode combining character, including when the original input is already in NFKD form. Preserve existing behavior for precomposed accents and leave `strip_accents_ascii` unchanged. Add regression coverage proving composed `ñ` and decomposed `n\\u0303` both produce `n`, and proving `CountVectorizer(strip_accents='unicode')` treats document forms containing them equivalently. Run the focused feature-extraction text tests. The intentional compatibility boundary is limited to inputs whose NFKD form contains combining characters that the current equality-based early return leaves intact. Other already-NFKD scripts containing combining marks may consequently change, consistently with the function's documented general Unicode accent-removal behavior."
+}

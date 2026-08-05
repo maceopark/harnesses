@@ -1,0 +1,65 @@
+[
+  {
+    "answer": "First non-signature",
+    "open_material_decisions": [
+      "Define where extraction of leading overload signatures stops."
+    ],
+    "question": {
+      "header": "Block ending",
+      "options": [
+        {
+          "description": "Collect consecutive valid signatures from the beginning, then preserve that line and everything after it as docstring content.",
+          "label": "First non-signature",
+          "recommended": true
+        },
+        {
+          "description": "Inspect every line before the first blank line, collecting valid signatures even if non-signature text is interspersed.",
+          "label": "First blank line",
+          "recommended": false
+        },
+        {
+          "description": "Continue through the docstring and remove every signature-looking line until ordinary prose definitively begins.",
+          "label": "All leading matches",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc determine the end of the overload-signature block at the start of a docstring?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A method docstring beginning with two or more consecutive valid signatures produces one aligned directive signature line for each overload, in docstring order.",
+          "Each emitted overload preserves the arguments and return annotation written on its corresponding docstring line.",
+          "After multiple leading signatures, the first non-signature line and all following lines appear as docstring content, while none of the extracted signature lines appear as content.",
+          "A signature-looking line that is not valid for the documented object ends extraction and remains in the content with everything after it.",
+          "A docstring with exactly one leading valid signature produces the same signature and remaining content as before.",
+          "A docstring whose first line is not a valid signature is not partially scanned later for overloads and remains unchanged as content.",
+          "With autodoc_docstring_signature disabled, all signature-looking docstring lines remain content and the normal introspected signature is displayed.",
+          "An explicitly supplied signature prevents extraction and removal of leading docstring signatures.",
+          "The behavior applies consistently to functions and to normal, static, and class methods."
+        ],
+        "confirmed_decisions": [
+          "The overload-signature block consists only of consecutive valid signatures starting at the first docstring line.",
+          "Extraction stops at the first non-signature line, which is preserved together with all following docstring content.",
+          "Every recognized leading signature is displayed as a separate signature for the same documented function or method, including its own argument list and return annotation when present.",
+          "Signature validity continues to require the existing signature syntax and an accepted name for the documented object.",
+          "A single leading signature retains the existing observable behavior.",
+          "When no valid signature begins the docstring, autodoc retains the existing introspected signature and preserves the full docstring content.",
+          "An explicit directive signature continues to take precedence over docstring signature extraction.",
+          "When autodoc_docstring_signature is disabled, no docstring signatures are extracted or removed."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "When autodoc_docstring_signature is enabled and no explicit signature was supplied, autodoc must recognize every consecutive valid signature at the beginning of a function or method docstring, display each as an overload signature, and remove the recognized signature block from the rendered docstring content. Recognition stops at the first line that is not a valid signature for the documented object; that line and all subsequent content remain in the rendered docstring. Existing behavior remains unchanged for a single leading signature, docstrings without a leading valid signature, explicitly supplied signatures, and configurations where autodoc_docstring_signature is disabled."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The repository evidence and the confirmed block-ending rule resolve all material behavior decisions. The requested change can be implemented without inventing additional behavior."
+    },
+    "turn": 2
+  }
+]

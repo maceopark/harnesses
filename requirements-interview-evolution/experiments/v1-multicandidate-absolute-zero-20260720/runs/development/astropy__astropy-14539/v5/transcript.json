@@ -1,0 +1,81 @@
+[
+  {
+    "answer": "Match P behavior",
+    "open_material_decisions": [
+      "Whether Q-format VLAs must adopt the same row-by-row np.allclose and tolerance semantics as P-format VLAs, or receive a narrower exact-equality-only fix."
+    ],
+    "question": {
+      "header": "Q semantics",
+      "options": [
+        {
+          "description": "Compare Q VLAs row by row with the existing np.allclose logic and honor rtol/atol; require identical Q data to remain identical and genuine Q row differences to be reported.",
+          "label": "Match P behavior",
+          "recommended": true
+        },
+        {
+          "description": "Fix identical Q-file false positives but do not extend P-format tolerance behavior to Q columns.",
+          "label": "Exact equality only",
+          "recommended": false
+        }
+      ],
+      "prompt": "What comparison semantics should the contract require for Q-format variable-length-array columns?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this scope and acceptance criteria as implementation-ready.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a material change.",
+          "label": "Request revision",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: update TableDataDiff so Q-format VLA columns use the same row-by-row np.allclose comparison and rtol/atol semantics as existing P-format VLA columns; add regression coverage proving FITSDiff reports a QD file compared with itself as identical and proving genuine Q-format row differences are still reported under those semantics; keep reporting, P-format behavior, non-VLA comparisons, and FITS read/write behavior unchanged. Implementation may choose the smallest repository-consistent way to recognize both P and Q VLA formats. Residual risk is limited to pre-existing np.allclose behavior for unsupported or incompatible VLA element shapes/types, which is not broadened by this fix."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A FITS file containing a QD VLA column with rows equivalent to [[0], [0, 0]] compares identical to itself through FITSDiff.",
+          "A Q-format VLA column is compared row by row using numpy.allclose with the configured rtol and atol, matching P-format semantics.",
+          "A genuine difference in a Q-format VLA row makes the diff non-identical and is retained in the existing row-level difference data/reporting path.",
+          "Existing P-format VLA diff tests continue to pass without changed semantics.",
+          "Existing non-VLA TableDataDiff and FITSDiff tests continue to pass.",
+          "No changes are required to FITS VLA serialization, heap loading, or descriptor handling."
+        ],
+        "confirmed_decisions": [
+          "Q-format VLAs must match the existing P-format row-by-row numpy.allclose behavior, including rtol and atol handling.",
+          "The regression scope must cover the reported file-to-itself QD case through FITSDiff.",
+          "The regression scope must also prove that genuine Q-format row differences remain detectable and reportable.",
+          "P-format VLA behavior must remain unchanged.",
+          "Non-VLA table comparison behavior must remain unchanged.",
+          "Existing difference-report formatting and propagation through TableDataDiff, HDUDiff, and FITSDiff must remain unchanged.",
+          "FITS VLA read/write behavior is outside the implementation scope and must remain unchanged.",
+          "The implementation may choose the smallest repository-consistent method for recognizing both P and Q VLA formats.",
+          "The owner explicitly approved this contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update TableDataDiff so Q-format variable-length-array columns use the same row-by-row numpy.allclose comparison and rtol/atol semantics as existing P-format VLA columns. Add regression coverage proving that FITSDiff considers a QD file compared with itself identical and that genuine Q-format row differences are still reported under those semantics. Preserve reporting behavior, P-format behavior, non-VLA comparisons, and FITS read/write behavior. Implementation may use the smallest repository-consistent mechanism to recognize both P and Q VLA formats. The bounded residual risk is the pre-existing numpy.allclose behavior for unsupported or incompatible VLA element shapes or types; this fix must not broaden that behavior."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the evidence-grounded contract, and no material implementation decision remains unresolved."
+    },
+    "turn": 3
+  }
+]

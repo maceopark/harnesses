@@ -1,0 +1,149 @@
+{
+  "role": "decision-materiality-review",
+  "model": "gpt-5.6-sol",
+  "model_reasoning_effort": "medium",
+  "command": [
+    "codex",
+    "exec",
+    "--model",
+    "gpt-5.6-sol",
+    "-c",
+    "model_reasoning_effort=\"medium\"",
+    "--ephemeral",
+    "--sandbox",
+    "read-only",
+    "--skip-git-repo-check",
+    "--ignore-user-config",
+    "--color",
+    "never",
+    "--output-schema",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-decision-materiality-review-reuvhaq9/schema.json",
+    "--output-last-message",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-decision-materiality-review-reuvhaq9/output.json",
+    "-C",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-decision-materiality-review-reuvhaq9",
+    "<stdin>"
+  ],
+  "prompt": "Independently review every implementation decision. Logging a decision is never itself a defect. Mark it material only if the chosen option changes or contradicts an authorized initial user decision, crosses a product authority boundary by selecting user-visible behavior not delegated by the contract, or introduces high risk involving security, safety, data loss, irreversible migration, substantial cost, or broad compatibility. Internal, reversible, contract-admissible implementation choices are non-material. Set material to the logical OR of the three boundary flags and review every decision exactly once in input order.\nReturn only the JSON required by the supplied schema.\nINPUT:\n{\"audited_evidence\": {\"audit_summary\": \"All ten facts are directly supported by the cited repository files and line ranges.\", \"facts\": [{\"id\": \"F1\", \"line_end\": 455, \"line_start\": 445, \"path\": \"doc/usage/extensions/autodoc.rst\", \"statement\": \"The documented behavior of autodoc_docstring_signature is to inspect the first docstring line, use it when it resembles a signature, and remove that line from the rendered docstring.\"}, {\"id\": \"F2\", \"line_end\": 1055, \"line_start\": 1045, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"DocstringSignatureMixin._find_signature checks only doclines[0] against the signature regular expression.\"}, {\"id\": \"F3\", \"line_end\": 1072, \"line_start\": 1065, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"After a matching first line, _find_signature rebuilds the docstring from doclines[1:], stores one (args, return-annotation) tuple, and immediately stops searching.\"}, {\"id\": \"F4\", \"line_end\": 1091, \"line_start\": 1084, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"When docstring-signature handling is enabled and no explicit signature was supplied, the extracted tuple is assigned to the documenter's singular self.args and self.retann fields before normal signature formatting.\"}, {\"id\": \"F5\", \"line_end\": 455, \"line_start\": 441, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"The shared directive-header generator already handles newline-separated signatures by splitting the formatted signature and emitting one directive signature line per entry.\"}, {\"id\": \"F6\", \"line_end\": 1175, \"line_start\": 1159, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"FunctionDocumenter already represents multiple singledispatch signatures by collecting them and returning a newline-joined string.\"}, {\"id\": \"F7\", \"line_end\": 1654, \"line_start\": 1635, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"MethodDocumenter likewise appends registered singledispatch-method signatures and returns them joined with newline characters.\"}, {\"id\": \"F8\", \"line_end\": 123, \"line_start\": 117, \"path\": \"tests/roots/test-ext-autodoc/target/__init__.py\", \"statement\": \"The existing docstring-signature fixture contains one signature on the first line followed by prose on subsequent lines.\"}, {\"id\": \"F9\", \"line_end\": 251, \"line_start\": 235, \"path\": \"tests/test_ext_autodoc_configs.py\", \"statement\": \"The existing configuration test expects that single first-line method signature in the directive header and expects the remaining docstring content without the signature line.\"}, {\"id\": \"F10\", \"line_end\": 1918, \"line_start\": 1913, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"autodoc_docstring_signature is registered as a configuration value with a default of true.\"}], \"scope_summary\": \"Base commit 9988d5ce267bf0df4791770b469431b1fb00dcdd implements docstring-signature extraction as a single-signature operation, although downstream directive generation already accepts newline-separated signatures.\", \"unknowns\": []}, \"contract\": {\"acceptance_checks\": [\"A method docstring beginning with two consecutive valid signatures followed by prose produces two displayed method signatures, and the rendered docstring begins with the prose.\", \"A function docstring beginning with multiple consecutive valid signatures, including distinct return annotations, displays every signature with its corresponding return annotation.\", \"A single leading signature continues to produce the existing single-signature output.\", \"A non-signature first line prevents later lines from being extracted as overload signatures.\", \"After one or more leading signatures, the first non-signature line and every subsequent line remain in the rendered docstring.\", \"Disabling autodoc_docstring_signature leaves the leading signature lines in the docstring content and does not use them as displayed signatures.\", \"Supplying an explicit signature prevents docstring-signature extraction, preserving the existing precedence behavior.\"], \"confirmed_decisions\": [\"The overload-signature block begins at the first docstring line.\", \"The block contains consecutive valid signature lines for the documented object.\", \"The first non-signature line ends the block and is preserved together with all subsequent docstring content.\", \"All signatures in the leading block are displayed as signatures for the same documented function or method.\", \"Each recognized overload retains its own argument list and return annotation.\", \"Existing single-signature docstrings continue to produce one displayed signature and omit that leading signature line from rendered content.\", \"Docstrings whose first line is not a valid signature remain ordinary docstring content.\", \"The behavior applies only under the existing autodoc_docstring_signature conditions: the option is enabled and no explicit signature was supplied.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"When autodoc_docstring_signature is enabled for a function or method with no explicit signature, autodoc recognizes every consecutive valid signature line at the start of the docstring as an overload signature. It displays all recognized signatures and removes only those leading signature lines from the rendered docstring. The first non-signature line ends the overload-signature block and remains part of the rendered content.\"}, \"decisions\": [{\"choice\": \"Collect consecutive valid signature tuples, preserve remaining docstring lines, format each tuple independently, and newline-join the results.\", \"gap\": \"The contract requires multiple leading signatures but the existing mixin and signature-processing event operate on one argument/return pair at a time.\", \"observable_impact\": \"Consecutive valid leading signatures are removed from docstring content and displayed as separate overload signatures; existing gating and first-non-signature stopping behavior remain intact.\", \"options_considered\": [\"Store all overloads in an encoded singular args string\", \"Collect signature tuples and format each through the existing superclass formatter\"], \"reason\": \"Formatting each extracted pair through the existing superclass path preserves per-signature return annotations and autodoc-process-signature behavior while reusing newline-separated directive support.\", \"reversibility\": \"The change is localized to the docstring-signature mixin and focused test fixtures and can be reverted without data migration.\", \"timestamp\": \"2026-07-21T05:49:21Z\"}], \"public_request\": \"autodoc_docstring_signature with overloaded methods\\nWhen using swig to wrap C++ classes for python, if they have overloaded methods, I believe the convention is to place the signatures for each of the overloaded C++ methods at the start of the docstring. Currently, `autodoc_docstring_signature` can only pick up the first one. It would be nice to be able to pick up all of them.\\n\\n\"}",
+  "input": {
+    "public_request": "autodoc_docstring_signature with overloaded methods\nWhen using swig to wrap C++ classes for python, if they have overloaded methods, I believe the convention is to place the signatures for each of the overloaded C++ methods at the start of the docstring. Currently, `autodoc_docstring_signature` can only pick up the first one. It would be nice to be able to pick up all of them.\n\n",
+    "contract": {
+      "acceptance_checks": [
+        "A method docstring beginning with two consecutive valid signatures followed by prose produces two displayed method signatures, and the rendered docstring begins with the prose.",
+        "A function docstring beginning with multiple consecutive valid signatures, including distinct return annotations, displays every signature with its corresponding return annotation.",
+        "A single leading signature continues to produce the existing single-signature output.",
+        "A non-signature first line prevents later lines from being extracted as overload signatures.",
+        "After one or more leading signatures, the first non-signature line and every subsequent line remain in the rendered docstring.",
+        "Disabling autodoc_docstring_signature leaves the leading signature lines in the docstring content and does not use them as displayed signatures.",
+        "Supplying an explicit signature prevents docstring-signature extraction, preserving the existing precedence behavior."
+      ],
+      "confirmed_decisions": [
+        "The overload-signature block begins at the first docstring line.",
+        "The block contains consecutive valid signature lines for the documented object.",
+        "The first non-signature line ends the block and is preserved together with all subsequent docstring content.",
+        "All signatures in the leading block are displayed as signatures for the same documented function or method.",
+        "Each recognized overload retains its own argument list and return annotation.",
+        "Existing single-signature docstrings continue to produce one displayed signature and omit that leading signature line from rendered content.",
+        "Docstrings whose first line is not a valid signature remain ordinary docstring content.",
+        "The behavior applies only under the existing autodoc_docstring_signature conditions: the option is enabled and no explicit signature was supplied."
+      ],
+      "implementation_ready": true,
+      "open_material_decisions": [],
+      "summary": "When autodoc_docstring_signature is enabled for a function or method with no explicit signature, autodoc recognizes every consecutive valid signature line at the start of the docstring as an overload signature. It displays all recognized signatures and removes only those leading signature lines from the rendered docstring. The first non-signature line ends the overload-signature block and remains part of the rendered content."
+    },
+    "audited_evidence": {
+      "audit_summary": "All ten facts are directly supported by the cited repository files and line ranges.",
+      "facts": [
+        {
+          "id": "F1",
+          "line_end": 455,
+          "line_start": 445,
+          "path": "doc/usage/extensions/autodoc.rst",
+          "statement": "The documented behavior of autodoc_docstring_signature is to inspect the first docstring line, use it when it resembles a signature, and remove that line from the rendered docstring."
+        },
+        {
+          "id": "F2",
+          "line_end": 1055,
+          "line_start": 1045,
+          "path": "sphinx/ext/autodoc/__init__.py",
+          "statement": "DocstringSignatureMixin._find_signature checks only doclines[0] against the signature regular expression."
+        },
+        {
+          "id": "F3",
+          "line_end": 1072,
+          "line_start": 1065,
+          "path": "sphinx/ext/autodoc/__init__.py",
+          "statement": "After a matching first line, _find_signature rebuilds the docstring from doclines[1:], stores one (args, return-annotation) tuple, and immediately stops searching."
+        },
+        {
+          "id": "F4",
+          "line_end": 1091,
+          "line_start": 1084,
+          "path": "sphinx/ext/autodoc/__init__.py",
+          "statement": "When docstring-signature handling is enabled and no explicit signature was supplied, the extracted tuple is assigned to the documenter's singular self.args and self.retann fields before normal signature formatting."
+        },
+        {
+          "id": "F5",
+          "line_end": 455,
+          "line_start": 441,
+          "path": "sphinx/ext/autodoc/__init__.py",
+          "statement": "The shared directive-header generator already handles newline-separated signatures by splitting the formatted signature and emitting one directive signature line per entry."
+        },
+        {
+          "id": "F6",
+          "line_end": 1175,
+          "line_start": 1159,
+          "path": "sphinx/ext/autodoc/__init__.py",
+          "statement": "FunctionDocumenter already represents multiple singledispatch signatures by collecting them and returning a newline-joined string."
+        },
+        {
+          "id": "F7",
+          "line_end": 1654,
+          "line_start": 1635,
+          "path": "sphinx/ext/autodoc/__init__.py",
+          "statement": "MethodDocumenter likewise appends registered singledispatch-method signatures and returns them joined with newline characters."
+        },
+        {
+          "id": "F8",
+          "line_end": 123,
+          "line_start": 117,
+          "path": "tests/roots/test-ext-autodoc/target/__init__.py",
+          "statement": "The existing docstring-signature fixture contains one signature on the first line followed by prose on subsequent lines."
+        },
+        {
+          "id": "F9",
+          "line_end": 251,
+          "line_start": 235,
+          "path": "tests/test_ext_autodoc_configs.py",
+          "statement": "The existing configuration test expects that single first-line method signature in the directive header and expects the remaining docstring content without the signature line."
+        },
+        {
+          "id": "F10",
+          "line_end": 1918,
+          "line_start": 1913,
+          "path": "sphinx/ext/autodoc/__init__.py",
+          "statement": "autodoc_docstring_signature is registered as a configuration value with a default of true."
+        }
+      ],
+      "scope_summary": "Base commit 9988d5ce267bf0df4791770b469431b1fb00dcdd implements docstring-signature extraction as a single-signature operation, although downstream directive generation already accepts newline-separated signatures.",
+      "unknowns": []
+    },
+    "decisions": [
+      {
+        "timestamp": "2026-07-21T05:49:21Z",
+        "gap": "The contract requires multiple leading signatures but the existing mixin and signature-processing event operate on one argument/return pair at a time.",
+        "reason": "Formatting each extracted pair through the existing superclass path preserves per-signature return annotations and autodoc-process-signature behavior while reusing newline-separated directive support.",
+        "observable_impact": "Consecutive valid leading signatures are removed from docstring content and displayed as separate overload signatures; existing gating and first-non-signature stopping behavior remain intact.",
+        "reversibility": "The change is localized to the docstring-signature mixin and focused test fixtures and can be reverted without data migration.",
+        "options_considered": [
+          "Store all overloads in an encoded singular args string",
+          "Collect signature tuples and format each through the existing superclass formatter"
+        ],
+        "choice": "Collect consecutive valid signature tuples, preserve remaining docstring lines, format each tuple independently, and newline-join the results."
+      }
+    ]
+  },
+  "exit_code": 0,
+  "stdout": "{\"schema\":\"DecisionMaterialityReview.v1\",\"reviews\":[{\"decision_index\":0,\"changes_initial_decision\":false,\"crosses_authority_boundary\":false,\"high_risk\":false,\"material\":false,\"reason\":\"The choice directly implements the authorized contract by collecting consecutive leading signatures, preserving the remaining docstring, retaining per-signature annotations, and reusing existing newline-separated formatting. It is localized, reversible, and introduces no security, safety, data-loss, migration, substantial-cost, or broad-compatibility risk.\"}],\"summary\":\"Reviewed the single implementation decision exactly once in input order. It is an internal, reversible, contract-admissible choice and is non-material.\"}\n",
+  "stderr": "OpenAI Codex v0.144.6\n--------\nworkdir: /var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-decision-materiality-review-reuvhaq9\nmodel: gpt-5.6-sol\nprovider: openai\napproval: never\nsandbox: read-only\nreasoning effort: medium\nreasoning summaries: none\nsession id: 019f833c-0ee5-7ce3-85be-4da2e68f9ac8\n--------\nuser\nIndependently review every implementation decision. Logging a decision is never itself a defect. Mark it material only if the chosen option changes or contradicts an authorized initial user decision, crosses a product authority boundary by selecting user-visible behavior not delegated by the contract, or introduces high risk involving security, safety, data loss, irreversible migration, substantial cost, or broad compatibility. Internal, reversible, contract-admissible implementation choices are non-material. Set material to the logical OR of the three boundary flags and review every decision exactly once in input order.\nReturn only the JSON required by the supplied schema.\nINPUT:\n{\"audited_evidence\": {\"audit_summary\": \"All ten facts are directly supported by the cited repository files and line ranges.\", \"facts\": [{\"id\": \"F1\", \"line_end\": 455, \"line_start\": 445, \"path\": \"doc/usage/extensions/autodoc.rst\", \"statement\": \"The documented behavior of autodoc_docstring_signature is to inspect the first docstring line, use it when it resembles a signature, and remove that line from the rendered docstring.\"}, {\"id\": \"F2\", \"line_end\": 1055, \"line_start\": 1045, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"DocstringSignatureMixin._find_signature checks only doclines[0] against the signature regular expression.\"}, {\"id\": \"F3\", \"line_end\": 1072, \"line_start\": 1065, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"After a matching first line, _find_signature rebuilds the docstring from doclines[1:], stores one (args, return-annotation) tuple, and immediately stops searching.\"}, {\"id\": \"F4\", \"line_end\": 1091, \"line_start\": 1084, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"When docstring-signature handling is enabled and no explicit signature was supplied, the extracted tuple is assigned to the documenter's singular self.args and self.retann fields before normal signature formatting.\"}, {\"id\": \"F5\", \"line_end\": 455, \"line_start\": 441, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"The shared directive-header generator already handles newline-separated signatures by splitting the formatted signature and emitting one directive signature line per entry.\"}, {\"id\": \"F6\", \"line_end\": 1175, \"line_start\": 1159, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"FunctionDocumenter already represents multiple singledispatch signatures by collecting them and returning a newline-joined string.\"}, {\"id\": \"F7\", \"line_end\": 1654, \"line_start\": 1635, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"MethodDocumenter likewise appends registered singledispatch-method signatures and returns them joined with newline characters.\"}, {\"id\": \"F8\", \"line_end\": 123, \"line_start\": 117, \"path\": \"tests/roots/test-ext-autodoc/target/__init__.py\", \"statement\": \"The existing docstring-signature fixture contains one signature on the first line followed by prose on subsequent lines.\"}, {\"id\": \"F9\", \"line_end\": 251, \"line_start\": 235, \"path\": \"tests/test_ext_autodoc_configs.py\", \"statement\": \"The existing configuration test expects that single first-line method signature in the directive header and expects the remaining docstring content without the signature line.\"}, {\"id\": \"F10\", \"line_end\": 1918, \"line_start\": 1913, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"autodoc_docstring_signature is registered as a configuration value with a default of true.\"}], \"scope_summary\": \"Base commit 9988d5ce267bf0df4791770b469431b1fb00dcdd implements docstring-signature extraction as a single-signature operation, although downstream directive generation already accepts newline-separated signatures.\", \"unknowns\": []}, \"contract\": {\"acceptance_checks\": [\"A method docstring beginning with two consecutive valid signatures followed by prose produces two displayed method signatures, and the rendered docstring begins with the prose.\", \"A function docstring beginning with multiple consecutive valid signatures, including distinct return annotations, displays every signature with its corresponding return annotation.\", \"A single leading signature continues to produce the existing single-signature output.\", \"A non-signature first line prevents later lines from being extracted as overload signatures.\", \"After one or more leading signatures, the first non-signature line and every subsequent line remain in the rendered docstring.\", \"Disabling autodoc_docstring_signature leaves the leading signature lines in the docstring content and does not use them as displayed signatures.\", \"Supplying an explicit signature prevents docstring-signature extraction, preserving the existing precedence behavior.\"], \"confirmed_decisions\": [\"The overload-signature block begins at the first docstring line.\", \"The block contains consecutive valid signature lines for the documented object.\", \"The first non-signature line ends the block and is preserved together with all subsequent docstring content.\", \"All signatures in the leading block are displayed as signatures for the same documented function or method.\", \"Each recognized overload retains its own argument list and return annotation.\", \"Existing single-signature docstrings continue to produce one displayed signature and omit that leading signature line from rendered content.\", \"Docstrings whose first line is not a valid signature remain ordinary docstring content.\", \"The behavior applies only under the existing autodoc_docstring_signature conditions: the option is enabled and no explicit signature was supplied.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"When autodoc_docstring_signature is enabled for a function or method with no explicit signature, autodoc recognizes every consecutive valid signature line at the start of the docstring as an overload signature. It displays all recognized signatures and removes only those leading signature lines from the rendered docstring. The first non-signature line ends the overload-signature block and remains part of the rendered content.\"}, \"decisions\": [{\"choice\": \"Collect consecutive valid signature tuples, preserve remaining docstring lines, format each tuple independently, and newline-join the results.\", \"gap\": \"The contract requires multiple leading signatures but the existing mixin and signature-processing event operate on one argument/return pair at a time.\", \"observable_impact\": \"Consecutive valid leading signatures are removed from docstring content and displayed as separate overload signatures; existing gating and first-non-signature stopping behavior remain intact.\", \"options_considered\": [\"Store all overloads in an encoded singular args string\", \"Collect signature tuples and format each through the existing superclass formatter\"], \"reason\": \"Formatting each extracted pair through the existing superclass path preserves per-signature return annotations and autodoc-process-signature behavior while reusing newline-separated directive support.\", \"reversibility\": \"The change is localized to the docstring-signature mixin and focused test fixtures and can be reverted without data migration.\", \"timestamp\": \"2026-07-21T05:49:21Z\"}], \"public_request\": \"autodoc_docstring_signature with overloaded methods\\nWhen using swig to wrap C++ classes for python, if they have overloaded methods, I believe the convention is to place the signatures for each of the overloaded C++ methods at the start of the docstring. Currently, `autodoc_docstring_signature` can only pick up the first one. It would be nice to be able to pick up all of them.\\n\\n\"}\ncodex\n{\"schema\":\"DecisionMaterialityReview.v1\",\"reviews\":[{\"decision_index\":0,\"changes_initial_decision\":false,\"crosses_authority_boundary\":false,\"high_risk\":false,\"material\":false,\"reason\":\"The choice directly implements the authorized contract by collecting consecutive leading signatures, preserving the remaining docstring, retaining per-signature annotations, and reusing existing newline-separated formatting. It is localized, reversible, and introduces no security, safety, data-loss, migration, substantial-cost, or broad-compatibility risk.\"}],\"summary\":\"Reviewed the single implementation decision exactly once in input order. It is an internal, reversible, contract-admissible choice and is non-material.\"}\ntokens used\n23,272\n"
+}

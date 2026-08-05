@@ -1,0 +1,19 @@
+{
+  "compatibility_regressions": [
+    "Preserving eager import for an explicitly supplied non-matching __init__.py would diverge from the gold lazy-import behavior and could retain avoidable initializer side effects.",
+    "Requiring unchanged package-__init__.py skip-marker behavior conflicts with the gold change, which removed the eager import that enabled marker propagation and deleted the corresponding test."
+  ],
+  "implementation_ready": false,
+  "invented_requirements": [
+    "An explicitly supplied __init__.py must remain eligible for package import when it does not match python_files; audited evidence establishes its test-collection behavior, not that the initializer must be imported.",
+    "The fix must be implemented at the package-discovery/collector-creation boundary; the sealed decision concerned observable import behavior, and the gold fix instead preserved Package creation while removing eager object mounting.",
+    "All existing skipping coverage must continue to pass unchanged; hindsight evidence shows the pre-existing package-__init__.py skip behavior/test was deliberately removed as part of eliminating eager imports."
+  ],
+  "material_blockers": [
+    "The contract conflates eligibility as a Package collector with importing the underlying __init__.py object. The sealed answer resolves when recursive discovery should import, but the contract adds an unsupported explicit-path import guarantee and overconstrains the implementation boundary."
+  ],
+  "owner_recall": 1,
+  "redundant_questions": [],
+  "repository_fidelity": 0.72,
+  "summary": "The interview efficiently resolved the sole stated decision and recalled the owner's answer exactly. The central regression behavior and custom python_files case are well captured, but the contract is not implementation-ready because it converts collector eligibility into a required import, prescribes a boundary inconsistent with the valid gold design, and demands compatibility with skip-marker behavior that the sealed implementation intentionally removed. Hindsight-only sys.path and test-suite observations remain diagnostic and were not needed to score the closed decisions."
+}

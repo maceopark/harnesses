@@ -1,0 +1,30 @@
+{
+  "acceptance_checks": [
+    "A docstring beginning with two or more valid signatures for the documented method produces one aligned directive signature line per overload, in source order.",
+    "All extracted leading signature lines are absent from the rendered docstring body, while the first following prose line and all subsequent content remain present.",
+    "Overloads with different return annotations render each annotation on its corresponding signature line.",
+    "autodoc-process-signature is called once per extracted overload, in source order, and each event transformation is reflected only in that overload’s rendered signature.",
+    "If the first line is not a valid matching signature, no later line is extracted and the existing introspected signature and full docstring content are preserved.",
+    "If valid leading signatures are followed by malformed text or a signature for another object, the valid prefix is rendered as overloads and removed; the terminating line and remaining content are preserved without a new warning.",
+    "With autodoc_docstring_signature disabled, introspected signatures are used and all signature-looking docstring lines remain content.",
+    "When an explicit directive signature is supplied, docstring-signature extraction does not override it or remove leading signature-looking content.",
+    "The existing single-signature fixture and assertions continue to pass unchanged in behavior.",
+    "Tests cover consecutive overloads, differing return annotations, malformed or mismatched terminating lines, no valid leading signature, event processing per overload, disabled configuration, and explicit-signature precedence.",
+    "The autodoc_docstring_signature documentation states that consecutive valid matching signatures at the beginning of a function or method docstring are used and removed, ending at the first nonmatching line."
+  ],
+  "confirmed_decisions": [
+    "The overloaded-signature block begins at the first docstring line and consists only of consecutive lines that fully match py_ext_sig_re and have a name accepted for the documented object.",
+    "Extraction stops at the first non-signature, malformed signature-like, or object-name-mismatched line.",
+    "A valid leading prefix is retained as extracted signatures even when a later line terminates the block; no warning is required for the terminating line.",
+    "Only successfully extracted leading signature lines are removed from docstring content. The terminating line and everything after it remain unchanged except for the existing prepare_docstring normalization.",
+    "Each extracted overload retains its own argument list and return annotation, including differing return annotations.",
+    "autodoc-process-signature is invoked independently for each extracted overload using the existing single-signature event contract.",
+    "Each event result is formatted as its own signature. Non-suppressed results are joined with newline characters and rendered through the existing multi-line directive-header path.",
+    "The feature remains conditional on autodoc_docstring_signature being enabled and no explicit directive signature being present.",
+    "Existing accepted-name rules remain unchanged, including the additional names accepted by ClassDocumenter.",
+    "Existing single-signature behavior and disabled-configuration behavior remain compatible."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Extend DocstringSignatureMixin so autodoc_docstring_signature extracts every consecutive valid signature for the documented function or method from the start of a docstring. Stop at the first line that is not a valid matching signature. Remove only the extracted leading signature lines from the rendered docstring, preserving the terminating line and all later content. Preserve each overload’s arguments and return annotation, process each signature independently through autodoc-process-signature, and join the processed results with newlines for the existing multi-signature directive renderer. Retain the current behavior when the option is disabled, when an explicit directive signature is supplied, when no valid matching signature starts the docstring, and for existing single-signature docstrings. Update the autodoc documentation to describe consecutive leading signatures rather than only the first line."
+}

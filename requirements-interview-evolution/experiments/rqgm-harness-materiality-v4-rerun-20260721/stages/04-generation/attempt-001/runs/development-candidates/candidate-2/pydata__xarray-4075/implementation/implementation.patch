@@ -1,0 +1,58 @@
+diff --git a/xarray/core/weighted.py b/xarray/core/weighted.py
+index 996d2e4..c746642 100644
+--- a/xarray/core/weighted.py
++++ b/xarray/core/weighted.py
+@@ -129,6 +129,9 @@ class Weighted:
+         if skipna or (skipna is None and da.dtype.kind in "cfO"):
+             da = da.fillna(0.0)
+ 
++        if weights.dtype.kind == "b":
++            weights = weights.astype(int)
++
+         # `dot` does not broadcast arrays, so this avoids creating a large
+         # DataArray (if `weights` has additional dimensions)
+         # maybe add fasttrack (`(da * weights).sum(dims=dim, skipna=skipna)`)
+diff --git a/xarray/tests/test_weighted.py b/xarray/tests/test_weighted.py
+index 2453121..80c0e72 100644
+--- a/xarray/tests/test_weighted.py
++++ b/xarray/tests/test_weighted.py
+@@ -158,6 +158,39 @@ def test_weighted_mean_nan(weights, expected, skipna):
+     assert_equal(expected, result)
+ 
+ 
++@pytest.mark.parametrize("as_dataset", (True, False))
++def test_weighted_operations_bool_weights(as_dataset):
++    data = DataArray([1.0, 1.0, 1.0], dims="x")
++    bool_weights = DataArray([True, True, False], dims="x")
++    int_weights = DataArray([1, 1, 0], dims="x")
++
++    if as_dataset:
++        data = data.to_dataset(name="data")
++        expected_sum = DataArray(2.0).to_dataset(name="data")
++        expected_mean = DataArray(1.0).to_dataset(name="data")
++    else:
++        expected_sum = DataArray(2.0)
++        expected_mean = DataArray(1.0)
++
++    bool_weighted = data.weighted(bool_weights)
++    int_weighted = data.weighted(int_weights)
++
++    assert_equal(expected_sum, bool_weighted.sum())
++    assert_equal(expected_sum, bool_weighted.sum_of_weights())
++    assert_equal(expected_mean, bool_weighted.mean())
++
++    data_with_nan = DataArray([1.0, np.nan, 1.0], dims="x")
++    if as_dataset:
++        data_with_nan = data_with_nan.to_dataset(name="data")
++    bool_weighted = data_with_nan.weighted(bool_weights)
++    int_weighted = data_with_nan.weighted(int_weights)
++
++    for operation in ("sum", "sum_of_weights", "mean"):
++        bool_result = getattr(bool_weighted, operation)()
++        int_result = getattr(int_weighted, operation)()
++        assert_equal(int_result, bool_result)
++
++
+ def expected_weighted(da, weights, dim, skipna, operation):
+     """
+     Generate expected result using ``*`` and ``sum``. This is checked against

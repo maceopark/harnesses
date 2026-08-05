@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "A direct test verifies `strip_accents_unicode('\\u00f1') == 'n'`.",
+    "A direct test verifies `strip_accents_unicode('n\\u0303') == 'n'`.",
+    "A regression assertion verifies the composed and decomposed forms produce identical unaccented output.",
+    "A vectorizer/analyzer configured with `strip_accents='unicode'` processes decomposed accented text into tokens without the combining mark, confirming integration through the shared preprocessing path.",
+    "The existing `sklearn/feature_extraction/tests/test_text.py` accent-stripping and analyzer tests pass.",
+    "The targeted text feature-extraction test module passes without regressions."
+  ],
+  "confirmed_decisions": [
+    "`strip_accents_unicode` must always filter combining characters from the NFKD-normalized representation, including when normalization does not change the input string.",
+    "The composed input `ñ` and decomposed input `n` followed by COMBINING TILDE must both return `n`.",
+    "Existing behavior for composed Latin accents, the covered Arabic accent, mixed accented text, and ordinary unaccented text must remain intact.",
+    "Regression tests belong in the existing text feature-extraction test suite and must include an already-decomposed base-character-plus-combining-mark case.",
+    "Because `CountVectorizer` and derived vectorizers already route `strip_accents='unicode'` through this function, the implementation should fix those consumers without introducing separate vectorizer logic.",
+    "No public signature, option semantics, dependency, or documentation change is needed."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Fix `strip_accents_unicode` so it removes combining marks even when the input is already NFKD-normalized. In `sklearn/feature_extraction/text.py`, preserve NFKD normalization but eliminate the equality-based path that returns an already-normalized string before filtering its combining characters. Add regression coverage in `sklearn/feature_extraction/tests/test_text.py` demonstrating that canonically equivalent composed and decomposed accented inputs both produce the same unaccented output. The corrected behavior must continue to flow through vectorizers configured with `strip_accents='unicode'`; no public API or documentation change is required."
+}

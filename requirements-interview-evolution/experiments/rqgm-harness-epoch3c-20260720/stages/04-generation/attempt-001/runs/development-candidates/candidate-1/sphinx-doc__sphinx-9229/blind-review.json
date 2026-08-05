@@ -1,0 +1,55 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/4",
+          "quoted_value": "The reported Dict, Union, and Callable aliases each render their supplied multiline next-line documentation without an “alias of …” paragraph when they are recognized as generic aliases by the running Python version."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/5",
+          "quoted_value": "The change does not expand which objects are recognized as generic aliases or introduce new variable-documentation syntax."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/6/statement",
+          "quoted_value": "The repository's GenericAlias detector recognizes typing._GenericAlias, types.GenericAlias, and typing._SpecialGenericAlias instances, depending on which runtime types are available."
+        }
+      ],
+      "description": "The contract can be satisfied without resolving the public request's reported Python 3.6 behavior. Repository evidence says GenericAlias detection is runtime-type-dependent, while the contract conditions the reduced-example outcome on existing recognition and prohibits expanding recognition. Readiness therefore requires resolving whether the Python 3.6 reproduction is in scope and, if so, specifying behavior for the path that produced its generated alias messages without inferring a new detection mechanism.",
+      "failure_class": "synthesis-loss",
+      "general_cause": "The contract narrows the fix to objects already recognized as generic aliases, despite the reported environment being outside the repository's documented Python 3.7+ GenericAlias recognition path.",
+      "id": "F-1",
+      "material": true,
+      "observable_signal": "The acceptance check for the three reported aliases is conditional on recognition by the running Python version, and the contract explicitly forbids expanding recognition. This permits a conforming implementation that does nothing for the Python 3.6 reproduction."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/2",
+          "quoted_value": "A class-level recognized generic alias with explicit ModuleAnalyzer variable documentation renders that documentation and omits “alias of …”."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/2",
+          "quoted_value": "The replacement behavior applies to documented aliases at both module scope and class scope."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/2/statement",
+          "quoted_value": "DataDocumenter explicitly queries ModuleAnalyzer for a module-level variable comment and returns that comment as the variable's documentation when present."
+        }
+      ],
+      "description": "The class-scope acceptance criterion is not implementation-ready from the audited evidence. The transcript legitimately chooses class scope as desired behavior, but the evidence only establishes DataDocumenter's module-level lookup. The contract does not identify an auditable class-level baseline or a check proving that explicit class-variable documentation is available at the point where the alias fallback is suppressed.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The contract extends the required behavior to class-level aliases without audited evidence establishing how class-scoped ModuleAnalyzer documentation reaches the relevant documenter or generated-alias path.",
+      "id": "F-2",
+      "material": true,
+      "observable_signal": "The audited behavior connecting ModuleAnalyzer documentation to autodoc is explicitly limited to module-level variable comments, while an acceptance check requires class-level behavior."
+    }
+  ],
+  "summary": "The contract is not materially implementation-ready: it can omit the reported Python 3.6 failure through its recognition condition, and its class-level requirement lacks an audited repository path or verifiable baseline."
+}

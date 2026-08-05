@@ -1,0 +1,213 @@
+[
+  {
+    "answer": "Contiguous valid lines",
+    "open_material_decisions": [
+      "Behavior when a signature-like leading line has a different object name.",
+      "Compatibility boundary for explicit directive signatures and signature-processing handlers.",
+      "Definition of the contiguous leading overload-signature block.",
+      "Handling of return annotations across recognized overload signatures.",
+      "Required documentation and regression-test coverage."
+    ],
+    "question": {
+      "header": "Block boundary",
+      "options": [
+        {
+          "description": "Consume consecutive valid, accepted-name signature lines from the first line and stop at the first blank, prose, malformed, or wrong-name line; preserve that line and everything after it as content.",
+          "label": "Contiguous valid lines",
+          "recommended": true
+        },
+        {
+          "description": "Continue collecting valid signature lines across blank separators until prose, malformed input, or a wrong-name line is encountered.",
+          "label": "Skip blank lines",
+          "recommended": false
+        },
+        {
+          "description": "Search a broader leading region and collect valid signatures even when interspersed with non-signature lines.",
+          "label": "Scan leading region",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which lines should autodoc consume as overloaded signatures at the start of a docstring?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Preserve each",
+    "open_material_decisions": [
+      "Compatibility boundary for explicit directive signatures and autodoc-process-signature handlers.",
+      "Handling of return annotations across recognized overload signatures.",
+      "Required documentation and regression-test coverage."
+    ],
+    "question": {
+      "header": "Annotations",
+      "options": [
+        {
+          "description": "Render every overload with the return annotation parsed from its own docstring line, including a mix of annotated and unannotated overloads.",
+          "label": "Preserve each (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Recognize multiple overloads only when their return annotations are identical, otherwise retain the existing single-signature behavior.",
+          "label": "Require same",
+          "recommended": false
+        },
+        {
+          "description": "Use the first recognized line’s return annotation for all displayed overload signatures.",
+          "label": "First only",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should return annotations on recognized overload-signature lines be handled?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "{\"label\":\"Process each (Recommended)\"}",
+    "open_material_decisions": [
+      "Compatibility behavior for autodoc-process-signature handlers when multiple docstring overloads are recognized.",
+      "Required documentation and regression-test coverage.",
+      "Whether explicit directive signatures continue to bypass docstring signature extraction."
+    ],
+    "question": {
+      "header": "Handlers",
+      "options": [
+        {
+          "description": "Invoke the existing signature-processing behavior independently for each overload, then render all resulting signatures in their original order.",
+          "label": "Process each (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Pass one newline-separated combined signature through the handler path, allowing handlers to modify all overloads as one value.",
+          "label": "Process combined",
+          "recommended": false
+        },
+        {
+          "description": "Render extracted overload signatures directly without applying signature-processing handlers to them.",
+          "label": "Bypass handlers",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc-process-signature handlers interact with multiple recognized docstring overloads?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Keep precedence",
+    "open_material_decisions": [
+      "Required documentation and regression-test coverage.",
+      "Whether an explicit directive signature continues to bypass all docstring signature extraction."
+    ],
+    "question": {
+      "header": "Explicit sig",
+      "options": [
+        {
+          "description": "Preserve existing behavior: use only the explicit directive signature and leave docstring signature lines untouched as content.",
+          "label": "Keep precedence",
+          "recommended": true
+        },
+        {
+          "description": "Render the explicit directive signature followed by recognized docstring overload signatures.",
+          "label": "Append overloads",
+          "recommended": false
+        },
+        {
+          "description": "Ignore the explicit directive signature when recognized overload signatures exist in the docstring.",
+          "label": "Docstring wins",
+          "recommended": false
+        }
+      ],
+      "prompt": "When the autodoc directive supplies an explicit signature, should it continue to override and bypass overloaded signatures found in the docstring?"
+    },
+    "turn": 4
+  },
+  {
+    "answer": "Focused complete",
+    "open_material_decisions": [
+      "Required documentation and regression-test coverage."
+    ],
+    "question": {
+      "header": "Coverage",
+      "options": [
+        {
+          "description": "Update the configuration documentation and add regression tests for ordered overload rendering and removal from content, including mixed return annotations, the first nonmatching boundary line, per-overload handlers, explicit-signature precedence, and disabled configuration.",
+          "label": "Focused complete",
+          "recommended": true
+        },
+        {
+          "description": "Update the documentation and test only multiple contiguous overload signatures rendering in order and being removed from content, while relying on existing tests for compatibility paths.",
+          "label": "Core behavior",
+          "recommended": false
+        },
+        {
+          "description": "Add focused regression tests for multiple contiguous overload signatures but leave the existing first-line documentation unchanged.",
+          "label": "Tests only",
+          "recommended": false
+        }
+      ],
+      "prompt": "What documentation and regression coverage should the implementation contract require?"
+    },
+    "turn": 5
+  },
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Owner approval of the consolidated implementation contract."
+    ],
+    "question": {
+      "header": "Approve contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with no remaining material decisions.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Do not seal it; provide the contract clause that needs changing.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: extend autodoc_docstring_signature for function and method documenters to recognize, in original order, every contiguous leading line that both matches the existing signature parser and has an already-accepted object name; stop at the first blank, prose, malformed, or wrong-name line, preserving that boundary line and all following lines as docstring content; remove only the recognized overload lines from content; preserve each overload’s own arguments and optional return annotation; pass each overload independently through the existing autodoc-process-signature behavior and render all resulting signatures in order using the existing newline-separated directive-header mechanism; preserve explicit directive-signature precedence so explicit signatures bypass extraction and leave docstring lines untouched; preserve disabled-configuration behavior. Update the configuration documentation to describe contiguous leading overload signatures. Add regression coverage for ordered rendering/removal, mixed annotated and unannotated returns, first nonmatching boundary preservation, per-overload handlers, explicit-signature precedence, and disabled configuration. Scope is limited to this extraction/rendering behavior; parser grammar and accepted-name rules remain unchanged. Residual risk: extensions that implicitly assumed one handler invocation may observe one invocation per overload when overload extraction occurs."
+    },
+    "turn": 6
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A function or method docstring with multiple contiguous leading valid, accepted-name signatures emits one aligned directive signature line per overload in original order.",
+          "All recognized overload lines are removed from rendered docstring content, while the first nonrecognized boundary line and every following line are preserved.",
+          "Overloads with differing or missing return annotations render using the annotation from their respective source line.",
+          "A blank, prose, malformed, or wrong-name line terminates overload collection and is not consumed.",
+          "Existing accepted-name behavior remains intact, including the current class-documenter allowances where applicable.",
+          "The existing `autodoc-process-signature` behavior is invoked independently for every recognized overload, and its per-overload results render in original order.",
+          "An explicit directive signature remains the sole displayed signature and prevents removal of docstring signature lines.",
+          "With `autodoc_docstring_signature = False`, no docstring overload extraction occurs and the signature-like lines remain content.",
+          "Existing single-signature behavior continues to pass unchanged.",
+          "Configuration documentation states that consecutive valid signatures at the start of a function or method docstring are recognized and removed from content.",
+          "Targeted autodoc regression tests pass, including the new overload cases and existing enabled/disabled single-signature cases."
+        ],
+        "confirmed_decisions": [
+          "Only contiguous valid and accepted-name signature lines starting at the first docstring line are consumed.",
+          "Collection stops at the first blank, prose, malformed, or wrong-name line, which and all subsequent lines remain content.",
+          "Each overload retains its own arguments and optional return annotation, including mixed annotated and unannotated overloads.",
+          "Each recognized overload is independently passed through the existing `autodoc-process-signature` handler behavior, then rendered in original order.",
+          "An explicit directive signature continues to override and bypass docstring signature extraction, leaving docstring lines untouched.",
+          "When `autodoc_docstring_signature` is disabled, introspected signature and content behavior remain unchanged.",
+          "Documentation must describe recognition of contiguous leading overload signatures.",
+          "Regression coverage must include ordered rendering and removal, mixed return annotations, boundary preservation, per-overload handlers, explicit-signature precedence, and disabled configuration.",
+          "Parser grammar and existing accepted-object-name rules remain unchanged.",
+          "Acknowledged residual risk: extensions that implicitly assumed one signature-handler invocation may observe one invocation per recognized overload."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend `autodoc_docstring_signature` for function and method documenters so it recognizes every contiguous valid overload signature at the beginning of a docstring. Starting with the first line, collect lines in original order while each line matches the existing signature parser and uses an already-accepted object name. Stop at the first blank, prose, malformed, or wrong-name line; preserve that boundary line and everything after it as docstring content. Remove only recognized overload lines. Preserve each overload’s arguments and optional return annotation, process each overload independently through the existing `autodoc-process-signature` behavior, and render the results in order through the existing newline-separated directive-header mechanism. Explicit directive signatures retain precedence: they bypass docstring extraction and leave docstring signature lines in the content. Disabled-configuration behavior remains unchanged. Update the configuration documentation to describe contiguous leading overload signatures. Scope excludes changes to signature-parser grammar and accepted-name rules."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the consolidated contract, and no material implementation decisions remain open."
+    },
+    "turn": 7
+  }
+]

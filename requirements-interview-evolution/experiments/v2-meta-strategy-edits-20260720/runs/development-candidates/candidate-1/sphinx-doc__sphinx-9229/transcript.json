@@ -1,0 +1,125 @@
+[
+  {
+    "answer": "Docs plus alias (Recommended)",
+    "open_material_decisions": [
+      "Whether a recognized assignment-following docstring for a type alias must coexist with or suppress the generated “alias of …” paragraph."
+    ],
+    "question": {
+      "header": "Alias fallback",
+      "options": [
+        {
+          "description": "Preserve established GenericAlias behavior and fix only the inconsistent loss of source documentation, rendering the docstring followed by “alias of …”.",
+          "label": "Docs plus alias (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Treat “alias of …” strictly as fallback content and suppress it whenever source documentation exists.",
+          "label": "Docs only",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has recognized source documentation immediately after its assignment, what should autodoc render?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Include Python 3.6",
+    "open_material_decisions": [
+      "Whether the fix must restore consistent assignment-following type-alias documentation on Python 3.6, or only on Python versions where Sphinx officially recognizes GenericAlias objects."
+    ],
+    "question": {
+      "header": "Python scope",
+      "options": [
+        {
+          "description": "Require all three assignment-following docstrings to render on the reporter’s Python 3.6 environment, while retaining alias text wherever Sphinx generates it.",
+          "label": "Include Python 3.6",
+          "recommended": true
+        },
+        {
+          "description": "Guarantee the fix only on Python 3.7+ where this Sphinx version explicitly supports GenericAlias detection; Python 3.6 remains outside the acceptance boundary.",
+          "label": "GenericAlias versions",
+          "recommended": false
+        }
+      ],
+      "prompt": "What Python-version compatibility must the regression fix guarantee for the three module-level aliases in the reduced example?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Targeted aliases",
+    "open_material_decisions": [
+      "Whether acceptance is limited to module-level type aliases in the reduced example or extends to every assignment-following string documentation context supported by the parser."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Require the three reported module-level type aliases to retain their multiline source docs on Python 3.6+, without expanding behavior for unrelated assignment contexts.",
+          "label": "Targeted aliases",
+          "recommended": true
+        },
+        {
+          "description": "Require assignment-following documentation strings to work consistently for every supported assignment context, including module, class, and instance attributes.",
+          "label": "All assignments",
+          "recommended": false
+        }
+      ],
+      "prompt": "How broadly should the parser behavior change beyond the three module-level aliases in the reduced example?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Owner approval of the consolidated implementation contract."
+    ],
+    "question": {
+      "header": "Approve contract",
+      "options": [
+        {
+          "description": "Seal this as the implementation-ready contract and acceptance boundary.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a material change to scope, behavior, or acceptance evidence.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: fix source parsing/autodoc so all three module-level aliases in the reduced example retain their multiline assignment-following documentation on Python 3.6+, while preserving any independently generated “alias of …” paragraph after the docs; limit the behavioral requirement to these targeted module-level type-alias forms, add regression coverage using the reduced assignment shapes and multiline strings, and permit the implementer to choose the smallest parser/autodoc repair consistent with existing conventions; unrelated assignment contexts need not change, and broader effects of repairing AST visitation are a bounded residual risk to be checked by existing parser/autodoc tests."
+    },
+    "turn": 4
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A regression fixture defines the reduced example’s three module-level aliases—Dict-based ScaffoldOpts, Union-based FileContents, and Callable-based FileOp—with multiline string expressions immediately following their assignments.",
+          "On Python 3.6 and later, autodoc output contains the respective multiline source documentation for all three aliases; none is replaced solely by generated alias text.",
+          "Where the runtime and Sphinx version generate an “alias of …” paragraph, it appears after the source documentation.",
+          "Existing parser tests pass, providing evidence that supported assignment-following documentation behavior has not regressed.",
+          "Existing autodoc and GenericAlias tests pass, providing evidence that established alias rendering remains compatible.",
+          "No acceptance claim is required for unrelated assignment-following string contexts beyond the targeted module-level type-alias forms."
+        ],
+        "confirmed_decisions": [
+          "Recognized assignment-following source documentation must be rendered together with any independently generated “alias of …” paragraph, with the documentation first.",
+          "The compatibility boundary includes Python 3.6 and later, including the reporter’s Python 3.6 environment.",
+          "Required behavior is limited to the three reported module-level type-alias assignment forms; unrelated module, class, and instance assignment contexts are not new contract requirements.",
+          "Regression coverage must reproduce the reduced example’s Dict, Union, and Callable alias assignment shapes with multiline assignment-following strings and prove that all three documentation blocks are retained.",
+          "Implementation details are delegated to the implementer, who may select the smallest parser/autodoc repair that follows existing conventions and preserves established GenericAlias behavior.",
+          "Broader effects from repairing AST visitation are an acknowledged bounded residual risk and must be checked using the existing parser and autodoc test suites.",
+          "The owner explicitly approved this consolidated scope and acceptance boundary."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix source parsing/autodoc so all three module-level type aliases from the reduced example retain their multiline assignment-following documentation on Python 3.6 and later. When Sphinx independently generates an “alias of …” paragraph, render it after the source documentation rather than replacing or suppressing the documentation. Limit the required behavioral change to the reported module-level type-alias forms. Add regression coverage using the reduced assignment shapes and multiline strings. The implementer may choose the smallest parser or autodoc repair consistent with existing repository conventions."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the consolidated contract, resolving all material decisions. The contract is implementation-ready and grounded in the supplied repository evidence."
+    },
+    "turn": 5
+  }
+]

@@ -1,0 +1,72 @@
+{
+  "audit_summary": "All nine facts are directly supported by the cited repository files at base commit 22623bd8c265b78b161542663ee980738441c307.",
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 55,
+      "line_start": 47,
+      "path": "requests/api.py",
+      "statement": "The public requests.get helper delegates to request('get', url, **kwargs), so GET requests enter the ordinary session request and preparation path."
+    },
+    {
+      "id": "F2",
+      "line_end": 220,
+      "line_start": 207,
+      "path": "requests/sessions.py",
+      "statement": "Session.request defaults data to None, assigns that value to Request.data, and then prepares the Request before sending it."
+    },
+    {
+      "id": "F3",
+      "line_end": 280,
+      "line_start": 264,
+      "path": "requests/sessions.py",
+      "statement": "Session.request assigns the HTTP method and data to the Request, calls req.prepare(), and sends the resulting PreparedRequest."
+    },
+    {
+      "id": "F4",
+      "line_end": 227,
+      "line_start": 216,
+      "path": "requests/models.py",
+      "statement": "Request.prepare prepares headers before preparing the body, so body preparation can modify or replace caller-provided headers."
+    },
+    {
+      "id": "F5",
+      "line_end": 386,
+      "line_start": 332,
+      "path": "requests/models.py",
+      "statement": "For a non-streaming request without truthy data or files, prepare_body leaves body as None and still calls prepare_content_length(body). This logic receives no HTTP-method argument and contains no GET-specific condition."
+    },
+    {
+      "id": "F6",
+      "line_end": 395,
+      "line_start": 388,
+      "path": "requests/models.py",
+      "statement": "prepare_content_length always first sets Content-Length to '0'; it replaces that value only when the body is seekable or non-None. Consequently, a bodyless GET is prepared with Content-Length: 0."
+    },
+    {
+      "id": "F7",
+      "line_end": 411,
+      "line_start": 397,
+      "path": "requests/models.py",
+      "statement": "When authentication is present, prepare_auth recomputes Content-Length after the authenticator modifies the prepared request, again using the unconditional prepare_content_length behavior."
+    },
+    {
+      "id": "F8",
+      "line_end": 171,
+      "line_start": 157,
+      "path": "requests/adapters.py",
+      "statement": "The HTTP adapter passes the PreparedRequest headers directly to urllib3 when the request is not chunked, so the prepared Content-Length header reaches the transport layer."
+    },
+    {
+      "id": "F9",
+      "line_end": 82,
+      "line_start": 51,
+      "path": "test_requests.py",
+      "statement": "Existing prepared-request tests exercise GET preparation and sending but assert URL, body, or response status rather than the presence or absence of Content-Length."
+    }
+  ],
+  "scope_summary": "Inspected the supplied repository at base commit 22623bd8c265b78b161542663ee980738441c307. The existing request-preparation path unconditionally creates a zero-valued Content-Length header for bodyless, non-streaming requests, independently of the HTTP method.",
+  "unknowns": [
+    "The repository does not establish or verify the reported external behavior that amazon.com returns HTTP 503 specifically when a GET request contains Content-Length."
+  ]
+}

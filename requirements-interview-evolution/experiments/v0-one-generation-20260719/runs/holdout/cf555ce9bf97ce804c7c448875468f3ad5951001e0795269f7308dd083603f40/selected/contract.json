@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "Running pytest from a directory containing foobar/__init__.py with assert False and no matching tests in that package does not import foobar and does not raise a collection error under default python_files settings.",
+    "Recursively discovering ordinary test_*.py or *_test.py files inside a package does not by itself import that package's non-matching __init__.py during package-root discovery.",
+    "With python_files = *.py, a recursively discovered package __init__.py is imported and tests defined in it are collected.",
+    "Passing a package __init__.py explicitly preserves existing direct-argument behavior: under default patterns its tests are not collected, while with python_files = *.py its tests are collected.",
+    "Existing collection tests covering package discovery, explicit __init__.py arguments, --pyargs/testpaths, collect_ignore, duplicate handling, and normal package-contained test modules continue to pass.",
+    "Add a regression test reproducing the reported failure and proving that an arbitrary non-matching __init__.py beneath the collection directory is not imported."
+  ],
+  "confirmed_decisions": [
+    "Recursive discovery must not import arbitrary __init__.py files that do not match python_files.",
+    "An explicitly supplied __init__.py remains eligible for package import even when it does not match the default python_files patterns.",
+    "A recursively discovered __init__.py remains eligible when it matches a user-configured python_files pattern such as *.py.",
+    "Package initialization and collecting tests defined inside __init__.py remain distinct: tests inside the file run only when python_files matches it.",
+    "Existing pytest_ignore_collect and collect_ignore behavior for non-initial paths must remain effective.",
+    "The fix should target the package-discovery/collector creation boundary rather than changing the default python_files patterns."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Restore pre-5.2.3 recursive discovery behavior so an encountered package __init__.py is not imported merely because pytest needs package structure for files below it. During recursive directory collection, import or collect __init__.py only when it is an explicitly supplied initial path or its filename matches the configured python_files patterns. Preserve explicit-path behavior and custom python_files support."
+}

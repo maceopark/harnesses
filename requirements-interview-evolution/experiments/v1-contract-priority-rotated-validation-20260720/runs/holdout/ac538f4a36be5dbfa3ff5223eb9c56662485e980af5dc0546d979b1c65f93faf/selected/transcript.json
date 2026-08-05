@@ -1,0 +1,124 @@
+[
+  {
+    "answer": "Raw parameters only",
+    "open_material_decisions": [
+      "Whether safe representation applies only to raw parameters or also to custom fixture-ID results."
+    ],
+    "question": {
+      "header": "Render scope",
+      "options": [
+        {
+          "description": "Render parameters without custom IDs using a safe repr (so bytes appear like b'Hello World' and -bb does not fail), while preserving existing explicit and callable ID text unchanged.",
+          "label": "Raw parameters only",
+          "recommended": true
+        },
+        {
+          "description": "Use safe repr for raw parameters and custom-ID results, accepting observable changes such as spam becoming 'spam' in setup-show output.",
+          "label": "All cached values",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which setup-show values should use safe representation?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "{\"selection\":\"Repr all raw\"}",
+    "open_material_decisions": [
+      "Whether raw parameters should always use safe repr, changing existing string rendering, or whether the compatibility boundary should preserve current string output and safely represent only bytes (with other raw values retaining current formatting)."
+    ],
+    "question": {
+      "header": "Raw rendering",
+      "options": [
+        {
+          "description": "Keep existing raw string output such as `foo`, render bytes safely as `b'Hello World'`, and leave other raw parameter formatting unchanged; this narrowly fixes the reported failure.",
+          "label": "Preserve strings",
+          "recommended": true
+        },
+        {
+          "description": "Use safe repr for every raw parameter, accepting changes such as `foo` becoming `'foo'` while gaining safe representation for arbitrary objects.",
+          "label": "Repr all raw",
+          "recommended": false
+        }
+      ],
+      "prompt": "Within the approved raw-parameter scope, which observable rendering behavior should the contract require?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Use safe semantics",
+    "open_material_decisions": [
+      "Whether raw-parameter rendering must be size-limited and resilient to exceptions from user-defined repr implementations, or only needs repr-style conversion sufficient to avoid BytesWarning for bytes."
+    ],
+    "question": {
+      "header": "Repr safety",
+      "options": [
+        {
+          "description": "Require size-limited repr-style text that does not fail setup-show when a user object's repr raises, matching the documented saferepr behavior and covering bytes.",
+          "label": "Use safe semantics",
+          "recommended": true
+        },
+        {
+          "description": "Require repr-style conversion only far enough to avoid BytesWarning for bytes, without adding guarantees for long or broken user representations.",
+          "label": "Bytes fix only",
+          "recommended": false
+        }
+      ],
+      "prompt": "What safety behavior should setup-show require when rendering raw parameters?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the complete implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with the stated scope, compatibility boundary, exclusions, and accepted residual risk.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract unsealed and provide the specific requirement, boundary, or acceptance check that must change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: scope is only `--setup-show` rendering of raw fixture parameters when no custom fixture IDs are present; render every such raw parameter with size-limited, exception-resilient repr-style semantics, so bytes display as `b'Hello World'` without a `BytesWarning` under `python -bb`, raw strings may observably change from `foo` to `'foo'`, and broken user `repr` implementations must not make setup-show fail; apply the same rendered behavior to setup and teardown output; preserve existing rendering of explicit and callable custom-ID results unchanged, including their current residual risk if they return bytes or otherwise unsafe values; exclude parameter-ID generation, test node IDs, `--setup-only`, and other display paths; acceptance requires a focused regression proving a bytes-parametrized test completes successfully with `--setup-show` under bytes-warning-as-error behavior and shows the repr-style bytes value during both setup and teardown, plus focused coverage proving safe bounded output for an overlong raw representation and nonfailure for a raw object whose `repr` raises, while existing custom-ID setup-show tests remain passing; implementation may choose the repository’s existing safe-representation facility or an equivalent existing facility, but may not add dependencies or broaden the affected paths. Is this complete contract approved for implementation?"
+    },
+    "turn": 4
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A focused bytes-parametrized regression completes successfully with `--setup-show` while bytes warnings are treated as errors and displays `b'Hello World'` during both setup and teardown.",
+          "Focused coverage demonstrates bounded output for a raw parameter with an overlong representation.",
+          "Focused coverage demonstrates that a raw parameter whose `repr` raises does not make setup-show fail.",
+          "Existing setup-show tests for explicit and callable custom IDs continue to pass unchanged.",
+          "The implementation does not alter parameter-ID generation, node IDs, `--setup-only`, or other display paths and introduces no dependency."
+        ],
+        "confirmed_decisions": [
+          "Safe representation applies only to raw parameters stored when no custom fixture IDs exist; explicit and callable custom-ID results retain current rendering.",
+          "All raw parameters use safe repr-style semantics; the observable output for raw strings may change from unquoted to quoted text.",
+          "Raw rendering must be size-limited and resilient to exceptions raised by user-defined `repr` implementations.",
+          "Setup and teardown must display the same safely rendered raw parameter behavior.",
+          "The residual risk from unsafe explicit or callable custom-ID results is accepted and remains outside scope.",
+          "Parameter-ID generation, node IDs, `--setup-only`, and unrelated display paths are excluded.",
+          "No new dependencies may be added, and implementation must remain within the localized setup-show path."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Change only `--setup-show` rendering of raw fixture parameters when no custom fixture IDs are present. Render every such raw parameter with size-limited, exception-resilient repr-style semantics. Bytes must display as `b'Hello World'` without raising `BytesWarning` under `python -bb`; raw strings may consequently change from `foo` to `'foo'`; and a user object whose `repr` raises must not cause setup-show to fail. Apply the same rendering to setup and teardown. Preserve existing rendering for explicit and callable custom-ID results, including the accepted residual risk that unsafe custom-ID values such as bytes may still fail. Exclude parameter-ID generation, test node IDs, `--setup-only`, and all other display paths. Implementation may use the repository’s existing safe-representation facility or an equivalent existing facility, but must add no dependency and must not broaden the affected paths."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the complete contract, and no material decisions remain unresolved."
+    },
+    "turn": 5
+  }
+]

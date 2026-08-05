@@ -1,0 +1,40 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/1",
+          "quoted_value": "Import pkg_resources.parse_version directly and rely on setuptools/pkg_resources being available at runtime."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/7",
+          "quoted_value": "Do not add setuptools as an explicit install_requires dependency."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/7/statement",
+          "quoted_value": "setup_requires and install_requires are both initialized with the minimum NumPy requirement; setuptools is not listed in install_requires here."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/4/statement",
+          "quoted_value": "astropy.utils exposes introspection's public API through a wildcard import."
+        }
+      ],
+      "description": "The contract is not materially implementation-ready because it requires a direct pkg_resources.parse_version import and assumes setuptools/pkg_resources is present, while also requiring install_requires to remain unchanged. Audited evidence establishes that setuptools is not listed in install_requires and that astropy.utils publicly imports introspection. This creates an unresolved runtime-availability regression beyond the reported comparison bug; selecting the risky behavior in the transcript does not eliminate the compatibility failure.",
+      "failure_class": "compatibility-regression",
+      "general_cause": "The contract introduces a new unconditional runtime import while explicitly refusing to declare the package that supplies it as a runtime dependency.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "Importing astropy.utils.introspection, and therefore its public re-export path, may fail in an environment where pkg_resources is unavailable even though the existing runtime requirements do not include setuptools."
+    }
+  ],
+  "summary": "One material readiness failure: the contract mandates an unconditional pkg_resources runtime dependency while refusing to declare setuptools, creating a compatibility regression that is not resolved by the implementation-ready designation."
+}

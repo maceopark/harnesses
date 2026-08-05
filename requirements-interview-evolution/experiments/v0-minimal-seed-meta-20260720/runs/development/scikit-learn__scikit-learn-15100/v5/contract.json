@@ -1,0 +1,25 @@
+{
+  "acceptance_checks": [
+    "`strip_accents_unicode('\\u00f1') == 'n'`.",
+    "`strip_accents_unicode('n\\u0303') == 'n'`.",
+    "Canonically equivalent precomposed and already-NFKD decomposed accented strings produce identical unaccented output.",
+    "An already-NFKD string containing combining marks does not take an early-return path that preserves those marks.",
+    "A `CountVectorizer` preprocessing or analyzer path configured with `strip_accents='unicode'` removes combining marks from decomposed input.",
+    "Inherited `TfidfVectorizer` behavior requires no separate code path and continues to use the corrected shared preprocessing.",
+    "Existing direct Unicode accent tests, including Latin, Arabic, and mixed text, pass.",
+    "Existing Unicode word-analyzer unigram and bigram tests pass.",
+    "The targeted feature-extraction text test module passes without regressions."
+  ],
+  "confirmed_decisions": [
+    "The implementation target is `strip_accents_unicode` in `sklearn/feature_extraction/text.py`.",
+    "Every input is normalized with NFKD and then filtered to remove characters for which `unicodedata.combining` is nonzero, regardless of whether normalization changed the input.",
+    "Precomposed `ñ` and decomposed `n` plus COMBINING TILDE must both produce `n`.",
+    "The fix applies automatically to shared preprocessing used by `CountVectorizer`, `TfidfVectorizer`, and supported analyzer modes when `strip_accents='unicode'`; no vectorizer-specific implementation fork is needed.",
+    "`strip_accents_ascii`, public parameters, documentation contracts, and unrelated tokenization behavior remain unchanged.",
+    "Regression tests belong in `sklearn/feature_extraction/tests/test_text.py` and must cover the direct helper plus vectorizer preprocessing behavior.",
+    "Existing accent-stripping and word-analyzer expectations must remain passing."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Fix `strip_accents_unicode` so it always removes Unicode combining characters from the NFKD-normalized representation, including when the input is already NFKD-normalized. Remove or bypass the equality-based early return that currently returns already-normalized strings unchanged. Add regression coverage demonstrating equivalent output for canonically equivalent precomposed and decomposed accented input, and verify the behavior through vectorizer preprocessing configured with `strip_accents='unicode'`. Preserve existing behavior for currently covered Latin, Arabic, mixed-text, and analyzer cases."
+}

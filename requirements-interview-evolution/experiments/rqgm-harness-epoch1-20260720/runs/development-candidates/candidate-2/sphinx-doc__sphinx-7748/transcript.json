@@ -1,0 +1,158 @@
+[
+  {
+    "answer": "First non-signature (Recommended)",
+    "open_material_decisions": [
+      "Expected handling of differing return annotations and malformed or mismatched lines within the leading block.",
+      "How multiple signatures interact with the autodoc-process-signature event.",
+      "Termination rule for the leading overloaded-signature block."
+    ],
+    "question": {
+      "header": "Block ending",
+      "options": [
+        {
+          "description": "Collect consecutive valid, matching signature lines from the start and stop before the first non-signature line, preserving that line and everything after it as docstring content.",
+          "label": "First non-signature (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Treat all lines before the first blank line as the signature block, requiring every line in that block to be a valid matching signature.",
+          "label": "Blank-line boundary",
+          "recommended": false
+        },
+        {
+          "description": "Continue scanning beyond non-signature or mismatched lines and extract later signature-looking lines, potentially removing noncontiguous content.",
+          "label": "Skip invalid lines",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc determine where consecutive overloaded signatures at the start of a docstring end?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Each signature",
+    "open_material_decisions": [
+      "Expected handling of a malformed or mismatched line after one or more valid leading signatures.",
+      "Expected representation of differing return annotations across overloads.",
+      "How multiple extracted signatures interact with the autodoc-process-signature event."
+    ],
+    "question": {
+      "header": "Event handling",
+      "options": [
+        {
+          "description": "Invoke the event independently for each overload so extensions can transform or suppress each signature using the existing single-signature contract.",
+          "label": "Each signature (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Invoke the event once with newline-separated argument and return-annotation text, changing the effective shape of its existing inputs.",
+          "label": "Joined arguments",
+          "recommended": false
+        },
+        {
+          "description": "Render extracted overloads directly and reserve the event for only the normal single-signature path.",
+          "label": "Bypass event",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should multiple extracted docstring signatures interact with the existing autodoc-process-signature event?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Keep valid prefix",
+    "open_material_decisions": [
+      "Handling of a malformed or object-name-mismatched line after one or more valid leading signatures.",
+      "Representation and rendering of differing return annotations across overloads."
+    ],
+    "question": {
+      "header": "Invalid line",
+      "options": [
+        {
+          "description": "Use and remove the valid leading signatures, then preserve the invalid or mismatched line and everything after it as docstring content.",
+          "label": "Keep valid prefix",
+          "recommended": true
+        },
+        {
+          "description": "Extract no docstring signatures and preserve the entire docstring when the leading signature run contains an invalid or mismatched line.",
+          "label": "Reject whole block",
+          "recommended": false
+        },
+        {
+          "description": "Use the valid prefix but also emit a warning for the invalid or mismatched terminating line.",
+          "label": "Raise warning",
+          "recommended": false
+        }
+      ],
+      "prompt": "If one or more valid matching signatures are followed by a malformed signature-like line or a signature for another object, what should autodoc do?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Per signature",
+    "open_material_decisions": [
+      "Representation and rendering of differing return annotations across overloaded signatures."
+    ],
+    "question": {
+      "header": "Return types",
+      "options": [
+        {
+          "description": "Preserve each overload’s own arguments and return annotation, process it independently through autodoc-process-signature, and render the resulting signatures on separate lines.",
+          "label": "Per signature",
+          "recommended": true
+        },
+        {
+          "description": "Require all overloads to share one return annotation and stop the extracted prefix when a differing annotation is encountered.",
+          "label": "Shared annotation",
+          "recommended": false
+        },
+        {
+          "description": "Discard return annotations from all extracted overloads whenever their annotations differ.",
+          "label": "Omit annotations",
+          "recommended": false
+        }
+      ],
+      "prompt": "When consecutive overloaded signatures have different return annotations, how should autodoc render them?"
+    },
+    "turn": 4
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A docstring beginning with two or more valid signatures for the documented method produces one aligned directive signature line per overload, in source order.",
+          "All extracted leading signature lines are absent from the rendered docstring body, while the first following prose line and all subsequent content remain present.",
+          "Overloads with different return annotations render each annotation on its corresponding signature line.",
+          "autodoc-process-signature is called once per extracted overload, in source order, and each event transformation is reflected only in that overload’s rendered signature.",
+          "If the first line is not a valid matching signature, no later line is extracted and the existing introspected signature and full docstring content are preserved.",
+          "If valid leading signatures are followed by malformed text or a signature for another object, the valid prefix is rendered as overloads and removed; the terminating line and remaining content are preserved without a new warning.",
+          "With autodoc_docstring_signature disabled, introspected signatures are used and all signature-looking docstring lines remain content.",
+          "When an explicit directive signature is supplied, docstring-signature extraction does not override it or remove leading signature-looking content.",
+          "The existing single-signature fixture and assertions continue to pass unchanged in behavior.",
+          "Tests cover consecutive overloads, differing return annotations, malformed or mismatched terminating lines, no valid leading signature, event processing per overload, disabled configuration, and explicit-signature precedence.",
+          "The autodoc_docstring_signature documentation states that consecutive valid matching signatures at the beginning of a function or method docstring are used and removed, ending at the first nonmatching line."
+        ],
+        "confirmed_decisions": [
+          "The overloaded-signature block begins at the first docstring line and consists only of consecutive lines that fully match py_ext_sig_re and have a name accepted for the documented object.",
+          "Extraction stops at the first non-signature, malformed signature-like, or object-name-mismatched line.",
+          "A valid leading prefix is retained as extracted signatures even when a later line terminates the block; no warning is required for the terminating line.",
+          "Only successfully extracted leading signature lines are removed from docstring content. The terminating line and everything after it remain unchanged except for the existing prepare_docstring normalization.",
+          "Each extracted overload retains its own argument list and return annotation, including differing return annotations.",
+          "autodoc-process-signature is invoked independently for each extracted overload using the existing single-signature event contract.",
+          "Each event result is formatted as its own signature. Non-suppressed results are joined with newline characters and rendered through the existing multi-line directive-header path.",
+          "The feature remains conditional on autodoc_docstring_signature being enabled and no explicit directive signature being present.",
+          "Existing accepted-name rules remain unchanged, including the additional names accepted by ClassDocumenter.",
+          "Existing single-signature behavior and disabled-configuration behavior remain compatible."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend DocstringSignatureMixin so autodoc_docstring_signature extracts every consecutive valid signature for the documented function or method from the start of a docstring. Stop at the first line that is not a valid matching signature. Remove only the extracted leading signature lines from the rendered docstring, preserving the terminating line and all later content. Preserve each overload’s arguments and return annotation, process each signature independently through autodoc-process-signature, and join the processed results with newlines for the existing multi-signature directive renderer. Retain the current behavior when the option is disabled, when an explicit directive signature is supplied, when no valid matching signature starts the docstring, and for existing single-signature docstrings. Update the autodoc documentation to describe consecutive leading signatures rather than only the first line."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "All material behavioral decisions are resolved, and the repository evidence supports a concrete implementation and test contract."
+    },
+    "turn": 5
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "acceptance_checks": [
+    "With sys.path beginning with \"\", modify_sys_path() removes that first entry.",
+    "With sys.path beginning with \".\", modify_sys_path() removes that first entry.",
+    "With sys.path beginning with os.getcwd(), modify_sys_path() removes that first entry.",
+    "With sys.path beginning with an unrelated path, modify_sys_path() preserves it.",
+    "With sys.path equal to [], modify_sys_path() returns without error and leaves it empty.",
+    "For leading- and trailing-colon PYTHONPATH scenarios, genuine later current-directory markers are removed at the appropriate shifted position while preceding unrelated paths are preserved.",
+    "For leading- and trailing-colon PYTHONPATH scenarios, a later unrelated candidate is preserved rather than removed based only on its index.",
+    "A runpy.run_module('pylint', run_name='__main__', alter_sys=True) regression test inserts an unrelated path at sys.path[0] and verifies that the path is still present and usable when pylint's entry point reaches run_pylint; the test isolates or stubs actual lint execution.",
+    "Existing modify_sys_path tests covering python -m pylint path stripping and PYTHONPATH colon behavior continue to pass.",
+    "The modify_sys_path docstring accurately describes conditional removal and no longer claims sys.path[0] is always empty or the working directory."
+  ],
+  "confirmed_decisions": [
+    "Recognize exactly \"\", \".\", and os.getcwd() as removable current-directory markers.",
+    "Leave an empty sys.path unchanged and do not raise IndexError.",
+    "Preserve an unrelated first entry instead of unconditionally popping index 0.",
+    "Continue PYTHONPATH leading- and trailing-colon cleanup even when preserving an unrelated first entry.",
+    "For PYTHONPATH-driven cleanup, remove a later candidate only when its value is \"\", \".\", or os.getcwd(); do not remove by calculated index alone.",
+    "Add both direct modify_sys_path unit tests and a regression test exercising runpy.run_module with run_name=\"__main__\" and alter_sys=True.",
+    "Preserve the existing security behavior for normal python -m pylint execution by continuing to remove genuine current-directory markers.",
+    "Keep the public modify_sys_path export and module-entry-point call structure unchanged."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update pylint.modify_sys_path() so it removes a path entry only when that entry is an explicit current-directory marker: \"\", \".\", or os.getcwd(). An empty sys.path must remain unchanged without raising. An unrelated sys.path[0], including a path injected before runpy.run_module('pylint', run_name='__main__', alter_sys=True), must be preserved. Existing PYTHONPATH leading- or trailing-colon cleanup must continue to remove an implicitly added current-directory entry at its shifted position when an unrelated first entry is preserved, but only after verifying that the candidate entry is \"\", \".\", or os.getcwd(); unrelated entries must never be removed solely by index. Update the function documentation to remove the invalid assumption that the first entry is always empty or the working directory. Add direct unit coverage and a runpy entry-point regression test."
+}

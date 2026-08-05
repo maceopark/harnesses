@@ -1,0 +1,119 @@
+[
+  {
+    "answer": "Setuptools parser",
+    "open_material_decisions": [
+      "Confirm the resulting executable contract before implementation.",
+      "Define acceptance coverage for inclusive and exclusive comparisons after the comparator change.",
+      "Select the version comparison implementation and required compatibility semantics."
+    ],
+    "question": {
+      "header": "Comparator",
+      "options": [
+        {
+          "description": "Use pkg_resources.parse_version, restoring the parser explicitly identified as working while preserving the existing boolean API and both >=/> branches.",
+          "label": "Setuptools parser",
+          "recommended": true
+        },
+        {
+          "description": "Keep LooseVersion but normalize problematic version strings locally, limiting dependency use but defining new parsing behavior in Astropy.",
+          "label": "Local normalization",
+          "recommended": false
+        },
+        {
+          "description": "Let the implementer choose a standards-aware comparator using dependencies already available to this project, with evidence that existing cases and 1.14.3 versus 1.14dev work.",
+          "label": "Implementer delegated",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which version-comparison contract should replace LooseVersion in minversion?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Both branches",
+    "open_material_decisions": [
+      "Confirm the complete executable contract after acceptance coverage is resolved.",
+      "Define acceptance coverage for inclusive and exclusive comparisons after replacing LooseVersion."
+    ],
+    "question": {
+      "header": "Coverage",
+      "options": [
+        {
+          "description": "Require regression coverage for inclusive >= and exclusive > behavior, including 1.14.3 versus 1.14dev and equality at the requested version.",
+          "label": "Both branches",
+          "recommended": true
+        },
+        {
+          "description": "Require only the default inclusive 1.14.3 versus 1.14dev regression, leaving exclusive behavior covered only indirectly.",
+          "label": "Reported case only",
+          "recommended": false
+        },
+        {
+          "description": "Let the implementer choose focused coverage, constrained to preserve both boolean branches and prove the reported inclusive failure is fixed.",
+          "label": "Implementer delegated",
+          "recommended": false
+        }
+      ],
+      "prompt": "What comparison coverage must acceptance tests require for the setuptools parser change?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve or revise the complete executable contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with no remaining material decisions.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a material change before implementation.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this executable contract: replace LooseVersion in astropy.utils.minversion with setuptools’ pkg_resources.parse_version; preserve the public signature, module/string handling, version_path lookup, missing-import False result, invalid-module ValueError, and boolean semantics (inclusive=True uses >=; inclusive=False uses >); add focused regression tests proving 1.14.3 satisfies 1.14dev in both branches and proving equality passes only for the inclusive branch; retain the existing minversion cases. Scope is limited to the comparator import/use and its tests, with no new dependency because setup.py already uses setuptools. Acceptance requires the focused introspection tests to pass without TypeError. Residual risk: switching from LooseVersion to the setuptools parser may change ordering for version strings outside the reported and existing test cases; no broader compatibility matrix is required."
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "The focused astropy.utils introspection tests pass.",
+          "minversion with installed version 1.14.3 and requested version 1.14dev returns True for inclusive=True without raising TypeError.",
+          "minversion with installed version 1.14.3 and requested version 1.14dev returns True for inclusive=False without raising TypeError.",
+          "Equal installed and requested versions return True for inclusive=True and False for inclusive=False.",
+          "All pre-existing minversion assertions remain passing.",
+          "The implementation no longer constructs LooseVersion objects in minversion and instead compares values returned by pkg_resources.parse_version.",
+          "No files outside the comparator implementation and its focused tests require behavioral changes."
+        ],
+        "confirmed_decisions": [
+          "Use setuptools’ pkg_resources.parse_version as the version comparator.",
+          "Preserve inclusive=True as >= and inclusive=False as >.",
+          "Require regression coverage for both inclusive and exclusive branches.",
+          "Cover 1.14.3 versus 1.14dev in both branches.",
+          "Cover equality and prove it passes only for inclusive comparison.",
+          "Retain all existing minversion cases.",
+          "Preserve the existing minversion public API, input handling, version lookup, and error/False behavior.",
+          "Do not add a dependency because setup.py already uses setuptools.",
+          "Keep scope limited to comparator import/use and focused tests.",
+          "Accept bounded ordering differences for version strings outside the reported and existing tested cases without requiring a broader compatibility matrix."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Replace distutils.version.LooseVersion in astropy.utils.minversion with setuptools’ pkg_resources.parse_version. Preserve the public signature and existing behavior for module objects and module-name strings, version_path lookup, failed named imports returning False, invalid module arguments raising ValueError, and comparison semantics: inclusive=True uses >= while inclusive=False uses >. Add focused regression tests proving that installed version 1.14.3 satisfies requested version 1.14dev in both comparison branches, and that equality succeeds only in the inclusive branch. Retain the existing minversion test cases. Limit implementation to the comparator import/use and associated tests; setuptools is already used by setup.py, so no new dependency is required. Acceptance requires the focused introspection tests to pass without TypeError. Acknowledged residual risk: parse_version may order version strings differently from LooseVersion outside the reported case and existing tests; no broader compatibility matrix is required."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the complete executable contract, resolving the comparator choice, acceptance coverage, compatibility boundary, scope, and residual risk. No material decisions remain open."
+    },
+    "turn": 4
+  }
+]

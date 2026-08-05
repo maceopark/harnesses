@@ -1,0 +1,87 @@
+[
+  {
+    "answer": "Require python_files",
+    "open_material_decisions": [
+      "Whether discovered package __init__.py files should be collected only when they match python_files, while explicitly supplied __init__.py paths remain collectable."
+    ],
+    "question": {
+      "header": "Collection rule",
+      "options": [
+        {
+          "description": "Collect a discovered __init__.py only when it matches python_files; still allow an explicitly supplied __init__.py path to be collected.",
+          "label": "Require python_files",
+          "recommended": true
+        },
+        {
+          "description": "Never collect discovered __init__.py files during directory traversal, even when python_files explicitly includes them.",
+          "label": "Never auto-collect",
+          "recommended": false
+        },
+        {
+          "description": "Continue collecting every encountered non-ignored package __init__.py and address only the resulting import failure behavior.",
+          "label": "Preserve auto-collection",
+          "recommended": false
+        }
+      ],
+      "prompt": "What should pytest do with __init__.py during ordinary recursive directory collection?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Recurse without import",
+    "open_material_decisions": [
+      "Whether pytest must recurse into a package whose __init__.py does not match python_files without importing that initializer."
+    ],
+    "question": {
+      "header": "Package traversal",
+      "options": [
+        {
+          "description": "Continue discovering matching test files below the package, but do not collect or import its non-matching __init__.py.",
+          "label": "Recurse without import",
+          "recommended": true
+        },
+        {
+          "description": "Do not import the initializer, and skip all files beneath that package directory.",
+          "label": "Skip package tree",
+          "recommended": false
+        },
+        {
+          "description": "Do not expose the initializer as a collected test module, but still import it internally to establish package traversal.",
+          "label": "Import for traversal",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a discovered package __init__.py does not match python_files, how should pytest handle test files inside that package?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A regression test reproduces an unqualified pytest run with foobar/__init__.py raising AssertionError and an ordinary test file; collection does not import foobar/__init__.py and the ordinary test passes.",
+          "A package whose non-matching __init__.py would fail on import can still contain nested matching test files, and those tests are collected and run successfully without executing the initializer.",
+          "Configuring python_files to include __init__.py continues to collect tests from discovered package initializers.",
+          "Explicitly selecting a path such as tests/__init__.py continues to collect it even when the default python_files patterns do not include __init__.py.",
+          "Existing package collection, --pyargs/testpaths, and collect_ignore regression tests continue to pass.",
+          "The implementation avoids creating a Package collector for a discovered non-matching __init__.py while preserving recursive discovery beneath its directory."
+        ],
+        "confirmed_decisions": [
+          "During ordinary recursive directory collection, discovered __init__.py files must satisfy python_files before becoming Python collectors.",
+          "When a discovered package initializer does not match python_files, pytest must recurse into the package directory without collecting or importing that initializer.",
+          "An explicitly supplied __init__.py path remains eligible for collection even when it does not match python_files, preserving initial-path behavior.",
+          "When python_files explicitly includes __init__.py, discovered initializers remain collectable and existing tests defined in them continue to work.",
+          "Existing pytest_ignore_collect and collect_ignore behavior must remain effective before collection or import."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Restore ordinary recursive collection so that a discovered package __init__.py is collected and imported only when its path matches the configured python_files patterns. A non-matching initializer must not be imported merely to traverse the package; pytest must still recurse into that directory and collect matching test files below it. Explicitly supplied __init__.py paths remain collectable."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested behavior and success criteria are sufficiently defined by the two confirmed answers and repository evidence; no material implementation decision remains open."
+    },
+    "turn": 3
+  }
+]

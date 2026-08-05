@@ -1,0 +1,57 @@
+[
+  {
+    "answer": "Both reductions",
+    "open_material_decisions": [
+      "Whether boolean weights must be corrected only for weighted mean or consistently for the public sum_of_weights reduction as well."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Require sum_of_weights to count true weights numerically, which also fixes weighted mean consistently at the shared denominator source.",
+          "label": "Both reductions",
+          "recommended": true
+        },
+        {
+          "description": "Require only weighted mean results to be corrected, without adding a public sum_of_weights behavior requirement.",
+          "label": "Mean only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should boolean weights be treated numerically in both weighted mean and sum_of_weights, or is the required contract limited to weighted mean?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A boolean-weight regression test verifies that DataArray([1.0, 1.0, 1.0]).weighted(DataArray([True, True, False])).mean() equals 1.0.",
+          "A boolean-weight regression test verifies that the corresponding sum_of_weights result equals numeric 2, not boolean True.",
+          "Regression coverage verifies that boolean weights paired with missing data count only true weights associated with non-missing data.",
+          "Existing weighted reduction tests for integer weights, zero weights, missing values, dimensions, and skipna behavior continue to pass.",
+          "The implementation does not reject boolean DataArray weights or change the existing prohibition on missing values in weights."
+        ],
+        "confirmed_decisions": [
+          "Boolean DataArray weights remain accepted; no boolean-dtype rejection is introduced.",
+          "For sum_of_weights, boolean weights are accumulated numerically rather than through a boolean-by-boolean dot result.",
+          "Weighted mean uses the corrected numeric sum of weights as its denominator.",
+          "The reported example with data [1.0, 1.0, 1.0] and boolean weights [True, True, False] must return a weighted mean of 1.0.",
+          "The same example must return sum_of_weights equal to 2.",
+          "Existing behavior for numeric weights must remain compatible.",
+          "Existing handling of data missing values remains intact: weights corresponding to missing data do not contribute to sum_of_weights.",
+          "Existing zero-total-weight behavior remains intact, yielding a missing result rather than a valid zero denominator.",
+          "Add regression coverage for boolean weights in both weighted mean and sum_of_weights."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Correct boolean-weight handling in xarray weighted reductions so true and false weights contribute numerically as 1 and 0 when calculating the sum of weights. This correction must apply to the public sum_of_weights reduction and, through that denominator, produce correct weighted-mean results. Preserve existing compatible behavior for non-boolean weights, missing data, zero total weight, dimensions, and skipna handling."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The repository evidence and owner answer resolve the only material ambiguity: boolean weights must behave numerically in both sum_of_weights and weighted mean. The contract can therefore be implemented without adding unsupported exclusions or broader API guarantees."
+    },
+    "turn": 2
+  }
+]

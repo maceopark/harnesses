@@ -1,0 +1,87 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..49addfe 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -2037,6 +2037,20 @@ class NewTypeDataDocumenter(DataDocumenter):
+         return inspect.isNewType(member) and isattr
+ 
+ 
++class GenericAliasDataDocumenter(DataDocumenter):
++    """Specialized DataDocumenter subclass for GenericAliases."""
++
++    objtype = 'genericaliasdata'
++    directivetype = 'data'
++    priority = FunctionDocumenter.priority + 1
++
++    @classmethod
++    def can_document_member(cls, member: Any, membername: str, isattr: bool, parent: Any
++                            ) -> bool:
++        return (isinstance(parent, ModuleDocumenter) and isattr and
++                inspect.isgenericalias(member))
++
++
+ class MethodDocumenter(DocstringSignatureMixin, ClassLevelDocumenter):  # type: ignore
+     """
+     Specialized Documenter subclass for methods (normal, static and class).
+@@ -2699,6 +2713,7 @@ def setup(app: Sphinx) -> Dict[str, Any]:
+     app.add_autodocumenter(ExceptionDocumenter)
+     app.add_autodocumenter(DataDocumenter)
+     app.add_autodocumenter(NewTypeDataDocumenter)
++    app.add_autodocumenter(GenericAliasDataDocumenter)
+     app.add_autodocumenter(FunctionDocumenter)
+     app.add_autodocumenter(DecoratorDocumenter)
+     app.add_autodocumenter(MethodDocumenter)
+diff --git a/tests/roots/test-ext-autodoc/target/genericalias_multiline.py b/tests/roots/test-ext-autodoc/target/genericalias_multiline.py
+new file mode 100644
+index 0000000..dea1a65
+--- /dev/null
++++ b/tests/roots/test-ext-autodoc/target/genericalias_multiline.py
+@@ -0,0 +1,18 @@
++from typing import Any, Callable, Dict, Union
++
++D = Dict[str, Any]
++"""A dictionary alias documented on
++multiple lines.
++"""
++
++U = Union[str, None]
++"""A union alias documented on
++multiple lines.
++"""
++
++F = Callable[[int], None]
++"""A callable alias documented on
++multiple lines.
++"""
++
++C = Callable[[int], None]
+diff --git a/tests/test_ext_autodoc.py b/tests/test_ext_autodoc.py
+index 4c16886..a49aaa4 100644
+--- a/tests/test_ext_autodoc.py
++++ b/tests/test_ext_autodoc.py
+@@ -1956,6 +1956,25 @@ def test_autodoc_GenericAlias(app):
+         ]
+ 
+ 
++@pytest.mark.skipif(sys.version_info < (3, 7), reason='python 3.7+ is required.')
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_multiline_GenericAliases(app):
++    options = {'members': ['D', 'U', 'F', 'C'], 'undoc-members': None}
++    actual = list(do_autodoc(app, 'module', 'target.genericalias_multiline', options))
++    output = '\n'.join(actual)
++
++    for name, documentation in [
++        ('D', 'A dictionary alias documented on\n   multiple lines.'),
++        ('U', 'A union alias documented on\n   multiple lines.'),
++        ('F', 'A callable alias documented on\n   multiple lines.'),
++    ]:
++        assert '.. py:data:: %s' % name in output
++        assert documentation in output
++
++    assert '.. py:data:: C' in output
++    assert output.count('alias of ') == 4
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodoc_TypeVar(app):
+     options = {"members": None,

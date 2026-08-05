@@ -1,0 +1,87 @@
+[
+  {
+    "answer": "GET only (Recommended)",
+    "open_material_decisions": [
+      "Whether automatic `Content-Length: 0` removal applies only to bodyless GET requests, to additional bodyless HTTP methods, or is exposed as an opt-out while preserving defaults."
+    ],
+    "question": {
+      "header": "Behavior scope",
+      "options": [
+        {
+          "description": "Do not automatically add `Content-Length` for bodyless GET requests; preserve existing behavior for other methods and explicit user-supplied headers.",
+          "label": "GET only (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Do not automatically add `Content-Length` for bodyless GET or HEAD requests; preserve other methods and explicit headers.",
+          "label": "GET and HEAD",
+          "recommended": false
+        },
+        {
+          "description": "Keep the current default and add a caller-controlled way to suppress the automatically generated header.",
+          "label": "Explicit opt-out",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which behavior should the implementation require for requests whose body is `None`?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Whether the owner approves the consolidated implementation contract and its bounded residual risks."
+    ],
+    "question": {
+      "header": "Contract approval",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with no remaining material decisions.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract unsealed and specify which behavior, test, or risk boundary must change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: for a GET whose prepared body is `None`, Requests must not automatically add `Content-Length: 0`; an explicitly supplied `Content-Length` must remain unchanged; GET requests with any non-`None` body and all non-GET methods retain existing behavior. Apply this rule throughout preparation, including any content-length recomputation after authentication. Add regression tests proving omission for ordinary bodyless GET and authenticated bodyless GET, preservation of an explicit GET Content-Length, and unchanged automatic length handling for a GET with a non-`None` body and representative non-GET requests. No opt-out API or Amazon-specific integration behavior is required. Acceptance is the new regression tests plus the existing test suite passing. Bounded residual risk: some consumers may have relied on the automatically generated zero length for bodyless GET, and the reported Amazon 503 is not independently validated. Is this contract approved for implementation?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "An ordinary bodyless GET is prepared without an automatically generated `Content-Length` header.",
+          "An authenticated bodyless GET remains without an automatically generated `Content-Length` after authentication-related recomputation.",
+          "An explicitly supplied `Content-Length` header on a bodyless GET is preserved unchanged.",
+          "A GET with a non-`None` body retains existing automatic content-length handling.",
+          "Representative non-GET requests retain existing automatic content-length handling.",
+          "The new regression tests pass.",
+          "The existing test suite passes."
+        ],
+        "confirmed_decisions": [
+          "The omission applies only to bodyless GET requests.",
+          "A user-supplied `Content-Length` on a GET remains unchanged.",
+          "GET requests with a non-`None` body retain existing automatic content-length behavior.",
+          "All non-GET methods retain existing content-length behavior.",
+          "Content-length recomputation after authentication must preserve the bodyless-GET omission rule.",
+          "No new caller-controlled opt-out API is required.",
+          "No Amazon-specific integration test or behavior is required.",
+          "Implementation may choose the smallest repository-consistent code structure that satisfies these behavioral boundaries without changing the public API.",
+          "Bounded residual risk is accepted: some consumers may rely on the automatically generated zero length for bodyless GET requests, and the reported Amazon 503 behavior has not been independently validated."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Change request preparation so Requests does not automatically add `Content-Length: 0` when a GET request has a prepared body of `None`. Preserve an explicitly supplied `Content-Length` header. Preserve existing behavior for GET requests with any non-`None` body and for every non-GET method. Enforce the same rule whenever content length is recomputed, including after authentication. Add no opt-out API and require no Amazon-specific integration behavior."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the consolidated contract, resolving the only material behavior-scope decision. The contract is implementation-ready with bounded compatibility risk recorded."
+    },
+    "turn": 3
+  }
+]

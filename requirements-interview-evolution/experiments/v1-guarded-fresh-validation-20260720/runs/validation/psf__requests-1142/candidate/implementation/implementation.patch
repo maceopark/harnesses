@@ -1,0 +1,57 @@
+diff --git a/requests/models.py b/requests/models.py
+index 9926045..dfe4c60 100644
+--- a/requests/models.py
++++ b/requests/models.py
+@@ -386,6 +386,9 @@ class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):
+         self.body = body
+ 
+     def prepare_content_length(self, body):
++        if self.method == 'GET' and body is None:
++            return
++
+         self.headers['Content-Length'] = '0'
+         if hasattr(body, 'seek') and hasattr(body, 'tell'):
+             body.seek(0, 2)
+diff --git a/test_requests.py b/test_requests.py
+index c974e98..161d519 100644
+--- a/test_requests.py
++++ b/test_requests.py
+@@ -63,6 +63,38 @@ class RequestsTestCase(unittest.TestCase):
+ 
+         self.assertEqual(request.path_url, "/get/test%20case")
+ 
++    def test_bodyless_get_does_not_set_content_length(self):
++        request = requests.Request('GET', 'http://example.com/').prepare()
++
++        self.assertNotIn('Content-Length', request.headers)
++
++    def test_bodyless_get_preserves_explicit_content_length(self):
++        request = requests.Request('GET', 'http://example.com/',
++            headers={'Content-Length': '42'}).prepare()
++
++        self.assertEqual(request.headers['Content-Length'], '42')
++
++    def test_bodyless_get_auth_preserves_content_length_behavior(self):
++        class Auth(object):
++            def __call__(self, request):
++                return request
++
++        request = requests.Request('GET', 'http://example.com/',
++            auth=Auth()).prepare()
++        explicit_request = requests.Request('GET', 'http://example.com/',
++            headers={'Content-Length': '42'}, auth=Auth()).prepare()
++
++        self.assertNotIn('Content-Length', request.headers)
++        self.assertEqual(explicit_request.headers['Content-Length'], '42')
++
++    def test_content_length_compatibility(self):
++        get_request = requests.Request('GET', 'http://example.com/',
++            data='body').prepare()
++        post_request = requests.Request('POST', 'http://example.com/').prepare()
++
++        self.assertEqual(get_request.headers['Content-Length'], '4')
++        self.assertEqual(post_request.headers['Content-Length'], '0')
++
+     def test_params_are_added_before_fragment(self):
+         request = requests.Request('GET',
+             "http://example.com/path#fragment", params={"a": "b"}).prepare()

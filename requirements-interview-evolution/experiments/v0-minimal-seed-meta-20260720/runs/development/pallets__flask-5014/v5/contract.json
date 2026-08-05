@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "Constructing flask.Blueprint(\"\", __name__) raises ValueError.",
+    "Constructing a Blueprint with a non-empty name still succeeds.",
+    "Constructing a Blueprint with a dotted name still raises ValueError.",
+    "The existing Blueprint test suite passes.",
+    "The new regression test fails against the base implementation and passes after the constructor validation is added."
+  ],
+  "confirmed_decisions": [
+    "Validate Blueprint.name in Blueprint.__init__, before assigning self.name.",
+    "Reject exactly the empty string with ValueError.",
+    "Keep the existing dotted-name ValueError behavior unchanged.",
+    "Do not reject whitespace-only names because they are non-empty and broader validation was not requested.",
+    "Do not add validation for registration-time name overrides; the request specifically concerns the name given to Blueprint construction.",
+    "Add a focused test alongside test_dotted_name_not_allowed asserting that flask.Blueprint(\"\", __name__) raises ValueError.",
+    "No changes are required to endpoint assembly, nested registration, or app.blueprints storage because constructor validation prevents an empty Blueprint name from reaching those paths."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update Blueprint construction so Blueprint(\"\", import_name) raises ValueError immediately. Preserve the existing rejection of names containing a dot and all behavior for non-empty names. Add an adjacent regression test in tests/test_blueprints.py for the empty-name case."
+}

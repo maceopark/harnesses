@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "Preparing a GET request for `http://.example.com` raises `requests.exceptions.InvalidURL`.",
+    "The exception message is exactly `URL has an invalid label.`",
+    "The regression is exercised through request preparation, demonstrating failure before adapter connection handling.",
+    "Existing wildcard-host and invalid-IDN preparation tests continue to pass.",
+    "Previously accepted non-leading-dot ASCII hostname forms are not newly rejected by this change.",
+    "The targeted URL-preparation tests pass, followed by the repository’s applicable test suite without regressions."
+  ],
+  "confirmed_decisions": [
+    "Validation scope is leading-dot hosts only.",
+    "Preserve current handling of other ASCII hostname forms, including interior consecutive dots and trailing dots.",
+    "Raise Requests `InvalidURL`, not a raw `UnicodeError`.",
+    "Use the existing exact invalid-label message: `URL has an invalid label.`",
+    "Reject the URL during `PreparedRequest.prepare_url`, before connection lookup or network I/O.",
+    "Extend the existing prepared-request bad-URL regression coverage in `tests/test_requests.py` with the reported leading-dot hostname case.",
+    "Do not add dependencies or change urllib3 behavior."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update `PreparedRequest.prepare_url` so an ASCII hostname beginning with `.`—including `http://.example.com`—is rejected during request preparation with `requests.exceptions.InvalidURL('URL has an invalid label.')`. Keep the change local to Requests hostname validation; do not rely on adapter- or urllib3-level exception translation."
+}

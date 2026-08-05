@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "For DataArray data [1.0, 1.0, 1.0] and boolean weights [True, True, False], sum_of_weights returns a numeric result equal to 2 rather than boolean True.",
+    "For the same data and weights, weighted mean returns 1.0 rather than 2.0.",
+    "Stored boolean weights are not mutated or globally converted.",
+    "Weighted-sum behavior is unchanged.",
+    "Non-boolean sum-of-weights and weighted-mean tests continue to pass.",
+    "The regression suite includes direct assertions for both the denominator and reported mean behavior."
+  ],
+  "confirmed_decisions": [
+    "Boolean normalization is limited to the sum-of-weights denominator path.",
+    "Only boolean weights are coerced; the boolean validity mask and non-boolean weights retain their current arithmetic paths.",
+    "Stored weights remain unchanged.",
+    "Weighted-sum behavior remains unchanged.",
+    "Regression tests must directly cover both numeric sum_of_weights == 2 and weighted mean == 1.0 for [True, True, False].",
+    "Existing non-boolean weighted tests are the required compatibility evidence.",
+    "The implementer may choose the concrete integer dtype according to repository conventions.",
+    "Broader boolean-weight matrices are not required."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Implement a denominator-only fix for boolean weights. In the sum-of-weights path, cast boolean weights to an integer dtype before the dot reduction so True values are counted numerically. Do not modify stored weights, weighted-sum behavior, or the denominator path for non-boolean weights. The implementer may select the specific integer dtype consistent with repository conventions. Add regression coverage using weights [True, True, False] that proves sum_of_weights is numeric and equals 2, and weighted mean for data [1.0, 1.0, 1.0] equals 1.0. Existing non-boolean weighted tests provide compatibility evidence. Boolean-weight combinations involving missing data, dimension-specific reductions, Dataset behavior, and non-NumPy backends are outside required coverage and remain acknowledged residual risks."
+}

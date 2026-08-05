@@ -1,0 +1,728 @@
+[
+  {
+    "turn": 1,
+    "open_material_decisions": [
+      "Archive format, layout, and portability expectations",
+      "Consistency behavior if notes change during export",
+      "Handling of unsafe filenames, links, unsupported data, and sensitive metadata",
+      "How attachments are represented, including missing or duplicate attachments",
+      "How notes are selected and how nonexistent, duplicate, or unauthorized selections are handled",
+      "Overwrite and destination-conflict behavior",
+      "Verification mechanism, integrity guarantees, and exit-status semantics",
+      "What counts as a partial export and the required human- and machine-readable reporting",
+      "Whether export is best-effort or atomic when some selected notes or attachments fail",
+      "Which note metadata must be preserved"
+    ],
+    "question": {
+      "header": "Failure mode",
+      "prompt": "If any selected note or attachment cannot be exported, should the command keep the successfully exported items or avoid producing an archive? This determines whether incomplete archives can intentionally exist.",
+      "options": [
+        {
+          "label": "Best effort (Recommended)",
+          "description": "Create a usable partial archive, return a nonzero status, and precisely report every omitted or failed item for later verification.",
+          "recommended": true
+        },
+        {
+          "label": "Atomic export",
+          "description": "Produce no final archive unless every selected note, required metadata field, and attachment is exported successfully.",
+          "recommended": false
+        },
+        {
+          "label": "Configurable mode",
+          "description": "Support both behaviors through an option, increasing command and test complexity but serving both archival workflows.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Best effort"
+  },
+  {
+    "turn": 2,
+    "open_material_decisions": [
+      "Archive format, layout, and portability expectations",
+      "Consistency behavior if notes change during export",
+      "Handling of unsafe filenames, links, unsupported data, and sensitive metadata",
+      "How attachments are represented, including missing or duplicate attachments",
+      "How notes are selected and how nonexistent, duplicate, or unauthorized selections are handled",
+      "Overwrite and destination-conflict behavior",
+      "Verification mechanism, integrity guarantees, and exit-status semantics",
+      "What counts as a partial export and the required human- and machine-readable reporting",
+      "Which note metadata must be preserved"
+    ],
+    "question": {
+      "header": "Archive form",
+      "prompt": "What should `notes export` produce? This choice materially affects portability, inspectability, attachment organization, and how completeness can be verified afterward.",
+      "options": [
+        {
+          "label": "ZIP archive",
+          "description": "Create one portable ZIP containing human-readable notes, attachments, and a machine-readable integrity manifest; convenient to move and practical to verify.",
+          "recommended": true
+        },
+        {
+          "label": "Export directory",
+          "description": "Create an unpacked folder with the same content, making inspection and incremental tooling easier but producing many files to manage.",
+          "recommended": false
+        },
+        {
+          "label": "Structured bundle",
+          "description": "Create an application-specific archive optimized for exact re-import, at the cost of reduced human readability and interoperability.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "ZIP archive"
+  },
+  {
+    "turn": 3,
+    "open_material_decisions": [
+      "Archive layout and portability expectations within the ZIP",
+      "Consistency behavior if notes change during export",
+      "Handling of unsafe filenames, links, unsupported data, and sensitive metadata",
+      "How attachments are represented, including missing or duplicate attachments",
+      "How notes are selected and how nonexistent, duplicate, or unauthorized selections are handled",
+      "Overwrite and destination-conflict behavior",
+      "Verification mechanism, integrity guarantees, and exit-status semantics",
+      "What counts as a partial export and the required human- and machine-readable reporting",
+      "Which note metadata must be preserved"
+    ],
+    "question": {
+      "header": "Selection",
+      "prompt": "How should `notes export` identify the group of notes? This determines the public CLI interface and whether selection errors can make an export partial.",
+      "options": [
+        {
+          "label": "IDs and filters",
+          "description": "Support explicit note IDs plus a query, tag, or collection filter; flexible, but adds interface and test complexity.",
+          "recommended": true
+        },
+        {
+          "label": "Explicit IDs only",
+          "description": "Accept one or more note IDs, keeping behavior precise and simple while requiring users to obtain IDs first.",
+          "recommended": false
+        },
+        {
+          "label": "Filters only",
+          "description": "Export notes matching a query, tag, or collection, making group export convenient but less exact for ad hoc selections.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "IDs and filters"
+  },
+  {
+    "turn": 4,
+    "open_material_decisions": [
+      "Archive layout and portability expectations within the ZIP",
+      "Consistency behavior if notes change during export",
+      "Detailed ID and filter syntax and handling of nonexistent, duplicate, or unauthorized selections",
+      "Handling of unsafe filenames, links, unsupported data, and sensitive metadata",
+      "How attachments are represented, including missing or duplicate attachments",
+      "Overwrite and destination-conflict behavior",
+      "Verification mechanism, integrity guarantees, and exit-status semantics",
+      "What counts as a partial export and the required human- and machine-readable reporting",
+      "Which note metadata must be preserved"
+    ],
+    "question": {
+      "header": "Verification",
+      "prompt": "How should users verify an exported ZIP afterward? This determines the manifest contents, integrity guarantees, and whether validation is built into the application.",
+      "options": [
+        {
+          "label": "Manifest + verify command",
+          "description": "Include a checksummed inventory and selection summary, and provide `notes export verify <archive>` to detect missing, extra, or corrupted content and report declared omissions; strongest and most practical guarantee.",
+          "recommended": true
+        },
+        {
+          "label": "Manifest only",
+          "description": "Include checksums and inventory but require users or external tools to validate them, reducing CLI scope at the cost of convenience.",
+          "recommended": false
+        },
+        {
+          "label": "ZIP integrity only",
+          "description": "Rely on standard ZIP integrity testing, which detects container corruption but cannot prove that all selected notes, metadata, and attachments were represented.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Manifest + verify command"
+  },
+  {
+    "turn": 5,
+    "open_material_decisions": [
+      "Archive layout and portability expectations within the ZIP",
+      "Consistency behavior if notes change during export",
+      "Detailed ID and filter syntax and handling of nonexistent, duplicate, or unauthorized selections",
+      "Handling of unsafe filenames, links, unsupported data, and sensitive metadata",
+      "How attachments are represented, including missing or duplicate attachments",
+      "Integrity guarantees and verify-command exit-status semantics",
+      "Overwrite and destination-conflict behavior",
+      "What counts as a partial export and the required human- and machine-readable reporting",
+      "Which note metadata must be preserved"
+    ],
+    "question": {
+      "header": "Consistency",
+      "prompt": "If selected notes or attachments change while export is running, what consistency guarantee should the archive provide? This determines whether verification can prove a coherent point-in-time export.",
+      "options": [
+        {
+          "label": "Snapshot export",
+          "description": "Export every selected note, metadata record, and attachment from one logical snapshot; strongest archival guarantee but may require transactional or versioned reads.",
+          "recommended": true
+        },
+        {
+          "label": "Detect changes",
+          "description": "Read items normally, detect concurrent changes, and declare affected items as failed omissions under best-effort behavior; easier to implement but may produce a partial archive.",
+          "recommended": false
+        },
+        {
+          "label": "Live best effort",
+          "description": "Export each item’s state when read without detecting changes; simplest, but the archive may mix states from different times while still passing integrity checks.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Snapshot export"
+  },
+  {
+    "turn": 6,
+    "open_material_decisions": [
+      "Archive layout and portability expectations within the ZIP",
+      "Detailed ID and filter syntax and handling of nonexistent, duplicate, or unauthorized selections",
+      "Handling of unsafe filenames, links, unsupported data, and sensitive metadata",
+      "How attachments are represented, including missing or duplicate attachments",
+      "Integrity guarantees and verify-command exit-status semantics",
+      "Overwrite and destination-conflict behavior",
+      "What counts as a partial export and the required human- and machine-readable reporting",
+      "Which note metadata must be preserved"
+    ],
+    "question": {
+      "header": "Metadata",
+      "prompt": "Which metadata must every successfully exported note preserve? This determines the archive schema and whether verification can identify missing or incomplete note records.",
+      "options": [
+        {
+          "label": "Archival core",
+          "description": "Preserve stable note ID, title, body and format, created/updated timestamps, tags or collections, attachment references, and source revision/version; exclude application-internal fields unless explicitly needed.",
+          "recommended": true
+        },
+        {
+          "label": "All stored fields",
+          "description": "Preserve every metadata field held by the application, maximizing fidelity but potentially exposing sensitive or unstable internal data.",
+          "recommended": false
+        },
+        {
+          "label": "Minimal metadata",
+          "description": "Preserve only title, body, timestamps, and attachment references, improving portability but losing identifiers and organization data.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Archival core"
+  },
+  {
+    "turn": 7,
+    "open_material_decisions": [
+      "Archive layout and portability expectations within the ZIP",
+      "Detailed ID and filter syntax and handling of nonexistent, duplicate, or unauthorized selections",
+      "Handling of unsafe filenames, links, unsupported data, and sensitive metadata",
+      "How attachments are represented, including missing or duplicate attachments",
+      "Integrity guarantees and verify-command exit-status semantics",
+      "Overwrite and destination-conflict behavior",
+      "What counts as a partial export and the required human- and machine-readable reporting"
+    ],
+    "question": {
+      "header": "Attachments",
+      "prompt": "How should attachments be stored in the ZIP? This choice affects portability, duplicate handling, note-to-file references, and verification of missing content.",
+      "options": [
+        {
+          "label": "Content-addressed files",
+          "description": "Store each unique attachment once under a checksum-based path, preserve its original filename and media type in the manifest, and reference it from notes; robust and unambiguous, though less immediately browsable.",
+          "recommended": true
+        },
+        {
+          "label": "Per-note folders",
+          "description": "Place attachment copies beside each note using sanitized original filenames; easy to browse, but duplicates consume space and filename conflicts need extra rules.",
+          "recommended": false
+        },
+        {
+          "label": "Shared named folder",
+          "description": "Store attachments in one shared folder with generated conflict-safe names and map them through the manifest; reasonably browsable, but naming and deduplication semantics are more complex.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Per-note folders"
+  },
+  {
+    "turn": 8,
+    "open_material_decisions": [
+      "Archive layout and portability expectations within the ZIP",
+      "Detailed ID and filter syntax and handling of nonexistent, duplicate, or unauthorized selections",
+      "Handling of unsafe filenames, links, unsupported data, and sensitive metadata",
+      "Integrity guarantees and verify-command exit-status semantics",
+      "Missing attachment behavior and filename-conflict handling within per-note folders",
+      "Overwrite and destination-conflict behavior",
+      "What counts as a partial export and the required human- and machine-readable reporting"
+    ],
+    "question": {
+      "header": "Partial status",
+      "prompt": "Which omissions should cause an archive to be marked partial? This determines whether selection-resolution problems and missing attachments are visible as archival incompleteness rather than ordinary warnings.",
+      "options": [
+        {
+          "label": "Any requested omission",
+          "description": "Mark partial when any explicitly requested note is unresolved or inaccessible, or any selected note, required metadata, or referenced attachment is omitted; record every issue in the manifest and command summary.",
+          "recommended": true
+        },
+        {
+          "label": "Selected content only",
+          "description": "Mark partial only after selection resolves, when an included note, required metadata, or attachment cannot be exported; unmatched IDs and filters remain separate selection warnings or errors.",
+          "recommended": false
+        },
+        {
+          "label": "Notes only",
+          "description": "Mark partial only when a selected note record is omitted; missing attachments, metadata fields, and unresolved selections are warnings, which weakens the completeness guarantee.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Any requested omission"
+  },
+  {
+    "turn": 9,
+    "open_material_decisions": [
+      "Archive layout and note representation within the ZIP",
+      "Detailed ID and filter syntax, combination semantics, and handling of nonexistent, duplicate, or unauthorized selections",
+      "Handling of unsafe filenames, links, unsupported note data, and sensitive metadata",
+      "Integrity guarantees and `notes export verify` exit-status semantics",
+      "Missing attachment behavior and filename-conflict handling within per-note folders",
+      "Overwrite and destination-conflict behavior",
+      "Required human-readable and machine-readable partial-export reporting and export exit-status semantics"
+    ],
+    "question": {
+      "header": "Destination",
+      "prompt": "What should `notes export` do when the destination ZIP already exists? This determines whether the command can replace archives and what safeguards are required.",
+      "options": [
+        {
+          "label": "Fail unless forced",
+          "description": "Return an error by default and allow replacement only with an explicit `--force` option; safest while still supporting intentional overwrite.",
+          "recommended": true
+        },
+        {
+          "label": "Always fail",
+          "description": "Never overwrite an existing path, requiring the user to choose a new destination or remove the old archive separately.",
+          "recommended": false
+        },
+        {
+          "label": "Auto-rename",
+          "description": "Create a conflict-free filename automatically, avoiding failure but making the exact output path less predictable.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Fail unless forced"
+  },
+  {
+    "turn": 10,
+    "open_material_decisions": [
+      "Archive layout and note representation within the ZIP",
+      "Detailed ID and filter syntax, combination semantics, and handling of nonexistent, duplicate, or unauthorized selections",
+      "Handling of unsafe filenames, links, unsupported note data, and sensitive metadata",
+      "Integrity guarantees and `notes export verify` exit-status semantics",
+      "Missing attachment behavior and filename-conflict handling within per-note folders",
+      "Required human-readable and machine-readable partial-export reporting and export exit-status semantics"
+    ],
+    "question": {
+      "header": "Export status",
+      "prompt": "When best-effort export creates a partial archive, how should `notes export` signal and describe the result? This determines whether scripts can safely detect incompleteness without discarding the usable archive.",
+      "options": [
+        {
+          "label": "Nonzero + report",
+          "description": "Return a distinct nonzero partial-status code, print a concise summary with the archive path and omission counts, and support structured JSON output listing every issue also recorded in the manifest.",
+          "recommended": true
+        },
+        {
+          "label": "Zero + warning",
+          "description": "Return success because an archive was created, but print warnings and record omissions in the manifest; convenient interactively but easier for automation to overlook.",
+          "recommended": false
+        },
+        {
+          "label": "Nonzero + manifest",
+          "description": "Return a distinct nonzero partial-status code and print only a brief pointer to the manifest, keeping console output small but requiring archive inspection for issue details.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "{\"selection\":\"Nonzero + report\",\"details\":\"When a best-effort export creates a partial archive, return exit status 1 and print a concise summary containing the archive path and counts of partial, skipped, and failed items. Support structured JSON output that lists every issue recorded in the archive report, including each affected note identifier, stable reason code, and human-readable message. The usable archive remains published and is explicitly identified as incomplete.\"}"
+  },
+  {
+    "turn": 11,
+    "open_material_decisions": [
+      "Archive layout and note representation within the ZIP",
+      "Detailed ID and filter syntax, combination semantics, and handling of nonexistent, duplicate, or unauthorized selections",
+      "Handling of unsafe filenames, links, unsupported note data, and sensitive metadata",
+      "Integrity guarantees and `notes export verify` exit-status semantics",
+      "Missing attachment behavior and filename-conflict handling within per-note folders"
+    ],
+    "question": {
+      "header": "Note format",
+      "prompt": "How should each note be represented inside its per-note folder? This determines whether the archive prioritizes direct offline reading, exact structured preservation, or both.",
+      "options": [
+        {
+          "label": "Readable + JSON",
+          "description": "Store the note in its original or portable human-readable format plus a JSON metadata sidecar, with relative attachment links where supported; strongest balance of offline use and verifiability.",
+          "recommended": true
+        },
+        {
+          "label": "JSON only",
+          "description": "Store each complete note record as structured JSON, maximizing schema fidelity but making ordinary offline reading less convenient.",
+          "recommended": false
+        },
+        {
+          "label": "Readable only",
+          "description": "Store a human-readable note file with embedded metadata, simplifying browsing but making exact parsing and validation more format-dependent.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "{\"selection\":\"Readable + JSON\",\"details\":\"Store each note body as UTF-8 CommonMark Markdown at `notes/<note-id>.md`, with exact structured metadata and attachment references in the archive-level `manifest.json`. Do not create per-note folders or JSON sidecars; attachments remain under `attachments/<note-id>/`.\"}"
+  },
+  {
+    "turn": 12,
+    "open_material_decisions": [
+      "Combination semantics for explicit IDs and filters, including duplicate matches",
+      "Detailed filter syntax and behavior for nonexistent or unauthorized explicit IDs",
+      "Handling of unsafe filenames, unsafe links, unsupported note data, and sensitive metadata",
+      "Integrity guarantees and notes export verify exit-status semantics",
+      "Missing attachment behavior and filename-conflict handling under attachments/<note-id>/"
+    ],
+    "question": {
+      "header": "Selection mix",
+      "prompt": "When explicit note IDs and filters are supplied together, how should they define the selected group? This materially changes the archive’s scope and completeness report.",
+      "options": [
+        {
+          "label": "Union and deduplicate",
+          "description": "Export notes matching any supplied ID or filter, include each note once, and report unresolved or inaccessible explicit IDs as partial omissions.",
+          "recommended": true
+        },
+        {
+          "label": "IDs within filters",
+          "description": "Export only explicitly named notes that also satisfy every supplied filter, providing tighter scope but making filters constraints rather than additional selectors.",
+          "recommended": false
+        },
+        {
+          "label": "Reject mixed input",
+          "description": "Require callers to use either IDs or filters in one invocation, keeping selection unambiguous at the cost of flexibility.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "IDs within filters. Explicit note IDs are unioned with repeated `--id` values, filters of the same type are unioned, and the resulting ID set must also satisfy every supplied filter type. Each matching note is included once."
+  },
+  {
+    "turn": 13,
+    "open_material_decisions": [
+      "Behavior for nonexistent or unauthorized explicit note IDs",
+      "Handling of unsafe filenames, unsafe links, unsupported note data, and sensitive metadata",
+      "Integrity guarantees and `notes export verify` exit-status semantics",
+      "Missing attachment behavior and filename-conflict handling under `attachments/<note-id>/`",
+      "Supported filter types and exact CLI syntax"
+    ],
+    "question": {
+      "header": "Filter types",
+      "prompt": "Which filters should the first version support? This changes the public CLI and whether a selection can be reproduced deterministically during later verification.",
+      "options": [
+        {
+          "label": "Tags + collections",
+          "description": "Support repeatable `--tag` and `--collection` filters with the confirmed same-type union and cross-type intersection rules; deterministic and straightforward to audit.",
+          "recommended": true
+        },
+        {
+          "label": "Add text query",
+          "description": "Also support a free-text `--query`, making selection more flexible but requiring stable search semantics to reproduce and explain results.",
+          "recommended": false
+        },
+        {
+          "label": "Application query",
+          "description": "Accept one application-specific filter expression, maximizing future flexibility but creating a larger parsing and compatibility contract.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "{\"selection\":\"Tags + collections\",\"details\":\"Support repeatable `--tag` and `--collection` filters. Repeated values of the same filter type are unioned, while different filter types are intersected. Do not support free-text or application-specific query expressions in the first version.\"}"
+  },
+  {
+    "turn": 14,
+    "open_material_decisions": [
+      "Behavior and reporting for nonexistent or unauthorized explicit note IDs",
+      "Handling of unsafe filenames, unsafe links, unsupported note data, and sensitive metadata",
+      "Integrity guarantees and `notes export verify` exit-status semantics",
+      "Missing attachment behavior and filename-conflict handling under `attachments/<note-id>/`"
+    ],
+    "question": {
+      "header": "Unresolved IDs",
+      "prompt": "When an explicit `--id` is nonexistent or inaccessible, how should export report it? Distinguishing those cases can reveal that an unauthorized note exists.",
+      "options": [
+        {
+          "label": "Generic unresolved",
+          "description": "Continue the best-effort export, mark it partial, and report the ID with one generic `unresolved_id` reason that does not reveal existence or authorization state.",
+          "recommended": true
+        },
+        {
+          "label": "Distinguish causes",
+          "description": "Continue and report separate nonexistent and unauthorized reasons, improving diagnostics but potentially disclosing note existence.",
+          "recommended": false
+        },
+        {
+          "label": "Abort export",
+          "description": "Treat any unresolved explicit ID as a fatal selection error and publish no archive, overriding best-effort behavior for this case.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Continue the best-effort export and report each nonexistent or inaccessible explicit ID with the single stable reason code `unresolved_id`, without distinguishing whether the note does not exist or is unauthorized. The partial archive is published, the unresolved ID appears exactly once in `report.json` with outcome `skipped`, and export exits with status 1."
+  },
+  {
+    "turn": 15,
+    "open_material_decisions": [
+      "Handling of unsafe filenames, unsafe links, unsupported note data, and sensitive metadata",
+      "Integrity guarantees and `notes export verify` exit-status semantics",
+      "Missing attachment behavior and filename-conflict handling under `attachments/<note-id>/`"
+    ],
+    "question": {
+      "header": "Attachment gaps",
+      "prompt": "When a referenced attachment is missing, unreadable, or has a filename that conflicts after sanitization, how should the per-note attachment layout behave? This determines whether partial archives remain safe, unambiguous, and verifiable.",
+      "options": [
+        {
+          "label": "Skip + safe rename",
+          "description": "Mark unavailable attachments as skipped partial omissions, and store available files under deterministic sanitized names with suffixes for collisions while preserving original names and reference mappings in `manifest.json`.",
+          "recommended": true
+        },
+        {
+          "label": "Fail affected note",
+          "description": "Omit the entire note when any referenced attachment is unavailable, while safely renaming conflicting available files; this preserves note-level completeness but exports fewer usable notes.",
+          "recommended": false
+        },
+        {
+          "label": "Preserve raw names",
+          "description": "Skip unavailable attachments but preserve original filenames whenever ZIP permits, rejecting unsafe or conflicting names; this favors fidelity but causes more omissions and portability risk.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Skip unavailable or unreadable attachments and mark the affected note `partial`. Store available attachments under deterministic, sanitized, collision-safe names within `attachments/<note-id>/`; append stable suffixes when sanitization creates a collision. Preserve each original filename and its final archive path in `manifest.json`. Record every omitted attachment with a stable reason code and human-readable message so verification can distinguish declared omissions from archive corruption."
+  },
+  {
+    "turn": 16,
+    "open_material_decisions": [
+      "Handling of unsafe links, unsupported note data, and sensitive metadata",
+      "Integrity guarantees and `notes export verify` exit-status semantics"
+    ],
+    "question": {
+      "header": "Verify result",
+      "prompt": "What should `notes export verify <archive>` prove and return? This determines whether automation can distinguish a complete archive, an intentionally partial but internally consistent archive, and corruption or undeclared omissions.",
+      "options": [
+        {
+          "label": "Three outcomes",
+          "description": "Verify ZIP integrity, manifest/report schemas, checksums, note-to-attachment references, inventory closure, and declared selection outcomes; return 0 for complete, 1 for declared partial but consistent, and 2 for corruption or inconsistency.",
+          "recommended": true
+        },
+        {
+          "label": "Binary validity",
+          "description": "Perform the same checks but return 0 for both complete and declared-partial consistent archives, and nonzero only for corruption or inconsistency; simpler but scripts must inspect output to detect partiality.",
+          "recommended": false
+        },
+        {
+          "label": "Integrity only",
+          "description": "Validate ZIP readability and checksums without proving inventory, references, selection outcomes, or declared omissions; easiest to implement but too weak to establish archival completeness.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "{\"selection\":\"Three outcomes\",\"details\":\"Verify ZIP readability, supported schema versions, report-to-manifest integrity, exact expected-entry membership, byte lengths, SHA-256 digests, note-to-attachment references, outcome counts, and declared selection omissions without accessing the live notes database. Exit 0 only for a complete and internally consistent archive, 1 for an internally consistent archive that explicitly declares partial, skipped, or failed outcomes, and 2 for corruption, malformed data, checksum failures, inventory or reference inconsistencies, or undeclared omissions. List every detected problem.\"}"
+  },
+  {
+    "turn": 17,
+    "open_material_decisions": [
+      "Handling of unsafe links, unsupported note data, and sensitive metadata"
+    ],
+    "question": {
+      "header": "Content safety",
+      "prompt": "Which policy should govern links, unsupported note content, and sensitive metadata? This changes archive fidelity, offline safety, and what must be reported as partial.",
+      "options": [
+        {
+          "label": "Safe archival defaults",
+          "description": "Preserve archival-core metadata verbatim, exclude internal fields, never dereference links during export or verification, neutralize unsafe local/archive paths while recording the original target, and mark any content that cannot be represented losslessly in CommonMark as a declared partial omission.",
+          "recommended": true
+        },
+        {
+          "label": "Fail affected notes",
+          "description": "Apply the same metadata and link safeguards, but omit any note containing content that cannot be represented losslessly in CommonMark, producing fewer but fully represented notes.",
+          "recommended": false
+        },
+        {
+          "label": "Preserve raw content",
+          "description": "Retain links, paths, metadata, and unsupported constructs as-is for maximum fidelity, accepting greater privacy, portability, and unsafe-link risk.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "{\"selection\":\"Safe archival defaults\",\"details\":\"Preserve archival-core metadata verbatim and exclude application-internal or otherwise sensitive fields. Never dereference links during export or verification. Preserve ordinary web links as links, but neutralize unsafe local-file, executable, or archive-traversal targets while recording the original target in `manifest.json`. If any note content cannot be represented losslessly in CommonMark, export the representable content, declare each omission with a stable reason code and human-readable message, mark the note `partial`, and return the partial-export status.\"}"
+  },
+  {
+    "turn": 18,
+    "open_material_decisions": [
+      "Behavior when no selectors are supplied or supplied filters match no accessible notes"
+    ],
+    "question": {
+      "header": "Empty result",
+      "prompt": "What should happen when export resolves to no notes? This determines whether an empty ZIP can be considered a successful, verifiable archive or whether no archive is published.",
+      "options": [
+        {
+          "label": "Fail without archive",
+          "description": "Require at least one selector and at least one resolved note; return status 2 and publish no archive when either condition is unmet.",
+          "recommended": true
+        },
+        {
+          "label": "Allow empty matches",
+          "description": "Require a selector, but allow filters that match nothing to produce a complete empty archive with status 0; missing selectors remain an error.",
+          "recommended": false
+        },
+        {
+          "label": "Allow empty archive",
+          "description": "Permit both missing selectors and zero matches to produce a complete empty archive, simplifying automation but increasing accidental empty exports.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Fail without archive. Require at least one selector and at least one resolved exportable note; if either condition is unmet, publish no archive and exit with status 2."
+  },
+  {
+    "turn": 19,
+    "open_material_decisions": [
+      "How callers specify the destination ZIP, including whether an output path is required or derived automatically",
+      "Schema-version compatibility policy for manifest.json, report.json, and the verify command",
+      "The precise allow/neutralize rules for link targets and archive paths"
+    ],
+    "question": {
+      "header": "Destination",
+      "prompt": "How should callers choose the output ZIP path? This changes the command’s public syntax and whether scripts can predict exactly where an archive will be written.",
+      "options": [
+        {
+          "label": "Require --output",
+          "description": "Require `--output <path.zip>` for every export; explicit and automation-friendly, with the confirmed fail-unless-`--force` conflict behavior.",
+          "recommended": true
+        },
+        {
+          "label": "Optional --output",
+          "description": "Accept `--output` but otherwise generate a timestamped ZIP in the current directory; convenient interactively but less predictable.",
+          "recommended": false
+        },
+        {
+          "label": "Destination argument",
+          "description": "Require the ZIP path as a positional argument; concise, but potentially less self-documenting alongside selectors.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Require `--output <path.zip>` for every export. If the destination exists, fail unless `--force` is supplied."
+  },
+  {
+    "turn": 20,
+    "open_material_decisions": [
+      "Schema-version compatibility policy for manifest.json, report.json, and the verify command",
+      "The precise allow/neutralize rules for link targets and archive paths"
+    ],
+    "question": {
+      "header": "Schema policy",
+      "prompt": "How should `notes export verify` handle archive schema versions? This determines forward compatibility and whether an older application can safely judge a newer archive.",
+      "options": [
+        {
+          "label": "Major versions",
+          "description": "Version manifest and report schemas with major/minor numbers; accept supported majors and ignore only unknown optional fields, but return status 2 for unsupported majors or missing required fields.",
+          "recommended": true
+        },
+        {
+          "label": "Exact version",
+          "description": "Verify only the exact schema version implemented by the application, simplifying validation but making archives brittle across upgrades.",
+          "recommended": false
+        },
+        {
+          "label": "Best effort",
+          "description": "Attempt validation of unknown schema versions using recognized fields, improving apparent compatibility but risking incorrect completeness judgments.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Use major/minor schema versions for both `manifest.json` and `report.json`. Verification accepts supported major versions and ignores unknown optional fields, but exits with status 2 for an unsupported major version or any missing required field."
+  },
+  {
+    "turn": 21,
+    "open_material_decisions": [
+      "The precise allow/neutralize rules for link targets and archive paths"
+    ],
+    "question": {
+      "header": "Link policy",
+      "prompt": "Which exact targets should remain active in exported Markdown? This determines whether offline readers can safely open links without permitting local-file access, executable schemes, or ZIP path traversal.",
+      "options": [
+        {
+          "label": "Web + safe relative",
+          "description": "Preserve only HTTP(S), mailto, and normalized relative links that resolve within the same note’s exported attachment directory; neutralize all other schemes, absolute paths, and any path containing or resolving through traversal, while recording the original target and a stable reason code in manifest.json.",
+          "recommended": true
+        },
+        {
+          "label": "Web links only",
+          "description": "Preserve only HTTP(S) and mailto links; neutralize every filesystem or relative target, providing the simplest and strictest portable safety policy.",
+          "recommended": false
+        },
+        {
+          "label": "Scheme denylist",
+          "description": "Preserve targets unless they use known-dangerous schemes or escape the archive, retaining more link types but risking unsafe behavior from unrecognized schemes.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "{\"selection\":\"Web + safe relative\",\"details\":\"Keep only `http`, `https`, and `mailto` targets active, plus normalized relative links that resolve within the same note’s `attachments/<note-id>/` directory. Neutralize every other scheme, absolute path, network path, empty or malformed target, and any path containing or resolving through traversal. Record each neutralized link’s original target and a stable reason code in `manifest.json`. Never dereference links during export or verification.\"}"
+  },
+  {
+    "turn": 22,
+    "interviewer": {
+      "action": "complete",
+      "reason": "All material decisions are resolved. The challenged contract covers selection, point-in-time consistency, archive layout, metadata and attachments, safe content handling, partial-export reporting, destination conflicts, schema compatibility, and offline verification. Implementation is specified but not authorized by this interview request.",
+      "open_material_decisions": [],
+      "question": null,
+      "contract": {
+        "summary": "Add `notes export` producing an explicit `--output <path.zip>` snapshot archive from repeatable IDs, tags, and collections. Require at least one selector and one resolved exportable note. Preserve UTF-8 CommonMark note bodies, archival-core metadata, sanitized per-note attachments, `manifest.json`, and `report.json`. Best-effort omissions publish a clearly marked partial archive and exit 1; invalid invocation or inability to export any note publishes no archive and exits 2. `notes export verify <archive>` operates offline and returns 0 for complete and consistent, 1 for declared-partial but consistent, and 2 for malformed, corrupt, inconsistent, or undeclared-incomplete archives.",
+        "implementation_ready": true,
+        "confirmed_decisions": [
+          "Exports are best-effort and use one ZIP archive.",
+          "Export reads notes, metadata, and attachments from one logical snapshot.",
+          "Callers must provide `--output <path.zip>`; an existing destination fails unless `--force` is supplied.",
+          "Selection supports repeatable `--id`, `--tag`, and `--collection`; repeated IDs and same-type filters are unioned, different filter types are intersected, and each matching note is included once.",
+          "At least one selector and at least one resolved exportable note are required; otherwise no archive is published and export exits 2.",
+          "Nonexistent and inaccessible explicit IDs are indistinguishably reported once as skipped with reason `unresolved_id`; a resulting archive is partial and export exits 1.",
+          "Each note body is UTF-8 CommonMark at `notes/<note-id>.md`; exact structured metadata and attachment references live in `manifest.json`.",
+          "Required archival-core metadata is stable note ID, title, body and format, created and updated timestamps, tags or collections, attachment references, and source revision or version. Application-internal and otherwise sensitive fields are excluded.",
+          "Attachments are stored under `attachments/<note-id>/` using deterministic sanitized collision-safe names. Original filenames and final paths are preserved in the manifest; sanitization collisions receive stable suffixes.",
+          "Missing or unreadable attachments are omitted, the affected note is partial, and every omission receives a stable reason code and human-readable message.",
+          "Any unresolved requested ID or omitted selected note, required metadata value, referenced attachment, or unrepresentable content makes the archive partial.",
+          "A partial export publishes the usable archive, exits 1, prints its path and partial, skipped, and failed counts, and supports JSON output listing every issue with the affected note ID, stable reason code, and message.",
+          "Only HTTP, HTTPS, mailto, and normalized relative links resolving inside the same note's attachment directory remain active. Other schemes, absolute or network paths, empty or malformed targets, and traversal paths are neutralized and recorded with their original target and a stable reason code. Links are never dereferenced.",
+          "Content that cannot be represented losslessly in CommonMark is exported where representable; each omission is declared and the note and archive are marked partial.",
+          "`manifest.json` and `report.json` use major/minor schema versions. Verification accepts supported majors and unknown optional fields, but exits 2 for unsupported majors or missing required fields.",
+          "Offline verification checks ZIP readability, supported schemas, report-to-manifest integrity, exact expected-entry membership, byte lengths, SHA-256 digests, note-to-attachment references, outcome counts, and declared selection omissions without accessing the live notes database.",
+          "Verification exits 0 only for a complete internally consistent archive, 1 for a consistent archive declaring partial, skipped, or failed outcomes, and 2 for corruption, malformed data, checksum failure, inventory or reference inconsistency, or undeclared omission. It lists every detected problem.",
+          "Implementation is not authorized by the interview request."
+        ],
+        "open_material_decisions": [],
+        "acceptance_checks": [
+          "A successful complete export creates the requested ZIP from one logical snapshot, exits 0, and passes offline verification with exit 0.",
+          "Mixed selectors follow the confirmed union/intersection rules and never duplicate a note.",
+          "A missing or inaccessible explicit ID is reported exactly once as `unresolved_id`, does not reveal authorization state, produces a usable partial archive when other notes resolve, and causes export and verification to exit 1.",
+          "Missing attachments, required metadata, or unrepresentable note content are declared consistently in the manifest and report, mark affected notes and the archive partial, and are distinguished from corruption by verification.",
+          "Unsafe filenames cannot create absolute, traversal, ambiguous, or colliding ZIP paths; original names and resolved archive paths remain auditable.",
+          "Only allowed link targets remain active; every neutralized target is recorded, and neither export nor verification dereferences links.",
+          "Verification detects missing, extra, modified, malformed, or inconsistently referenced entries and exits 2 while listing all detected problems.",
+          "No selector, zero resolved exportable notes, an existing destination without `--force`, or another fatal pre-publication error leaves no new archive.",
+          "Structured export output contains every issue recorded in `report.json`, while human output includes the archive path and partial, skipped, and failed counts.",
+          "Supported schema minors and unknown optional fields verify successfully; unsupported majors and missing required fields exit 2."
+        ]
+      }
+    }
+  }
+]

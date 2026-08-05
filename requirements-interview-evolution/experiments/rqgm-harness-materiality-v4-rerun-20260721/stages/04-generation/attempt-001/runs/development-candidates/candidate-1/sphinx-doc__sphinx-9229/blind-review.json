@@ -1,0 +1,55 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/0",
+          "quoted_value": "Autodoc output for ScaffoldOpts = Dict[str, Any] contains its assignment-following multiline documentation and does not contain generated “alias of …” text for that alias."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/unknowns/1",
+          "quoted_value": "The supplied repository evidence alone does not establish which concrete Python 3.6 typing runtime classes the three reported aliases instantiate or which documenter each value selects in that runtime."
+        }
+      ],
+      "description": "The bug was reported on Python 3.6.9, but the contract does not require the Dict, Union, and Callable cases to pass on Python 3.6. Consequently, an implementation could satisfy the written checks on a newer runtime while leaving the reported failure unresolved. This is material because generic-alias recognition and documenter selection vary by runtime.",
+      "failure_class": "omission",
+      "general_cause": "The contract declares readiness without making the reported Python 3.6 runtime a required validation dimension, even though repository selection behavior for that runtime remains unresolved.",
+      "id": "F1",
+      "material": true,
+      "observable_signal": "All three alias checks specify values and output but no Python version, while audited evidence says the concrete Python 3.6 typing classes and selected documenters are unknown."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/3",
+          "quoted_value": "An otherwise equivalent type alias without assignment-following documentation continues to use its existing default autodoc output."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/4",
+          "quoted_value": "Existing non-alias data documentation behavior remains unchanged."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        }
+      ],
+      "description": "The two compatibility checks do not define a deterministic pass/fail oracle. In particular, “otherwise equivalent” does not identify which alias form or runtime is covered, and the unrestricted non-alias requirement cannot be established by a bounded regression check. These checks need representative fixtures and expected output boundaries before readiness can be claimed.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "Compatibility requirements are expressed with undefined comparison populations rather than concrete regression cases.",
+      "id": "F2",
+      "material": true,
+      "observable_signal": "The checks refer to an “otherwise equivalent” alias and all “existing non-alias data documentation behavior” without identifying fixtures, runtimes, or observable output that proves preservation."
+    }
+  ],
+  "summary": "The selected docstring-only behavior is explicitly confirmed, but the contract is not implementation-ready: it omits required Python 3.6 validation for the reported runtime and leaves both compatibility checks without deterministic test boundaries."
+}

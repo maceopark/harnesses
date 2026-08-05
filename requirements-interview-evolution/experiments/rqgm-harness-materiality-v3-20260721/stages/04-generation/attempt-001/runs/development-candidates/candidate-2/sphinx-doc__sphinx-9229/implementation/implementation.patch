@@ -1,0 +1,127 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..a775717 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1724,10 +1724,25 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+     def add_content(self, more_content: Optional[StringList], no_docstring: bool = False
+                     ) -> None:
+         if self.doc_as_attr:
++            has_attr_doc = False
+             try:
+-                more_content = StringList([_('alias of %s') % restify(self.object)], source='')
+-            except AttributeError:
+-                pass  # Invalid class object is passed.
++                analyzer = ModuleAnalyzer.for_module(self.modname)
++                attr_docs = analyzer.find_attr_docs()
++                key = ('.'.join(self.objpath[:-1]), self.objpath[-1])
++            except PycodeError:
++                pass
++            else:
++                if attr_docs.get(key):
++                    self.analyzer = analyzer
++                    self.directive.record_dependencies.add(analyzer.srcname)
++                    has_attr_doc = True
++
++            if not has_attr_doc:
++                try:
++                    more_content = StringList([_('alias of %s') % restify(self.object)],
++                                              source='')
++                except AttributeError:
++                    pass  # Invalid class object is passed.
+ 
+         super().add_content(more_content)
+ 
+@@ -1797,7 +1812,10 @@ class GenericAliasMixin(DataDocumenterMixinBase):
+                 super().should_suppress_directive_header())
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if inspect.isgenericalias(self.object):
++        get_module_comment = getattr(self, 'get_module_comment', None)
++        has_module_comment = bool(get_module_comment and
++                                  get_module_comment(self.objpath[-1]))
++        if inspect.isgenericalias(self.object) and not has_module_comment:
+             more_content.append(_('alias of %s') % restify(self.object), '')
+             more_content.append('', '')
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/genericalias.py b/tests/roots/test-ext-autodoc/target/genericalias.py
+index 9909efc..99844da 100644
+--- a/tests/roots/test-ext-autodoc/target/genericalias.py
++++ b/tests/roots/test-ext-autodoc/target/genericalias.py
+@@ -1,7 +1,11 @@
+ from typing import Callable, List
+ 
+-#: A list of int
+ T = List[int]
++"""
++A list of int.
++
++This is a multiline type alias description with *markup*.
++"""
+ 
+ C = Callable[[int], None]  # a generic alias not having a doccomment
+ 
+diff --git a/tests/test_ext_autodoc.py b/tests/test_ext_autodoc.py
+index 4c16886..aa217f2 100644
+--- a/tests/test_ext_autodoc.py
++++ b/tests/test_ext_autodoc.py
+@@ -1926,7 +1926,10 @@ def test_autodoc_GenericAlias(app):
+             '.. py:attribute:: T',
+             '   :module: target.genericalias',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
++            '   A list of int.',
++            '',
++            '   This is a multiline type alias description with *markup*.',
++            '',
+         ]
+     else:
+         assert list(actual) == [
+@@ -1949,9 +1952,9 @@ def test_autodoc_GenericAlias(app):
+             '.. py:data:: T',
+             '   :module: target.genericalias',
+             '',
+-            '   A list of int',
++            '   A list of int.',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
++            '   This is a multiline type alias description with *markup*.',
+             '',
+         ]
+ 
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..4bebcf3 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -85,7 +85,9 @@ def test_autodata_GenericAlias(app):
+             '   :module: target.genericalias',
+             '   :value: typing.List[int]',
+             '',
+-            '   A list of int',
++            '   A list of int.',
++            '',
++            '   This is a multiline type alias description with *markup*.',
+             '',
+         ]
+     else:
+@@ -94,13 +96,19 @@ def test_autodata_GenericAlias(app):
+             '.. py:data:: T',
+             '   :module: target.genericalias',
+             '',
+-            '   A list of int',
++            '   A list of int.',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
++            '   This is a multiline type alias description with *markup*.',
+             '',
+         ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodata_undocumented_GenericAlias(app):
++    actual = do_autodoc(app, 'data', 'target.genericalias.C')
++    assert 'alias of ' in '\n'.join(actual)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_NewType(app):
+     actual = do_autodoc(app, 'data', 'target.typevar.T6')

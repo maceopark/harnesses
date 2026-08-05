@@ -1,0 +1,26 @@
+{
+  "acceptance_checks": [
+    "For DataArray([1.0, 1.0, 1.0]) with boolean weights [True, True, False], mean() returns scalar 1.0.",
+    "For representative DataArray inputs, boolean weights and equivalent integer 0/1 weights produce identical sum_of_weights() values and dtypes.",
+    "For representative DataArray inputs, boolean weights and equivalent integer 0/1 weights produce identical mean() values and dtypes.",
+    "The equivalence checks cover data containing missing values, ensuring weights at missing data positions are excluded from the denominator.",
+    "The equivalence checks cover explicit dimension selection and reduction over all dimensions.",
+    "All-false boolean weights match all-zero integer weights, including missing results for zero denominators.",
+    "Equivalent Dataset cases verify shared behavior across multiple variables, including variables with differing missing-value masks where applicable.",
+    "Existing weighted tests for integer and floating-point weights continue to pass unchanged.",
+    "Tests exercise the public weighted API so the regression is proven through sum_of_weights() and mean(), not only through an internal helper."
+  ],
+  "confirmed_decisions": [
+    "Boolean weights are supported rather than rejected.",
+    "Boolean weights have shared numeric 0/1 semantics in the sum-of-weights path, covering both sum_of_weights() and mean().",
+    "The behavior applies to DataArray and Dataset weighted reductions.",
+    "Boolean-weight results must match equivalent integer 0/1-weight results in both values and dtypes.",
+    "Missing data must exclude the corresponding weight from the denominator exactly as it does for integer weights.",
+    "Dimension-specific and all-dimension reductions must preserve existing dimension behavior.",
+    "An all-false effective weight set must produce the same zero-denominator result as integer zero weights: sum_of_weights() and mean() return missing values where the denominator is zero.",
+    "The fix should address the boolean-by-boolean dot/einsum denominator calculation without changing established behavior for non-boolean weights."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Support boolean DataArray weights as numeric 0/1 weights in the shared sum-of-weights denominator path. For both DataArray and Dataset weighted reductions, sum_of_weights() and mean() with boolean weights must behave exactly like the same weights converted to integer 0/1 values, including result values, result dtypes, dimension handling, missing-data masking, and zero-denominator behavior. The reported example must return scalar 1.0 rather than 2.0. Implement the coercion narrowly enough that existing non-boolean weight behavior and unrelated weighted operations remain unchanged."
+}

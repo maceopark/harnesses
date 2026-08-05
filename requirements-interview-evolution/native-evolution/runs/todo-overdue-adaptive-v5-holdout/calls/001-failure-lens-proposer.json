@@ -1,0 +1,53 @@
+{
+  "role": "failure-lens-proposer",
+  "prompt": "You are the Failure-Lens Proposer. From only the general task seed and the fixed goal of producing an implementable requirements handoff, propose 3-5 distinct externally observable ways discovery, interaction, synthesis, handoff, implementation, verification, or learning can fail. Do not propose solutions or skill wording and do not name or compare products, agents, skills, or frameworks.\nReturn only the JSON object required by the supplied output schema.\nINPUT:\n{\"fixed_goal\":\"surface material ambiguity and produce an implementable requirements handoff\",\"seed_category\":\"Preserve all existing behavior while adding an optional --overdue filter to the todo list command.\"}",
+  "prompt_sha256": "0ced7df3c89c115421fbf85322d53408e7bcdd568d8cb0068ffe6b0245a72717",
+  "input": {
+    "seed_category": "Preserve all existing behavior while adding an optional --overdue filter to the todo list command.",
+    "fixed_goal": "surface material ambiguity and produce an implementable requirements handoff"
+  },
+  "output": {
+    "lenses": [
+      {
+        "id": "existing-behavior-regression",
+        "stage": "discovery",
+        "failure_description": "The handoff does not identify which existing list behaviors must remain unchanged when the new option is absent or combined with existing options.",
+        "observable_signal": "Running previously valid list invocations changes their output, ordering, exit status, formatting, or accepted arguments.",
+        "why_material": "The fixed requirement explicitly makes behavior preservation a condition of success, so an incomplete compatibility boundary permits regressions.",
+        "minimal_test_shape": "Compare representative pre-change list invocations against the same invocations after implementation, including no options and existing option combinations."
+      },
+      {
+        "id": "overdue-definition-ambiguity",
+        "stage": "interaction",
+        "failure_description": "The externally visible meaning of “overdue” is not settled for items due today, items with timestamps, items without due dates, and completed items.",
+        "observable_signal": "Different reasonable implementations return different item sets for the same stored tasks and current time.",
+        "why_material": "The filter cannot be implemented or accepted consistently without a precise inclusion boundary.",
+        "minimal_test_shape": "Evaluate the filtered output for one item in each boundary class: past due, due exactly now or today, future due, no due date, and completed past due."
+      },
+      {
+        "id": "time-context-ambiguity",
+        "stage": "synthesis",
+        "failure_description": "The handoff leaves unspecified which clock, date boundary, or time zone determines whether an item is overdue.",
+        "observable_signal": "The same data produces different filtered results when executed near a day boundary or under different local time settings.",
+        "why_material": "Time-dependent classification can become nondeterministic across environments and can fail specifically at boundary times.",
+        "minimal_test_shape": "Run classification for fixed due values and a fixed current instant under at least two time zones, including a value near midnight."
+      },
+      {
+        "id": "option-composition-gap",
+        "stage": "handoff",
+        "failure_description": "The requirements do not define how the new filter composes with existing filters, sorting, pagination, output modes, or invalid argument combinations.",
+        "observable_signal": "Combined invocations either ignore an option, apply operations in inconsistent order, reject previously valid syntax, or produce an undocumented subset.",
+        "why_material": "An optional command flag becomes part of the public interaction surface, and undefined composition prevents a complete implementation contract.",
+        "minimal_test_shape": "Exercise the new option alone and paired with each existing list-affecting option, checking result membership, ordering, formatting, exit status, and error behavior."
+      },
+      {
+        "id": "insufficient-regression-verification",
+        "stage": "verification",
+        "failure_description": "Verification demonstrates that some overdue items are shown but does not prove exclusion boundaries or preservation of unfiltered behavior.",
+        "observable_signal": "Tests pass even when future, undated, or completed items are incorrectly included, or when ordinary list output has changed.",
+        "why_material": "A positive-only check can validate the presence of the feature while missing materially incorrect filtering and compatibility regressions.",
+        "minimal_test_shape": "Use a mixed dataset containing every inclusion and exclusion boundary, then verify both filtered membership and byte- or structure-equivalent unfiltered output."
+      }
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "`minversion` no longer imports or invokes `distutils.version.LooseVersion`.",
+    "`minversion` compares versions parsed by `pkg_resources.parse_version`.",
+    "For a synthetic module whose version is `1.14.3`, `minversion(module, '1.14dev')` returns `True` and does not raise.",
+    "For the same module, `minversion(module, '1.14dev', inclusive=False)` returns `True` and does not raise.",
+    "Existing good-version and bad-version assertions in `astropy/utils/tests/test_introspection.py` continue to pass.",
+    "String module names, imported module objects, failed imports, invalid argument types, direct version attributes, and dotted `version_path` values retain their current behavior.",
+    "The targeted introspection test suite passes."
+  ],
+  "confirmed_decisions": [
+    "Use `pkg_resources.parse_version` as the version parser.",
+    "Limit the parser replacement to `astropy.utils.introspection.minversion`; do not migrate unrelated `LooseVersion` uses.",
+    "Preserve the current comparison operators: inclusive mode uses `>=`, and exclusive mode uses `>`.",
+    "Cover both inclusive and exclusive branches with the `1.14.3` installed versus `1.14dev` required regression case.",
+    "Retain all existing `minversion` input handling and `version_path` behavior.",
+    "Keep existing `test_minversion` expectations passing."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Replace `distutils.version.LooseVersion` with `pkg_resources.parse_version` only in `astropy.utils.introspection.minversion`. Preserve the existing public API, module resolution, version-path lookup, missing-module behavior, argument validation, and inclusive/exclusive branch semantics. Add regression coverage proving that an installed version of `1.14.3` satisfies a required version of `1.14dev` in both inclusive (`>=`) and exclusive (`>`) modes without raising `TypeError`."
+}

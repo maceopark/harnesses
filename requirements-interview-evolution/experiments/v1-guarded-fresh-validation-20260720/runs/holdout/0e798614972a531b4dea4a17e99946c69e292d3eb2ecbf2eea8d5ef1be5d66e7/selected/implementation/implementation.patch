@@ -1,0 +1,66 @@
+diff --git a/pylint/lint/pylinter.py b/pylint/lint/pylinter.py
+index e2bbf06..07f9124 100644
+--- a/pylint/lint/pylinter.py
++++ b/pylint/lint/pylinter.py
+@@ -598,10 +598,10 @@ class PyLinter(
+                         continue
+ 
+                     if _is_ignored_file(
+-                        root,
++                        os.path.relpath(root),
+                         self.config.ignore,
+                         self.config.ignore_patterns,
+-                        self.config.ignore_paths,
++                        self._ignore_paths,
+                     ):
+                         skip_subtrees.append(root)
+                         continue
+@@ -632,6 +632,7 @@ class PyLinter(
+             )
+             files_or_modules = (files_or_modules,)  # type: ignore[assignment]
+         if self.config.recursive:
++            self._ignore_paths = self.config.ignore_paths
+             files_or_modules = tuple(self._discover_files(files_or_modules))
+         if self.config.from_stdin:
+             if len(files_or_modules) != 1:
+diff --git a/tests/lint/unittest_lint.py b/tests/lint/unittest_lint.py
+index 3dbde39..2dfea5e 100644
+--- a/tests/lint/unittest_lint.py
++++ b/tests/lint/unittest_lint.py
+@@ -912,6 +912,36 @@ def test_recursive_ignore(ignore_parameter, ignore_parameter_value) -> None:
+     assert module in linted_file_paths
+ 
+ 
++@pytest.mark.parametrize("path_separator", ["/", "\\"])
++def test_recursive_ignore_paths_from_config(
++    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, path_separator: str
++) -> None:
++    src = tmp_path / "src"
++    create_files(
++        [
++            str(src / "included.py"),
++            str(src / "gen" / "ignored.py"),
++        ]
++    )
++    ignore_path = path_separator.join(("^src", "gen", ".*$"))
++    (tmp_path / "pyproject.toml").write_text(
++        f"[tool.pylint.MASTER]\nignore-paths = ['{ignore_path}']\n",
++        encoding="utf-8",
++    )
++    monkeypatch.chdir(tmp_path)
++
++    run = Run(
++        ["--rcfile", "pyproject.toml", "--recursive", "y", "src"], exit=False
++    )
++    linted_files = run.linter._iterate_file_descrs(
++        tuple(run.linter._discover_files(["src"]))
++    )
++    linted_file_paths = {Path(item.filepath).resolve() for item in linted_files}
++
++    assert (src / "gen" / "ignored.py").resolve() not in linted_file_paths
++    assert (src / "included.py").resolve() in linted_file_paths
++
++
+ def test_import_sibling_module_from_namespace(initialized_linter: PyLinter) -> None:
+     """If the parent directory above `namespace` is on sys.path, ensure that
+     modules under `namespace` can import each other without raising `import-error`."""

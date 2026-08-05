@@ -1,0 +1,30 @@
+{
+  "acceptance_checks": [
+    "A function or method docstring with multiple contiguous leading valid, accepted-name signatures emits one aligned directive signature line per overload in original order.",
+    "All recognized overload lines are removed from rendered docstring content, while the first nonrecognized boundary line and every following line are preserved.",
+    "Overloads with differing or missing return annotations render using the annotation from their respective source line.",
+    "A blank, prose, malformed, or wrong-name line terminates overload collection and is not consumed.",
+    "Existing accepted-name behavior remains intact, including the current class-documenter allowances where applicable.",
+    "The existing `autodoc-process-signature` behavior is invoked independently for every recognized overload, and its per-overload results render in original order.",
+    "An explicit directive signature remains the sole displayed signature and prevents removal of docstring signature lines.",
+    "With `autodoc_docstring_signature = False`, no docstring overload extraction occurs and the signature-like lines remain content.",
+    "Existing single-signature behavior continues to pass unchanged.",
+    "Configuration documentation states that consecutive valid signatures at the start of a function or method docstring are recognized and removed from content.",
+    "Targeted autodoc regression tests pass, including the new overload cases and existing enabled/disabled single-signature cases."
+  ],
+  "confirmed_decisions": [
+    "Only contiguous valid and accepted-name signature lines starting at the first docstring line are consumed.",
+    "Collection stops at the first blank, prose, malformed, or wrong-name line, which and all subsequent lines remain content.",
+    "Each overload retains its own arguments and optional return annotation, including mixed annotated and unannotated overloads.",
+    "Each recognized overload is independently passed through the existing `autodoc-process-signature` handler behavior, then rendered in original order.",
+    "An explicit directive signature continues to override and bypass docstring signature extraction, leaving docstring lines untouched.",
+    "When `autodoc_docstring_signature` is disabled, introspected signature and content behavior remain unchanged.",
+    "Documentation must describe recognition of contiguous leading overload signatures.",
+    "Regression coverage must include ordered rendering and removal, mixed return annotations, boundary preservation, per-overload handlers, explicit-signature precedence, and disabled configuration.",
+    "Parser grammar and existing accepted-object-name rules remain unchanged.",
+    "Acknowledged residual risk: extensions that implicitly assumed one signature-handler invocation may observe one invocation per recognized overload."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Extend `autodoc_docstring_signature` for function and method documenters so it recognizes every contiguous valid overload signature at the beginning of a docstring. Starting with the first line, collect lines in original order while each line matches the existing signature parser and uses an already-accepted object name. Stop at the first blank, prose, malformed, or wrong-name line; preserve that boundary line and everything after it as docstring content. Remove only recognized overload lines. Preserve each overload’s arguments and optional return annotation, process each overload independently through the existing `autodoc-process-signature` behavior, and render the results in order through the existing newline-separated directive-header mechanism. Explicit directive signatures retain precedence: they bypass docstring extraction and leave docstring signature lines in the content. Disabled-configuration behavior remains unchanged. Update the configuration documentation to describe contiguous leading overload signatures. Scope excludes changes to signature-parser grammar and accepted-name rules."
+}

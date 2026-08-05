@@ -1,0 +1,36 @@
+diff --git a/astropy/io/fits/diff.py b/astropy/io/fits/diff.py
+index 100cdf1..d3608ef 100644
+--- a/astropy/io/fits/diff.py
++++ b/astropy/io/fits/diff.py
+@@ -1449,7 +1449,7 @@ class TableDataDiff(_BaseDiff):
+                 arrb.dtype, np.floating
+             ):
+                 diffs = where_not_allclose(arra, arrb, rtol=self.rtol, atol=self.atol)
+-            elif "P" in col.format:
++            elif "P" in col.format or "Q" in col.format:
+                 diffs = (
+                     [
+                         idx
+diff --git a/astropy/io/fits/tests/test_diff.py b/astropy/io/fits/tests/test_diff.py
+index adfebe6..828e302 100644
+--- a/astropy/io/fits/tests/test_diff.py
++++ b/astropy/io/fits/tests/test_diff.py
+@@ -624,6 +624,18 @@ class TestDiff(FitsTestCase):
+         report = diff.report()
+         assert "No differences found." in report
+ 
++    def test_identical_files_with_q_vla(self):
++        column = Column("a", format="QD", array=[[0], [0, 0]])
++        hdu = BinTableHDU.from_columns([column])
++        filename = self.temp("q_vla.fits")
++        hdu.writeto(filename)
++
++        diff = FITSDiff(filename, filename)
++
++        assert diff.identical
++        assert diff.diff_hdus == []
++        assert "Data contains differences" not in diff.report()
++
+     def test_partially_identical_files1(self):
+         """
+         Test files that have some identical HDUs but a different extension

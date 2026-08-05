@@ -1,0 +1,55 @@
+[
+  {
+    "answer": "Constructor only (Recommended)",
+    "open_material_decisions": [
+      "Whether non-empty validation applies only to `Blueprint(...)` constructor names or also to registration-time `name=` overrides."
+    ],
+    "question": {
+      "header": "Validation scope",
+      "options": [
+        {
+          "description": "Matches the request literally by raising `ValueError` when `Blueprint(\"\", ...)` is constructed, without expanding registration behavior.",
+          "label": "Constructor only (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Also raises `ValueError` when registering a valid blueprint with an empty `name=` override, closing the equivalent registration path.",
+          "label": "Constructor and override",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should empty-name validation cover registration-time `name=` overrides as well as the `Blueprint` constructor?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "`flask.Blueprint(\"\", __name__)` raises `ValueError` immediately.",
+          "A focused test for the empty constructor name is added near the existing Blueprint name-validation test coverage.",
+          "The existing dotted-name test continues to pass.",
+          "Blueprints with ordinary non-empty, dot-free names can still be constructed and registered normally.",
+          "No validation is added for an empty registration-time `name=` override.",
+          "The relevant Blueprint test suite passes."
+        ],
+        "confirmed_decisions": [
+          "Validation applies only to the name passed to `Blueprint(...)`.",
+          "An empty constructor name must raise `ValueError` during construction.",
+          "Registration-time `name=` overrides remain unchanged, including empty overrides.",
+          "Only the empty string is in scope; whitespace-only non-empty strings are not newly rejected.",
+          "No exact `ValueError` message is required by the contract.",
+          "Existing dotted-name validation and valid Blueprint naming behavior must remain unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Require `Blueprint` constructor names to be non-empty. In `Blueprint.__init__`, reject `name == \"\"` by raising `ValueError`, alongside the existing dotted-name validation. Do not change registration-time `name=` override behavior. Add a focused regression test demonstrating that constructing `flask.Blueprint(\"\", __name__)` raises `ValueError`. Preserve all existing behavior for non-empty names, including the existing rejection of names containing a dot."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The only material scope decision has been resolved: validate the constructor name only. The request and repository evidence are sufficient to produce an implementation-ready contract without prescribing an unauthorized registration-time behavior or an exact error message."
+    },
+    "turn": 2
+  }
+]

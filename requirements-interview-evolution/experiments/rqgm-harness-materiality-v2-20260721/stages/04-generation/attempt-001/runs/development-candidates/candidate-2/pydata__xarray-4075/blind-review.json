@@ -1,0 +1,35 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/0",
+          "quoted_value": "For data [1.0, 1.0, 1.0] and boolean weights [True, True, False], weighted mean returns 1.0."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/3",
+          "quoted_value": "Zero effective boolean weight continues to follow the existing weighted-operation behavior for a zero sum of weights."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/2/statement",
+          "quoted_value": "The sum-of-weights calculation creates da.notnull(), which is a boolean mask, and reduces that mask against the stored weights without converting either operand's dtype."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/7/statement",
+          "quoted_value": "Existing direct weighted-mean tests use numeric weights and cover ordinary, zero-weight, and missing-data cases, but do not include boolean weights."
+        }
+      ],
+      "description": "An implementation could satisfy the listed examples by correcting boolean accumulation only for fully valid data yet still compute an incorrect denominator when data contain missing values. Add an acceptance check with missing data and boolean weights that states the expected mean and sum_of_weights results for both DataArray and Dataset operations.",
+      "failure_class": "omission",
+      "general_cause": "The acceptance suite does not cover the interaction between boolean weights and missing data, even though missing-data masking is part of the defective denominator path.",
+      "id": "F1",
+      "material": true,
+      "observable_signal": "The checks cover an all-valid example and zero effective weight, while the audited tests explicitly lack a case combining boolean weights with missing data."
+    }
+  ],
+  "summary": "The contract resolves the requested operation, object, and API boundaries, but it is not materially implementation-ready because it omits an acceptance case for boolean weights combined with missing data—the exact masking path implicated by the defect."
+}

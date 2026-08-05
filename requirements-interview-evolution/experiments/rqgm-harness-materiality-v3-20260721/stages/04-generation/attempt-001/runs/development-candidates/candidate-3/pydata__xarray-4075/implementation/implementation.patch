@@ -1,0 +1,63 @@
+diff --git a/xarray/core/weighted.py b/xarray/core/weighted.py
+index 996d2e4..2341e09 100644
+--- a/xarray/core/weighted.py
++++ b/xarray/core/weighted.py
+@@ -142,7 +142,12 @@ class Weighted:
+         # we need to mask data values that are nan; else the weights are wrong
+         mask = da.notnull()
+ 
+-        sum_of_weights = self._reduce(mask, self.weights, dim=dim, skipna=False)
++        if self.weights.dtype.kind == "b":
++            weights = self.weights.astype(int)
++        else:
++            weights = self.weights
++
++        sum_of_weights = self._reduce(mask, weights, dim=dim, skipna=False)
+ 
+         # 0-weights are not valid
+         valid_weights = sum_of_weights != 0.0
+diff --git a/xarray/tests/test_weighted.py b/xarray/tests/test_weighted.py
+index 2453121..d34ba4f 100644
+--- a/xarray/tests/test_weighted.py
++++ b/xarray/tests/test_weighted.py
+@@ -158,6 +158,16 @@ def test_weighted_mean_nan(weights, expected, skipna):
+     assert_equal(expected, result)
+ 
+ 
++def test_weighted_mean_boolean_weights():
++
++    da = DataArray([1.0, 1.0, 1.0])
++    weights = DataArray([True, True, False])
++    weighted = da.weighted(weights)
++
++    assert_equal(DataArray(2), weighted.sum_of_weights())
++    assert_equal(DataArray(1.0), weighted.mean())
++
++
+ def expected_weighted(da, weights, dim, skipna, operation):
+     """
+     Generate expected result using ``*`` and ``sum``. This is checked against
+@@ -183,6 +193,23 @@ def expected_weighted(da, weights, dim, skipna, operation):
+         return weighted_mean
+ 
+ 
++@pytest.mark.parametrize("as_dataset", (True, False))
++@pytest.mark.parametrize("dim", ("a", None))
++@pytest.mark.parametrize("operation", ("sum_of_weights", "mean"))
++def test_weighted_boolean_weights(operation, dim, as_dataset):
++
++    data = DataArray([[1.0, np.nan], [3.0, 4.0]], dims=("a", "b"))
++    weights = DataArray([[True, True], [False, False]], dims=("a", "b"))
++
++    if as_dataset:
++        data = data.to_dataset(name="data")
++
++    result = getattr(data.weighted(weights), operation)(dim)
++    expected = expected_weighted(data, weights, dim, None, operation)
++
++    assert_allclose(expected, result)
++
++
+ @pytest.mark.parametrize("dim", ("a", "b", "c", ("a", "b"), ("a", "b", "c"), None))
+ @pytest.mark.parametrize("operation", ("sum_of_weights", "sum", "mean"))
+ @pytest.mark.parametrize("add_nans", (True, False))

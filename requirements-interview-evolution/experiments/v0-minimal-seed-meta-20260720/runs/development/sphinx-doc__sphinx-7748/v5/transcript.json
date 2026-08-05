@@ -1,0 +1,93 @@
+[
+  {
+    "answer": "Leading block only",
+    "open_material_decisions": [
+      "Whether extraction stops at the first non-signature line or continues scanning later docstring content."
+    ],
+    "question": {
+      "header": "Scan boundary",
+      "options": [
+        {
+          "description": "Collect consecutive valid signature lines from the start and stop permanently at the first non-signature line, preserving all later content.",
+          "label": "Leading block only",
+          "recommended": true
+        },
+        {
+          "description": "Scan the entire docstring and extract every valid matching signature line, including signatures appearing after prose.",
+          "label": "All matching lines",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which docstring lines should autodoc consider as overloaded signatures?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Process each overload",
+    "open_material_decisions": [
+      "How multiple extracted signatures interact with autodoc-process-signature handlers."
+    ],
+    "question": {
+      "header": "Event handling",
+      "options": [
+        {
+          "description": "Run the event independently for every extracted signature, allowing handlers to transform or suppress each overload separately.",
+          "label": "Process each overload",
+          "recommended": true
+        },
+        {
+          "description": "Combine the overloads first and invoke the event once, preserving a single event call but exposing a newline-delimited signature.",
+          "label": "Process combined result",
+          "recommended": false
+        },
+        {
+          "description": "Process only the first signature through the existing event and append remaining extracted overloads unchanged.",
+          "label": "Bypass for extras",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc-process-signature handlers apply to overloaded signatures extracted from the leading docstring block?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Add a fixture method with at least two consecutive leading overload signatures followed by prose.",
+          "With autodoc_docstring_signature enabled, assert that all overloads appear as aligned py:method directive signature lines in source order and none of the extracted lines appears in rendered content.",
+          "Assert that prose beginning at the first non-signature line remains in rendered content.",
+          "Add coverage showing that a signature-looking line after the first non-signature line is preserved as content and is not extracted.",
+          "Add coverage showing that a leading syntactically valid signature with a non-accepted base name terminates the leading block and is preserved with all following content.",
+          "Add event-handler coverage proving autodoc-process-signature is called once per extracted overload and that per-overload transformation is reflected in the emitted signatures.",
+          "Add event-handler coverage for per-overload suppression if supported by the existing event return contract.",
+          "Retain or extend the existing single-signature test to prove backward-compatible output.",
+          "With autodoc_docstring_signature disabled, assert that the normal introspected signature is used and every overload-looking docstring line remains content.",
+          "Run the targeted autodoc configuration and event tests, then the relevant autodoc test module or suite to check for regressions."
+        ],
+        "confirmed_decisions": [
+          "Extraction applies only when autodoc_docstring_signature is enabled and no explicit directive signature was supplied, preserving the existing activation conditions.",
+          "Inspect the docstring from its first line and collect consecutive valid signature lines only.",
+          "Stop extraction permanently at the first line that is not a valid signature for the documented object; preserve that line and every later line as docstring content.",
+          "Apply the existing accepted-name rules to every candidate signature: the documented object's final path component, plus the existing class-specific __init__ and MRO class-name allowances where applicable.",
+          "Remove every successfully collected leading signature line from rendered docstring content and re-prepare the remaining content using the existing tab-width behavior.",
+          "Preserve overload order exactly as it appears in the docstring.",
+          "Format the collected overloads as newline-separated signatures so the existing directive-header generation emits aligned directive signature lines.",
+          "Invoke autodoc-process-signature independently for each extracted overload, allowing handlers to transform or suppress individual overloads.",
+          "If the first docstring line is not an accepted signature, extract nothing and preserve the entire docstring, matching current behavior.",
+          "When exactly one leading signature is present, output and content removal remain equivalent to the existing behavior.",
+          "When autodoc_docstring_signature is disabled, use the normal introspected signature and preserve all signature-looking docstring lines as content.",
+          "Documentation for autodoc_docstring_signature must describe support for a consecutive leading block of overloaded signatures and the stop-at-first-non-signature boundary."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend autodoc_docstring_signature so functions and methods may declare overloaded signatures as a consecutive leading block in their docstring. Collect every valid leading signature whose accepted base name matches the documented object, remove those collected lines from rendered docstring content, format the overloads as newline-separated directive signatures, and run autodoc-process-signature independently for each overload. Existing single-signature, disabled-configuration, explicit-signature, and non-signature behavior remains compatible."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "All material behavior decisions are resolved by the repository evidence and the two interview answers. The requested change can now be implemented without inventing additional product behavior."
+    },
+    "turn": 3
+  }
+]

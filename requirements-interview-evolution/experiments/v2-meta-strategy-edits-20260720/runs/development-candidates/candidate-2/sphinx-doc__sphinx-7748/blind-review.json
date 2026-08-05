@@ -1,0 +1,35 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/1/statement",
+          "quoted_value": "Docstring signature extraction retrieves the object's prepared docstrings and attempts to match only doclines[0] of each docstring against py_ext_sig_re."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/3/statement",
+          "quoted_value": "After accepting a signature, extraction rebuilds the docstring from doclines[1:], stores one args/return-annotation pair, and immediately stops searching."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/1",
+          "quoted_value": "Stop extraction at the first non-signature or wrong-name line and preserve that line and everything following it as docstring content."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        }
+      ],
+      "description": "It remains materially unclear whether encountering prose or a wrong-name leading line in one candidate docstring should stop the entire search or only reject that candidate and allow later candidate docstrings to be examined. This affects which signature and content are emitted in inherited or otherwise multi-docstring cases, so the contract is not implementation-ready without defining that boundary and adding a corresponding acceptance check.",
+      "failure_class": "omission",
+      "general_cause": "The contract defines stopping within a docstring but does not resolve behavior across the multiple candidate docstrings searched by the existing extractor.",
+      "id": "F1",
+      "material": true,
+      "observable_signal": "Repository evidence says extraction iterates prepared docstrings and stops only after an accepted match, while the contract merely says to stop at a wrong-name or non-signature line and still declares implementation readiness."
+    }
+  ],
+  "summary": "The contract has one material readiness omission: it does not specify whether the new stopping rule applies per candidate docstring or to the extractor's entire multi-docstring search."
+}

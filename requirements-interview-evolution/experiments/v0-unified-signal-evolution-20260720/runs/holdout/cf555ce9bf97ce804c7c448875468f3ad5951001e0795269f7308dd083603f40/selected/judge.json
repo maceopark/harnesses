@@ -1,0 +1,21 @@
+{
+  "compatibility_regressions": [
+    "Avoiding Package collector creation for non-matching discovered initializers conflicts with the repository's package-root traversal model and the audited gold fix, which retained Package collectors but removed their eager import.",
+    "The contract would eliminate pre-existing behavior that propagated package-level skip markers by importing __init__.py during package collection; the hindsight patch removed the associated test, but this compatibility change was not an issue-time owner decision.",
+    "Requiring nested tests beneath a non-matching initializer to run without executing that initializer may alter package import and sys.path semantics beyond the reported regression."
+  ],
+  "implementation_ready": false,
+  "invented_requirements": [
+    "Discovered __init__.py files must satisfy python_files before becoming Package collectors.",
+    "A non-matching package initializer must be traversed without creating a Package collector.",
+    "Explicitly selected __init__.py behavior, customized python_files compatibility, and ignore-hook preservation were elevated to confirmed owner decisions without being separately confirmed in the interview."
+  ],
+  "material_blockers": [
+    "The sealed decisions prescribe filtering Package collector creation, while the audited fix addresses the regression by making Package collection lazy and retaining collector creation; these are materially different behavioral contracts.",
+    "The interview did not resolve whether package-initializer side effects and package-level markers should be preserved, removed, or deferred, despite the chosen traversal rule affecting those behaviors."
+  ],
+  "owner_recall": 1,
+  "redundant_questions": [],
+  "repository_fidelity": 0.58,
+  "summary": "The interview accurately recalled both answers it elicited, but those answers committed to a collector-filtering design not established by the public issue or repository facts and inconsistent with the audited fix. Hindsight observations are properly labeled diagnostic, yet they reveal an unresolved compatibility change around package initialization and skip markers. The contract is therefore not implementation-ready as sealed."
+}

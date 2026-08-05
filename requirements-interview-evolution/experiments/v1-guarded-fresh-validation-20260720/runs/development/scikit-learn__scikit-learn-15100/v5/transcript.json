@@ -1,0 +1,91 @@
+[
+  {
+    "answer": "All combining marks",
+    "open_material_decisions": [
+      "Define the required behavior for already-NFKD strings containing combining characters."
+    ],
+    "question": {
+      "header": "Behavior scope",
+      "options": [
+        {
+          "description": "Require the same NFKD normalization and combining-character removal for every input, making canonically equivalent composed and decomposed text produce the same result; retain unchanged output for NFKD strings without combining characters.",
+          "label": "All combining marks",
+          "recommended": true
+        },
+        {
+          "description": "Guarantee only that decomposed “n” plus combining tilde becomes “n”, without requiring equivalent handling of other combining characters.",
+          "label": "Reported case only",
+          "recommended": false
+        },
+        {
+          "description": "Let the implementer choose the smallest fix that passes the reported regression while preserving existing composed-input tests, with broader combining-mark behavior recorded as residual risk.",
+          "label": "Delegate narrowly",
+          "recommended": false
+        }
+      ],
+      "prompt": "What compatibility boundary should the implementation contract require for already-NFKD input?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Approve or revise the executable implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with no remaining material decisions.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Reopen the selected all-combining-marks compatibility boundary.",
+          "label": "Revise behavior",
+          "recommended": false
+        },
+        {
+          "description": "Keep the behavior decision but change scope or required test evidence.",
+          "label": "Revise acceptance",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: remove the equality-based shortcut so strip_accents_unicode always NFKD-normalizes and removes every character for which unicodedata.combining is nonzero; require canonically equivalent composed and decomposed accented inputs—including “ñ” and “n” plus combining tilde—to return “n”; preserve already-NFKD strings that contain no combining characters; add a focused direct regression test for decomposed input and keep existing Unicode accent and CountVectorizer analyzer tests passing; limit changes to the Unicode accent-stripping implementation and focused tests, with no changes to ASCII stripping, public APIs, or documentation. Acceptance is the new regression plus existing focused text-feature tests passing. Residual risk: removing all combining characters from already-decomposed text intentionally changes the defective early-return behavior across scripts, consistent with the selected “All combining marks” boundary."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A direct regression assertion shows `strip_accents_unicode('n\\u0303') == 'n'`.",
+          "A direct regression assertion shows composed `ñ` and decomposed `n\\u0303` both produce `n`.",
+          "A focused assertion confirms an already-NFKD string without combining characters remains unchanged in value.",
+          "Existing `test_strip_accents` expectations continue to pass.",
+          "Existing CountVectorizer word-analyzer accent-stripping expectations continue to pass.",
+          "The focused text-feature test suite passes without changes to ASCII accent stripping, public APIs, or documentation."
+        ],
+        "confirmed_decisions": [
+          "Remove the equality-based early return from `strip_accents_unicode`.",
+          "Apply combining-character filtering to every NFKD-normalized input.",
+          "Remove all characters with a nonzero `unicodedata.combining` value, not only the reported combining tilde.",
+          "Require composed and canonically equivalent decomposed accented text to produce identical stripped output.",
+          "Preserve already-NFKD text that contains no combining characters.",
+          "Add a focused direct regression test covering decomposed `n` plus COMBINING TILDE and its equivalence to composed `ñ`.",
+          "Keep existing focused Unicode accent and CountVectorizer analyzer tests passing.",
+          "Limit implementation changes to Unicode accent stripping and focused tests; leave ASCII stripping, public APIs, and documentation unchanged.",
+          "Accept the cross-script change for already-decomposed combining marks as intentional within the approved compatibility boundary."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update `strip_accents_unicode` so it always applies NFKD normalization and removes every character whose `unicodedata.combining` value is nonzero. Canonically equivalent composed and decomposed accented inputs, including `ñ` and `n` followed by COMBINING TILDE, must both return `n`. Already-NFKD strings without combining characters must retain their existing value. Add a focused direct regression test for decomposed input and preserve existing Unicode accent-stripping and CountVectorizer analyzer behavior. Scope is limited to the Unicode accent-stripping implementation and focused tests; do not change ASCII stripping, public APIs, or documentation. The acknowledged residual risk is an intentional behavior change for already-decomposed combining marks across scripts, consistent with the approved all-combining-marks boundary."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the executable contract, and no material implementation decision remains open."
+    },
+    "turn": 3
+  }
+]

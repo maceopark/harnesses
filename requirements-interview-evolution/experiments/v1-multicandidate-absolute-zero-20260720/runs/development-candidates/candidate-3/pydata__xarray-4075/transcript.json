@@ -1,0 +1,136 @@
+[
+  {
+    "answer": "Denominator only",
+    "open_material_decisions": [
+      "Choose whether boolean-weight normalization is local to sum-of-weights/mean behavior or applies globally to stored weights and all weighted reductions."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Preserve stored weights and existing weighted-sum behavior; ensure sum_of_weights counts True values numerically, which fixes weighted mean with the smallest observable change.",
+          "label": "Denominator only",
+          "recommended": true
+        },
+        {
+          "description": "Convert boolean weights to numeric when constructing the weighted object, intentionally affecting every weighted operation and potentially their result dtypes.",
+          "label": "Convert on creation",
+          "recommended": false
+        }
+      ],
+      "prompt": "How broadly should boolean weights be normalized?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Cast bool weights (Recommended)",
+    "open_material_decisions": [
+      "Choose the denominator-only coercion rule and compatibility boundary for non-boolean weights."
+    ],
+    "question": {
+      "header": "Coercion rule",
+      "options": [
+        {
+          "description": "Only in the sum-of-weights path, convert boolean weights to an integer dtype before dot; preserve stored weights, weighted sums, and all non-boolean denominator paths unchanged.",
+          "label": "Cast bool weights (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Convert the boolean validity mask to integers before every sum-of-weights dot, touching denominator arithmetic for all weight dtypes while leaving stored weights unchanged.",
+          "label": "Cast validity mask",
+          "recommended": false
+        },
+        {
+          "description": "Let the implementer choose the local coercion, provided boolean weights count True values numerically and tests prove existing non-boolean weighted behavior remains unchanged.",
+          "label": "Delegate constrained",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should the sum-of-weights denominator perform numeric arithmetic?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Mean + denominator",
+    "open_material_decisions": [
+      "Choose the required regression-test coverage for the denominator-only boolean-weight fix."
+    ],
+    "question": {
+      "header": "Test coverage",
+      "options": [
+        {
+          "description": "Test that boolean weights produce a numeric sum_of_weights and the correct weighted mean, while existing non-boolean behavior remains unchanged.",
+          "label": "Mean + denominator",
+          "recommended": true
+        },
+        {
+          "description": "Test only the reported weighted-mean result; the corrected denominator remains an implementation detail without a direct regression assertion.",
+          "label": "Reported mean only",
+          "recommended": false
+        },
+        {
+          "description": "Require additional boolean-weight cases such as missing data, dimension-specific reductions, and Dataset behavior.",
+          "label": "Broader matrix",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which observable behaviors must regression tests require for boolean weights?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve or revise the complete implementation contract."
+    ],
+    "question": {
+      "header": "Contract approval",
+      "options": [
+        {
+          "description": "Seal this scope and make it ready for implementation.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open and specify the boundary or acceptance change needed.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: locally cast boolean weights to an integer dtype only in the sum-of-weights denominator path before dot; do not modify stored weights, weighted-sum behavior, or non-boolean denominator behavior; add regression coverage proving boolean weights [True, True, False] yield numeric sum_of_weights == 2 and weighted mean == 1.0; retain existing non-boolean weighted tests as compatibility evidence. The implementation may choose the specific integer dtype consistent with repository conventions. Residual risk: untested boolean-weight combinations such as missing data, dimension-specific reductions, Dataset behavior, and non-NumPy backends are outside required coverage."
+    },
+    "turn": 4
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "For DataArray data [1.0, 1.0, 1.0] and boolean weights [True, True, False], sum_of_weights returns a numeric result equal to 2 rather than boolean True.",
+          "For the same data and weights, weighted mean returns 1.0 rather than 2.0.",
+          "Stored boolean weights are not mutated or globally converted.",
+          "Weighted-sum behavior is unchanged.",
+          "Non-boolean sum-of-weights and weighted-mean tests continue to pass.",
+          "The regression suite includes direct assertions for both the denominator and reported mean behavior."
+        ],
+        "confirmed_decisions": [
+          "Boolean normalization is limited to the sum-of-weights denominator path.",
+          "Only boolean weights are coerced; the boolean validity mask and non-boolean weights retain their current arithmetic paths.",
+          "Stored weights remain unchanged.",
+          "Weighted-sum behavior remains unchanged.",
+          "Regression tests must directly cover both numeric sum_of_weights == 2 and weighted mean == 1.0 for [True, True, False].",
+          "Existing non-boolean weighted tests are the required compatibility evidence.",
+          "The implementer may choose the concrete integer dtype according to repository conventions.",
+          "Broader boolean-weight matrices are not required."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Implement a denominator-only fix for boolean weights. In the sum-of-weights path, cast boolean weights to an integer dtype before the dot reduction so True values are counted numerically. Do not modify stored weights, weighted-sum behavior, or the denominator path for non-boolean weights. The implementer may select the specific integer dtype consistent with repository conventions. Add regression coverage using weights [True, True, False] that proves sum_of_weights is numeric and equals 2, and weighted mean for data [1.0, 1.0, 1.0] equals 1.0. Existing non-boolean weighted tests provide compatibility evidence. Boolean-weight combinations involving missing data, dimension-specific reductions, Dataset behavior, and non-NumPy backends are outside required coverage and remain acknowledged residual risks."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the complete contract, and all material behavior, compatibility, test-scope, delegation, and residual-risk decisions are resolved."
+    },
+    "turn": 5
+  }
+]

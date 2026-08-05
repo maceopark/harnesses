@@ -1,0 +1,84 @@
+{
+  "audit_summary": "Eleven facts are directly supported by their cited repository ranges. Fact-9 overstates its cited evidence by claiming PD()/QD() coverage.",
+  "facts": [
+    {
+      "id": "fact-1",
+      "line_end": 380,
+      "line_start": 363,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "FITSDiff compares corresponding HDUs using HDUDiff and records any HDU whose diff is not identical."
+    },
+    {
+      "id": "fact-2",
+      "line_end": 607,
+      "line_start": 601,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "For two table-like HDUs, HDUDiff delegates their data comparison to TableDataDiff."
+    },
+    {
+      "id": "fact-3",
+      "line_end": 1461,
+      "line_start": 1445,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "TableDataDiff retrieves each common column's arrays and uses floating-array comparison first; otherwise, its VLA-specific row-wise np.allclose branch is selected only when the column format contains the literal character P."
+    },
+    {
+      "id": "fact-4",
+      "line_end": 1463,
+      "line_start": 1462,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "Columns not handled by the floating or P-format branches are compared with np.where(arra != arrb), so Q-format VLA columns take the generic inequality path."
+    },
+    {
+      "id": "fact-5",
+      "line_end": 480,
+      "line_start": 471,
+      "path": "astropy/io/fits/column.py",
+      "statement": "The column-format implementation defines Q as a subclass of the P-format representation but gives it format code Q and a 64-bit descriptor, establishing Q as a supported VLA format distinct from literal P column strings."
+    },
+    {
+      "id": "fact-6",
+      "line_end": 727,
+      "line_start": 717,
+      "path": "astropy/io/fits/fitsrec.py",
+      "statement": "FITS record field loading recognizes both P and Q VLA representations through isinstance(recformat, _FormatP), because Q inherits from _FormatP, and converts them through the same VLA conversion path."
+    },
+    {
+      "id": "fact-7",
+      "line_end": 420,
+      "line_start": 398,
+      "path": "astropy/io/fits/tests/test_diff.py",
+      "statement": "Existing identical-table coverage includes a PI(2) VLA column and asserts the tables are identical, but it does not include a Q-format VLA column."
+    },
+    {
+      "id": "fact-8",
+      "line_end": 593,
+      "line_start": 536,
+      "path": "astropy/io/fits/tests/test_diff.py",
+      "statement": "Existing differing-table coverage also uses a PI(2) VLA column and checks row-level differences for it, without exercising a Q-format VLA."
+    },
+    {
+      "id": "fact-10",
+      "line_end": 1485,
+      "line_start": 1465,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "TableDataDiff counts rows identified by its comparison as differences and stores the corresponding column name, row index, and values in diff_values."
+    },
+    {
+      "id": "fact-11",
+      "line_end": 134,
+      "line_start": 125,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "A diff object's identical property is false whenever any diff_* attribute is non-empty; therefore a spurious TableDataDiff diff_values entry makes the enclosing comparison non-identical."
+    },
+    {
+      "id": "fact-12",
+      "line_end": 652,
+      "line_start": 644,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "When table data is non-identical, HDUDiff reports 'Data contains differences' and delegates the detailed report to the data diff."
+    }
+  ],
+  "scope_summary": "Inspected only the supplied repository at base commit c0a24c1dc957a3b565294213f435fefb2ec99714. The existing table-diff implementation has special row-wise handling for P-format VLAs but not Q-format VLAs, matching the reported QD reproducer.",
+  "unknowns": []
+}

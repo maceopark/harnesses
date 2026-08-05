@@ -1,0 +1,82 @@
+[
+  {
+    "answer": "Standards parser (Recommended)",
+    "open_material_decisions": [
+      "Choose whether to restore standards-based parsing for all version comparisons or apply a narrowly targeted workaround for the LooseVersion mixed-token failure."
+    ],
+    "question": {
+      "header": "Version semantics",
+      "options": [
+        {
+          "description": "Use the repository-compatible standards-aware parser for all comparisons, requiring `1.14.3 >= 1.14dev` and preserving inclusive/exclusive operators while accepting bounded ordering changes for other nonstandard version strings.",
+          "label": "Standards parser (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Keep LooseVersion behavior wherever it currently succeeds and normalize or special-case only comparisons that would otherwise raise from mixed numeric and text tokens.",
+          "label": "Targeted workaround",
+          "recommended": false
+        },
+        {
+          "description": "Require only that the reported `1.14.3` versus `1.14dev` case returns true without error, delegating the exact parser and all other version-string behavior to implementation.",
+          "label": "Case-only guarantee",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which compatibility boundary should the implementation contract require for `minversion` version comparisons?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve or reject the complete implementation contract."
+    ],
+    "question": {
+      "header": "Contract approval",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with the stated compatibility boundary and residual risk.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep requirements open so a material part of scope, behavior, tests, or risk can be changed.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: replace LooseVersion-based comparison in minversion with the repository-compatible standards-aware parser for all version comparisons; preserve module-object/string inputs, import-failure False behavior, invalid-type ValueError behavior, version_path lookup, and inclusive >= versus exclusive > operators; require minversion for installed 1.14.3 and required 1.14dev to return True without raising; retain existing test expectations and add regression coverage for the reported mixed numeric/development comparison in both relevant operator behavior where needed; do not change public exports or callers. Acceptance requires the targeted introspection tests to pass. The acknowledged residual risk is bounded ordering changes for other nonstandard version strings under standards-based parsing. Implementation may choose the existing repository-compatible import/fallback mechanics, but may not add a new dependency or broaden public API behavior."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "minversion with installed version 1.14.3 and required version 1.14dev returns True without raising an exception.",
+          "Inclusive comparisons continue to use >= semantics and exclusive comparisons continue to use > semantics under the standards-aware parser.",
+          "Existing astropy/utils/tests/test_introspection.py minversion expectations continue to pass.",
+          "Regression tests cover the reported mixed numeric/development version comparison and relevant operator behavior.",
+          "Targeted introspection tests pass.",
+          "No new dependency, public export change, caller change, or public API expansion is introduced."
+        ],
+        "confirmed_decisions": [
+          "Use standards-aware parsing for all minversion version comparisons rather than a targeted LooseVersion workaround.",
+          "Accept bounded ordering changes for other nonstandard version strings as a residual compatibility risk.",
+          "Preserve all existing input, import-failure, invalid-type, version_path, and comparison-operator contracts.",
+          "Do not add a dependency, change public exports, modify callers, or broaden public API behavior.",
+          "Owner explicitly approved the complete implementation contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Replace LooseVersion-based comparison in astropy.utils.introspection.minversion with the repository-compatible standards-aware parser for all version comparisons. Preserve module-object and import-name-string inputs, False on string import failure, ValueError for unsupported argument types, version_path lookup behavior, and inclusive >= versus exclusive > semantics. The installed version 1.14.3 compared with required version 1.14dev must return True without raising. Preserve existing minversion expectations, add regression coverage for the reported mixed numeric/development comparison and relevant inclusive/exclusive operator behavior, and leave public exports and callers unchanged. Implementation may use existing repository-compatible import or fallback mechanics but must not add a dependency or broaden the public API."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner selected standards-based parsing and explicitly approved the complete contract. All material decisions are resolved, and the contract is implementable from the audited repository evidence."
+    },
+    "turn": 3
+  }
+]

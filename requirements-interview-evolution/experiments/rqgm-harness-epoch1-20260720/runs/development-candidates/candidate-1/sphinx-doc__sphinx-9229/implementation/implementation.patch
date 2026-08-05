@@ -1,0 +1,176 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..87426ea 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1724,10 +1724,13 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+     def add_content(self, more_content: Optional[StringList], no_docstring: bool = False
+                     ) -> None:
+         if self.doc_as_attr:
+-            try:
+-                more_content = StringList([_('alias of %s') % restify(self.object)], source='')
+-            except AttributeError:
+-                pass  # Invalid class object is passed.
++            key = ('.'.join(self.objpath[:-1]), self.objpath[-1])
++            attr_doc = self.analyzer.find_attr_docs().get(key, []) if self.analyzer else []
++            if not any(line.strip() for line in attr_doc):
++                try:
++                    more_content = StringList([_('alias of %s') % restify(self.object)], source='')
++                except AttributeError:
++                    pass  # Invalid class object is passed.
+ 
+         super().add_content(more_content)
+ 
+@@ -1798,8 +1801,15 @@ class GenericAliasMixin(DataDocumenterMixinBase):
+ 
+     def update_content(self, more_content: StringList) -> None:
+         if inspect.isgenericalias(self.object):
+-            more_content.append(_('alias of %s') % restify(self.object), '')
+-            more_content.append('', '')
++            if hasattr(self, 'get_module_comment'):
++                attr_doc = self.get_module_comment(self.objpath[-1]) or []
++            elif hasattr(self, 'get_attribute_comment'):
++                attr_doc = self.get_attribute_comment(self.parent, self.objpath[-1]) or []
++            else:
++                attr_doc = []
++            if not any(line.strip() for line in attr_doc):
++                more_content.append(_('alias of %s') % restify(self.object), '')
++                more_content.append('', '')
+ 
+         super().update_content(more_content)
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/genericalias.py b/tests/roots/test-ext-autodoc/target/genericalias.py
+index 9909efc..31845c2 100644
+--- a/tests/roots/test-ext-autodoc/target/genericalias.py
++++ b/tests/roots/test-ext-autodoc/target/genericalias.py
+@@ -1,10 +1,47 @@
+-from typing import Callable, List
++from pathlib import Path
++from typing import Any, Callable, Dict, List, Union
+ 
+ #: A list of int
+ T = List[int]
+ 
+ C = Callable[[int], None]  # a generic alias not having a doccomment
+ 
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary with PyScaffold's options, see ``pyscaffold.api.create_project``.
++Should be treated as immutable (if required, copy before changing).
++
++Please notice some behaviours given by the options **SHOULD** be observed.
++For example, files should be overwritten when the **force** option is ``True``.
++Similarly when **pretend** is ``True``, no operation should be really performed,
++but any action should be logged as if realized.
++"""
++
++FileContents = Union[str, None]
++"""When the file content is ``None``, the file should not be written to
++disk (empty files are represented by an empty string ``""`` as content).
++"""
++
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of functions considered file operations::
++
++    Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++
++- **path** (:obj:`pathlib.Path`): file path potentially to be written to/changed
++  in the disk.
++- **contents** (:obj:`FileContents`): usually a string that represents a text content
++  of the file. :obj:`None` indicates the file should not be written.
++- **opts** (:obj:`ScaffoldOpts`): a dict with PyScaffold's options.
++
++If the file is written (or more generally changed, such as new access permissions),
++by convention they should return the :obj:`file path <pathlib.Path>`.
++If no file was touched, :obj:`None` should be returned. Please notice a **FileOp**
++might return :obj:`None` if a pre-existing file in the disk is not modified.
++
++.. note::
++    A **FileOp** usually has side effects (e.g. write a file to the disk), see
++    :obj:`FileFileContents` and :obj:`ScaffoldOpts` for other conventions.
++"""
++
+ 
+ class Class:
+     #: A list of int
+diff --git a/tests/test_ext_autodoc.py b/tests/test_ext_autodoc.py
+index 4c16886..4ad08e7 100644
+--- a/tests/test_ext_autodoc.py
++++ b/tests/test_ext_autodoc.py
+@@ -1943,16 +1943,12 @@ def test_autodoc_GenericAlias(app):
+             '',
+             '      A list of int',
+             '',
+-            '      alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+             '',
+             '.. py:data:: T',
+             '   :module: target.genericalias',
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
+diff --git a/tests/test_ext_autodoc_autoattribute.py b/tests/test_ext_autodoc_autoattribute.py
+index 5e72202..173fcf0 100644
+--- a/tests/test_ext_autodoc_autoattribute.py
++++ b/tests/test_ext_autodoc_autoattribute.py
+@@ -156,8 +156,6 @@ def test_autoattribute_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..e8c0f72 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -96,11 +96,42 @@ def test_autodata_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++@pytest.mark.parametrize(('name', 'expected'), [
++    ('ScaffoldOpts', ["Dictionary with PyScaffold's options, see "
++                      '``pyscaffold.api.create_project``.',
++                      'Should be treated as immutable (if required, copy before changing).',
++                      'Please notice some behaviours given by the options '
++                      '**SHOULD** be observed.',
++                      'For example, files should be overwritten when the **force** option is '
++                      '``True``.']),
++    ('FileContents', ['When the file content is ``None``, the file should not be written to',
++                      'disk (empty files are represented by an empty string ``""`` as content).']),
++    ('FileOp', ['Signature of functions considered file operations::',
++                '    Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]',
++                '- **path** (:obj:`pathlib.Path`): file path potentially to be written to/changed',
++                '  in the disk.',
++                '- **contents** (:obj:`FileContents`): usually a string that represents a text '
++                'content',
++                '.. note::',
++                '    A **FileOp** usually has side effects (e.g. write a file to the disk), see']),
++])
++def test_autodata_GenericAlias_multiline_docstring(app, name, expected):
++    actual = list(do_autodoc(app, 'data', 'target.genericalias.' + name))
++    for line in expected:
++        assert any(line in output_line for output_line in actual)
++    assert not any('alias of ' in line for line in actual)
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodata_GenericAlias_undocumented(app):
++    actual = list(do_autodoc(app, 'data', 'target.genericalias.C'))
++    assert any('alias of ' in line for line in actual)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_NewType(app):
+     actual = do_autodoc(app, 'data', 'target.typevar.T6')

@@ -1,0 +1,60 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/0",
+          "quoted_value": "Autodoc output for ScaffoldOpts = Dict[str, Any] contains its full next-line multiline documentation and the applicable generated alias text."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/scope_summary",
+          "quoted_value": "At base commit 876fa81e0a038cda466925b85ccf6c5452e0f685, autodoc already parses next-line string documentation. The existing inconsistency is visible in version-dependent GenericAlias tests and in the distinct ClassDocumenter versus DataDocumenter paths."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/14/statement",
+          "quoted_value": "When the same module-level alias is explicitly handled as data, the test expects its source documentation on all supported versions; on Python 3.7+ it additionally expects generated alias text."
+        }
+      ],
+      "description": "An implementation could satisfy the alias checks through explicit DataDocumenter/autodata coverage without correcting the reproduced automodule member-selection path. The contract must bind the regression checks to the sphinx-apidoc/automodule flow or otherwise state the exact documenter-selection context.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The acceptance checks do not identify the autodoc entry path that must exercise the fix.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "They require generic “Autodoc output,” although audited evidence shows that automodule member discovery and explicit autodata handling follow distinct behavior paths, and autodata already retains source documentation."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/1",
+          "quoted_value": "Autodoc output for FileContents = Union[str, None] contains its full next-line multiline documentation and the applicable generated alias text."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/9/statement",
+          "quoted_value": "GenericAlias recognition is limited to typing._GenericAlias, types.GenericAlias, and typing._SpecialGenericAlias when those implementation types exist; the code annotates the first as Python 3.7+ and the latter two as Python 3.9+ cases."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/13/statement",
+          "quoted_value": "The automodule GenericAlias test expects Python versions below 3.7 to emit only 'alias of …' for the documented List[int] aliases, while its Python 3.7+ expectation includes both the source documentation and the generated alias text."
+        }
+      ],
+      "description": "The checks could pass only on a Python version where existing GenericAlias handling already retains documentation, leaving the reported older-version inconsistency untested. Readiness requires an explicit version matrix or at least a regression check on the affected pre-3.7 behavior branch, with concrete alias-text expectations for each branch.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The contract does not specify the runtime-version coverage or the version-dependent meaning of “applicable generated alias text.”",
+      "id": "FINDING-2",
+      "material": true,
+      "observable_signal": "Every alias-specific check uses the conditional phrase “applicable generated alias text,” while repository expectations and GenericAlias recognition differ across Python version branches."
+    }
+  ],
+  "summary": "The behavioral intent is mostly settled, but the contract is not implementation-ready because its acceptance checks omit both the failing autodoc entry path and the affected runtime-version branch, allowing false-positive verification against behavior that already works."
+}

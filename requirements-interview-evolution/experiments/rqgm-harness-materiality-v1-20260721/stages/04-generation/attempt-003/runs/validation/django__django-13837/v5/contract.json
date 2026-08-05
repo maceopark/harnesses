@@ -1,0 +1,28 @@
+{
+  "acceptance_checks": [
+    "Given a top-level `__main__.__spec__` whose `parent` is `pkg_other_than_django` and `sys.argv` ending in `runserver`, `get_child_arguments()` returns the Python executable, current warning options, `-m`, `pkg_other_than_django`, and `sys.argv[1:]` in order.",
+    "Given a top-level `__main__.__spec__` whose `parent` is `django`, the existing `python -m django runserver` restart behavior remains unchanged.",
+    "Module-launch detection succeeds without `django.__main__.__file__` being present or accessed.",
+    "Given `__main__.__spec__` equal to `None`, an existing script path is restarted using the original script path and arguments.",
+    "Given a spec with an empty parent, the function does not construct an empty `-m` invocation and follows existing non-package handling.",
+    "Existing warning-option ordering remains unchanged for both module and script launches.",
+    "Existing Windows `.exe` and `-script.py` entry-point recovery behavior remains unchanged.",
+    "`restart_with_reloader()` passes the generically reconstructed `-m <package>` command to `subprocess.run()`.",
+    "Targeted autoreload tests pass, including new coverage for a non-Django package and regressions for Django module execution and script-path execution."
+  ],
+  "confirmed_decisions": [
+    "Use the documented top-level `__main__.__spec__.parent` signal to identify package `-m` execution.",
+    "Treat a nonempty `__main__.__spec__.parent` as the package name supplied to the restarted child’s `-m` option.",
+    "Do not hard-code `django` in the module-launch branch.",
+    "Remove `get_child_arguments()`’ dependency on importing `django.__main__`, comparing entry-point paths, or accessing `django.__main__.__file__`.",
+    "Preserve Python warning options before the reconstructed module or script invocation.",
+    "Preserve `sys.argv[1:]` exactly after `-m <package>` for module launches.",
+    "When `__main__.__spec__` is absent, `None`, or has an empty parent, retain the existing script-path handling, including Windows `.exe` and `-script.py` fallbacks and the missing-script `RuntimeError`.",
+    "An empty spec parent does not trigger package reconstruction, thereby leaving directory, zipfile, other sys.path-entry execution, and standalone non-package module cases outside this change.",
+    "Update direct child-argument tests and restart-level tests so module execution is modeled through the top-level `__main__.__spec__`, not patched `django.__main__.__file__`.",
+    "Retain regression coverage for ordinary script launches such as `manage.py`."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update `django.utils.autoreload.get_child_arguments()` to reconstruct package-based `python -m <package>` launches generically. Inspect the running top-level `__main__` module’s `__spec__`; when `__spec__` exists and its `parent` is nonempty, restart with `[sys.executable, warning options..., '-m', __main__.__spec__.parent, *sys.argv[1:]]`. This must support `python -m django runserver` and `python -m pkg_other_than_django runserver` without importing `django.__main__` or relying on any module’s `__file__`. Preserve existing script-path and Windows entry-point fallback behavior when no nonempty `__main__.__spec__.parent` is available."
+}

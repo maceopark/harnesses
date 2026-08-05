@@ -1,0 +1,79 @@
+[
+  {
+    "answer": "Mean and denominator",
+    "open_material_decisions": [
+      "Whether boolean weights must behave as numeric 0/1 weights only for weighted mean or across the public sum_of_weights operation as well."
+    ],
+    "question": {
+      "header": "Behavior scope",
+      "options": [
+        {
+          "description": "Require weighted mean and sum_of_weights to treat False/True as numeric 0/1; leave weighted sum unchanged except for existing behavior.",
+          "label": "Mean and denominator",
+          "recommended": true
+        },
+        {
+          "description": "Require only weighted mean to return the correctly normalized result; do not add a sum_of_weights behavior requirement.",
+          "label": "Mean only",
+          "recommended": false
+        },
+        {
+          "description": "Require every public weighted reduction to treat boolean weights as numeric 0/1, expanding beyond the reported mean bug.",
+          "label": "All operations",
+          "recommended": false
+        }
+      ],
+      "prompt": "For boolean weights, which public weighted operations must be corrected by this change?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "{\"selection\":\"DataArray only\"}",
+    "open_material_decisions": [
+      "Whether the boolean-weight correction applies only to DataArrayWeighted or also to DatasetWeighted."
+    ],
+    "question": {
+      "header": "Object scope",
+      "options": [
+        {
+          "description": "Match the reported bug and require the corrected behavior only for DataArrayWeighted.",
+          "label": "DataArray only",
+          "recommended": true
+        },
+        {
+          "description": "Require the same corrected behavior for both DataArrayWeighted and DatasetWeighted.",
+          "label": "DataArray and Dataset",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which weighted object types must treat boolean weights as numeric 0/1 for mean and sum_of_weights?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "For data DataArray([1.0, 1.0, 1.0]) and boolean weights DataArray([True, True, False]), weighted mean over all dimensions equals 1.0 rather than 2.0.",
+          "For the same data and weights, sum_of_weights over all dimensions equals the numeric value 2 rather than boolean True.",
+          "Existing weighted behavior for numeric weights continues to pass its current tests.",
+          "Existing weighted-sum behavior remains unchanged."
+        ],
+        "confirmed_decisions": [
+          "The correction applies to DataArrayWeighted only.",
+          "For DataArrayWeighted, both weighted mean and the public sum_of_weights operation must treat boolean weights as numeric 0/1 when calculating the denominator.",
+          "Weighted sum is not part of the requested behavior change.",
+          "No particular conversion dtype or internal implementation location is prescribed."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Correct DataArrayWeighted handling of boolean weights for weighted mean and sum_of_weights. Boolean False/True weights must contribute as numeric 0/1 when calculating the denominator, so DataArray([1.0, 1.0, 1.0]).weighted(DataArray([True, True, False])).mean() returns 1.0 and its sum_of_weights returns 2. The change must not alter the established behavior of weighted sum or numeric weights. DatasetWeighted behavior is outside this contract."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The reported behavior and the two owner answers resolve all material product-scope decisions. The remaining unknowns concern implementation technique or unsupported adjacent coverage and therefore must not be added to the contract."
+    },
+    "turn": 3
+  }
+]

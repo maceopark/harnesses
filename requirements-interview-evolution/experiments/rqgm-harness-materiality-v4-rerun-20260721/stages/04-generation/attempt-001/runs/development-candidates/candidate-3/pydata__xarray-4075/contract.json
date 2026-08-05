@@ -1,0 +1,24 @@
+{
+  "acceptance_checks": [
+    "The reported boolean-weight MCVE produces a scalar weighted mean equal to 1.0.",
+    "A boolean-weight sum-of-weights result represents numeric 0/1 accumulation rather than boolean accumulation.",
+    "Shared weighted operations interpret False and True as numeric 0 and 1 for both DataArray and Dataset inputs.",
+    "Boolean weights combined with missing data exclude weights corresponding to missing values consistently with existing weighted semantics.",
+    "All-False or otherwise zero-effective-weight inputs preserve the existing missing-result behavior for weighted mean.",
+    "Existing weighted behavior for non-boolean numeric weights remains unchanged.",
+    "Existing errors for non-DataArray weights and weights containing missing values remain unchanged."
+  ],
+  "confirmed_decisions": [
+    "Boolean weights have numeric 0/1 semantics across the shared weighted-reduction API, not only in weighted mean.",
+    "The corrected shared behavior applies to both DataArray and Dataset weighted operations.",
+    "For the reported example, DataArray([1., 1., 1.]).weighted(DataArray([True, True, False])).mean() returns 1.0 rather than 2.0.",
+    "The sum of weights for valid values with boolean weights reflects the count implied by True values; for [True, True, False] it is 2, not True/1.",
+    "Missing data continues to exclude its corresponding weight from the denominator under existing skipna behavior.",
+    "An effective total weight of zero continues to produce a missing denominator and therefore a missing weighted mean.",
+    "Numeric-weight behavior and the existing public validation rules are preserved.",
+    "Implementer decision log: the exact local coercion point and numeric dtype are left to the implementer because they are reversible internal choices, provided all required observable semantics and compatibility constraints hold."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Correct boolean-weight handling in xarray’s shared weighted-reduction implementation. Boolean DataArray weights must be interpreted numerically as False=0 and True=1 wherever weights participate in weighted calculations, so reductions do not inherit boolean einsum semantics. This behavior applies consistently to both DataArrayWeighted and DatasetWeighted. Existing validation remains unchanged: weights must be a DataArray and cannot contain missing values."
+}

@@ -1,0 +1,24 @@
+{
+  "acceptance_checks": [
+    "Invoking pytest on an ancestor directory does not execute or fail on a non-matching package initializer solely during discovery, while matching tests elsewhere still collect and run.",
+    "A matching test module nested beneath a package with a non-matching initializer remains discoverable.",
+    "An initializer matching configured python_files patterns retains its intentional collection behavior.",
+    "An explicitly passed __init__.py retains its existing collection behavior.",
+    "Existing pytest_ignore_collect and collect_ignore behavior remains unchanged, including prevention of excluded traversal and import.",
+    "Collected tests retain their existing node IDs and observable test results."
+  ],
+  "confirmed_decisions": [
+    "Recursively discovered __init__.py files are imported or collected intentionally only when they match python_files; explicitly passed initializers preserve existing behavior.",
+    "A non-matching initializer must not be imported merely to discover tests beneath its package.",
+    "Matching test modules beneath such a package remain discoverable; importing a selected test module may execute the initializer through normal Python semantics.",
+    "pytest_ignore_collect and collect_ignore remain authoritative and continue preventing excluded traversal and import.",
+    "Existing collected-test node IDs and test results are preserved.",
+    "Package collector presence and plugin-facing topology may change only for recursively discovered, non-matching initializers.",
+    "Configured initializer tests and directly passed initializers retain their evidenced behavior.",
+    "No change is authorized to python_files defaults, direct-file semantics, ignore semantics, or ordinary Python import behavior.",
+    "The owner accepts the bounded plugin-topology compatibility risk."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "For recursive directory collection, pytest must not import a discovered __init__.py merely to establish package collection when that initializer does not match python_files. Pytest must still discover matching test modules beneath that package, preserve their existing node IDs and test results, and may execute the initializer later only through normal Python import semantics required when importing a selected test module. Existing pytest_ignore_collect and collect_ignore exclusions remain authoritative and must continue preventing excluded traversal and import. An __init__.py matching python_files remains intentionally collectable, and an explicitly passed __init__.py retains its existing collection behavior. The implementation may change Package-collector presence and plugin-visible collection topology only for recursively discovered, non-matching initializers. Scope is limited to recursive directory collection of Python package initializers under the repository's existing supported environments and collection model. Excluded are changes to python_files defaults, ordinary import side effects caused by importing selected test modules, direct-file collection semantics, ignore-rule semantics, node IDs for collected tests, and guarantees about internal collector topology. Accepted residual risk: plugins depending on Package nodes or hooks for recursively discovered, non-matching initializers may observe a topology change."
+}

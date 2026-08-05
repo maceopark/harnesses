@@ -1,0 +1,20 @@
+{
+  "acceptance_checks": [
+    "The reported minimal example returns a scalar DataArray whose value is 1.0.",
+    "The sum of weights for three valid values with boolean weights [true, true, false] is numerically 2, not true or 1.",
+    "False-weighted values do not contribute to the weighted mean.",
+    "Boolean weights continue to account for missing data in the same way as numeric weights: only weights corresponding to applicable non-missing values contribute to the denominator.",
+    "Existing weighted-operation tests using numeric weights continue to pass.",
+    "Equivalent boolean-weighted mean behavior is correct for both DataArray and Dataset inputs."
+  ],
+  "confirmed_decisions": [
+    "DataArray.weighted(...).mean() accepts boolean DataArray weights, consistent with the existing public acceptance of non-missing DataArray weights.",
+    "For data [1.0, 1.0, 1.0] and boolean weights [true, true, false], reducing over all dimensions returns 1.0.",
+    "Boolean weights contribute 1 for true and 0 for false when calculating the sum of weights applicable to non-missing data.",
+    "Existing numeric-weight behavior remains unchanged.",
+    "The corrected behavior applies through the shared weighted-reduction implementation to both DataArray and Dataset weighted operations."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Correct weighted reductions so boolean weights have numeric weighting semantics: true contributes weight 1 and false contributes weight 0. In particular, weighted mean must use the numeric total of applicable boolean weights as its denominator instead of collapsing a boolean-by-boolean reduction to a boolean result."
+}

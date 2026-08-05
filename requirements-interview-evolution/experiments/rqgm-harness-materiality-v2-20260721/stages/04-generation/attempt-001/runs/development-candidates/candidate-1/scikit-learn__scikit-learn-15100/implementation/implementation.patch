@@ -1,0 +1,45 @@
+diff --git a/sklearn/feature_extraction/tests/test_text.py b/sklearn/feature_extraction/tests/test_text.py
+index 7b7697f..1d5cdae 100644
+--- a/sklearn/feature_extraction/tests/test_text.py
++++ b/sklearn/feature_extraction/tests/test_text.py
+@@ -78,6 +78,10 @@ def lazy_analyze(s):
+ 
+ 
+ def test_strip_accents():
++    # check that already-normalized text is handled
++    assert strip_accents_unicode('\u00f1') == 'n'
++    assert strip_accents_unicode('n\u0303') == 'n'
++
+     # check some classical latin accentuated symbols
+     a = 'àáâãäåçèéêë'
+     expected = 'aaaaaaceeee'
+@@ -169,6 +173,13 @@ def test_word_analyzer_unigrams_and_bigrams():
+     assert wa(text) == expected
+ 
+ 
++@pytest.mark.parametrize('Vectorizer', (CountVectorizer, TfidfVectorizer))
++def test_unicode_accents_canonical_equivalence(Vectorizer):
++    analyzer = Vectorizer(strip_accents='unicode').build_analyzer()
++
++    assert analyzer('pi\u00f1ata') == analyzer('pin\u0303ata') == ['pinata']
++
++
+ def test_unicode_decode_error():
+     # decode_error default to strict, so this should fail
+     # First, encode (as bytes) a unicode string.
+diff --git a/sklearn/feature_extraction/text.py b/sklearn/feature_extraction/text.py
+index bb5a9d6..11236d9 100644
+--- a/sklearn/feature_extraction/text.py
++++ b/sklearn/feature_extraction/text.py
+@@ -130,10 +130,7 @@ def strip_accents_unicode(s):
+         ASCII equivalent.
+     """
+     normalized = unicodedata.normalize('NFKD', s)
+-    if normalized == s:
+-        return s
+-    else:
+-        return ''.join([c for c in normalized if not unicodedata.combining(c)])
++    return ''.join([c for c in normalized if not unicodedata.combining(c)])
+ 
+ 
+ def strip_accents_ascii(s):

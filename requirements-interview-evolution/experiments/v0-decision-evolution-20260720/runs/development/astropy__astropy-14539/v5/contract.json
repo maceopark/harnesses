@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "A FITS binary table containing format QD with rows shaped like [[0], [0, 0]], when written and compared to the same file through FITSDiff, yields identical == True and no reported table-data difference.",
+    "Two Q-format VLA tables or files with equal row data yield TableDataDiff/FITSDiff with diff_total == 0 and no diff_values.",
+    "Two Q-format VLA tables or files with a deliberate value difference in one row yield identical == False, diff_total == 1, and identify the correct column and row.",
+    "Q-format VLA comparisons honor the configured rtol and atol through numpy.allclose just as P-format VLA comparisons do.",
+    "Existing P-format VLA identical and differing tests continue to pass unchanged.",
+    "Targeted astropy.io.fits diff tests pass after the change."
+  ],
+  "confirmed_decisions": [
+    "Limit the production change to the variable-length-array dispatch in TableDataDiff; do not alter FITS file opening, VLA conversion, generic fixed-width comparison, reporting, or diff identity semantics.",
+    "Recognize both P and Q FITS variable-length descriptor formats in the VLA-specific comparison branch.",
+    "Compare Q-VLA values row by row with numpy.allclose using TableDataDiff's configured relative and absolute tolerances, matching the existing P-format behavior.",
+    "Preserve existing row-level accounting and reporting: each differing table row contributes once to diff_total and may be stored in diff_values subject to numdiffs.",
+    "Add full Q-parity regression coverage rather than only the reported self-comparison case.",
+    "Regression coverage must include an identical Q-format VLA case based on the reported QD scenario and assert that the relevant diff is identical with zero table-data differences.",
+    "Regression coverage must include a genuine Q-format VLA row difference and assert that the diff is non-identical, the correct row is counted, and the differing values are recorded or reported consistently with the existing P path.",
+    "Reuse and extend the existing FITS diff test patterns; no new dependency or abstraction is required."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update FITS table-data comparison so Q-format variable-length array columns use the same row-by-row, tolerance-aware comparison behavior as P-format variable-length arrays. This must prevent false differences when a Q-VLA file is compared with itself while continuing to detect and report genuine Q-VLA row differences."
+}

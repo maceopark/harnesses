@@ -1,0 +1,72 @@
+{
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 395,
+      "line_start": 382,
+      "path": "requests/models.py",
+      "statement": "HTTP URL preparation parses the URL and converts urllib3 `LocationParseError` failures into Requests `InvalidURL`; it also raises `InvalidURL` when parsing produces no host."
+    },
+    {
+      "id": "F2",
+      "line_end": 405,
+      "line_start": 397,
+      "path": "requests/models.py",
+      "statement": "Hostname IDNA encoding is attempted only when the parsed host contains non-ASCII characters. IDNA failures in that branch are converted to `InvalidURL('URL has an invalid label.')`."
+    },
+    {
+      "id": "F3",
+      "line_end": 407,
+      "line_start": 401,
+      "path": "requests/models.py",
+      "statement": "For ASCII hosts, the only explicit invalid-label check in this block rejects hosts beginning with `*`; an ASCII host beginning with `.` does not enter either rejection branch."
+    },
+    {
+      "id": "F4",
+      "line_end": 419,
+      "line_start": 409,
+      "path": "requests/models.py",
+      "statement": "After hostname validation, the code reconstructs the network location using the host, creates `/` when the path is empty, and stores the requoted URL as the prepared request URL."
+    },
+    {
+      "id": "F5",
+      "line_end": 418,
+      "line_start": 395,
+      "path": "requests/adapters.py",
+      "statement": "The prepared URL is passed to the adapter, whose connection-creation path translates `LocationValueError` into `InvalidURL`."
+    },
+    {
+      "id": "F6",
+      "line_end": 451,
+      "line_start": 438,
+      "path": "requests/adapters.py",
+      "statement": "The adapter then calls `conn.urlopen`; its surrounding exception handlers translate several urllib3 and socket exception classes, but do not include `UnicodeError`."
+    },
+    {
+      "id": "F7",
+      "line_end": 91,
+      "line_start": 90,
+      "path": "requests/exceptions.py",
+      "statement": "`InvalidURL` is a Requests exception and also a `ValueError` subclass."
+    },
+    {
+      "id": "F8",
+      "line_end": 2497,
+      "line_start": 2484,
+      "path": "tests/test_requests.py",
+      "statement": "Existing bad-URL preparation tests cover ASCII wildcard hosts and one non-ASCII invalid label, asserting `InvalidURL`; the test cases do not include `.example.com` or another empty hostname label."
+    },
+    {
+      "id": "F9",
+      "line_end": 501,
+      "line_start": 495,
+      "path": "HISTORY.md",
+      "statement": "The project history documents the intentional behavior of passing through IDNA-invalid hosts optimistically when they contain only ASCII characters, to permit technically invalid but commonly used hostnames."
+    }
+  ],
+  "scope_summary": "Inspected the supplied repository at base commit 39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e. Existing URL preparation validates failed non-ASCII IDNA encoding and ASCII wildcard hosts, but contains no equivalent rejection for an ASCII hostname beginning with an empty label such as `.example.com`.",
+  "unknowns": [
+    "The exact dependency-internal statement that raises the reported `UnicodeError` is not present in this repository because the relevant urllib3 implementation is external.",
+    "The repository contains no regression test demonstrating the reported `.example.com` behavior at this base commit."
+  ]
+}

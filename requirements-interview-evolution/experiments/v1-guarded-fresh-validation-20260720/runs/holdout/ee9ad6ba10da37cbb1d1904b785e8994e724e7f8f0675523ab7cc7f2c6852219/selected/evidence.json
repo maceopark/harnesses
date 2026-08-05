@@ -1,0 +1,80 @@
+{
+  "audit_summary": "All ten facts are directly supported by the cited repository files and line ranges.",
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 10,
+      "line_start": 7,
+      "path": "pylint/__main__.py",
+      "statement": "Executing pylint as a Python module imports pylint, calls modify_sys_path(), and only then calls run_pylint()."
+    },
+    {
+      "id": "F2",
+      "line_end": 87,
+      "line_start": 80,
+      "path": "pylint/__init__.py",
+      "statement": "modify_sys_path() is documented as removing the current working directory to prevent accidental imports of user modules that share names with standard-library or pylint modules."
+    },
+    {
+      "id": "F3",
+      "line_end": 90,
+      "line_start": 89,
+      "path": "pylint/__init__.py",
+      "statement": "The function's documentation assumes the first sys.path entry is always either an empty string or the working directory."
+    },
+    {
+      "id": "F4",
+      "line_end": 99,
+      "line_start": 99,
+      "path": "pylint/__init__.py",
+      "statement": "The implementation unconditionally removes sys.path[0] without inspecting its value or checking whether sys.path is nonempty."
+    },
+    {
+      "id": "F5",
+      "line_end": 105,
+      "line_start": 100,
+      "path": "pylint/__init__.py",
+      "statement": "Only after removing the first entry does the implementation read PYTHONPATH and os.getcwd(); its remaining removals address leading or trailing colons in PYTHONPATH."
+    },
+    {
+      "id": "F6",
+      "line_end": 67,
+      "line_start": 62,
+      "path": "pyproject.toml",
+      "statement": "The installed pylint console script points directly to pylint:run_pylint, while module execution uses pylint/__main__.py and therefore calls modify_sys_path()."
+    },
+    {
+      "id": "F7",
+      "line_end": 37,
+      "line_start": 27,
+      "path": "pylint/__init__.py",
+      "statement": "run_pylint() directly constructs pylint.lint.Run from the supplied arguments or sys.argv[1:] and does not call modify_sys_path()."
+    },
+    {
+      "id": "F8",
+      "line_end": 778,
+      "line_start": 746,
+      "path": "tests/test_self.py",
+      "statement": "Existing tests verify removal when the first entry is the mocked current working directory, including cases where custom PYTHONPATH entries follow it."
+    },
+    {
+      "id": "F9",
+      "line_end": 790,
+      "line_start": 780,
+      "path": "tests/test_self.py",
+      "statement": "Existing tests also verify behavior when the first entry is an empty string and PYTHONPATH begins with a colon, and when duplicate current-working-directory entries are present."
+    },
+    {
+      "id": "F10",
+      "line_end": 815,
+      "line_start": 792,
+      "path": "tests/test_self.py",
+      "statement": "The remaining modify_sys_path tests continue to use either the current working directory or an empty string as the first sys.path entry; they do not show an arbitrary first entry being preserved."
+    }
+  ],
+  "scope_summary": "Inspected the supplied repository at base commit 684a1d6aa0a6791e20078bc524f97c8906332390. The issue concerns the module-execution path in pylint/__main__.py and modify_sys_path() in pylint/__init__.py.",
+  "unknowns": [
+    "The repository contains no cited test demonstrating runpy.run_module('pylint', run_name='__main__', alter_sys=True) with an arbitrary value at sys.path[0].",
+    "The repository does not encode an owner decision about which additional first-entry values, if any, should be eligible for removal."
+  ]
+}

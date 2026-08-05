@@ -1,0 +1,50 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/summary",
+          "quoted_value": "Boolean DataArray weights must be accepted by weighted operations and interpreted numerically, with True contributing weight 1 and False contributing weight 0. For both DataArray and Dataset weighted APIs, weighted mean and the public sum-of-weights result must use the numeric total of applicable boolean weights. Existing compatible behavior for other weight dtypes and weighted operations remains unchanged."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/0",
+          "quoted_value": "For DataArray([1.0, 1.0, 1.0]) with boolean weights DataArray([True, True, False]), weighted mean returns 1.0 rather than 2.0."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/2/statement",
+          "quoted_value": "The sum-of-weights denominator creates mask = da.notnull() and reduces that mask directly against self.weights, so boolean data validity masks and boolean weights reach the dot operation together."
+        }
+      ],
+      "description": "Add a concrete DataArray acceptance check, and preferably its Dataset equivalent, containing at least one missing data value with boolean weights. It should specify the numeric sum of weights over non-missing data and the resulting weighted mean. Without this, an implementation can pass all listed checks while remaining wrong on the audited mask-plus-boolean-weight denominator path.",
+      "failure_class": "omission",
+      "general_cause": "The contract generalizes the fix to applicable boolean weights but omits an acceptance case where data contain missing values, even though that mask-dependent path is central to the audited defect mechanism.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "Every concrete DataArray example uses fully non-missing data; the only additional edge case changes the weights to all False rather than exercising data validity masking."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/2",
+          "quoted_value": "Equivalent Dataset weighted mean and sum-of-weights operations treat True and False as weights 1 and 0 and return numerically correct results."
+        },
+        {
+          "artifact": "transcript",
+          "pointer": "/1/answer",
+          "quoted_value": "DataArray and Dataset"
+        }
+      ],
+      "description": "Replace the Dataset criterion with a concrete Dataset, boolean weights, reduction dimensions, and exact expected weighted-mean and sum-of-weights results, including expected missing results where relevant.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The Dataset acceptance criterion uses relational and qualitative language without defining a concrete Dataset input, reduction, variables, or expected scalar leaves.",
+      "id": "FINDING-2",
+      "material": true,
+      "observable_signal": "The check says only that Dataset operations must be “equivalent” and “numerically correct,” so distinct outputs could be claimed as passing without a unique oracle."
+    }
+  ],
+  "summary": "The contract captures the principal behavior and scope decisions, but it is not fully implementation-ready: it lacks coverage of the audited missing-data mask path and does not provide a deterministic Dataset acceptance oracle."
+}

@@ -1,0 +1,119 @@
+[
+  {
+    "answer": "Consecutive valid lines",
+    "open_material_decisions": [
+      "Confirm the final implementation contract after the remaining decisions are resolved.",
+      "Define how autodoc-process-signature handlers apply to multiple extracted signatures.",
+      "Define the boundary of the leading overload-signature block."
+    ],
+    "question": {
+      "header": "Signature block",
+      "options": [
+        {
+          "description": "Consume every consecutive leading signature whose object name matches, stopping before the first nonmatching, malformed, or prose line and preserving that line and everything after it as docstring content.",
+          "label": "Consecutive valid lines",
+          "recommended": true
+        },
+        {
+          "description": "Consume consecutive signature-shaped lines even when their object names differ, broadening behavior beyond the existing name-validation rule.",
+          "label": "Signature-like lines",
+          "recommended": false
+        },
+        {
+          "description": "Search all lines before the first blank line for matching signatures while preserving intervening non-signature lines, allowing overload signatures and prose to be mixed.",
+          "label": "Scan until blank",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which leading docstring lines should autodoc treat as overloaded signatures?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Each overload",
+    "open_material_decisions": [
+      "Confirm the final implementation contract after all behavioral decisions are resolved.",
+      "Define how autodoc-process-signature handlers apply to multiple extracted signatures."
+    ],
+    "question": {
+      "header": "Event handling",
+      "options": [
+        {
+          "description": "Invoke the existing event independently for each extracted signature, preserving extension control over every displayed overload.",
+          "label": "Each overload",
+          "recommended": true
+        },
+        {
+          "description": "Invoke the event once with all overloads encoded together, introducing newline-based values that existing handlers may not expect.",
+          "label": "Combined result",
+          "recommended": false
+        },
+        {
+          "description": "Invoke the event only for the first overload and render later overloads without extension processing.",
+          "label": "First only",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc-process-signature handlers apply to consecutive extracted overload signatures?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "{\"label\":\"Approve contract\"}",
+    "open_material_decisions": [
+      "Approve or revise the final implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with the stated behavior, tests, delegation boundary, and residual risk.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open and specify which behavior, acceptance criterion, boundary, or risk treatment must change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: extend autodoc_docstring_signature for functions and methods to extract every consecutive leading docstring line that parses as a signature and has a name accepted by the existing name-validation rule; stop at the first malformed, mismatched-name, blank, or prose line, preserving that line and all following content; remove only the extracted signature lines from rendered docstring content; format all extracted overloads as newline-separated directive signatures using the existing multi-signature header mechanism; invoke autodoc-process-signature independently for each extracted overload; retain existing behavior when the option is disabled or an explicit signature is supplied. Acceptance requires regression tests covering multiple matching leading signatures with return annotations, removal of those lines while preserving following content, stopping and preserving content at the first nonmatching line, per-overload event handling, unchanged single-signature behavior, and unchanged disabled-option behavior. Implementation details may be chosen within existing autodoc patterns without new dependencies. Residual risk: extensions whose event handlers assume one invocation per documented object may now receive one invocation per extracted overload, as explicitly selected."
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A regression test demonstrates multiple consecutive matching leading signatures, including return annotations, rendered as multiple aligned directive signatures.",
+          "A regression test verifies all extracted signature lines are absent from rendered docstring content while following prose remains.",
+          "A regression test verifies extraction stops at the first nonmatching, malformed, blank, or prose line and preserves that line and everything after it.",
+          "A regression test verifies autodoc-process-signature is invoked independently for every extracted overload and its per-overload result is rendered.",
+          "Existing or updated coverage confirms single-signature behavior is unchanged.",
+          "Existing or updated coverage confirms disabling autodoc_docstring_signature retains introspected signatures and preserves signature-like docstring lines.",
+          "Coverage confirms an explicit signature prevents docstring-signature extraction."
+        ],
+        "confirmed_decisions": [
+          "The overload block consists only of consecutive valid leading signatures with names accepted by the existing validation rule.",
+          "Extraction stops at the first malformed, mismatched-name, blank, or prose line, preserving that line and all subsequent content.",
+          "Only successfully extracted signature lines are removed from rendered docstring content.",
+          "Extracted overloads are emitted as newline-separated signatures using the existing directive-header behavior.",
+          "autodoc-process-signature is invoked independently for each extracted overload.",
+          "Disabled autodoc_docstring_signature behavior remains unchanged.",
+          "An explicitly supplied signature continues to suppress docstring-signature extraction.",
+          "Existing single-signature behavior remains supported.",
+          "No new dependencies are permitted.",
+          "The owner approved the implementation contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend autodoc_docstring_signature for functions and methods to extract every consecutive leading docstring line that parses as a signature and whose object name passes the existing name-validation rule. Stop at the first malformed, mismatched-name, blank, or prose line; preserve that line and everything after it as docstring content. Remove only extracted signature lines. Render all extracted overloads as newline-separated directive signatures through the existing multi-signature header mechanism, and invoke autodoc-process-signature independently for each overload. Preserve existing behavior when the option is disabled or an explicit signature is supplied. Implementation may follow existing autodoc patterns and must add no dependencies. Acknowledged residual risk: event handlers that assume one invocation per documented object may receive one invocation per extracted overload."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the final contract, and no material implementation decision remains unresolved."
+    },
+    "turn": 4
+  }
+]

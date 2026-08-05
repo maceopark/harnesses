@@ -1,0 +1,133 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..e77b246 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1470,6 +1470,12 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+                 self.doc_as_attr = True
+         return ret
+ 
++    def get_real_modname(self) -> str:
++        if self.doc_as_attr:
++            return self.modname
++        else:
++            return super().get_real_modname()
++
+     def _get_signature(self) -> Tuple[Optional[Any], Optional[str], Optional[Signature]]:
+         def get_user_defined_function_or_method(obj: Any, attr: str) -> Any:
+             """ Get the `attr` function or method from `obj`, if it is user-defined. """
+diff --git a/tests/roots/test-ext-autodoc/target/type_aliases.py b/tests/roots/test-ext-autodoc/target/type_aliases.py
+new file mode 100644
+index 0000000..a41d510
+--- /dev/null
++++ b/tests/roots/test-ext-autodoc/target/type_aliases.py
+@@ -0,0 +1,41 @@
++from pathlib import Path
++from typing import Any, Callable, Dict, Union
++
++
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary with PyScaffold's options, see ``pyscaffold.api.create_project``.
++Should be treated as immutable (if required, copy before changing).
++
++Please notice some behaviours given by the options **SHOULD** be observed. For example,
++files should be overwritten when the **force** option is ``True``. Similarly when
++**pretend** is ``True``, no operation should be really performed, but any action should
++be logged as if realized.
++"""
++
++FileContents = Union[str, None]
++"""When the file content is ``None``, the file should not be written to
++disk (empty files are represented by an empty string ``""`` as content).
++"""
++
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of functions considered file operations::
++
++    Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++
++- **path** (:obj:`pathlib.Path`): file path potentially to be written to/changed
++  in the disk.
++- **contents** (:obj:`FileContents`): usually a string that represents a text content
++  of the file. :obj:`None` indicates the file should not be written.
++- **opts** (:obj:`ScaffoldOpts`): a dict with PyScaffold's options.
++
++If the file is written (or more generally changed, such as new access permissions),
++by convention they should return the :obj:`file path <pathlib.Path>`.
++If no file was touched, :obj:`None` should be returned. Please notice a **FileOp**
++might return :obj:`None` if a pre-existing file in the disk is not modified.
++
++.. note::
++    A **FileOp** usually has side effects (e.g. write a file to the disk), see
++    :obj:`FileContents` and :obj:`ScaffoldOpts` for other conventions.
++"""
++
++Undocumented = Callable[[Path], None]
+diff --git a/tests/test_ext_autodoc.py b/tests/test_ext_autodoc.py
+index 4c16886..9a54bb0 100644
+--- a/tests/test_ext_autodoc.py
++++ b/tests/test_ext_autodoc.py
+@@ -17,7 +17,7 @@ import pytest
+ from docutils.statemachine import ViewList
+ 
+ from sphinx import addnodes
+-from sphinx.ext.autodoc import ALL, ModuleLevelDocumenter, Options
++from sphinx.ext.autodoc import ALL, ClassDocumenter, ModuleLevelDocumenter, Options
+ from sphinx.ext.autodoc.directive import DocumenterBridge, process_documenter_options
+ from sphinx.testing.util import SphinxTestApp, Struct  # NOQA
+ from sphinx.util.docutils import LoggingReporter
+@@ -1921,11 +1921,15 @@ def test_autodoc_GenericAlias(app):
+             '   .. py:attribute:: Class.T',
+             '      :module: target.genericalias',
+             '',
++            '      A list of int',
++            '',
+             '      alias of :class:`~typing.List`\\ [:class:`int`]',
+             '',
+             '.. py:attribute:: T',
+             '   :module: target.genericalias',
+             '',
++            '   A list of int',
++            '',
+             '   alias of :class:`~typing.List`\\ [:class:`int`]',
+         ]
+     else:
+@@ -1956,6 +1960,39 @@ def test_autodoc_GenericAlias(app):
+         ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_multiline_type_aliases(app):
++    options = {"members": None,
++               "undoc-members": None}
++    actual = do_autodoc(app, 'module', 'target.type_aliases', options)
++    output = '\n'.join(actual)
++
++    assert "Dictionary with PyScaffold's options" in output
++    assert 'Should be treated as immutable' in output
++    assert 'files should be overwritten when the **force** option is ``True``' in output
++    assert 'When the file content is ``None``' in output
++    assert 'disk (empty files are represented by an empty string ``""`` as content)' in output
++    assert 'Signature of functions considered file operations::' in output
++    assert '       Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]' in actual
++    assert ('   - **path** (:obj:`pathlib.Path`): file path potentially to be written to/changed'
++            in actual)
++    assert ('   - **contents** (:obj:`FileContents`): usually a string that represents a text '
++            'content' in actual)
++    assert '   - **opts** (:obj:`ScaffoldOpts`): a dict with PyScaffold\'s options.' in actual
++    assert '   .. note::' in actual
++    assert ('       A **FileOp** usually has side effects (e.g. write a file to the disk), see'
++            in actual)
++    assert output.count('alias of ') == 4
++
++
++def test_class_documenter_uses_aliasing_module_for_attribute_docs(app):
++    documenter = ClassDocumenter(make_directive_bridge(app.env), 'target.Alias')
++    documenter.doc_as_attr = True
++    documenter.modname = 'target.type_aliases'
++
++    assert documenter.get_real_modname() == 'target.type_aliases'
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodoc_TypeVar(app):
+     options = {"members": None,

@@ -1,0 +1,90 @@
+[
+  {
+    "answer": "Package-version ordering",
+    "open_material_decisions": [
+      "Whether `minversion` should adopt standard package-version ordering for all supported version strings or only address the reported mixed numeric/text comparison failure."
+    ],
+    "question": {
+      "header": "Version semantics",
+      "options": [
+        {
+          "description": "Use standard Python package-version semantics consistently, including development and prerelease versions, so `1.14.3 >= 1.14dev` returns `True` without raising.",
+          "label": "Package-version ordering",
+          "recommended": true
+        },
+        {
+          "description": "Require only that comparisons shaped like `1.14.3` versus `1.14dev` return the expected boolean without raising, leaving other non-numeric ordering unspecified.",
+          "label": "Reported case only",
+          "recommended": false
+        },
+        {
+          "description": "Preserve existing LooseVersion outcomes wherever they are defined and repair only comparisons that currently raise due to mixed token types.",
+          "label": "LooseVersion compatibility",
+          "recommended": false
+        }
+      ],
+      "prompt": "What comparison behavior should the contract require for `minversion`?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Raise parse error",
+    "open_material_decisions": [
+      "How `minversion` should behave when either version string is not valid under standard package-version syntax."
+    ],
+    "question": {
+      "header": "Invalid versions",
+      "options": [
+        {
+          "description": "Use standard package-version semantics strictly and allow invalid version strings to produce the parser's error.",
+          "label": "Raise parse error",
+          "recommended": true
+        },
+        {
+          "description": "Use standard ordering for valid package versions but fall back to legacy LooseVersion behavior for invalid strings.",
+          "label": "Legacy fallback",
+          "recommended": false
+        },
+        {
+          "description": "Treat any invalid installed or requested version as an unsatisfied requirement without raising.",
+          "label": "Return false",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should `minversion` handle version strings that are invalid under standard package-version syntax?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "For a module whose installed version is `1.14.3`, `minversion(module, '1.14dev')` returns `True` and does not raise `TypeError`.",
+          "Development and prerelease comparisons follow standard package-version ordering in both inclusive and exclusive modes.",
+          "Inclusive comparison accepts equal versions, while exclusive comparison rejects equal versions.",
+          "Invalid installed or requested version strings raise the standard version parser's parse error.",
+          "The existing `0.12.2` comparisons against `0.12`, `0.12.1`, `0.12.0.dev`, `1`, and `1.2rc1` retain their expected boolean results.",
+          "A missing module named by string still returns `False`, unsupported module argument types still raise `ValueError`, and custom `version_path` lookup still works."
+        ],
+        "confirmed_decisions": [
+          "For valid package version strings, `minversion` uses standard Python package-version ordering consistently, including development and prerelease versions.",
+          "An installed version of `1.14.3` satisfies an inclusive minimum of `1.14dev` and the comparison returns `True` without raising `TypeError`.",
+          "With `inclusive=True`, `minversion` returns whether the installed version is greater than or equal to the requested version; with `inclusive=False`, it returns whether the installed version is strictly greater.",
+          "Version strings invalid under standard package-version syntax raise the selected standard parser's parse error; there is no legacy fallback and they are not converted to `False`.",
+          "Existing module handling remains unchanged: an imported module or import-name string is accepted, a failed string import returns `False`, and unsupported module argument types raise `ValueError`.",
+          "Existing version lookup remains unchanged, including the default `__version__` attribute and configured dotted `version_path` resolution.",
+          "The helper remains publicly available as `astropy.utils.minversion`.",
+          "Existing valid-version outcomes covered by the current `minversion` tests remain correct under standard package-version ordering."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Repair `astropy.utils.minversion` so version comparisons use standard Python package-version ordering instead of the failing mixed-token `LooseVersion` behavior."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The interview resolved both material ambiguities: the comparison semantics and invalid-version behavior. The remaining parser choice is an implementation detail because the contract is expressed in observable outcomes."
+    },
+    "turn": 3
+  }
+]

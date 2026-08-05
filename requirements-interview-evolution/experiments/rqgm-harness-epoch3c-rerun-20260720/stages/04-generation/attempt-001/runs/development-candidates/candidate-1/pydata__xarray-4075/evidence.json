@@ -1,0 +1,70 @@
+{
+  "audit_summary": "All nine facts are directly supported by the cited repository files and ranges.",
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 110,
+      "line_start": 98,
+      "path": "xarray/core/weighted.py",
+      "statement": "Weighted construction validates that weights are a DataArray and contain no missing values, but imposes no numeric dtype requirement or boolean-weight conversion."
+    },
+    {
+      "id": "F2",
+      "line_end": 135,
+      "line_start": 112,
+      "path": "xarray/core/weighted.py",
+      "statement": "The common weighted reduction is documented as equivalent to `(da * weights).sum(...)` but is implemented by calling `dot(da, weights, dims=dim)`."
+    },
+    {
+      "id": "F3",
+      "line_end": 150,
+      "line_start": 137,
+      "path": "xarray/core/weighted.py",
+      "statement": "The sum-of-weights calculation creates `mask = da.notnull()` and passes that mask together with the original weights directly to `_reduce`, so boolean data validity and boolean weights reach the dot operation without casting."
+    },
+    {
+      "id": "F4",
+      "line_end": 174,
+      "line_start": 162,
+      "path": "xarray/core/weighted.py",
+      "statement": "Weighted mean computes the weighted sum, computes the sum of weights, and returns their quotient; therefore an incorrect sum-of-weights value directly changes the mean normalization."
+    },
+    {
+      "id": "F5",
+      "line_end": 1207,
+      "line_start": 1191,
+      "path": "xarray/core/computation.py",
+      "statement": "The generalized `dot` implementation constructs an einsum expression and executes it through `duck_array_ops.einsum`."
+    },
+    {
+      "id": "F6",
+      "line_end": 59,
+      "line_start": 32,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "Existing direct sum-of-weights tests cover integer positive, zero, and negative weights, with and without missing data, but do not include boolean weights."
+    },
+    {
+      "id": "F7",
+      "line_end": 158,
+      "line_start": 110,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "Existing direct weighted-mean tests cover numeric weights and missing-data/skipna behavior, but do not include boolean weights."
+    },
+    {
+      "id": "F8",
+      "line_end": 180,
+      "line_start": 161,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "The test helper defines its reference weighted sum using multiplication followed by `sum`, and defines the reference denominator by masking weights and calling `sum`; its docstring explicitly contrasts this reference path with the production `dot` path."
+    },
+    {
+      "id": "F9",
+      "line_end": 783,
+      "line_start": 766,
+      "path": "xarray/core/common.py",
+      "statement": "The public `weighted` API documentation describes weights as a DataArray associated with values and states only that missing values are forbidden; it does not exclude boolean weights."
+    }
+  ],
+  "scope_summary": "Base commit 19b088636eb7d3f65ab7a1046ac672e0689371d8 implements weighted means by dividing a dot-product weighted sum by a separately computed sum of weights. The denominator path feeds the boolean non-null mask and the supplied weights directly into the same dot-product reduction, and existing weighted tests contain no boolean-weight case.",
+  "unknowns": []
+}

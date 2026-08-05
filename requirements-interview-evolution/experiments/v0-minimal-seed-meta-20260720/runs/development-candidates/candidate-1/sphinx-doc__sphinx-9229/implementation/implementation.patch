@@ -1,0 +1,105 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..cebaa2f 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1785,6 +1785,10 @@ class DataDocumenterMixinBase:
+         """Update docstring for the NewType object."""
+         pass
+ 
++    def has_doc_comment(self) -> bool:
++        """Check whether the data has a source-level documentation comment."""
++        return False
++
+ 
+ class GenericAliasMixin(DataDocumenterMixinBase):
+     """
+@@ -1797,7 +1801,7 @@ class GenericAliasMixin(DataDocumenterMixinBase):
+                 super().should_suppress_directive_header())
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if inspect.isgenericalias(self.object):
++        if inspect.isgenericalias(self.object) and not self.has_doc_comment():
+             more_content.append(_('alias of %s') % restify(self.object), '')
+             more_content.append('', '')
+ 
+@@ -2006,6 +2010,9 @@ class DataDocumenter(GenericAliasMixin, NewTypeMixin, TypeVarMixin,
+         else:
+             return super().get_doc(ignore)
+ 
++    def has_doc_comment(self) -> bool:
++        return bool(self.get_module_comment(self.objpath[-1]))
++
+     def add_content(self, more_content: Optional[StringList], no_docstring: bool = False
+                     ) -> None:
+         # Disable analyzing variable comment on Documenter.add_content() to control it on
+diff --git a/tests/roots/test-ext-autodoc/target/genericalias.py b/tests/roots/test-ext-autodoc/target/genericalias.py
+index 9909efc..156e308 100644
+--- a/tests/roots/test-ext-autodoc/target/genericalias.py
++++ b/tests/roots/test-ext-autodoc/target/genericalias.py
+@@ -1,10 +1,26 @@
+-from typing import Callable, List
++from pathlib import Path
++from typing import Any, Callable, Dict, List, Union
+ 
+ #: A list of int
+ T = List[int]
+ 
+ C = Callable[[int], None]  # a generic alias not having a doccomment
+ 
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary with options.
++Should be treated as immutable.
++"""
++
++FileContents = Union[str, None]
++"""When content is None, the file should not be written.
++An empty string represents an empty file.
++"""
++
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of file operation functions.
++They return the changed path, or None.
++"""
++
+ 
+ class Class:
+     #: A list of int
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..2a927b9 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -96,11 +96,32 @@ def test_autodata_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
++@pytest.mark.skipif(sys.version_info < (3, 7), reason='python 3.7+ is required.')
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++@pytest.mark.parametrize('name, documentation', [
++    ('ScaffoldOpts', ['Dictionary with options.',
++                      'Should be treated as immutable.']),
++    ('FileContents', ['When content is None, the file should not be written.',
++                      'An empty string represents an empty file.']),
++    ('FileOp', ['Signature of file operation functions.',
++                'They return the changed path, or None.']),
++])
++def test_autodata_GenericAlias_with_doc_comment(app, name, documentation):
++    actual = list(do_autodoc(app, 'data', 'target.genericalias.' + name))
++    assert all('   ' + line in actual for line in documentation)
++    assert not any('alias of ' in line for line in actual)
++
++
++@pytest.mark.skipif(sys.version_info < (3, 7), reason='python 3.7+ is required.')
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodata_GenericAlias_without_doc_comment(app):
++    actual = do_autodoc(app, 'data', 'target.genericalias.C')
++    assert any('alias of ' in line for line in actual)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_NewType(app):
+     actual = do_autodoc(app, 'data', 'target.typevar.T6')

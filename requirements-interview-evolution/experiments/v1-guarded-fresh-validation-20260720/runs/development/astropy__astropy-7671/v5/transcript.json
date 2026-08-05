@@ -1,0 +1,84 @@
+[
+  {
+    "answer": "pkg_resources parser",
+    "open_material_decisions": [
+      "Choose the version-comparison implementation and its compatibility boundary for version strings beyond the reported regression."
+    ],
+    "question": {
+      "header": "Version parser",
+      "options": [
+        {
+          "description": "Restore `pkg_resources.parse_version`, supplied by the already-used setuptools ecosystem, fix `1.14.3 >= 1.14dev`, and preserve existing tested outcomes without promising compatibility for every unusual legacy string.",
+          "label": "pkg_resources parser",
+          "recommended": true
+        },
+        {
+          "description": "Keep LooseVersion and add narrowly scoped handling for the reported dev-version shape, minimizing broad ordering changes but introducing custom comparison logic.",
+          "label": "Custom targeted fix",
+          "recommended": false
+        },
+        {
+          "description": "Let the implementer select an available parser that fixes the regression and preserves all existing tests, while recording changed ordering of other unusual strings as a bounded residual risk.",
+          "label": "Implementation delegation",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which comparison strategy should the implementation contract require?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve or revise the complete implementation contract."
+    ],
+    "question": {
+      "header": "Contract approval",
+      "options": [
+        {
+          "description": "Seal this scope, behavior, acceptance evidence, and residual-risk boundary as implementation-ready.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the selected parser but revise one or more scope, behavior, test, or compatibility requirements before sealing.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: replace `LooseVersion` comparisons in `astropy.utils.minversion` with `pkg_resources.parse_version`; preserve module/module-name handling, failed-import behavior, `version_path` resolution, and inclusive (`>=`) versus exclusive (`>`) semantics; add regression coverage proving installed `1.14.3` satisfies required `1.14dev` without raising and retain all existing `minversion` expectations. Scope is limited to the parser replacement and tests; no dependency declaration is added because setuptools/pkg_resources is already used by the project. Ordering of unusual version strings outside the reported regression and existing tests may change according to `pkg_resources`, which is an acknowledged bounded residual compatibility risk."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "`minversion` comparing installed `1.14.3` with required `1.14dev` returns true and does not raise `TypeError`.",
+          "Existing `test_minversion` expectations for `0.12.2` against `0.12`, `0.12.1`, `0.12.0.dev`, `1`, and `1.2rc1` continue to pass.",
+          "Both inclusive and exclusive branches use parsed versions while retaining their respective `>=` and `>` operators.",
+          "Module-object input, module-name input, failed string import returning false, invalid input handling, and direct or dotted `version_path` behavior remain unchanged.",
+          "The targeted introspection test suite passes without adding a new runtime dependency declaration."
+        ],
+        "confirmed_decisions": [
+          "Use `pkg_resources.parse_version` as the required comparison implementation.",
+          "Preserve the existing public API and all non-comparison behavior of `minversion`.",
+          "Preserve inclusive comparison as `>=` and exclusive comparison as `>`.",
+          "Add a regression test for installed `1.14.3` compared with required `1.14dev`.",
+          "Retain all existing `minversion` test expectations.",
+          "Do not add a dependency declaration.",
+          "Do not broaden scope beyond the parser replacement and associated tests.",
+          "Acknowledge changed ordering for otherwise unusual version strings as a bounded residual compatibility risk."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Replace `LooseVersion` comparisons in `astropy.utils.minversion` with `pkg_resources.parse_version`. Preserve module and module-name inputs, failed-import behavior, `version_path` resolution, and inclusive (`>=`) versus exclusive (`>`) semantics. Add regression coverage proving that installed version `1.14.3` satisfies requirement `1.14dev` without raising, while retaining all existing `minversion` expectations. Limit changes to the parser replacement and tests; add no dependency declaration because setuptools/pkg_resources is already used by the project. Accept as a bounded residual compatibility risk that unusual version strings outside the reported regression and existing tests may be ordered differently by `pkg_resources`."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner selected `pkg_resources.parse_version` and explicitly approved the complete contract. No material decisions remain open."
+    },
+    "turn": 3
+  }
+]

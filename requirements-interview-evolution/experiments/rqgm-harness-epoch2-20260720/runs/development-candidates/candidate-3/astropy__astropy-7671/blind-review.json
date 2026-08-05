@@ -1,0 +1,50 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/3",
+          "quoted_value": "Non-standard package version strings are rejected with the standard parser's invalid-version error; no legacy comparison fallback or false result is introduced."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/7/statement",
+          "quoted_value": "The project setup imports setup from setuptools."
+        }
+      ],
+      "description": "Parser selection remains a material implementation decision. Different candidate APIs and versions can differ in whether non-standard strings raise, so the required rejection behavior and exception compatibility cannot be implemented deterministically from this contract.",
+      "failure_class": "omission",
+      "general_cause": "The contract requires strict invalid-version rejection without identifying the parser or exception contract that implements it in this repository.",
+      "id": "F1",
+      "material": true,
+      "observable_signal": "The contract declares implementation readiness while referring only to an unspecified “standard parser”; audited evidence establishes setuptools usage but does not establish a particular strict version parser, import path, or invalid-version exception."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/4",
+          "quoted_value": "An invalid installed or requested version raises the standard parser's invalid-version error."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/summary",
+          "quoted_value": "Update `astropy.utils.minversion` so version checks use standard Python package-version ordering instead of LooseVersion ordering. Valid development, release-candidate, and final-release versions must compare without mixed-type failures; for example, an installed version of `1.14.3` satisfies a requested version of `1.14dev`. Preserve the existing public API, module resolution, version-path lookup, and inclusive/exclusive comparison behavior. If either version is not a valid standard package version, raise the standard parser's invalid-version error."
+        }
+      ],
+      "description": "The invalid-version acceptance check is not objectively executable as written. A verifier cannot determine which strings count as invalid or which exception satisfies “the standard parser's invalid-version error” without making additional assumptions.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "An acceptance check describes invalid inputs and the expected error only through undefined categories.",
+      "id": "F2",
+      "material": true,
+      "observable_signal": "The check supplies neither representative invalid version strings nor the exact parser/error type whose behavior must be asserted."
+    }
+  ],
+  "summary": "The contract is not materially implementation-ready because its newly required invalid-version behavior depends on an unnamed parser and exception contract, and the corresponding acceptance check cannot be executed without inventing test inputs and expected exception semantics."
+}

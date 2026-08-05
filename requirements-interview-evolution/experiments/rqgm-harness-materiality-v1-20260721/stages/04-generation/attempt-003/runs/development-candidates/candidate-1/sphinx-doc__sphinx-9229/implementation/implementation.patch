@@ -1,0 +1,159 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..d50e4ff 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1724,10 +1724,14 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+     def add_content(self, more_content: Optional[StringList], no_docstring: bool = False
+                     ) -> None:
+         if self.doc_as_attr:
+-            try:
+-                more_content = StringList([_('alias of %s') % restify(self.object)], source='')
+-            except AttributeError:
+-                pass  # Invalid class object is passed.
++            attr_docs = self.analyzer.find_attr_docs() if self.analyzer else {}
++            key = ('.'.join(self.objpath[:-1]), self.objpath[-1])
++            if not (inspect.isgenericalias(self.object) and key in attr_docs):
++                try:
++                    more_content = StringList([_('alias of %s') % restify(self.object)],
++                                              source='')
++                except AttributeError:
++                    pass  # Invalid class object is passed.
+ 
+         super().add_content(more_content)
+ 
+@@ -1797,7 +1801,15 @@ class GenericAliasMixin(DataDocumenterMixinBase):
+                 super().should_suppress_directive_header())
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if inspect.isgenericalias(self.object):
++        comment = None
++        if self.analyzer and self.objpath:
++            attr_docs = self.analyzer.find_attr_docs()
++            key = ('.'.join(self.objpath[:-1]), self.objpath[-1])
++            comment = attr_docs.get(key)
++        elif hasattr(self, 'get_module_comment'):
++            comment = self.get_module_comment(self.objpath[-1])
++
++        if inspect.isgenericalias(self.object) and not comment:
+             more_content.append(_('alias of %s') % restify(self.object), '')
+             more_content.append('', '')
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/type_aliases.py b/tests/roots/test-ext-autodoc/target/type_aliases.py
+new file mode 100644
+index 0000000..ba278b1
+--- /dev/null
++++ b/tests/roots/test-ext-autodoc/target/type_aliases.py
+@@ -0,0 +1,25 @@
++from pathlib import Path
++from typing import Any, Callable, Dict, Union
++
++
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary with options.
++
++Should be treated as immutable.
++"""
++
++FileContents = Union[str, None]
++"""When the file content is ``None``, the file should not be written to
++disk.
++"""
++
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of functions considered file operations::
++
++    Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++
++.. note::
++    A **FileOp** usually has side effects.
++"""
++
++Undocumented = Dict[str, str]
+diff --git a/tests/test_ext_autodoc.py b/tests/test_ext_autodoc.py
+index 4c16886..35ae331 100644
+--- a/tests/test_ext_autodoc.py
++++ b/tests/test_ext_autodoc.py
+@@ -1921,12 +1921,14 @@ def test_autodoc_GenericAlias(app):
+             '   .. py:attribute:: Class.T',
+             '      :module: target.genericalias',
+             '',
+-            '      alias of :class:`~typing.List`\\ [:class:`int`]',
++            '      A list of int',
++            '',
+             '',
+             '.. py:attribute:: T',
+             '   :module: target.genericalias',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
++            '   A list of int',
++            '',
+         ]
+     else:
+         assert list(actual) == [
+@@ -1943,19 +1945,36 @@ def test_autodoc_GenericAlias(app):
+             '',
+             '      A list of int',
+             '',
+-            '      alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+             '',
+             '.. py:data:: T',
+             '   :module: target.genericalias',
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_documented_type_aliases(app):
++    options = {"members": None}
++    actual = list(do_autodoc(app, 'module', 'target.type_aliases', options))
++
++    assert 'alias of ' not in '\n'.join(actual)
++    for lines in [
++        ['   Dictionary with options.', '', '   Should be treated as immutable.'],
++        ['   When the file content is ``None``, the file should not be written to',
++         '   disk.'],
++        ['   Signature of functions considered file operations::', '',
++         '       Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]', '',
++         '   .. note::', '       A **FileOp** usually has side effects.'],
++    ]:
++        start = actual.index(lines[0])
++        assert actual[start:start + len(lines)] == lines
++
++    undocumented = list(do_autodoc(app, 'data', 'target.type_aliases.Undocumented'))
++    assert any('alias of ' in line for line in undocumented)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodoc_TypeVar(app):
+     options = {"members": None,
+diff --git a/tests/test_ext_autodoc_autoattribute.py b/tests/test_ext_autodoc_autoattribute.py
+index 5e72202..173fcf0 100644
+--- a/tests/test_ext_autodoc_autoattribute.py
++++ b/tests/test_ext_autodoc_autoattribute.py
+@@ -156,8 +156,6 @@ def test_autoattribute_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..dcda360 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -96,8 +96,6 @@ def test_autodata_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 

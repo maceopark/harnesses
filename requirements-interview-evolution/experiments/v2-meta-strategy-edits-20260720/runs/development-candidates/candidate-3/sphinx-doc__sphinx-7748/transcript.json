@@ -1,0 +1,96 @@
+[
+  {
+    "answer": "Consecutive valid signatures",
+    "open_material_decisions": [
+      "Confirm the final implementation contract after these decisions are resolved.",
+      "Define handling of a signature-shaped leading line whose object name is not accepted.",
+      "Define the extraction boundary for consecutive overloaded signatures."
+    ],
+    "question": {
+      "header": "Extraction boundary",
+      "options": [
+        {
+          "description": "Collect and remove the uninterrupted leading run of signature lines whose names are valid for the documented object, then preserve all remaining lines as content.",
+          "label": "Consecutive valid signatures",
+          "recommended": true
+        },
+        {
+          "description": "Collect the uninterrupted leading run of signature-shaped lines, even if a line names a different object.",
+          "label": "All leading signature syntax",
+          "recommended": false
+        },
+        {
+          "description": "Collect matching signature lines beyond intervening prose or blank lines, removing them wherever found.",
+          "label": "Scan through docstring",
+          "recommended": false
+        }
+      ],
+      "prompt": "When autodoc finds a valid signature on the first docstring line, which subsequent lines should it collect as overload signatures?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve or revise the complete implementation contract."
+    ],
+    "question": {
+      "header": "Contract approval",
+      "options": [
+        {
+          "description": "Seal this behavior as implementation-ready with no remaining material decisions.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Change which leading lines are collected or preserved before sealing the contract.",
+          "label": "Revise boundary",
+          "recommended": false
+        },
+        {
+          "description": "Change one of the stated unchanged-behavior boundaries or acceptance requirements.",
+          "label": "Revise compatibility",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: when autodoc_docstring_signature is enabled and no explicit signature was supplied, function and method documenters collect every consecutive valid matching signature from the start of the selected docstring, preserve their original order and individual return annotations, render them as aligned newline-separated directive signatures, remove only those collected lines from docstring content, and stop at the first nonmatching/invalid/blank/prose line while preserving that line and everything after it; existing single-signature behavior, disabled-configuration behavior, accepted-name validation, explicit-signature precedence, and attribute/property behavior remain unchanged; acceptance requires regression tests for multiple overloads plus the existing relevant tests passing."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Add a regression fixture and assertion covering a function or method docstring with multiple consecutive valid leading overload signatures followed by descriptive content.",
+          "Verify every overload is emitted in original order as an aligned directive signature and retains its own return annotation.",
+          "Verify all collected signature lines are absent from rendered docstring content while the first stopping line and everything after it are preserved.",
+          "Verify a blank, prose, nonmatching, or invalid-name line stops collection rather than being removed or allowing later signature-like lines to be collected.",
+          "Run the existing enabled single-signature configuration test and confirm it still passes.",
+          "Run the existing disabled-configuration test and confirm it still passes.",
+          "Run relevant attribute/property signature-stripping tests and confirm their behavior is unchanged.",
+          "Run the focused autodoc test suite covering the modified signature-discovery and directive-rendering paths."
+        ],
+        "confirmed_decisions": [
+          "The extraction boundary is the uninterrupted leading run of valid signatures whose object names pass the existing accepted-name validation.",
+          "A signature-shaped line with an unaccepted object name terminates extraction and is preserved together with all subsequent content.",
+          "Blank lines, prose, and other nonmatching lines terminate extraction and are preserved together with all subsequent content.",
+          "Collected overload signatures retain their source order and their individual return annotations.",
+          "Multiple signatures are passed to the existing directive-header mechanism as newline-separated formatted signatures so they render as aligned directive lines.",
+          "Existing single-signature behavior remains unchanged.",
+          "When `autodoc_docstring_signature` is disabled, runtime-signature rendering and preservation of signature-like docstring content remain unchanged.",
+          "Explicitly supplied signatures continue to take precedence over docstring signature discovery.",
+          "Existing accepted-name validation remains unchanged, including the special class-documenter names.",
+          "Attribute and property behavior through `DocstringStripSignatureMixin` remains unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "When `autodoc_docstring_signature` is enabled and no explicit signature was supplied, function and method documenters must collect every consecutive valid matching signature from the start of the selected docstring. They must preserve the signatures’ original order and each signature’s return annotation, render them as aligned newline-separated directive signatures, and remove only the collected signature lines from docstring content. Collection stops at the first nonmatching, invalid-name, blank, or prose line; that stopping line and everything after it remain docstring content."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the complete contract, resolving the extraction boundary, compatibility boundaries, and acceptance requirements. No material decisions remain open."
+    },
+    "turn": 3
+  }
+]

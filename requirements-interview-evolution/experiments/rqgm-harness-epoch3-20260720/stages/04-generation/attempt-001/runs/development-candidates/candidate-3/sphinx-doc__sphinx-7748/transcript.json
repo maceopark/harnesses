@@ -1,0 +1,63 @@
+[
+  {
+    "answer": "Each overload (Recommended)",
+    "open_material_decisions": [
+      "How `autodoc-process-signature` handlers should be applied to multiple signatures extracted from a docstring."
+    ],
+    "question": {
+      "header": "Event hooks",
+      "options": [
+        {
+          "description": "Invoke handlers separately for every extracted signature, so extensions can transform each overload independently.",
+          "label": "Each overload (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Invoke handlers once with the newline-combined signatures, preserving a single event per documented object.",
+          "label": "Combined value",
+          "recommended": false
+        },
+        {
+          "description": "Render extracted overloads without passing them through `autodoc-process-signature`.",
+          "label": "Bypass handlers",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a docstring supplies multiple leading overload signatures, how should the existing `autodoc-process-signature` event process them?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A method docstring beginning with two valid overload signatures renders two aligned method signatures in source order and neither signature line appears in the rendered documentation body.",
+          "A function docstring beginning with multiple valid overload signatures receives one `autodoc-process-signature` event invocation per overload, and each handler result is reflected only in its corresponding displayed signature.",
+          "A docstring with one valid leading signature retains the established signature and content output.",
+          "With `autodoc_docstring_signature` disabled, multiple leading signature-looking lines remain in the docstring body and are not used as displayed overload signatures.",
+          "When an explicit signature is provided, leading docstring signatures do not replace or augment it.",
+          "Content following the consecutive leading signature block remains present and in its original order."
+        ],
+        "confirmed_decisions": [
+          "When `autodoc_docstring_signature` is enabled and no explicit signature was supplied, autodoc recognizes consecutive signature lines at the beginning of a function or method docstring.",
+          "Every recognized leading signature must satisfy the existing object-name acceptance rules; signature-like lines that do not qualify are not extracted.",
+          "Recognized overload signatures are displayed in their original order as separate aligned signatures for the same documented function or method.",
+          "All recognized leading overload-signature lines are removed from the rendered docstring content; subsequent prose and other content remain intact.",
+          "Each extracted overload is passed separately through `autodoc-process-signature`, allowing event handlers to transform each overload independently.",
+          "A single leading docstring signature continues to produce the existing observable output.",
+          "When `autodoc_docstring_signature` is disabled, signature-looking docstring lines remain content and the existing non-docstring signature behavior is preserved.",
+          "An explicitly supplied signature continues to take precedence over docstring signature extraction.",
+          "The configuration documentation describes support for multiple consecutive overload signatures at the start of function and method docstrings."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend `autodoc_docstring_signature` so autodoc recognizes every consecutive valid overload signature at the beginning of a function or method docstring, displays each overload as a signature for the documented object, and removes all recognized signature lines from the rendered docstring content."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "Repository evidence and the explicit event-hook decision resolve all material behavioral choices. The requested change can be implemented without inventing additional behavior."
+    },
+    "turn": 2
+  }
+]

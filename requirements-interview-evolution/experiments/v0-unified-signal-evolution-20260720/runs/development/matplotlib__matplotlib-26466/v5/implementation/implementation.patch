@@ -1,0 +1,101 @@
+diff --git a/lib/matplotlib/tests/test_text.py b/lib/matplotlib/tests/test_text.py
+index 47121b7..20d9df9 100644
+--- a/lib/matplotlib/tests/test_text.py
++++ b/lib/matplotlib/tests/test_text.py
+@@ -343,6 +343,60 @@ def test_set_position():
+         assert a + shift_val == b
+ 
+ 
++def test_annotation_constructor_coordinates_are_snapshots():
++    fig, ax = plt.subplots()
++    xy = np.array([1., 2.])
++    xytext = [3., 4.]
++    ann = ax.annotate('', xy, xytext=xytext,
++                      arrowprops={'arrowstyle': '->'})
++
++    fig.canvas.draw()
++    positions = np.array(ann.arrow_patch._posA_posB)
++    xy[:] = [5, 6]
++    xytext[:] = [7, 8]
++    fig.canvas.draw()
++
++    np.testing.assert_allclose(ann.arrow_patch._posA_posB, positions)
++    np.testing.assert_array_equal(ann.xy, [1, 2])
++
++
++def test_annotation_omitted_xytext_uses_xy_snapshot():
++    fig, ax = plt.subplots()
++    xy = [1., 2.]
++    ann = ax.annotate('', xy, arrowprops={'arrowstyle': '->'})
++
++    xy[:] = [3, 4]
++    fig.canvas.draw()
++
++    np.testing.assert_array_equal(ann.xy, [1, 2])
++    assert ann.get_position() == (1, 2)
++
++
++def test_annotation_coordinate_snapshot_falls_back_to_tuple():
++    class UncopyableCoordinates:
++        def __init__(self, values):
++            self.values = values
++
++        def __iter__(self):
++            return iter(self.values)
++
++        def __copy__(self):
++            raise RuntimeError("cannot copy")
++
++    coordinates = UncopyableCoordinates([1, 2])
++    ann = Annotation('', coordinates)
++    coordinates.values[:] = [3, 4]
++
++    assert ann.xy == (1, 2)
++
++
++@pytest.mark.parametrize('coordinates', [[1, 2], np.array([1, 2])])
++def test_annotation_coordinate_snapshot_preserves_type(coordinates):
++    ann = Annotation('', coordinates)
++
++    assert type(ann.xy) is type(coordinates)
++
++
+ def test_char_index_at():
+     fig = plt.figure()
+     text = fig.text(0.1, 0.9, "")
+diff --git a/lib/matplotlib/text.py b/lib/matplotlib/text.py
+index d4922fc..6aef5c1 100644
+--- a/lib/matplotlib/text.py
++++ b/lib/matplotlib/text.py
+@@ -2,6 +2,7 @@
+ Classes for including text in a figure.
+ """
+ 
++import copy
+ import functools
+ import logging
+ import math
+@@ -1456,7 +1457,10 @@ class _AnnotationBase:
+                  xycoords='data',
+                  annotation_clip=None):
+ 
+-        self.xy = xy
++        try:
++            self.xy = copy.copy(xy)
++        except Exception:
++            self.xy = tuple(xy)
+         self.xycoords = xycoords
+         self.set_annotation_clip(annotation_clip)
+ 
+@@ -1830,6 +1834,11 @@ or callable, default: value of *xycoords*
+         # cleanup xytext defaults
+         if xytext is None:
+             xytext = self.xy
++        else:
++            try:
++                xytext = copy.copy(xytext)
++            except Exception:
++                xytext = tuple(xytext)
+         x, y = xytext
+ 
+         self.arrowprops = arrowprops

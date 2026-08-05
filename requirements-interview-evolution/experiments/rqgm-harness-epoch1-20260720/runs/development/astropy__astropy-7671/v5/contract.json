@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "With a synthetic or imported module whose installed version is `1.14.3`, `minversion(module, '1.14dev')` returns `True` and does not raise `TypeError` when `pkg_resources.parse_version` is available.",
+    "When the `pkg_resources` import is made unavailable in a controlled test, the same `1.14.3` versus `1.14dev` comparison uses the fallback, returns `True`, and does not raise `TypeError`.",
+    "Tests exercise both `inclusive=True` and `inclusive=False` through the selected parser path and confirm that `>=` and `>` semantics remain distinct at equal versions.",
+    "The existing expectations for installed `0.12.2` remain valid: minimum versions `0.12`, `0.12.1`, and `0.12.0.dev` pass, while `1` and `1.2rc1` fail.",
+    "A missing module-name string still returns `False`; passing an unsupported module argument type still raises `ValueError`.",
+    "Direct `__version__` lookup and custom direct or dotted `version_path` lookup continue to supply the installed version for comparison.",
+    "The targeted introspection test suite passes with both the preferred parser and explicitly simulated fallback paths."
+  ],
+  "confirmed_decisions": [
+    "Use `pkg_resources.parse_version` as the preferred version parser, replacing direct `LooseVersion` comparison when the parser is available.",
+    "Do not make `pkg_resources` an unconditional runtime requirement; retain a compatibility fallback for environments where it cannot be imported.",
+    "In the fallback, normalize non-numeric suffixes using the prior compatibility behavior so `minversion` returns a boolean instead of raising `TypeError`, and specifically treats installed `1.14.3` as satisfying required `1.14dev`.",
+    "Apply the selected parsing behavior to both inclusive and exclusive comparison branches without changing their operators.",
+    "Keep the existing public API and behavior for module objects, module-name strings, failed imports, invalid module arguments, and direct or dotted `version_path` lookup."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update `astropy.utils.introspection.minversion` to restore `pkg_resources.parse_version` as the preferred comparator while retaining compatibility when `pkg_resources` is unavailable. When available, parse both the installed version obtained through the existing `version_path` behavior and the requested minimum version with `parse_version`, then preserve the current `inclusive=True` (`>=`) and `inclusive=False` (`>`) semantics. When `pkg_resources` cannot be imported, retain a `LooseVersion`-based fallback that normalizes non-numeric version suffixes according to the repository's prior compatibility behavior, avoids mixed integer/string comparison failures, and makes an installed release such as `1.14.3` satisfy a minimum of `1.14dev`. Preserve all existing module resolution, missing-import, invalid-argument, and version-path behavior. Add regression tests for the reported release-versus-development-version case and for the no-`pkg_resources` fallback."
+}

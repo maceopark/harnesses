@@ -1,0 +1,79 @@
+[
+  {
+    "answer": "Functions and methods",
+    "open_material_decisions": [
+      "Whether consecutive leading signatures should be supported only for methods or for both functions and methods."
+    ],
+    "question": {
+      "header": "Feature scope",
+      "options": [
+        {
+          "description": "Extend the existing shared autodoc_docstring_signature behavior consistently for both documenter types.",
+          "label": "Functions and methods",
+          "recommended": true
+        },
+        {
+          "description": "Limit multi-signature extraction to overloaded methods while leaving function extraction single-signature.",
+          "label": "Methods only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should autodoc collect consecutive leading docstring signatures for both functions and methods, or only for methods?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Stop at first non-signature",
+    "open_material_decisions": [
+      "Whether extraction must stop at the first leading line that is not a valid signature for the documented object, or may resume scanning later docstring lines."
+    ],
+    "question": {
+      "header": "Scan boundary",
+      "options": [
+        {
+          "description": "Collect consecutive valid signatures from the start, then preserve that line and everything after it as docstring content.",
+          "label": "Stop at first non-signature",
+          "recommended": true
+        },
+        {
+          "description": "Continue looking for signatures after intervening non-signature lines, removing matches found later in the docstring.",
+          "label": "Scan beyond gaps",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc determine where the leading block of overloaded signatures ends?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A function docstring beginning with multiple valid signatures renders every leading signature and omits those signature lines from its content.",
+          "A method docstring beginning with multiple valid signatures renders every leading signature and omits those signature lines from its content.",
+          "A non-signature line ends the leading signature block and is preserved together with all following docstring content.",
+          "A signature-like line for a different object is not collected and ends the leading block.",
+          "A docstring with one leading signature retains the established single-signature output.",
+          "No docstring signatures are collected when autodoc_docstring_signature is disabled or an explicit signature is supplied."
+        ],
+        "confirmed_decisions": [
+          "The feature applies to both functions and methods through their existing docstring-signature behavior.",
+          "Autodoc collects only the consecutive block of valid signatures beginning at the first docstring line.",
+          "Collection stops at the first line that is not a valid signature for the documented object; that line and all subsequent content remain in the rendered docstring.",
+          "Each collected signature, including its arguments and return annotation, is rendered as a separate aligned signature for the same autodoc directive.",
+          "All collected leading signature lines are removed from the rendered docstring content.",
+          "Existing behavior remains unchanged when there is only one leading signature, when autodoc_docstring_signature is disabled, or when an explicit signature takes precedence.",
+          "The autodoc_docstring_signature documentation describes support for one or more consecutive leading signatures."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend autodoc_docstring_signature so functions and methods can expose every consecutive valid signature at the start of a docstring, supporting overloaded APIs such as SWIG-wrapped C++ methods."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The repository evidence and two confirmed interview answers resolve the material scope and scan-boundary decisions. The resulting behavior is sufficiently defined for implementation without inventing additional requirements."
+    },
+    "turn": 3
+  }
+]

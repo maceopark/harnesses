@@ -1,0 +1,19 @@
+{
+  "acceptance_checks": [
+    "Given (3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2, calling sqrtdenest completes without IndexError and returns 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.",
+    "When _sqrt_match examines an Add accepted by the existing rational-square predicate but finds no eligible Pow remainder, it returns no match without calling split_surds.",
+    "Inputs with eligible surds continue through the existing split_surds and denesting logic without behavioral changes.",
+    "Existing sqrtdenest tests, including successful denesting and unchanged-expression cases, continue to pass.",
+    "The regression is implemented in the existing sqrtdenest test module and can be verified with the repository's targeted sqrtdenest test suite."
+  ],
+  "confirmed_decisions": [
+    "Handle the empty-surd condition only within the sqrtdenest matching path; preserve split_surds behavior for all other callers.",
+    "Use an explicit pre-check for the absence of eligible Pow remainders before calling split_surds.",
+    "Treat this no-surd condition as an unsuccessful match so the existing unchanged-expression fallback is used.",
+    "Do not catch IndexError or suppress unrelated exceptions.",
+    "Preserve all existing successful denesting behavior and existing unchanged-result behavior."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Fix sqrtdenest's unsupported no-surd match path locally in sympy/simplify/sqrtdenest.py. In _sqrt_match, when an Add satisfies the existing rational-square condition but contains no term whose coefficient-free remainder is a Pow eligible for split_surds, return an unsuccessful match before calling split_surds. This lets _sqrtdenest1 use its existing fallback and return the affected square root unchanged. Do not catch IndexError, change split_surds or _split_gcd, alter successful denesting behavior, or broaden exception suppression. Add a regression test using (3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2 and assert that sqrtdenest returns the expanded unchanged expression without raising."
+}

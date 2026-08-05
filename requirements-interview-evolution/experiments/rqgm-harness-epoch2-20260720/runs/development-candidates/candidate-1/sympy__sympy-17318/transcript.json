@@ -1,0 +1,52 @@
+[
+  {
+    "answer": "sqrtdenest only",
+    "open_material_decisions": [
+      "Whether the contract should cover only sqrtdenest or also require split_surds to handle Add expressions containing no recognized surd factors."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Guarantee no IndexError and unchanged output through the public sqrtdenest API, without authorizing broader split_surds behavior changes.",
+          "label": "sqrtdenest only",
+          "recommended": true
+        },
+        {
+          "description": "Also require direct split_surds calls with no recognized surds to return a valid decomposition instead of raising IndexError.",
+          "label": "Include split_surds",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should the contract require only that sqrtdenest return the reported non-denestable expression unchanged, or should it also define safe behavior for direct split_surds calls when no surd factors are found?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "The reported sqrtdenest call completes without an exception.",
+          "The reported call equals 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.",
+          "Existing sqrtdenest tests for denestable expressions continue to pass.",
+          "Existing sqrtdenest tests asserting unchanged results for non-denestable expressions continue to pass."
+        ],
+        "confirmed_decisions": [
+          "Scope is limited to the public sqrtdenest API; direct split_surds behavior is out of scope.",
+          "Calling sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) must not raise IndexError or another exception caused by the absence of recognized surd factors.",
+          "The reported input must produce the equivalent unchanged result 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.",
+          "Existing successful denesting behavior must remain unchanged.",
+          "Existing behavior that returns other non-denestable expressions unchanged must remain intact."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Ensure sqrtdenest handles the reported non-denestable expression without raising IndexError and returns it unchanged apart from sqrtdenest's existing canonical expansion behavior. The contract does not define or alter behavior for direct split_surds calls."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The sole material scope decision was answered: the change is limited to observable behavior through the public sqrtdenest API. Repository evidence and the supplied example determine the required outcome without further clarification."
+    },
+    "turn": 2
+  }
+]

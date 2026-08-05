@@ -1,0 +1,24 @@
+{
+  "acceptance_checks": [
+    "A regression test constructs flask.Blueprint(\"\", __name__) and verifies that ValueError is raised.",
+    "The empty-name regression test fails against the base implementation and passes after the constructor validation is added.",
+    "The existing dotted-name validation test continues to pass.",
+    "A normal non-empty Blueprint name still constructs successfully.",
+    "A whitespace-only Blueprint name still constructs successfully, confirming that only the exact empty string is rejected.",
+    "Registration of an otherwise valid Blueprint with an explicit name=\"\" override retains existing behavior and is not rejected by the new constructor validation.",
+    "Run the relevant blueprint test module successfully after the change."
+  ],
+  "confirmed_decisions": [
+    "Add the validation in Blueprint.__init__ before assigning name to self.name.",
+    "Blueprint(\"\", import_name, ...) raises ValueError immediately during construction.",
+    "Reject only the exact empty string; whitespace-only constructor names remain valid.",
+    "The requirement applies only to the constructor name.",
+    "Do not add validation for an empty registration-time name= override.",
+    "Keep the existing ValueError behavior for constructor names containing a dot.",
+    "The exact new ValueError message is implementation discretion, but it should clearly state that the blueprint name cannot be empty.",
+    "No URL-rule construction, registration-key construction, nesting, or app.blueprints behavior needs to change beyond preventing construction of a Blueprint whose name is empty."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Require every Blueprint constructor name to be a non-empty string by rejecting exactly the empty string with ValueError during Blueprint initialization. Preserve existing behavior for whitespace-only names, dotted-name rejection, valid names, and registration-time name overrides, including name=\"\"."
+}

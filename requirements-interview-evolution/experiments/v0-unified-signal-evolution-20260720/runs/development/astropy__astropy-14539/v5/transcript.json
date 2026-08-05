@@ -1,0 +1,54 @@
+[
+  {
+    "answer": "Both cases",
+    "open_material_decisions": [
+      "Whether the regression coverage must verify both absence of false positives for identical Q VLAs and preservation of true-positive detection for differing Q VLAs."
+    ],
+    "question": {
+      "header": "Q VLA tests",
+      "options": [
+        {
+          "description": "Assert identical Q VLAs produce no differences and genuinely different Q VLA rows are reported correctly.",
+          "label": "Both cases",
+          "recommended": true
+        },
+        {
+          "description": "Cover only the reported false-positive case when identical Q VLA data is compared.",
+          "label": "Identical only",
+          "recommended": false
+        }
+      ],
+      "prompt": "What success criteria should the Q-format VLA regression tests enforce?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A FITS file containing format='QD' data [[0], [0, 0]] compared with itself by filename yields FITSDiff.identical == True.",
+          "The identical Q-VLA regression records no differing HDUs, rows, or table-data values and reports a zero difference count.",
+          "Two equivalent Q-format VLA table operands compare as identical through TableDataDiff.",
+          "Q-format VLA operands with at least one genuinely different row compare as non-identical, count the differing row, and retain the corresponding value pair for reporting.",
+          "Configured relative and absolute tolerances are honored for Q-format VLA element comparisons in the same manner as P-format VLAs.",
+          "Existing P-format VLA and general FITS diff tests continue to pass."
+        ],
+        "confirmed_decisions": [
+          "Treat both P- and Q-format FITS columns as variable-length arrays in TableDataDiff instead of allowing Q columns to fall through to NumPy's generic object-array inequality comparison.",
+          "Preserve the existing row-by-row np.allclose comparison semantics and configured rtol/atol behavior for VLA values.",
+          "Regression coverage must verify both absence of false positives for identical Q VLAs and preservation of true-positive detection for differing Q VLAs.",
+          "Include the reported FITSDiff same-file scenario using a QD column with rows [[0], [0, 0]], asserting that the comparison is identical and records no table-data differences.",
+          "Keep P-format VLA comparison behavior unchanged and avoid unrelated changes to FITSDiff, HDUDiff, VLA loading, or reporting."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update FITS table-data comparison so Q-format variable-length-array columns receive the same row-by-row, tolerance-aware comparison already used for P-format VLAs. Add regression coverage proving that identical Q-format VLA data—including two independently opened handles to the same FITS file—does not produce false differences, while genuinely different Q-format VLA row data is still detected and reported."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested behavior and success criteria are sufficiently clear from the issue, audited repository evidence, and confirmed answer. No material implementation decision remains open."
+    },
+    "turn": 2
+  }
+]

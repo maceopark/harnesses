@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "The reported DataArray example with boolean weights [True, True, False] returns a weighted mean of 1.0.",
+    "Regression tests cover boolean weights for weighted sum, sum_of_weights, and mean.",
+    "Tests demonstrate False contributes zero and True contributes one.",
+    "Coercion happens before dot/einsum arithmetic and does not mutate the supplied weights.",
+    "Existing weighted tests pass, including numeric weights, missing-data behavior, zero or cancelling total weights, DataArray and Dataset inputs, and dimension/skipna behavior."
+  ],
+  "confirmed_decisions": [
+    "Boolean weights remain supported and are interpreted as 0/1.",
+    "Boolean-to-numeric coercion applies at the shared weighted-reduction boundary for all weighted reductions.",
+    "Boolean weights are converted to integer 0/1 rather than floating-point 0.0/1.0.",
+    "Existing validation remains unchanged: weights must be a DataArray and cannot contain missing values.",
+    "Existing observable behavior is preserved for non-boolean weights, missing data, zero or cancelling total weights, DataArray and Dataset inputs, and dimension/skipna handling.",
+    "The implementer may select the smallest repository-consistent coercion expression and test organization within the stated constraints.",
+    "The owner explicitly approved the executable contract."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update xarray's weighted-reduction implementation so boolean DataArray weights remain valid and are converted to integer 0/1 at the shared weighted-reduction boundary used by all weighted reductions. False contributes zero and True contributes one for weighted sum, sum_of_weights, and mean; the reported example must return 1.0. Retain current validation that weights are DataArray objects without missing values. Preserve existing behavior for non-boolean weights, missing data, zero or cancelling total weights, DataArray and Dataset inputs, and dimension/skipna handling. The implementer may choose the smallest repository-consistent coercion expression and exact test organization, provided coercion occurs before dot/einsum arithmetic, produces integer 0/1 values, and does not mutate the supplied weights. Acknowledged residual risk: backend-specific integer dtype selection or lazy-array behavior may vary, but observable numeric results must match integer 0/1 weight semantics."
+}

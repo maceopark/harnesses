@@ -1,0 +1,61 @@
+[
+  {
+    "answer": "PEP 440 ordering",
+    "open_material_decisions": [
+      "Choose the version-ordering semantics minversion must apply when LooseVersion cannot reliably compare release and development-version strings."
+    ],
+    "question": {
+      "header": "Version policy",
+      "options": [
+        {
+          "description": "Use standard Python package-version semantics, so 1.14.3 satisfies 1.14dev and other valid development, pre-release, and release versions are ordered consistently.",
+          "label": "PEP 440 ordering",
+          "recommended": true
+        },
+        {
+          "description": "Require only that multi-component releases such as 1.14.3 compare successfully against dev-suffixed minimums such as 1.14dev, without defining broader ordering semantics.",
+          "label": "Reported case only",
+          "recommended": false
+        },
+        {
+          "description": "Retain existing LooseVersion behavior wherever it succeeds and add compatibility behavior only when that comparison raises TypeError.",
+          "label": "Preserve LooseVersion",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which observable comparison policy should minversion guarantee?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "For a module reporting version 1.14.3, minversion(module, '1.14dev') returns True without raising TypeError.",
+          "Valid PEP 440 development, pre-release, and release version strings produce results consistent with PEP 440 ordering.",
+          "Inclusive and exclusive comparisons differ correctly when the installed and requested versions are equal.",
+          "The previously supported comparisons for installed version 0.12.2 against minimums 0.12, 0.12.1, 0.12.0.dev, 1, and 1.2rc1 retain their expected true or false outcomes.",
+          "Both imported-module and module-name-string inputs continue to work, including the existing failed-import behavior.",
+          "A configured direct or dotted version attribute path continues to supply the installed version used in the comparison."
+        ],
+        "confirmed_decisions": [
+          "Version comparisons use PEP 440 ordering.",
+          "With inclusive=True, minversion returns whether the installed version is greater than or equal to the requested minimum under PEP 440 ordering.",
+          "With inclusive=False, minversion returns whether the installed version is strictly greater than the requested minimum under PEP 440 ordering.",
+          "An installed release version 1.14.3 satisfies the minimum 1.14dev and the comparison does not raise TypeError.",
+          "minversion continues to accept either an imported module or a module-name string and continues to obtain the installed version through the configured version attribute path.",
+          "A module-name string that cannot be imported continues to produce False, and unsupported module argument types continue to raise ValueError.",
+          "minversion remains publicly available from astropy.utils."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Correct astropy.utils.minversion so it compares package versions using PEP 440 ordering while preserving its existing public API and comparison modes. Valid development, pre-release, and release versions must be ordered consistently; in particular, an installed version of 1.14.3 must satisfy an inclusive minimum of 1.14dev without raising TypeError."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner selected the only material unresolved behavior: minversion must apply PEP 440 version ordering. The existing documented API supplies the remaining boundaries, so the contract is implementation-ready."
+    },
+    "turn": 2
+  }
+]

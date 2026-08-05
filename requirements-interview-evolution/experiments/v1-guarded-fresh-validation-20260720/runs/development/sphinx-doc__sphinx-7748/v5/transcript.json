@@ -1,0 +1,183 @@
+[
+  {
+    "answer": "Valid prefix (Recommended)",
+    "open_material_decisions": [
+      "Acceptance evidence and bounded residual risks",
+      "Compatibility behavior for explicit directive signatures",
+      "How multiple extracted signatures interact with autodoc-process-signature",
+      "Return-annotation handling across overloads",
+      "Termination behavior for the leading overload-signature block"
+    ],
+    "question": {
+      "header": "Block ending",
+      "options": [
+        {
+          "description": "Extract consecutive leading lines that fully match the signature syntax and accepted object name, then stop at the first nonmatching or wrong-name line and preserve that line plus everything after it as docstring content.",
+          "label": "Valid prefix (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Treat leading signature-like lines as one block, but stop and preserve the entire block if any line is malformed or names another object.",
+          "label": "Signature-like block",
+          "recommended": false
+        },
+        {
+          "description": "Inspect every nonblank line until the first blank line, extracting valid matching signatures while preserving malformed or wrong-name lines as content.",
+          "label": "Blank-delimited block",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc identify the consecutive overloaded signatures at the start of a function or method docstring?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Per overload",
+    "open_material_decisions": [
+      "Acceptance evidence and bounded residual risks",
+      "Compatibility behavior for explicit directive signatures",
+      "How multiple extracted signatures interact with autodoc-process-signature",
+      "Return-annotation handling across overloads"
+    ],
+    "question": {
+      "header": "Return types",
+      "options": [
+        {
+          "description": "Preserve and render each extracted signature with its own return annotation, including a missing annotation on any individual overload.",
+          "label": "Per overload",
+          "recommended": true
+        },
+        {
+          "description": "Use the first overload’s return annotation for the displayed overload set and ignore return annotations on later signatures.",
+          "label": "First only",
+          "recommended": false
+        },
+        {
+          "description": "Extract multiple signatures only when all return annotations are identical; otherwise fall back to the existing single-signature behavior.",
+          "label": "Require same",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should return annotations from multiple leading overload signatures be rendered?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Preserve current behavior",
+    "open_material_decisions": [
+      "Acceptance evidence and bounded residual risks",
+      "Compatibility behavior for explicit directive signatures",
+      "How multiple extracted signatures interact with autodoc-process-signature"
+    ],
+    "question": {
+      "header": "Explicit sig",
+      "options": [
+        {
+          "description": "The explicit signature wins; do not extract or remove any docstring signature lines, matching the current guard on explicit arguments.",
+          "label": "Preserve current behavior",
+          "recommended": true
+        },
+        {
+          "description": "Render only the explicit signature, but remove the valid leading overload-signature prefix from the docstring content.",
+          "label": "Remove only",
+          "recommended": false
+        },
+        {
+          "description": "Render the explicit signature followed by the overload signatures extracted from the docstring, and remove the extracted lines from its content.",
+          "label": "Append overloads",
+          "recommended": false
+        }
+      ],
+      "prompt": "When the autodoc directive supplies an explicit signature, what should happen to leading overload signatures in the docstring?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Per overload",
+    "open_material_decisions": [
+      "Acceptance evidence and bounded residual risks",
+      "How multiple extracted signatures interact with autodoc-process-signature",
+      "Owner approval of the complete implementation contract"
+    ],
+    "question": {
+      "header": "Signature hook",
+      "options": [
+        {
+          "description": "Process each extracted overload independently through the event, preserving each overload’s arguments and return annotation in the emitted set.",
+          "label": "Per overload",
+          "recommended": true
+        },
+        {
+          "description": "Encode the overload set as one newline-separated signature and invoke the event once for the combined value.",
+          "label": "Combined once",
+          "recommended": false
+        },
+        {
+          "description": "Render docstring-extracted overloads directly without applying the signature-processing event to them.",
+          "label": "Bypass hook",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should multiple docstring-extracted overloads interact with the existing autodoc-process-signature event?"
+    },
+    "turn": 4
+  },
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Owner approval of the complete implementation contract"
+    ],
+    "question": {
+      "header": "Approve contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with no remaining material decisions.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Do not seal it; provide the behavior or acceptance criterion that must change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: extend autodoc_docstring_signature for functions and methods to extract the maximal consecutive prefix of leading lines that fully match the existing signature syntax and an accepted object name; stop at the first nonmatching or wrong-name line and preserve that line and all following content. Remove every extracted signature line from rendered docstring content. Render every extracted overload in original order, preserving each overload’s own arguments and optional return annotation. Pass each overload independently through autodoc-process-signature and emit the resulting signatures as newline-separated directive signatures using the existing multi-signature header behavior. Preserve current behavior when the option is disabled, when an explicit directive signature is supplied, and for docstrings having zero or one valid leading signature. Acceptance requires regression tests covering multiple method overloads with distinct or missing return annotations, termination and content preservation at the first invalid or wrong-name line, per-overload signature-hook processing, explicit-signature precedence, the disabled option, and existing single-signature behavior; relevant autodoc tests must pass. Implementation may choose internal data structures and helper boundaries without changing these behaviors. Bounded residual risk: third-party autodoc-process-signature handlers that assume one invocation per documented object may now receive one invocation per extracted overload, as explicitly required."
+    },
+    "turn": 5
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Add regression coverage for multiple method overloads, including distinct return annotations and an overload with no return annotation.",
+          "Verify extraction terminates at the first invalid or wrong-name line and preserves that line and all subsequent content.",
+          "Verify every extracted overload is processed independently by autodoc-process-signature.",
+          "Verify explicit directive signatures retain precedence and leave leading docstring signature lines in content.",
+          "Verify disabling autodoc_docstring_signature leaves signature-like lines in content and uses the existing introspected signature behavior.",
+          "Verify existing zero-signature and single-signature behavior remains unchanged.",
+          "Run the relevant autodoc test suite successfully."
+        ],
+        "confirmed_decisions": [
+          "A leading overload block is the maximal consecutive valid prefix; extraction stops at the first nonmatching or wrong-name line.",
+          "The stopping line and every following line remain in rendered docstring content.",
+          "Every extracted line is removed from rendered docstring content.",
+          "Each overload retains its own arguments and optional return annotation and is rendered in source order.",
+          "autodoc-process-signature is invoked independently for each extracted overload.",
+          "An explicit directive signature keeps precedence and prevents extraction or removal of docstring signature lines.",
+          "Disabling autodoc_docstring_signature preserves existing behavior.",
+          "Zero-signature and single-signature docstrings retain existing behavior.",
+          "Implementation details may be chosen freely within the approved observable-behavior boundary.",
+          "The per-overload hook invocation compatibility risk is explicitly accepted."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend autodoc_docstring_signature for function and method docstrings to extract the maximal consecutive prefix of leading lines that each fully match the existing signature syntax and an accepted object name. Stop at the first nonmatching or wrong-name line, preserving that line and all subsequent docstring content. Remove all extracted signature lines from rendered content. Render extracted overloads in original order, preserving each overload’s own arguments and optional return annotation. Process each overload independently through autodoc-process-signature, then emit the results as newline-separated directive signatures through the existing multi-signature header path. Preserve current behavior when the option is disabled, an explicit directive signature is supplied, or the docstring contains zero or one valid leading signature. Internal data structures and helper boundaries are delegated to the implementer provided these observable behaviors remain unchanged. Acknowledged bounded residual risk: third-party autodoc-process-signature handlers that assume one invocation per documented object may receive one invocation per extracted overload."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the complete implementation contract, and no material decisions remain open."
+    },
+    "turn": 6
+  }
+]

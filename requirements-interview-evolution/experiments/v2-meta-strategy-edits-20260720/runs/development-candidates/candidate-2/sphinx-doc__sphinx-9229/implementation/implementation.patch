@@ -1,0 +1,174 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..3cfc45e 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1723,7 +1723,17 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+ 
+     def add_content(self, more_content: Optional[StringList], no_docstring: bool = False
+                     ) -> None:
+-        if self.doc_as_attr:
++        has_attr_doc = False
++        is_type_alias = (inspect.isgenericalias(self.object) or
++                         (not hasattr(self.object, '__name__') and
++                          getattr(self.object, '__module__', None) == 'typing'))
++        if self.doc_as_attr and is_type_alias and self.analyzer:
++            attr_docs = self.analyzer.find_attr_docs()
++            if self.objpath:
++                key = ('.'.join(self.objpath[:-1]), self.objpath[-1])
++                has_attr_doc = key in attr_docs
++
++        if self.doc_as_attr and not has_attr_doc:
+             try:
+                 more_content = StringList([_('alias of %s') % restify(self.object)], source='')
+             except AttributeError:
+@@ -1797,7 +1807,13 @@ class GenericAliasMixin(DataDocumenterMixinBase):
+                 super().should_suppress_directive_header())
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if inspect.isgenericalias(self.object):
++        comment = None
++        if hasattr(self, 'get_module_comment'):
++            comment = self.get_module_comment(self.objpath[-1])
++        elif hasattr(self, 'get_attribute_comment'):
++            comment = self.get_attribute_comment(self.parent, self.objpath[-1])
++
++        if inspect.isgenericalias(self.object) and not comment:
+             more_content.append(_('alias of %s') % restify(self.object), '')
+             more_content.append('', '')
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/genericalias.py b/tests/roots/test-ext-autodoc/target/genericalias.py
+index 9909efc..ea61284 100644
+--- a/tests/roots/test-ext-autodoc/target/genericalias.py
++++ b/tests/roots/test-ext-autodoc/target/genericalias.py
+@@ -1,11 +1,15 @@
+-from typing import Callable, List
++from typing import List
+ 
+-#: A list of int
+ T = List[int]
++"""A list of int.
++This is a type alias."""
+ 
+-C = Callable[[int], None]  # a generic alias not having a doccomment
++C = List[str]  # a generic alias not having a doccomment
+ 
+ 
+ class Class:
+-    #: A list of int
+     T = List[int]
++    """A list of int.
++    This is a type alias."""
++
++    C = List[str]  # a generic alias not having a doccomment
+diff --git a/tests/test_ext_autodoc.py b/tests/test_ext_autodoc.py
+index 4c16886..1a604f4 100644
+--- a/tests/test_ext_autodoc.py
++++ b/tests/test_ext_autodoc.py
+@@ -1921,12 +1921,24 @@ def test_autodoc_GenericAlias(app):
+             '   .. py:attribute:: Class.T',
+             '      :module: target.genericalias',
+             '',
+-            '      alias of :class:`~typing.List`\\ [:class:`int`]',
++            '      A list of int.',
++            '      This is a type alias.',
++            '',
++            '   .. py:attribute:: Class.C',
++            '      :module: target.genericalias',
++            '',
++            '      alias of :class:`~typing.List`\\ [:class:`str`]',
+             '',
+             '.. py:attribute:: T',
+             '   :module: target.genericalias',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
++            '   A list of int.',
++            '   This is a type alias.',
++            '',
++            '.. py:attribute:: C',
++            '   :module: target.genericalias',
++            '',
++            '   alias of :class:`~typing.List`\\ [:class:`str`]',
+         ]
+     else:
+         assert list(actual) == [
+@@ -1941,17 +1953,24 @@ def test_autodoc_GenericAlias(app):
+             '   .. py:attribute:: Class.T',
+             '      :module: target.genericalias',
+             '',
+-            '      A list of int',
++            '      A list of int.',
++            '      This is a type alias.',
+             '',
+-            '      alias of :class:`~typing.List`\\ [:class:`int`]',
++            '   .. py:attribute:: Class.C',
++            '      :module: target.genericalias',
+             '',
++            '      alias of :class:`~typing.List`\\ [:class:`str`]',
+             '',
+             '.. py:data:: T',
+             '   :module: target.genericalias',
+             '',
+-            '   A list of int',
++            '   A list of int.',
++            '   This is a type alias.',
++            '',
++            '.. py:data:: C',
++            '   :module: target.genericalias',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
++            '   alias of :class:`~typing.List`\\ [:class:`str`]',
+             '',
+         ]
+ 
+diff --git a/tests/test_ext_autodoc_autoattribute.py b/tests/test_ext_autodoc_autoattribute.py
+index 5e72202..1de2e47 100644
+--- a/tests/test_ext_autodoc_autoattribute.py
++++ b/tests/test_ext_autodoc_autoattribute.py
+@@ -145,7 +145,8 @@ def test_autoattribute_GenericAlias(app):
+             '   :module: target.genericalias',
+             '   :value: typing.List[int]',
+             '',
+-            '   A list of int',
++            '   A list of int.',
++            '   This is a type alias.',
+             '',
+         ]
+     else:
+@@ -154,9 +155,8 @@ def test_autoattribute_GenericAlias(app):
+             '.. py:attribute:: Class.T',
+             '   :module: target.genericalias',
+             '',
+-            '   A list of int',
+-            '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
++            '   A list of int.',
++            '   This is a type alias.',
+             '',
+         ]
+ 
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..d310c91 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -85,7 +85,8 @@ def test_autodata_GenericAlias(app):
+             '   :module: target.genericalias',
+             '   :value: typing.List[int]',
+             '',
+-            '   A list of int',
++            '   A list of int.',
++            '   This is a type alias.',
+             '',
+         ]
+     else:
+@@ -94,9 +95,8 @@ def test_autodata_GenericAlias(app):
+             '.. py:data:: T',
+             '   :module: target.genericalias',
+             '',
+-            '   A list of int',
+-            '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
++            '   A list of int.',
++            '   This is a type alias.',
+             '',
+         ]
+ 

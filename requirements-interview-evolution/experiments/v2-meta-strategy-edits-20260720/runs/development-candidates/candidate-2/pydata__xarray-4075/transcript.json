@@ -1,0 +1,81 @@
+[
+  {
+    "answer": "Denominator only",
+    "open_material_decisions": [
+      "Choose the behavioral scope for boolean-weight handling."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Convert boolean weights to a numeric dtype only when calculating sum_of_weights, fixing weighted mean and sum_of_weights while leaving weighted-sum behavior unchanged.",
+          "label": "Denominator only",
+          "recommended": true
+        },
+        {
+          "description": "Convert boolean weights before every weighted reduction, potentially changing weighted-sum and other behavior beyond the reported defect.",
+          "label": "All reductions",
+          "recommended": false
+        }
+      ],
+      "prompt": "How broadly should boolean weights be normalized?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve or revise the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this scope and acceptance criteria as implementation-ready.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the task open so you can specify a material change to scope, behavior, tests, or compatibility.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: update only the sum-of-weights denominator path so boolean weights are converted to a numeric dtype before the mask/weight dot reduction; preserve weighted-sum and non-boolean-weight behavior; add regression coverage proving boolean weights [True, True, False] produce sum_of_weights 2 and weighted mean 1 for data [1., 1., 1.], including the public weighted API path; accept the bounded residual risk that backend-specific boolean conversion behavior is not guaranteed beyond existing supported array conventions."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "The reported MCVE returns a scalar DataArray with value 1.0 from weighted mean.",
+          "The same boolean-weight case returns a scalar sum_of_weights value of 2.",
+          "Existing weighted-sum behavior is unchanged.",
+          "Existing behavior for integer, floating-point, zero, negative, and other non-boolean weights remains unchanged.",
+          "The focused weighted regression tests pass.",
+          "The existing weighted test suite passes without regressions."
+        ],
+        "confirmed_decisions": [
+          "Boolean-weight normalization is limited to the sum-of-weights denominator path.",
+          "Boolean weights must be converted to a numeric dtype before dot is applied to the non-null mask and weights.",
+          "The weighted-sum numerator path must remain unchanged.",
+          "Behavior for non-boolean weights must remain unchanged.",
+          "Regression coverage must verify that DataArray([1., 1., 1.]).weighted(DataArray([True, True, False])).sum_of_weights() equals 2.",
+          "Regression coverage must verify that DataArray([1., 1., 1.]).weighted(DataArray([True, True, False])).mean() equals 1.",
+          "Tests must exercise the public weighted API path.",
+          "No broader boolean coercion across all weighted reductions is required.",
+          "Backend-specific boolean conversion behavior beyond existing supported array conventions is an acknowledged bounded residual risk."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update only the sum-of-weights denominator path in xarray/core/weighted.py so boolean weights are converted to a numeric dtype before the mask/weight dot reduction. This must make boolean weights [True, True, False] produce a sum of weights of 2 and a weighted mean of 1 for data [1., 1., 1.]. Preserve weighted-sum behavior and all existing non-boolean-weight behavior. Add focused regression coverage in xarray/tests/test_weighted.py through the public DataArray.weighted API for both sum_of_weights and mean."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the proposed contract, and all material behavioral, compatibility, testing, and residual-risk decisions are resolved."
+    },
+    "turn": 3
+  }
+]

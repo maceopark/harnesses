@@ -1,0 +1,77 @@
+[
+  {
+    "answer": "Reported case only",
+    "open_material_decisions": [
+      "Required comparison scope beyond the reported mixed numeric/development version shape."
+    ],
+    "question": {
+      "header": "Version scope",
+      "options": [
+        {
+          "description": "Require the smallest fix: comparisons such as installed `1.14.3` against required `1.14dev` return the correct boolean without raising, while preserving existing behavior elsewhere.",
+          "label": "Reported case only",
+          "recommended": true
+        },
+        {
+          "description": "Require a general standards-aware version comparison replacement across every version shape accepted by `minversion`, potentially changing additional ordering behavior.",
+          "label": "All version strings",
+          "recommended": false
+        }
+      ],
+      "prompt": "What comparison scope should the contract require for `minversion`?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Both modes",
+    "open_material_decisions": [
+      "Whether the reported mixed numeric/development comparison must work in both inclusive and exclusive modes or only the default inclusive mode."
+    ],
+    "question": {
+      "header": "Compare mode",
+      "options": [
+        {
+          "description": "Require both the default inclusive (`>=`) and exclusive (`>`) paths to return the correct boolean without raising for the reported shape.",
+          "label": "Both modes",
+          "recommended": true
+        },
+        {
+          "description": "Require only the default inclusive path demonstrated by the issue; make no new requirement for exclusive mode.",
+          "label": "Inclusive only",
+          "recommended": false
+        }
+      ],
+      "prompt": "For the reported `1.14.3` versus `1.14dev` shape, which comparison modes must be fixed?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Given a module whose resolved installed version is `1.14.3`, `minversion(module, '1.14dev')` returns `True` and does not raise `TypeError`.",
+          "Given the same module, `minversion(module, '1.14dev', inclusive=False)` returns `True` and does not raise `TypeError`.",
+          "The existing `test_minversion` expectations for installed version `0.12.2` continue to pass unchanged.",
+          "Tests covering module-name import failure, accepted argument forms, and version attribute resolution continue to pass where present.",
+          "The targeted introspection test suite passes after the change."
+        ],
+        "confirmed_decisions": [
+          "The required comparison scope is limited to the reported mixed numeric/development shape, exemplified by installed `1.14.3` versus required `1.14dev`; the contract does not require a general standards-aware redefinition of all version ordering.",
+          "Both `inclusive=True` and `inclusive=False` comparison paths must handle the reported shape without raising and return the correct boolean.",
+          "The public `minversion` signature and its availability through `astropy.utils` remain unchanged.",
+          "Existing behavior for module objects, module-name strings, failed imports, and direct or dotted `version_path` lookup remains unchanged.",
+          "Existing tested results for installed `0.12.2` remain valid: `0.12`, `0.12.1`, and `0.12.0.dev` pass, while `1` and `1.2rc1` fail.",
+          "Regression coverage must exercise the reported `1.14.3` versus `1.14dev` comparison in both inclusive and exclusive modes."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix `astropy.utils.minversion` so an installed multi-component numeric version can be compared with a shorter development-version requirement without raising a type-comparison error. For the reported shape, an installed version of `1.14.3` must satisfy a required version of `1.14dev` in both inclusive (`>=`) and exclusive (`>`) modes. Preserve the existing public API, module-resolution behavior, version-path behavior, and currently tested comparison results outside this scoped fix."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner resolved the only material scope decisions: limit the required behavior change to the reported mixed numeric/development version shape and cover both inclusive and exclusive comparison modes. Repository evidence supplies the affected API, current behavior, and regression-test location, so the contract is implementable without further clarification."
+    },
+    "turn": 3
+  }
+]

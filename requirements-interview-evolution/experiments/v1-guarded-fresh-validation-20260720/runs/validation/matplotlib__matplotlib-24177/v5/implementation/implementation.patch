@@ -1,0 +1,38 @@
+diff --git a/lib/matplotlib/axes/_axes.py b/lib/matplotlib/axes/_axes.py
+index 2412f81..ad7f2e9 100644
+--- a/lib/matplotlib/axes/_axes.py
++++ b/lib/matplotlib/axes/_axes.py
+@@ -6889,6 +6889,8 @@ such objects
+                         patch.sticky_edges.y.append(0)
+                     elif orientation == 'horizontal':
+                         patch.sticky_edges.x.append(0)
++            self._request_autoscale_view(
++                "y" if orientation == 'vertical' else "x")
+ 
+             # we return patches, so put it back in the expected order
+             patches.reverse()
+diff --git a/lib/matplotlib/tests/test_axes.py b/lib/matplotlib/tests/test_axes.py
+index bd7940a..13c1f8a 100644
+--- a/lib/matplotlib/tests/test_axes.py
++++ b/lib/matplotlib/tests/test_axes.py
+@@ -2086,6 +2086,20 @@ def test_hist_unequal_bins_density():
+     assert_allclose(mpl_heights, np_heights)
+ 
+ 
++@pytest.mark.parametrize("histtype", ["step", "stepfilled"])
++@pytest.mark.parametrize("orientation", ["vertical", "horizontal"])
++def test_hist_step_density_autoscale(histtype, orientation):
++    data = np.random.RandomState(0).normal(size=1000)
++    fig, ax = plt.subplots()
++    density, bins, _ = ax.hist(
++        data, bins=10, density=True, histtype=histtype,
++        orientation=orientation)
++
++    assert_allclose(np.sum(density * np.diff(bins)), 1)
++    limit = ax.get_ylim() if orientation == "vertical" else ax.get_xlim()
++    assert limit[1] > density.max()
++
++
+ def test_hist_datetime_datasets():
+     data = [[datetime.datetime(2017, 1, 1), datetime.datetime(2017, 1, 1)],
+             [datetime.datetime(2017, 1, 1), datetime.datetime(2017, 1, 2)]]

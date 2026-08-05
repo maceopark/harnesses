@@ -1,0 +1,89 @@
+[
+  {
+    "answer": "Reported Q case",
+    "open_material_decisions": [
+      "Whether acceptance requires only the reported Q-format file-level regression or broader direct TableDataDiff coverage across both VLA descriptor formats."
+    ],
+    "question": {
+      "header": "Test scope",
+      "options": [
+        {
+          "description": "Add a file-level FITSDiff regression using the reported QD unequal-length rows and require identical results when comparing independently opened representations of identical file content.",
+          "label": "Reported Q case",
+          "recommended": true
+        },
+        {
+          "description": "Require parameterized regression coverage for both VLA descriptor formats, including identical and genuinely differing row data.",
+          "label": "P and Q coverage",
+          "recommended": false
+        },
+        {
+          "description": "Test TableDataDiff directly with Q-format table data without requiring the public FITSDiff file-level path.",
+          "label": "Direct unit only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which regression-test scope should the implementation contract require?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Whether to approve the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Approve contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready without broadening the requested regression scope.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Reopen the required behavior or compatibility boundary before sealing the contract.",
+          "label": "Revise behavior",
+          "recommended": false
+        },
+        {
+          "description": "Reopen the regression assertions or test scope before sealing the contract.",
+          "label": "Revise acceptance",
+          "recommended": false
+        }
+      ],
+      "prompt": "Do you approve this implementation contract: update TableDataDiff so Q-format VLA columns receive row-by-row tolerance-aware comparison equivalent to existing P-format VLAs; preserve existing behavior for non-VLA columns and P-format VLAs; add a file-level FITSDiff regression using the reported QD column with unequal-length rows, comparing independently opened representations of identical file content and asserting identical is true, no differences are recorded, and the report contains no data-difference result; the implementer may choose the smallest code expression and exact test placement consistent with repository conventions; broader P/Q parameterization, new differing-Q coverage, and changes to general array-comparison semantics are out of scope; residual risk is bounded to untested Q-format element types or shapes beyond the reported QD case?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A FITS file containing a QD VLA column with rows [[0], [0, 0]] compares as identical through FITSDiff when the same file content is independently opened for both inputs.",
+          "The resulting FITSDiff object has identical equal to true.",
+          "No HDU, table-data, row-value, or aggregate data differences are recorded for that comparison.",
+          "The generated diff report contains no table data-difference result.",
+          "Existing P-format VLA comparison behavior remains passing.",
+          "Existing non-VLA table comparison behavior remains passing."
+        ],
+        "confirmed_decisions": [
+          "Required behavior: Q-format VLAs receive row-by-row tolerance-aware comparison equivalent to P-format VLAs.",
+          "Compatibility boundary: existing P-format VLA and non-VLA comparison behavior must remain unchanged.",
+          "Regression scope: require only the reported Q-format file-level case, not broader P/Q parameterization or direct TableDataDiff-only coverage.",
+          "Acceptance path: compare independently opened representations of identical file content through FITSDiff.",
+          "Implementation delegation: the implementer may select the smallest code expression and exact test location consistent with repository conventions.",
+          "Out of scope: new differing-Q tests, broader VLA type/shape guarantees, and changes to general array-comparison semantics.",
+          "Acknowledged residual risk: Q-format element types and shapes beyond the reported QD unequal-length-row case remain untested."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update TableDataDiff so Q-format variable-length-array columns use the same row-by-row, tolerance-aware comparison behavior as existing P-format VLAs. Preserve behavior for P-format VLAs and non-VLA columns. Add a file-level FITSDiff regression using the reported QD column with unequal-length rows, comparing independently opened representations of identical file content. The regression must assert that identical is true, no differences are recorded, and the report contains no data-difference result. The implementer may choose the smallest code expression and exact test placement consistent with repository conventions. Broader P/Q parameterization, differing-Q coverage, and changes to general array-comparison semantics are out of scope. Residual risk is limited to untested Q-format element types or shapes beyond the reported QD case."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the executable implementation contract, and no material decisions remain unresolved."
+    },
+    "turn": 3
+  }
+]

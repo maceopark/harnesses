@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "From the repository root, run the targeted migration optimizer tests and verify that [AlterUniqueTogether(empty), AlterIndexTogether(empty), AlterUniqueTogether(final), AlterIndexTogether(final)] optimizes exactly to [AlterUniqueTogether(final), AlterIndexTogether(final)].",
+    "Verify the interleaved optimizer case for a single model preserves the later unique_together and index_together values and their relative order.",
+    "Run the existing adjacent same-class optimizer cases and verify both AlterUniqueTogether and AlterIndexTogether still collapse to their second operation.",
+    "Run the together-order autodetector test and verify it now produces exactly two operations: final AlterUniqueTogether followed by final AlterIndexTogether, both containing the new field ordering.",
+    "Run the complete migrations optimizer and autodetector test modules and verify no regressions.",
+    "Inspect the implementation to confirm traversal permission is narrowly limited to the two AlterTogetherOptionOperation sibling types and does not permit crossing arbitrary same-model operations."
+  ],
+  "confirmed_decisions": [
+    "The example sequence of remove-unique, remove-index, add-unique, add-index must optimize to add-unique followed by add-index.",
+    "Optimization may cross only the opposite together-option operation for the same model; unrelated same-model operations remain barriers.",
+    "The surviving operations must be the later operations of each concrete class, preserving their final option values and unique-before-index ordering.",
+    "Autodetector generation remains two-phase; its existing optimizer pass is responsible for producing the reduced result.",
+    "Existing consecutive AlterUniqueTogether and consecutive AlterIndexTogether reductions must continue to collapse to the later operation.",
+    "No public API, schema-editor behavior, migration-state behavior, or general ModelOperation traversal semantics are changed."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Modify migration optimization so same-model AlterUniqueTogether and AlterIndexTogether operations can optimize through one another, allowing each earlier operation to collapse into the later operation of the same concrete class. Scope is limited to these sibling AlterTogetherOptionOperation types; their relative ordering remains unchanged. Do not alter autodetector phase generation, database application semantics, unrelated ModelOptionOperation reductions, or traversal across other same-model operations. Add optimizer coverage for the four-operation interleaved sequence and update the together-order autodetector expectation from four operations to the final AlterUniqueTogether and AlterIndexTogether operations carrying the new values. Preserve existing adjacent same-class reductions and unrelated optimizer behavior. Bounded implementation discretion: choose the smallest repository-consistent reduce() implementation and test placement that realizes this behavior without observable effects beyond the contract. Residual risk: future AlterTogetherOptionOperation subclasses are not implicitly authorized to commute unless explicitly covered by the implementation's narrowly justified type boundary."
+}

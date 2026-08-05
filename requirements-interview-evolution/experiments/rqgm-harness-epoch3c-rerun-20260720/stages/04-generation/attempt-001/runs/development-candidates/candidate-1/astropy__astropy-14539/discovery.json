@@ -1,0 +1,107 @@
+{
+  "facts": [
+    {
+      "id": "fact-1",
+      "line_end": 87,
+      "line_start": 73,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "Constructing any diff object immediately executes its comparison through _diff(), and identical is true only when every diff_* attribute is empty or false-valued."
+    },
+    {
+      "id": "fact-2",
+      "line_end": 134,
+      "line_start": 122,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "The identical property determines equality by checking all instance attributes whose names begin with diff_."
+    },
+    {
+      "id": "fact-3",
+      "line_end": 305,
+      "line_start": 289,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "FITSDiff opens each filename independently, even when both input paths identify the same file."
+    },
+    {
+      "id": "fact-4",
+      "line_end": 380,
+      "line_start": 363,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "FITSDiff compares corresponding HDUs with HDUDiff and records an HDU whenever that nested diff is not identical."
+    },
+    {
+      "id": "fact-5",
+      "line_end": 607,
+      "line_start": 601,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "For two table-like HDUs, HDUDiff constructs a TableDataDiff from their data arrays."
+    },
+    {
+      "id": "fact-6",
+      "line_end": 1446,
+      "line_start": 1429,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "TableDataDiff compares common columns one at a time after retrieving the two column arrays."
+    },
+    {
+      "id": "fact-7",
+      "line_end": 1461,
+      "line_start": 1448,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "TableDataDiff uses tolerance-aware array comparison for ordinary floating dtypes and performs row-by-row np.allclose comparison only when the column format contains P."
+    },
+    {
+      "id": "fact-8",
+      "line_end": 1463,
+      "line_start": 1452,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "All columns not handled by the floating-dtype or P-format branches, including Q-format VLA columns, are compared with np.where(arra != arrb)."
+    },
+    {
+      "id": "fact-9",
+      "line_end": 1488,
+      "line_start": 1465,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "Rows returned by the comparison are counted into diff_total, and reported values are stored from those row indices; any nonzero diff_total makes the diff non-identical through the shared identical property."
+    },
+    {
+      "id": "fact-10",
+      "line_end": 438,
+      "line_start": 429,
+      "path": "astropy/io/fits/column.py",
+      "statement": "Astropy defines P as a variable-length table format and explicitly states that both P and Q formats require a type code."
+    },
+    {
+      "id": "fact-11",
+      "line_end": 480,
+      "line_start": 471,
+      "path": "astropy/io/fits/column.py",
+      "statement": "Astropy defines Q as another variable-length-array format derived from P; Q differs by using 64-bit array descriptors and has format code Q."
+    },
+    {
+      "id": "fact-12",
+      "line_end": 593,
+      "line_start": 562,
+      "path": "astropy/io/fits/tests/test_diff.py",
+      "statement": "Existing diff tests exercise a P-format variable-length column with differing values and expect two row differences from that column."
+    },
+    {
+      "id": "fact-13",
+      "line_end": 625,
+      "line_start": 604,
+      "path": "astropy/io/fits/tests/test_diff.py",
+      "statement": "The basic identical-file test covers two separately written primary-image files and an image HDU compared with itself; it does not cover a table containing a Q-format VLA."
+    },
+    {
+      "id": "fact-14",
+      "line_end": 1553,
+      "line_start": 1530,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "When table differences are present, the report emits the column name and row for each stored difference and then reports diff_total and diff_ratio."
+    }
+  ],
+  "scope_summary": "At base commit c0a24c1dc957a3b565294213f435fefb2ec99714, FITSDiff delegates table-HDU data comparison to TableDataDiff. TableDataDiff has special element-wise handling for P-format variable-length arrays but not Q-format variable-length arrays, even though both are supported VLA formats. Q-format columns therefore use the generic NumPy inequality path.",
+  "unknowns": [
+    "The supplied base-commit repository does not establish why NumPy's generic object-array inequality produces the reported false row specifically on the stated Windows/NumPy versions.",
+    "The repository does not contain a regression test reproducing same-file comparison of the reported QD variable-length column, so the exact runtime result was not established from existing repository tests alone."
+  ]
+}

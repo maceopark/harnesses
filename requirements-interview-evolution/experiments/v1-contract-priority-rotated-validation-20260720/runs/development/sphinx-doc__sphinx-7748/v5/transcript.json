@@ -1,0 +1,116 @@
+[
+  {
+    "answer": "Consecutive valid lines",
+    "open_material_decisions": [
+      "Define exactly which consecutive leading docstring lines are consumed as overload signatures and what happens at the first line that is not a valid signature for the documented object."
+    ],
+    "question": {
+      "header": "Signature block",
+      "options": [
+        {
+          "description": "Consume every consecutive leading line that parses as a signature with an accepted object name; stop at the first other line and preserve that line plus all following content.",
+          "label": "Consecutive valid lines",
+          "recommended": true
+        },
+        {
+          "description": "Consume consecutive leading parseable signature lines even when their object names do not match the documented object, broadening current name-validation behavior.",
+          "label": "Signature-looking lines",
+          "recommended": false
+        },
+        {
+          "description": "Continue searching beyond prose or invalid lines for more signatures, potentially removing non-contiguous lines from docstring content.",
+          "label": "Scan through gaps",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc recognize the leading block of overloaded signatures?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Functions and methods",
+    "open_material_decisions": [
+      "Decide whether consecutive overload-signature extraction applies to both function and method documenters or only to methods."
+    ],
+    "question": {
+      "header": "Feature scope",
+      "options": [
+        {
+          "description": "Extend the shared existing behavior consistently for both documented object types, matching the configuration’s current documented scope.",
+          "label": "Functions and methods",
+          "recommended": true
+        },
+        {
+          "description": "Limit the new multi-signature behavior to methods while functions retain single-line extraction.",
+          "label": "Methods only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should consecutive leading docstring signatures be supported for both functions and methods, or only methods?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve or revise the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with no remaining material decisions.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a material behavioral change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Do you approve this implementation contract: extend `autodoc_docstring_signature` for both functions and methods to consume every consecutive leading docstring line that parses as a signature and has an accepted name for the documented object; stop at the first non-matching, invalid, or differently named line and preserve that line and everything after it as docstring content; render every consumed signature in original order, including each line’s own return annotation; retain existing precedence so explicit directive signatures bypass docstring discovery and disabling the configuration preserves all docstring lines; retain the existing behavior of selecting the first candidate docstring containing an accepted leading signature block; update the configuration documentation; and add regression coverage for multiple overload signatures, the stopping/preservation boundary, functions and methods, return annotations, disabled configuration, and existing single-signature behavior? Implementation details may be chosen consistently with existing newline-separated multi-signature formatting. Residual risk: signature-looking prose that is both consecutive and name-matching will be consumed, consistent with the existing first-line heuristic."
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A method docstring with multiple consecutive accepted signatures emits one aligned directive signature line per overload, in source order.",
+          "A function docstring with multiple consecutive accepted signatures emits one directive signature line per overload, in source order.",
+          "Each overload retains its own return annotation.",
+          "The first invalid, non-matching, or differently named line terminates extraction and remains in rendered content with every subsequent line.",
+          "An explicit directive signature prevents docstring-signature extraction.",
+          "With `autodoc_docstring_signature` disabled, introspected or otherwise existing signature behavior remains in effect and all signature-looking docstring lines remain content.",
+          "A single leading accepted signature continues to produce the existing output.",
+          "Candidate-docstring selection continues to stop after the first candidate containing an accepted leading signature block.",
+          "The configuration documentation states that consecutive accepted leading signatures are recognized and removed from docstring content.",
+          "Relevant autodoc regression tests pass without regressions to existing single-signature and singledispatch multi-signature behavior."
+        ],
+        "confirmed_decisions": [
+          "Recognition uses consecutive valid leading lines only.",
+          "Every consumed line must parse as a signature and have an accepted object name under the existing name-validation rules.",
+          "Extraction stops at the first invalid, non-matching, or differently named line, which remains in rendered content together with all following lines.",
+          "The feature applies to both functions and methods through their shared docstring-signature behavior.",
+          "All extracted signatures are rendered in original order with their individual return annotations.",
+          "Explicit directive signatures retain precedence and bypass docstring signature discovery.",
+          "When `autodoc_docstring_signature` is disabled, no docstring signature lines are consumed.",
+          "The first candidate docstring containing an accepted leading signature block remains the selected candidate.",
+          "Existing single-signature behavior remains supported.",
+          "Configuration documentation will describe multiple consecutive leading signatures.",
+          "Implementation details are delegated to the implementer provided they follow existing newline-separated multi-signature formatting conventions.",
+          "The bounded residual risk of consuming consecutive name-matching signature-like prose is accepted."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend `autodoc_docstring_signature` for both function and method documenters to extract a leading overload-signature block. Consume each consecutive leading docstring line only while it parses as a signature and uses a name accepted for the documented object. Stop at the first invalid, non-matching, or differently named line; preserve that line and all subsequent lines as docstring content. Render all consumed signatures in their original order, preserving each signature’s own return annotation. Existing precedence remains unchanged: an explicit directive signature bypasses docstring discovery, disabling `autodoc_docstring_signature` preserves all docstring lines, and discovery continues to select the first candidate docstring containing an accepted leading signature block. Update the configuration documentation and regression coverage. Implementation may use the existing newline-separated multi-signature formatting convention. Residual risk: consecutive name-matching prose that parses as a signature will be consumed, consistent with the existing first-line heuristic."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the proposed contract, resolving all material behavioral and scope decisions. The contract is implementation-ready and grounded in the audited repository evidence."
+    },
+    "turn": 4
+  }
+]

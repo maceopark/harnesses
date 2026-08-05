@@ -1,0 +1,40 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/1",
+          "quoted_value": "Limit the behavior to aliases created from typing constructs."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/2",
+          "quoted_value": "Trigger replacement only for a documentation string immediately following the alias assignment."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/summary",
+          "quoted_value": "Across all supported Python versions, autodoc must render a typing alias’s next-line documentation string as that alias’s documentation and omit the generated “alias of …” text. This applies to typing aliases such as Dict, Union, and Callable whether discovered as module members or documented explicitly through autodata. Existing behavior outside this boundary remains compatible."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/scope_summary",
+          "quoted_value": "The base repository contains two materially different autodoc paths for aliases: class-like aliases suppress source docstrings and emit only generated “alias of …” content, while generic aliases handled as data read source-level variable documentation and then append generated alias content."
+        }
+      ],
+      "description": "Implementation readiness is materially overstated because an implementation could suppress generated alias text for documentation comments, non-typing aliases, or aliases without qualifying next-line strings and still pass every listed acceptance check. This matters because the audited repository contains materially different class-like and data/generic-alias rendering paths, so preserving behavior outside the selected boundary requires explicit negative regression checks.",
+      "failure_class": "omission",
+      "general_cause": "The acceptance suite tests only positive examples and does not lock the contract’s explicitly narrowed compatibility boundary.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "The contract limits replacement to typing aliases with immediately following string documentation and promises compatibility outside that boundary, but no acceptance check covers a non-typing alias, another recognized source-documentation form, or an undocumented typing alias."
+    }
+  ],
+  "summary": "One material readiness failure: the contract resolves a narrow compatibility boundary but omits negative acceptance checks capable of enforcing it."
+}

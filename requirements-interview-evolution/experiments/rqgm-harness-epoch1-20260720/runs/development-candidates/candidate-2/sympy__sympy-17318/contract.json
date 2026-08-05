@@ -1,0 +1,20 @@
+{
+  "acceptance_checks": [
+    "Calling `sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2)` does not raise `IndexError`.",
+    "The reported expression is returned algebraically unchanged as `3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2`.",
+    "Eligible surd-containing Add inputs continue through the existing `split_surds` matching and denesting path.",
+    "Existing tests asserting unchanged results for undenestable expressions continue to pass.",
+    "The targeted sqrtdenest test module passes when runtime dependencies are available.",
+    "No behavior or API changes are made to `split_surds` or `_split_gcd`."
+  ],
+  "confirmed_decisions": [
+    "Handle the empty-surd condition within sqrtdenest, specifically before `_sqrt_match` calls `split_surds`.",
+    "Preserve `split_surds` and `_split_gcd` behavior for other callers.",
+    "Use the existing no-match path so an expression that cannot be denested is returned unchanged.",
+    "Add the reported complex expression as a regression test and import `I` in `test_sqrtdenest.py`.",
+    "Keep the change narrowly scoped; do not broadly catch `IndexError` or introduce new exception behavior."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update `_sqrt_match` in `sympy/simplify/sqrtdenest.py` so it does not call `split_surds` when the candidate Add contains no eligible surd factors. In that case, report no match through the function’s existing fallback behavior, allowing `_sqrtdenest1` and `sqrtdenest` to return the undenestable expression unchanged. Add a regression test for `sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2)`, including the required `I` import. Do not change the general contract of `split_surds` or `_split_gcd`."
+}

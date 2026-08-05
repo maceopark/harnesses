@@ -1,0 +1,125 @@
+[
+  {
+    "answer": "Constructor only",
+    "open_material_decisions": [
+      "Whether non-empty validation applies only to `Blueprint(name, ...)` or also to registration-time `name=` overrides."
+    ],
+    "question": {
+      "header": "Validation scope",
+      "options": [
+        {
+          "description": "Raise `ValueError` for `Blueprint(\"\", ...)`; leave registration-time `name=` override behavior unchanged.",
+          "label": "Constructor only",
+          "recommended": true
+        },
+        {
+          "description": "Also reject an empty `name=` override during blueprint registration, expanding the compatibility impact beyond the reported constructor case.",
+          "label": "All effective names",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where must the non-empty-name requirement apply?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Empty string only",
+    "open_material_decisions": [
+      "Whether whitespace-only constructor names remain valid or are treated as empty."
+    ],
+    "question": {
+      "header": "Whitespace",
+      "options": [
+        {
+          "description": "Reject exactly `\"\"`; preserve existing behavior for whitespace-only names and keep the change narrowly aligned with the reported issue.",
+          "label": "Empty string only",
+          "recommended": true
+        },
+        {
+          "description": "Reject names for which trimming produces an empty string, expanding the compatibility impact beyond the explicit empty-name case.",
+          "label": "Whitespace too",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should `Blueprint(name, ...)` reject only `\"\"`, or also reject names containing only whitespace?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Dedicated message",
+    "open_material_decisions": [
+      "Whether an empty name receives a dedicated error message or shares a combined name-validation message with dotted names."
+    ],
+    "question": {
+      "header": "Error message",
+      "options": [
+        {
+          "description": "Raise ValueError with an empty-name-specific message while preserving the existing dotted-name message unchanged.",
+          "label": "Dedicated message",
+          "recommended": true
+        },
+        {
+          "description": "Use one combined validation message for both empty and dotted names, changing the existing dotted-name error text.",
+          "label": "Combined message",
+          "recommended": false
+        }
+      ],
+      "prompt": "What error-message behavior should empty Blueprint names use?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the consolidated implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this behavior and acceptance scope as implementation-ready.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open and provide the specific behavior or acceptance change needed.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: in `Blueprint.__init__`, reject exactly the empty string `\"\"` with `ValueError`; use a dedicated empty-name message and preserve the existing dotted-name validation and message; do not reject whitespace-only names or empty registration-time `name=` overrides; add a constructor-focused regression test proving `Blueprint(\"\", __name__)` raises `ValueError`, while the existing dotted-name test remains valid. Implementation may choose the precise dedicated message wording consistent with nearby Flask style, but must not alter other observable behavior. Residual risk: registration overrides can still produce an empty effective name, intentionally outside this request’s approved scope."
+    },
+    "turn": 4
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Constructing `Blueprint(\"\", __name__)` raises `ValueError`.",
+          "The empty-name exception uses a dedicated message consistent with nearby Flask style.",
+          "Constructing a blueprint with a whitespace-only name retains existing behavior.",
+          "Registration-time empty `name=` override behavior remains unchanged.",
+          "The existing dotted constructor-name test continues to pass with its validation behavior and message unchanged.",
+          "Relevant blueprint tests pass without other observable behavior changes."
+        ],
+        "confirmed_decisions": [
+          "Validation applies only to the `Blueprint(name, ...)` constructor, not registration-time `name=` overrides.",
+          "Only the exact empty string `\"\"` is rejected; whitespace-only names remain valid.",
+          "An empty name receives a dedicated error message; the existing dotted-name error message remains unchanged.",
+          "The precise dedicated message wording is delegated to implementation, constrained to match nearby Flask style.",
+          "Regression coverage is constructor-focused and must verify that `Blueprint(\"\", __name__)` raises `ValueError`.",
+          "Registration overrides may still produce an empty effective name; this bounded residual risk is explicitly accepted as outside scope.",
+          "The owner approved the consolidated implementation contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "In `Blueprint.__init__`, reject exactly the empty string `\"\"` by raising `ValueError`. Use a dedicated empty-name error message consistent with nearby Flask style, while preserving the existing dotted-name validation and its current message. Do not reject whitespace-only constructor names, and do not change registration-time `name=` override behavior. Add a constructor-focused regression test proving that `Blueprint(\"\", __name__)` raises `ValueError`; the existing dotted-name test must remain valid. No other observable behavior may change."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the consolidated contract, and no material implementation decision remains unresolved."
+    },
+    "turn": 5
+  }
+]

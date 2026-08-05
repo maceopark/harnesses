@@ -1,0 +1,88 @@
+[
+  {
+    "answer": "Narrow weighted fix",
+    "open_material_decisions": [
+      "Choose whether the fix is narrowly scoped to boolean weights in weighted sum-of-weights normalization or changes broader dot/reduction dtype behavior."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Treat boolean weights numerically when computing weighted sum-of-weights, add boolean-weight regression coverage for sum_of_weights and mean, and leave generalized dot behavior unchanged.",
+          "label": "Narrow weighted fix",
+          "recommended": true
+        },
+        {
+          "description": "Modify generalized dot/einsum handling so boolean dot products accumulate numerically, accepting broader behavior changes outside weighted reductions.",
+          "label": "Change dot semantics",
+          "recommended": false
+        },
+        {
+          "description": "Convert weights to a numeric dtype at the weighted API boundary, potentially changing dtype behavior for every weighted operation.",
+          "label": "Normalize all weights",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which compatibility boundary should the implementation contract require for boolean weights?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Contract approval",
+      "options": [
+        {
+          "description": "Seal this scope and acceptance criteria as implementation-ready.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep requirements open so you can specify a material change to scope or behavior.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: narrowly fix weighted sum-of-weights normalization so boolean weights are accumulated numerically; preserve generalized dot/einsum semantics and avoid constructor-wide weight conversion; ensure the reported `[1., 1., 1.]` with boolean weights `[True, True, False]` returns `sum_of_weights == 2` and `mean == 1.0`; retain existing masking of missing data and zero-total-weight-to-NaN behavior; add focused boolean-weight regression tests for `sum_of_weights` and `mean`; require existing weighted tests to pass. Implementation may choose the local numeric-coercion mechanism within `_sum_of_weights`, provided it does not alter other weighted operations or public input validation. Residual risk is limited to backend-specific dtype behavior not exercised by the focused and existing test suite."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "For `DataArray([1., 1., 1.])` weighted by `DataArray([True, True, False])`, `sum_of_weights()` returns numeric `2`.",
+          "For the same data and weights, `mean()` returns `1.0`.",
+          "Boolean weights combined with missing data continue to exclude weights at missing data positions.",
+          "A boolean-weight reduction whose total weight is zero returns `NaN` under the existing zero-weight rule.",
+          "Focused regression tests cover boolean weights for both `sum_of_weights` and `mean`.",
+          "Existing weighted reduction tests pass.",
+          "Generalized `dot`/einsum behavior and the public weighted constructor/input-validation contract remain unchanged."
+        ],
+        "confirmed_decisions": [
+          "Apply a narrow fix within weighted sum-of-weights normalization.",
+          "Treat boolean weights numerically when calculating the denominator.",
+          "Do not change generalized `dot` or einsum boolean semantics.",
+          "Do not convert all weights at the weighted API boundary or alter constructor validation.",
+          "Preserve existing missing-data masking behavior.",
+          "Preserve zero-total-weight-to-NaN behavior.",
+          "Add focused boolean-weight regression tests for `sum_of_weights` and `mean`.",
+          "Require existing weighted tests to remain passing.",
+          "Delegate the exact local numeric-coercion mechanism to implementation, constrained to `_sum_of_weights` and no observable changes to other weighted operations or public validation.",
+          "Acknowledge bounded residual risk for backend-specific dtype behavior not exercised by focused and existing tests."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Narrowly fix boolean-weight normalization in weighted reductions. In `Weighted._sum_of_weights`, ensure boolean weights are accumulated numerically so the validity mask and boolean weights do not produce a boolean dot result. Preserve generalized `dot`/einsum semantics, avoid constructor-wide dtype conversion, and leave public weight validation and unrelated weighted operations unchanged. For data `[1., 1., 1.]` with weights `[True, True, False]`, `sum_of_weights()` must equal `2` and `mean()` must equal `1.0`. Preserve missing-data masking and the existing behavior that a zero total weight yields `NaN`. Add focused regression coverage for boolean-weight `sum_of_weights` and `mean`, and require the existing weighted test suite to pass. The implementation may choose the local numeric-coercion mechanism within `_sum_of_weights` provided these boundaries hold."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner approved the proposed contract, all material behavioral and compatibility decisions are resolved, and the contract is implementation-ready."
+    },
+    "turn": 3
+  }
+]

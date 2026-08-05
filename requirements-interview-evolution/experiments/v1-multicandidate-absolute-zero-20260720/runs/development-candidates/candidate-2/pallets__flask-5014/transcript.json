@@ -1,0 +1,130 @@
+[
+  {
+    "answer": "Explicit message (Recommended)",
+    "open_material_decisions": [
+      "ValueError message for an empty Blueprint name."
+    ],
+    "question": {
+      "header": "Error message",
+      "options": [
+        {
+          "description": "Use \"'name' may not be empty.\" and assert that message in the regression test.",
+          "label": "Explicit message (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Require ValueError without contracting an exact message, matching the existing dotted-name test style.",
+          "label": "Type only",
+          "recommended": false
+        },
+        {
+          "description": "Use one message covering both empty and dotted names, which may change the existing dotted-name error text.",
+          "label": "Combined validation message",
+          "recommended": false
+        }
+      ],
+      "prompt": "What message should Blueprint(\"\", import_name) raise with its ValueError?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Constructor only",
+    "open_material_decisions": [
+      "Owner approval of the final executable contract after remaining decisions are resolved.",
+      "Whether `app.register_blueprint(bp, name=\"\")` must also raise `ValueError`.",
+      "Whether whitespace-only names count as non-empty or must be rejected."
+    ],
+    "question": {
+      "header": "Name override",
+      "options": [
+        {
+          "description": "Reject only `Blueprint(\"\", import_name)` as requested; leave registration override behavior unchanged.",
+          "label": "Constructor only",
+          "recommended": true
+        },
+        {
+          "description": "Reject empty constructor names and empty registration `name=` overrides, with regression coverage for both.",
+          "label": "Reject both",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should the non-empty-name requirement also reject an empty registration override in `app.register_blueprint(bp, name=\"\")`?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Allow whitespace",
+    "open_material_decisions": [
+      "Owner approval of the final executable contract.",
+      "Whether whitespace-only Blueprint names are allowed."
+    ],
+    "question": {
+      "header": "Whitespace",
+      "options": [
+        {
+          "description": "Interpret non-empty literally: reject only the zero-length string and preserve all other current constructor inputs.",
+          "label": "Allow whitespace",
+          "recommended": true
+        },
+        {
+          "description": "Treat names as empty after trimming, expanding validation beyond the reported empty-string case.",
+          "label": "Reject whitespace",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should whitespace-only constructor names such as Blueprint(\"   \", import_name) be allowed?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Owner approval of the final executable contract."
+    ],
+    "question": {
+      "header": "Approve contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready without expanding its behavior.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Do not seal it; provide the specific behavior or acceptance change needed.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: at base commit 7ee9ceb71e868944a46e1ff00b506772a53a4f1d, update Blueprint.__init__ to reject only a zero-length constructor name with ValueError(\"'name' may not be empty.\"); preserve the existing dotted-name validation and message; continue allowing whitespace-only names; leave app.register_blueprint(..., name=\"\") override behavior unchanged; add a regression test asserting Blueprint(\"\", import_name) raises ValueError with the exact new message. Acceptance requires the new regression test and existing Blueprint tests to pass. The implementer may choose validation ordering/code layout and test placement consistent with repository conventions, but may not broaden validation. Residual risk: empty registration-time name overrides remain possible and are explicitly out of scope."
+    },
+    "turn": 4
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A regression test verifies that Blueprint(\"\", import_name) raises ValueError with the exact message \"'name' may not be empty.\".",
+          "Existing Blueprint tests pass, including dotted-name validation coverage.",
+          "No validation is added for whitespace-only constructor names or empty registration-time name overrides."
+        ],
+        "confirmed_decisions": [
+          "Validation applies only to the Blueprint constructor's zero-length name.",
+          "The exact error is ValueError(\"'name' may not be empty.\").",
+          "Whitespace-only constructor names remain allowed.",
+          "Empty registration-time name overrides remain allowed and are out of scope.",
+          "Existing dotted-name rejection behavior and message must remain unchanged.",
+          "The implementer may choose validation ordering, code layout, and test placement consistent with repository conventions, but may not broaden validation.",
+          "Residual risk acknowledged: registration with an empty name override can still produce an empty effective blueprint name."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "At base commit 7ee9ceb71e868944a46e1ff00b506772a53a4f1d, update Blueprint.__init__ to reject only a zero-length constructor name by raising ValueError(\"'name' may not be empty.\"). Preserve the existing dotted-name validation and its message, continue allowing whitespace-only constructor names, and leave app.register_blueprint(..., name=\"\") override behavior unchanged. Add a regression test asserting that Blueprint(\"\", import_name) raises ValueError with the exact new message."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the final executable contract, and no material decisions remain unresolved."
+    },
+    "turn": 5
+  }
+]

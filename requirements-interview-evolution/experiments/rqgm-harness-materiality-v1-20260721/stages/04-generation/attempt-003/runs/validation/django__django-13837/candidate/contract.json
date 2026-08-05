@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "For a launch represented by `__main__.__spec__.parent == \"custom_package\"` and arguments ending in `runserver`, the child command invokes the interpreter with `-m custom_package runserver`.",
+    "The existing `python -m django runserver` case still produces a child command containing `-m django runserver`.",
+    "Module relaunch succeeds when `__main__` has no usable `__file__`.",
+    "When `__main__.__spec__` is absent, the launch is not reconstructed as a package module invocation.",
+    "When `__main__.__spec__.parent` is empty, the launch is not reconstructed with `-m`.",
+    "Interpreter warning options and original command arguments remain present in the relaunched command in their established order.",
+    "Existing ordinary-script and platform-specific entry-point cases retain their established outcomes."
+  ],
+  "confirmed_decisions": [
+    "When the current program was launched as `python -m <package>`, autoreload relaunches it as `python -m <package>` with the original command arguments preserved.",
+    "Module execution detection and package identification use the top-level `__main__.__spec__.parent`, avoiding dependence on `__file__`.",
+    "The behavior applies to packages other than Django as well as Django itself.",
+    "A `__main__` specification whose parent is an empty string, as produced for directory or zipfile entry points, is not treated as a `python -m <package>` launch.",
+    "Existing non-module launch forms continue through their existing child-command behavior."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Django autoreloading must correctly relaunch a server originally started through another package’s `python -m <package> runserver` entry point, using the package identified by the top-level `__main__` module’s specification instead of relying on Django’s `__main__.__file__`."
+}

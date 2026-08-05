@@ -1,0 +1,60 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/7/statement",
+          "quoted_value": "The changelog records an earlier `minversion` workaround: on systems without `pkg_resources`, non-numeric additions such as `dev` or `rc1` were stripped to avoid a `LooseVersion` `TypeError`."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/unknowns/0",
+          "quoted_value": "The repository lines do not establish which replacement comparison implementation, dependency policy, or malformed-version behavior an owner would choose."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/6/statement",
+          "quoted_value": "Astropy's startup NumPy requirement check imports `minversion`, compares the imported NumPy module against `__minimum_numpy_version__`, and raises `ImportError` when the result is false."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/0",
+          "quoted_value": "Use `pkg_resources.parse_version` as the version comparator."
+        }
+      ],
+      "description": "This is material because `minversion` participates in Astropy startup and import-time compatibility checks. An implementation could fix the reported comparison yet introduce an import failure on environments lacking `pkg_resources`, with no contract criterion capable of rejecting that result.",
+      "failure_class": "omission",
+      "general_cause": "The contract selects `pkg_resources.parse_version` without resolving the runtime dependency and import behavior when `pkg_resources` is unavailable.",
+      "id": "F-001",
+      "material": true,
+      "observable_signal": "Repository history explicitly identifies systems without `pkg_resources`, while the contract contains no acceptance check or confirmed decision covering availability, dependency declaration, import placement, or failure behavior."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/4",
+          "quoted_value": "Invalid or unsupported version input propagates the parser exception."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/2",
+          "quoted_value": "Propagate `parse_version` errors without returning `False`, rewriting the version, or falling back to `LooseVersion`."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/unknowns/0",
+          "quoted_value": "The repository lines do not establish which replacement comparison implementation, dependency policy, or malformed-version behavior an owner would choose."
+        }
+      ],
+      "description": "An implementer and reviewer cannot deterministically prove this acceptance check or distinguish compliance from a parser that accepts the chosen malformed input. The requirement needs at least one specified input and expected exception behavior, or it must be reframed as transparent propagation if parsing raises.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The malformed-version requirement is stated without a concrete input, expected exception type, or repository-supported definition of an invalid or unsupported version.",
+      "id": "F-002",
+      "material": true,
+      "observable_signal": "The acceptance check requires propagation of “the parser exception,” but neither the contract nor audited evidence identifies a reproducible case in which the selected parser raises one."
+    }
+  ],
+  "summary": "The contract is not materially implementation-ready: it leaves `pkg_resources` availability and dependency behavior unspecified despite repository evidence that the package may be absent, and its malformed-version acceptance criterion is not concretely verifiable."
+}

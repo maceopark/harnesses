@@ -1,0 +1,184 @@
+diff --git a/doc/usage/extensions/autodoc.rst b/doc/usage/extensions/autodoc.rst
+index 36be756..2c2fe52 100644
+--- a/doc/usage/extensions/autodoc.rst
++++ b/doc/usage/extensions/autodoc.rst
+@@ -447,12 +447,12 @@ There are also config values that you can set:
+    Functions imported from C modules cannot be introspected, and therefore the
+    signature for such functions cannot be automatically determined.  However, it
+    is an often-used convention to put the signature into the first line of the
+-   function's docstring.
++   function's docstring, and multiple signatures into consecutive lines.
+ 
+    If this boolean value is set to ``True`` (which is the default), autodoc will
+-   look at the first line of the docstring for functions and methods, and if it
+-   looks like a signature, use the line as the signature and remove it from the
+-   docstring content.
++   look at the first lines of the docstring for functions and methods.  If the
++   lines look like signatures, autodoc uses them as the signatures and removes
++   them from the docstring content.
+ 
+    .. versionadded:: 1.1
+ 
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index f8e4be9..a51feaa 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1044,29 +1044,37 @@ class DocstringSignatureMixin:
+                           RemovedInSphinx40Warning, stacklevel=2)
+         docstrings = self.get_doc()
+         self._new_docstrings = docstrings[:]
++        self._docstring_signatures = []
+         result = None
+         for i, doclines in enumerate(docstrings):
+             # no lines in docstring, no match
+             if not doclines:
+                 continue
+-            # match first line of docstring against signature RE
+-            match = py_ext_sig_re.match(doclines[0])
+-            if not match:
+-                continue
+-            exmod, path, base, args, retann = match.groups()
+             # the base name must match ours
+             valid_names = [self.objpath[-1]]  # type: ignore
+             if isinstance(self, ClassDocumenter):
+                 valid_names.append('__init__')
+                 if hasattr(self.object, '__mro__'):
+                     valid_names.extend(cls.__name__ for cls in self.object.__mro__)
+-            if base not in valid_names:
++
++            signatures = []
++            for line in doclines:
++                match = py_ext_sig_re.match(line)
++                if not match:
++                    break
++                exmod, path, base, args, retann = match.groups()
++                if base not in valid_names:
++                    break
++                signatures.append((args, retann))
++
++            if not signatures:
+                 continue
+             # re-prepare docstring to ignore more leading indentation
+             tab_width = self.directive.state.document.settings.tab_width  # type: ignore
+-            self._new_docstrings[i] = prepare_docstring('\n'.join(doclines[1:]),
++            self._new_docstrings[i] = prepare_docstring('\n'.join(doclines[len(signatures):]),
+                                                         tabsize=tab_width)
+-            result = args, retann
++            self._docstring_signatures = signatures
++            result = signatures[0]
+             # don't look any further
+             break
+         return result
+@@ -1088,6 +1096,11 @@ class DocstringSignatureMixin:
+             result = self._find_signature()
+             if result is not None:
+                 self.args, self.retann = result
++                signatures = []
++                for self.args, self.retann in self._docstring_signatures:
++                    signatures.append(super().format_signature(**kwargs))  # type: ignore
++                self.args, self.retann = result
++                return '\n'.join(signatures)
+         return super().format_signature(**kwargs)  # type: ignore
+ 
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/__init__.py b/tests/roots/test-ext-autodoc/target/__init__.py
+index b6684ee..bcd39f3 100644
+--- a/tests/roots/test-ext-autodoc/target/__init__.py
++++ b/tests/roots/test-ext-autodoc/target/__init__.py
+@@ -97,6 +97,27 @@ def function(foo, *args, **kwds):
+     pass
+ 
+ 
++def docstring_overload(*args, **kwargs):
++    """docstring_overload(value: int) -> int
++    docstring_overload(value: str, count: int = 1) -> str
++    Function overload docs.
++    """
++
++
++class DocstringOverload(object):
++    def meth(self, *args, **kwargs):
++        """meth(value: int) -> int
++        meth(value: str, count: int = 1) -> str
++        Method overload docs.
++        """
++
++    def mismatched(self, *args, **kwargs):
++        """mismatched(value: int) -> int
++        other(value: str) -> str
++        Mismatched signature remains content.
++        """
++
++
+ class Outer(object):
+     """Foo"""
+ 
+diff --git a/tests/test_ext_autodoc_configs.py b/tests/test_ext_autodoc_configs.py
+index 2255888..fe5feb3 100644
+--- a/tests/test_ext_autodoc_configs.py
++++ b/tests/test_ext_autodoc_configs.py
+@@ -275,6 +275,64 @@ def test_autodoc_docstring_signature(app):
+         '',
+     ]
+ 
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_docstring_overloaded_function(app):
++    actual = do_autodoc(app, 'function', 'target.docstring_overload')
++    assert list(actual) == [
++        '',
++        '.. py:function:: docstring_overload(value: int) -> int',
++        '                 docstring_overload(value: str, count: int = 1) -> str',
++        '   :module: target',
++        '',
++        '   Function overload docs.',
++        '',
++    ]
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_docstring_overloaded_method(app):
++    actual = do_autodoc(app, 'method', 'target.DocstringOverload.meth')
++    assert list(actual) == [
++        '',
++        '.. py:method:: DocstringOverload.meth(value: int) -> int',
++        '               DocstringOverload.meth(value: str, count: int = 1) -> str',
++        '   :module: target',
++        '',
++        '   Method overload docs.',
++        '',
++    ]
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_docstring_signature_stops_at_mismatched_name(app):
++    actual = do_autodoc(app, 'method', 'target.DocstringOverload.mismatched')
++    assert list(actual) == [
++        '',
++        '.. py:method:: DocstringOverload.mismatched(value: int) -> int',
++        '   :module: target',
++        '',
++        '   other(value: str) -> str',
++        '   Mismatched signature remains content.',
++        '',
++    ]
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_docstring_overloads_disabled_or_explicit(app):
++    options = {"members": None}
++    app.config.autodoc_docstring_signature = False
++    actual = list(do_autodoc(app, 'function', 'target.docstring_overload'))
++    assert '.. py:function:: docstring_overload(*args, **kwargs)' in actual
++    assert '   docstring_overload(value: int) -> int' in actual
++    assert '   docstring_overload(value: str, count: int = 1) -> str' in actual
++
++    app.config.autodoc_docstring_signature = True
++    actual = list(do_autodoc(app, 'function', 'target.docstring_overload(explicit)'))
++    assert '.. py:function:: docstring_overload(explicit)' in actual
++    assert '   docstring_overload(value: int) -> int' in actual
++    assert '   docstring_overload(value: str, count: int = 1) -> str' in actual
++
+     # disable autodoc_docstring_signature
+     app.config.autodoc_docstring_signature = False
+     actual = do_autodoc(app, 'class', 'target.DocstringSig', options)

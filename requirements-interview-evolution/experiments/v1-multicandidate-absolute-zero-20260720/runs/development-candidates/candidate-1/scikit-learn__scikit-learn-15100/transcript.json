@@ -1,0 +1,84 @@
+[
+  {
+    "answer": "Remove all combining marks",
+    "open_material_decisions": [
+      "Whether strip_accents_unicode must consistently remove all Unicode combining characters from already-NFKD input, accepting the corresponding behavior change for standalone and non-Latin combining marks."
+    ],
+    "question": {
+      "header": "Compatibility",
+      "options": [
+        {
+          "description": "Apply the existing post-NFKD filtering consistently to every input; composed and decomposed equivalents produce the same accent-stripped result, including non-Latin cases.",
+          "label": "Remove all combining marks",
+          "recommended": true
+        },
+        {
+          "description": "Limit the fix to decomposed sequences corresponding to composed accented characters, requiring narrower classification logic not established by current repository behavior.",
+          "label": "Only equivalent accents",
+          "recommended": false
+        },
+        {
+          "description": "Guarantee only the decomposed Latin n-plus-tilde case and leave broader combining-mark behavior delegated to implementation.",
+          "label": "Reported Latin case only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which compatibility boundary should the implementation contract require for already-NFKD input?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this scope and make it implementation-ready exactly as stated.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open and provide changes before implementation.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: update strip_accents_unicode so every input is NFKD-normalized and all Unicode combining characters are removed, including inputs already in NFKD form; preserve existing behavior for composed accents and non-combining characters; cover the direct decomposed n-plus-combining-tilde case and verify composed/decomposed equivalence through CountVectorizer with strip_accents='unicode'. This behavior also flows through shared word, char, and char_wb preprocessing and TfidfVectorizer inheritance. Acceptance requires focused tests proving both representations yield \"n\" and existing accent/analyzer tests remain passing. No documentation or ASCII-mode change is required. Acknowledged compatibility impact: standalone and non-Latin combining marks will also be removed consistently, as explicitly selected."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "`strip_accents_unicode('\\u00f1')` returns `'n'`.",
+          "`strip_accents_unicode('n\\u0303')` returns `'n'`.",
+          "Focused tests prove composed and decomposed equivalents produce the same analyzer output through `CountVectorizer(strip_accents='unicode')`.",
+          "Existing direct Unicode accent-stripping tests remain passing.",
+          "Existing vectorizer analyzer tests remain passing.",
+          "The implementation leaves `strip_accents_ascii` unchanged."
+        ],
+        "confirmed_decisions": [
+          "Remove all Unicode combining characters after NFKD normalization for every input, rather than limiting the fix to Latin characters or canonically composable sequences.",
+          "Preserve existing behavior for precomposed accented input and non-combining characters.",
+          "Require direct regression coverage for the reported decomposed n-plus-combining-tilde case.",
+          "Require vectorizer-level coverage demonstrating equivalent preprocessing for composed and decomposed forms with `strip_accents='unicode'`.",
+          "Rely on the existing shared preprocessing and inheritance paths for word, char, char_wb, and TfidfVectorizer behavior; no separate implementation is required for each consumer.",
+          "No change is required to ASCII accent stripping or documentation.",
+          "Accept the bounded compatibility change that standalone and non-Latin combining marks will also be removed."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update `strip_accents_unicode` so it always NFKD-normalizes its input and removes every Unicode combining character, including when the input was already in NFKD form. Preserve existing results for precomposed accents and non-combining characters. Add focused coverage proving both precomposed `ñ` and decomposed `n` plus combining tilde produce `n`, including composed/decomposed equivalence through `CountVectorizer(strip_accents='unicode')`. The behavior applies through the shared preprocessing path to word, char, and char_wb analyzers and through `TfidfVectorizer` inheritance. Do not change `strip_accents_ascii` or documentation. The explicitly accepted compatibility impact is that standalone and non-Latin combining marks are removed consistently as well."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the evidence-grounded contract, and no material decisions remain open."
+    },
+    "turn": 3
+  }
+]

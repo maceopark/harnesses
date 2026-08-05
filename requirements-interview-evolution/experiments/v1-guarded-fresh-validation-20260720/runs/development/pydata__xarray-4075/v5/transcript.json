@@ -1,0 +1,82 @@
+[
+  {
+    "answer": "Shared denominator fix",
+    "open_material_decisions": [
+      "Whether the fix must correct the shared sum-of-weights calculation for boolean weights, thereby covering both public sum_of_weights() and weighted mean normalization, or be restricted to mean()."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Treat boolean weights numerically in the shared sum-of-weights path, require correct sum_of_weights() and mean() results (including missing-data masking and zero-denominator behavior), and leave non-boolean behavior unchanged.",
+          "label": "Shared denominator fix",
+          "recommended": true
+        },
+        {
+          "description": "Require only weighted mean() to return the expected result, without guaranteeing correction of public sum_of_weights().",
+          "label": "Mean only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which compatibility boundary should the implementation contract require for boolean weights?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Contract approval",
+      "options": [
+        {
+          "description": "Seal this scope and acceptance criteria as implementation-ready.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a material change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: fix the shared sum-of-weights calculation so boolean weights are accumulated numerically; require both public sum_of_weights() and mean() to produce correct results for boolean weights, including missing-data masking and preservation of the existing zero-denominator-to-missing behavior; add focused regression coverage for the reported [True, True, False] case and boolean-weight masking/zero-denominator behavior; preserve existing behavior for non-boolean weights; allow the implementer to choose the smallest repository-consistent numeric coercion inside the shared denominator path, without changing general dot/einsum semantics or imposing a new public dtype restriction. Residual risk is limited to backend-specific dtype behavior not exercised by the focused suite."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "For data [1.0, 1.0, 1.0] and boolean weights [True, True, False], sum_of_weights() returns 2 numerically and mean() returns 1.0.",
+          "Boolean weights are correctly excluded where corresponding data values are missing.",
+          "An effective boolean-weight denominator of zero continues to produce a missing result.",
+          "Focused regression tests cover the reported case, missing-data masking, and zero-denominator behavior.",
+          "Existing weighted tests for non-boolean weights continue to pass.",
+          "The implementation does not modify general dot/einsum dtype semantics or reject boolean weights at the public API boundary."
+        ],
+        "confirmed_decisions": [
+          "Apply the fix in the shared sum-of-weights calculation rather than restricting it to mean().",
+          "Treat boolean weights numerically when calculating the denominator.",
+          "Require correctness for both public sum_of_weights() and weighted mean().",
+          "Preserve missing-data masking and zero-denominator-to-missing behavior.",
+          "Preserve existing behavior for non-boolean weights.",
+          "Do not alter general dot/einsum semantics.",
+          "Do not add a public numeric-dtype restriction for weights.",
+          "Delegate the exact coercion mechanism to the implementer, constrained to the smallest repository-consistent change in the shared denominator path.",
+          "Accept bounded residual risk for backend-specific dtype behavior not exercised by focused tests.",
+          "The owner explicitly approved this contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix the shared sum-of-weights denominator path so boolean weights are accumulated numerically. Both public sum_of_weights() and weighted mean() must return correct results for boolean weights, including missing-data masking and the existing zero-denominator-to-missing behavior. Add focused regression coverage for the reported [True, True, False] case plus boolean-weight masking and zero-denominator cases. Preserve non-boolean-weight behavior. The implementer may choose the smallest repository-consistent numeric coercion within the shared denominator path, but must not change general dot/einsum semantics or introduce a new public weight-dtype restriction. The acknowledged residual risk is backend-specific dtype behavior outside the focused test suite."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner approved an implementable contract, and no material decisions remain open."
+    },
+    "turn": 3
+  }
+]

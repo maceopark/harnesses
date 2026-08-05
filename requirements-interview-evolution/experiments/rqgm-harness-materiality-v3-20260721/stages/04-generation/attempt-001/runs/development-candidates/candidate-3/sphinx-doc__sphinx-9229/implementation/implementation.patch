@@ -1,0 +1,122 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..030a8b5 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1724,6 +1724,16 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+     def add_content(self, more_content: Optional[StringList], no_docstring: bool = False
+                     ) -> None:
+         if self.doc_as_attr:
++            try:
++                analyzer = ModuleAnalyzer.for_module(self.modname)
++                attr_docs = analyzer.find_attr_docs()
++                if ('', self.objpath[-1]) in attr_docs:
++                    self.analyzer = analyzer
++                    super().add_content(more_content)
++                    return
++            except PycodeError:
++                pass
++
+             try:
+                 more_content = StringList([_('alias of %s') % restify(self.object)], source='')
+             except AttributeError:
+@@ -2015,7 +2025,9 @@ class DataDocumenter(GenericAliasMixin, NewTypeMixin, TypeVarMixin,
+         if not more_content:
+             more_content = StringList()
+ 
+-        self.update_content(more_content)
++        comment = self.get_module_comment(self.objpath[-1])
++        if not (comment and inspect.isgenericalias(self.object)):
++            self.update_content(more_content)
+         super().add_content(more_content, no_docstring=no_docstring)
+ 
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/type_aliases.py b/tests/roots/test-ext-autodoc/target/type_aliases.py
+new file mode 100644
+index 0000000..e1688b8
+--- /dev/null
++++ b/tests/roots/test-ext-autodoc/target/type_aliases.py
+@@ -0,0 +1,23 @@
++from pathlib import Path
++from typing import Any, Callable, Dict, Union
++
++
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary containing scaffold options.
++
++Options should be treated as immutable.
++"""
++
++FileContents = Union[str, None]
++"""A file's contents, or ``None`` when it should not be written.
++
++An empty file is represented by an empty string.
++"""
++
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of a file operation.
++
++The return value is the path that was changed, if any.
++"""
++
++Undocumented = Callable[[Path], None]
+diff --git a/tests/test_ext_autodoc.py b/tests/test_ext_autodoc.py
+index 4c16886..26e3729 100644
+--- a/tests/test_ext_autodoc.py
++++ b/tests/test_ext_autodoc.py
+@@ -1926,7 +1926,8 @@ def test_autodoc_GenericAlias(app):
+             '.. py:attribute:: T',
+             '   :module: target.genericalias',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
++            '   A list of int',
++            '',
+         ]
+     else:
+         assert list(actual) == [
+@@ -1951,11 +1952,31 @@ def test_autodoc_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_type_aliases_with_next_line_docstrings(app):
++    options = {'members': {'ScaffoldOpts', 'FileContents', 'FileOp'}}
++    actual = list(do_autodoc(app, 'module', 'target.type_aliases', options))
++    output = '\n'.join(actual)
++
++    assert 'Dictionary containing scaffold options.\n\nOptions should be treated as immutable.' in output
++    assert ("A file's contents, or ``None`` when it should not be written.\n\n"
++            'An empty file is represented by an empty string.') in output
++    assert ('Signature of a file operation.\n\n'
++            'The return value is the path that was changed, if any.') in output
++    assert 'alias of ' not in output
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_undocumented_type_alias_uses_default_content(app):
++    options = {'members': {'Undocumented'}, 'undoc-members': None}
++    actual = list(do_autodoc(app, 'module', 'target.type_aliases', options))
++
++    assert any('alias of ' in line for line in actual)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodoc_TypeVar(app):
+     options = {"members": None,
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..dcda360 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -96,8 +96,6 @@ def test_autodata_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 

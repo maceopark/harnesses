@@ -1,0 +1,77 @@
+[
+  {
+    "answer": "Docstring only",
+    "open_material_decisions": [
+      "Whether generated “alias of …” text remains alongside an explicit next-line alias docstring."
+    ],
+    "question": {
+      "header": "Alias output",
+      "options": [
+        {
+          "description": "Render the explicit documentation and suppress the generated “alias of …” text for that alias.",
+          "label": "Docstring only",
+          "recommended": true
+        },
+        {
+          "description": "Render both the explicit documentation and the generated “alias of …” text consistently across supported Python/type-alias variants.",
+          "label": "Docstring and alias",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has an explicit next-line docstring, what should autodoc render?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Next-line strings only",
+    "open_material_decisions": [
+      "Whether suppression of generated “alias of …” text applies only to next-line string documentation or to every explicit variable-documentation form recognized by autodoc."
+    ],
+    "question": {
+      "header": "Doc scope",
+      "options": [
+        {
+          "description": "Apply the change only to the reported assignment-following string syntax; existing behavior for #: comments remains unchanged.",
+          "label": "Next-line strings only",
+          "recommended": true
+        },
+        {
+          "description": "Apply the same docstring-only output to both assignment-following strings and other explicit variable documentation such as #: comments.",
+          "label": "All variable docs",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which explicit documentation forms should replace the generated “alias of …” text for a type alias?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "ScaffoldOpts renders its complete next-line documentation and does not render generated “alias of …” content.",
+          "FileContents renders its complete next-line documentation and does not render generated “alias of …” content.",
+          "FileOp renders its complete next-line documentation, including its literal block, field-like list, and note directive, and does not render generated “alias of …” content.",
+          "A type alias documented with a #: comment continues to use the repository’s existing output behavior.",
+          "A type alias without next-line string documentation continues to use the repository’s existing default output behavior.",
+          "Existing next-line variable documentation for non-type-alias data remains unchanged."
+        ],
+        "confirmed_decisions": [
+          "For a type alias with an explicit string expression immediately following its assignment, autodoc renders the explicit documentation and suppresses the generated “alias of …” text.",
+          "The behavior applies to assignment-following string documentation only.",
+          "Documentation supplied through other forms, including #: variable comments, retains its existing rendering behavior.",
+          "Type aliases without assignment-following string documentation retain their existing default rendering behavior.",
+          "Multiline documentation content, including paragraphs, literal blocks, lists, roles, and directives, remains available for normal Sphinx rendering."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Autodoc must honor assignment-following string documentation for module-level type aliases consistently. When such documentation exists, the rendered alias content consists of that explicit documentation and does not include the generated “alias of …” message. This change is limited to next-line string documentation; existing behavior for other variable-documentation forms remains unchanged."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The interview resolved the material output and scope decisions. The contract is implementable from the supplied repository evidence without inventing additional behavior."
+    },
+    "turn": 3
+  }
+]

@@ -1,0 +1,55 @@
+diff --git a/lib/matplotlib/axes/_axes.py b/lib/matplotlib/axes/_axes.py
+index 2412f81..13328ae 100644
+--- a/lib/matplotlib/axes/_axes.py
++++ b/lib/matplotlib/axes/_axes.py
+@@ -6876,13 +6876,21 @@ such objects
+             # items lower in the stack are plotted on top of
+             # items higher in the stack
+             for x, y, c in reversed(list(zip(xvals, yvals, color))):
+-                patches.append(self.fill(
++                patch = self.fill(
+                     x[:split], y[:split],
+                     closed=True if fill else None,
+                     facecolor=c,
+                     edgecolor=None if fill else c,
+                     fill=fill if fill else None,
+-                    zorder=None if fill else mlines.Line2D.zorder))
++                    zorder=None if fill else mlines.Line2D.zorder)
++                patches.append(patch)
++                if density and not stacked and histtype == 'step':
++                    # Paths with many vertices are simplified when patch
++                    # limits are computed, which may discard the highest
++                    # step.  Include the unsimplified vertices in dataLim so
++                    # density histograms get the same limits as bars.
++                    self.update_datalim(np.column_stack([
++                        x[:split], y[:split]]))
+             for patch_list in patches:
+                 for patch in patch_list:
+                     if orientation == 'vertical':
+diff --git a/lib/matplotlib/tests/test_axes.py b/lib/matplotlib/tests/test_axes.py
+index bd7940a..5bb34fe 100644
+--- a/lib/matplotlib/tests/test_axes.py
++++ b/lib/matplotlib/tests/test_axes.py
+@@ -4211,6 +4211,22 @@ def test_hist_step_geometry():
+     assert_array_equal(polygon.get_xy(), xy)
+ 
+ 
++@pytest.mark.parametrize("orientation", ["vertical", "horizontal"])
++def test_hist_step_density_autoscale(orientation):
++    data = np.random.RandomState(19680801).normal(size=100000) * 1.2
++    kwargs = dict(bins=100, density=True, orientation=orientation)
++
++    fig, (ax_bar, ax_step) = plt.subplots(1, 2)
++    bar_density, bar_bins, _ = ax_bar.hist(data, histtype="bar", **kwargs)
++    step_density, step_bins, _ = ax_step.hist(data, histtype="step", **kwargs)
++
++    get_lim = (Axes.get_ylim if orientation == "vertical" else Axes.get_xlim)
++    assert_allclose(get_lim(ax_step), get_lim(ax_bar))
++    assert_allclose(step_density, bar_density)
++    assert_array_equal(step_bins, bar_bins)
++    assert step_density.max() <= get_lim(ax_step)[1]
++
++
+ def test_hist_stepfilled_bottom_geometry():
+     bins = [0, 1, 2, 3]
+     data = [0, 0, 1, 1, 1, 2]

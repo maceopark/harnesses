@@ -1,0 +1,99 @@
+[
+  {
+    "answer": "Constructor only",
+    "open_material_decisions": [
+      "Whether non-empty validation applies only to Blueprint(name, ...) or also to register_blueprint(..., name=\"\")."
+    ],
+    "question": {
+      "header": "Validation scope",
+      "options": [
+        {
+          "description": "Raise ValueError for Blueprint(\"\", ...), while leaving registration-time name overrides unchanged.",
+          "label": "Constructor only",
+          "recommended": true
+        },
+        {
+          "description": "Also reject an empty register_blueprint(..., name=\"\") override so every effective registered name is non-empty.",
+          "label": "Constructor and override",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should the non-empty-name requirement apply?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Empty string only",
+    "open_material_decisions": [
+      "Whether whitespace-only Blueprint names remain valid."
+    ],
+    "question": {
+      "header": "Whitespace",
+      "options": [
+        {
+          "description": "Reject exactly \"\" and preserve existing behavior for names such as \" \" or \"\\t\".",
+          "label": "Empty string only",
+          "recommended": true
+        },
+        {
+          "description": "Reject \"\" and any name for which stripping whitespace produces an empty string.",
+          "label": "Blank names",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should Blueprint name validation reject only \"\", or reject whitespace-only names too?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "‘name’ may not be empty.",
+    "open_material_decisions": [
+      "What error message should be raised for Blueprint(\"\", ...)."
+    ],
+    "question": {
+      "header": "Error message",
+      "options": [
+        {
+          "description": "Use \"'name' may not be empty.\" alongside the existing dotted-name validation wording.",
+          "label": "Name may not be empty",
+          "recommended": true
+        },
+        {
+          "description": "Use different wording, which must be specified before implementation.",
+          "label": "Custom wording",
+          "recommended": false
+        }
+      ],
+      "prompt": "What should the empty-name ValueError say?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Add or extend tests in tests/test_blueprints.py to assert that flask.Blueprint(\"\", __name__) raises ValueError matching the exact message \"'name' may not be empty.\".",
+          "Confirm flask.Blueprint(\" \", __name__) remains constructible, preserving the empty-string-only scope.",
+          "Confirm the existing dotted-name validation test continues to pass.",
+          "Confirm registration-time empty overrides remain unchanged because validation is constructor-only.",
+          "Run the targeted blueprint test suite and verify it passes."
+        ],
+        "confirmed_decisions": [
+          "Validation applies only to Blueprint(name, ...), not to register_blueprint(..., name=...) overrides.",
+          "Reject exactly the empty string; whitespace-only names such as \" \" and \"\\t\" remain valid.",
+          "Blueprint(\"\", ...) raises ValueError with the exact message \"'name' may not be empty.\".",
+          "Preserve the existing ValueError behavior for names containing a dot.",
+          "No changes are required to endpoint composition, blueprint registration, nested blueprint handling, or documentation."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Require Blueprint constructor names to be non-empty. In Blueprint.__init__, reject exactly the empty string with ValueError(\"'name' may not be empty.\"). Keep the existing dotted-name validation and all registration-time name override behavior unchanged."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested behavior and success criteria are fully specified, and no material implementation decision remains open."
+    },
+    "turn": 4
+  }
+]

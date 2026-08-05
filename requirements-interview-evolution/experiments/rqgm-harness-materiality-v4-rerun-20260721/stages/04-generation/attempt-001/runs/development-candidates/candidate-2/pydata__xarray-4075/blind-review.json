@@ -1,0 +1,60 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "transcript",
+          "pointer": "/0/answer",
+          "quoted_value": "All weighted reductions"
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/2",
+          "quoted_value": "The correction covers all supported weighted reductions, including mean, sum, and sum_of_weights."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/2",
+          "quoted_value": "Boolean weights produce the same reduction values as otherwise identical integer weights containing 1 and 0 across supported weighted operations."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/scope_summary",
+          "quoted_value": "Base-commit implementation facts relevant to boolean weights in weighted mean."
+        }
+      ],
+      "description": "An implementer must independently decide which APIs count as supported weighted operations and therefore which paths and tests are required. This is material because the sole interview decision intentionally expanded the fix beyond the reported mean failure, yet the resulting boundary is not closed in the implementation-ready contract.",
+      "failure_class": "repository-delegation",
+      "general_cause": "The contract adopts an open-ended scope label without enumerating the operations that belong to it.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "Core decisions and acceptance checks repeatedly say “all” or “supported” weighted reductions, while the audited evidence establishes individual mean, weighted-sum, and sum-of-weights paths but does not provide a complete operation inventory."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/summary",
+          "quoted_value": "Correct boolean-weight handling so every supported weighted reduction treats True as weight 1 and False as weight 0. For the reported DataArray [1.0, 1.0, 1.0] with weights [True, True, False], weighted mean returns 1.0, weighted sum returns 2.0, and sum of weights returns the numeric value 2 rather than a boolean result. The same semantics apply through supported Dataset weighted operations. Existing behavior for non-boolean weights and existing missing-data, skipna, alignment, dimension-reduction, and zero-total-weight semantics remains compatible."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/3",
+          "quoted_value": "Boolean-weight reductions correctly exclude False-weighted values and continue to honor existing missing-data and skipna behavior."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        }
+      ],
+      "description": "The implementation could satisfy every listed acceptance check while regressing boolean-weight alignment or dimension-specific reductions, contradicting the sealed summary. These promised compatibility dimensions need concrete checks or removal from the contract.",
+      "failure_class": "synthesis-loss",
+      "general_cause": "Compatibility guarantees introduced in the contract summary were not converted into corresponding observable acceptance checks.",
+      "id": "FINDING-2",
+      "material": true,
+      "observable_signal": "The summary explicitly promises unchanged alignment and dimension-reduction semantics, but no acceptance check names or tests either behavior despite the contract being marked implementation-ready."
+    }
+  ],
+  "summary": "The contract is not materially implementation-ready: its expanded reduction scope remains repository-defined, and two explicit compatibility promises lack acceptance coverage."
+}

@@ -1,0 +1,219 @@
+{
+  "alias": "psf__requests-5414",
+  "evidence": [
+    {
+      "cache_required": true,
+      "excerpt": "Getting http://.example.com raises UnicodeError\nAttempting to get e.g. `http://.example.com` results in a `UnicodeError`. It seems like the intention so far has been to raise `InvalidUrl` instead (see e.g. [this line](https://github.com/psf/requests/blob/ca6f9af5dba09591007b15a7368bc0f006b7cc50/requests/models.py#L401)).\n\nI see there was some hesitation in fixing a similar issue (#4168) and would like to add that even catching the error just to rethrow as a requests exception would be beneficial.\n\n## Expected Result\n\nBased on PR #774: `InvalidUrl: URL has an invalid label.`\n\n## Actual Result\n\n`UnicodeError: encoding with 'idna' codec failed (UnicodeError: label empty or too long)`\n\n## Reproduction Steps\n\n```python3\nimport requests\nrequests.get(\"http://.example.com\")\n```\n",
+      "excerpt_digest": "05354e9ae7c5cc81d580ab109c4815cb7a7aee3d87e2c9f15915fa5abc47d8cb",
+      "id": "issue",
+      "knowledge_timing": "issue_time_author_knowable",
+      "locator": "sha256:08faa0ea47836476b5f4b3709c06a00569996ccc654011299f9c8587cd7007ba",
+      "source": "issue",
+      "source_digest": "08faa0ea47836476b5f4b3709c06a00569996ccc654011299f9c8587cd7007ba"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "diff --git a/requests/models.py b/requests/models.py\n--- a/requests/models.py\n+++ b/requests/models.py\n@@ -403,7 +403,7 @@ def prepare_url(self, url, params):\n                 host = self._get_idna_encoded_host(host)\n             except UnicodeError:\n                 raise InvalidURL('URL has an invalid label.')\n-        elif host.startswith(u'*'):\n+        elif host.startswith((u'*', u'.')):\n             raise InvalidURL('URL has an invalid label.')\n \n         # Carefully reconstruct the network location",
+      "excerpt_digest": "7f13ef5e9d720012d5610c486e19a8542348f9401b04f1f0b94989cc6a33de21",
+      "id": "gold-patch",
+      "knowledge_timing": "hindsight_only",
+      "locator": "sha256:41e9433ac5e2cdb17a3972bec818a1118ea4a3f2b7485cd11fff7e27f6f3f680",
+      "source": "patch",
+      "source_digest": "41e9433ac5e2cdb17a3972bec818a1118ea4a3f2b7485cd11fff7e27f6f3f680"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "diff --git a/tests/test_requests.py b/tests/test_requests.py\n--- a/tests/test_requests.py\n+++ b/tests/test_requests.py\n@@ -81,6 +81,8 @@ def test_entry_points(self):\n             (InvalidSchema, 'localhost.localdomain:3128/'),\n             (InvalidSchema, '10.122.1.1:3128/'),\n             (InvalidURL, 'http://'),\n+            (InvalidURL, 'http://*example.com'),\n+            (InvalidURL, 'http://.example.com'),\n         ))\n     def test_invalid_url(self, exception, url):\n         with pytest.raises(exception):",
+      "excerpt_digest": "0f492391ea66f1e7386126b4452802ed9475803e23553cfd9da4c3bb42a4f5be",
+      "id": "test-patch",
+      "knowledge_timing": "hindsight_only",
+      "locator": "sha256:46e0fcf881a426fb44dcd64c29be1f1d81113fcbfffe658404fc6298bc028a53",
+      "source": "test",
+      "source_digest": "46e0fcf881a426fb44dcd64c29be1f1d81113fcbfffe658404fc6298bc028a53"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "[\"tests/test_requests.py::TestRequests::test_invalid_url[InvalidURL-http://.example.com]\"]",
+      "excerpt_digest": "47397575d3b6c60d166af4ce17700f5d7bef0de788ceba6ae9ba2218b3953db4",
+      "id": "fail-to-pass",
+      "knowledge_timing": "hindsight_only",
+      "locator": "sha256:47397575d3b6c60d166af4ce17700f5d7bef0de788ceba6ae9ba2218b3953db4",
+      "source": "test",
+      "source_digest": "47397575d3b6c60d166af4ce17700f5d7bef0de788ceba6ae9ba2218b3953db4"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "[\"tests/test_requests.py::TestRequests::test_entry_points\",\"tests/test_requests.py::TestRequests::test_invalid_url[MissingSchema-hiwpefhipowhefopw]\",\"tests/test_requests.py::TestRequests::test_invalid_url[InvalidSchema-localhost:3128]\",\"tests/test_requests.py::TestRequests::test_invalid_url[InvalidSchema-localhost.localdomain:3128/]\",\"tests/test_requests.py::TestRequests::test_invalid_url[InvalidSchema-10.122.1.1:3128/]\",\"tests/test_requests.py::TestRequests::test_invalid_url[InvalidURL-http://]\",\"tests/test_requests.py::TestRequests::test_invalid_url[InvalidURL-http://*example.com]\",\"tests/test_requests.py::TestRequests::test_basic_building\",\"tests/test_requests.py::TestRequests::test_path_is_not_double_encoded\",\"tests/test_requests.py::TestRequests::test_params_are_added_before_fragment[http://example.com/path#fragment-http://example.com/path?a=b#fragment]\",\"tests/test_requests.py::TestRequests::test_params_are_added_before_fragment[http://example.com/path?key=value#fragment-http://example.com/path?key=value&a=b#fragment]\",\"tests/test_requests.py::TestRequests::test_params_original_order_is_preserved_by_default\",\"tests/test_requests.py::TestRequests::test_params_bytes_are_encoded\",\"tests/test_requests.py::TestRequests::test_binary_put\",\"tests/test_requests.py::TestRequests::test_whitespaces_are_removed_from_url\",\"tests/test_requests.py::TestRequests::test_basicauth_encodes_byte_strings\",\"tests/test_requests.py::TestRequests::test_errors[http://doesnotexist.google.com-ConnectionError]\",\"tests/test_requests.py::TestRequests::test_errors[http://localhost:1-ConnectionError]\",\"tests/test_requests.py::TestRequests::test_errors[http://fe80::5054:ff:fe5a:fc0-InvalidURL]\",\"tests/test_requests.py::TestRequests::test_proxy_error\",\"tests/test_requests.py::TestRequests::test_non_prepared_request_error\",\"tests/test_requests.py::TestRequests::test_prepare_request_with_bytestring_url\",\"tests/test_requests.py::TestRequests::test_links\",\"tests/test_requests.py::TestRequests::test_cookie_parameters\",\"tests/test_requests.py::TestR",
+      "excerpt_digest": "d98b7515c310cb9b3175cb810ae3d17df25724126a40acf2c3a5c2c306d9b66f",
+      "id": "pass-to-pass",
+      "knowledge_timing": "hindsight_only",
+      "locator": "sha256:13f6b34dcb55ea86cff1331f42704355bac4c5366c1c4e5bfbd5cbeceabde893",
+      "source": "test",
+      "source_digest": "13f6b34dcb55ea86cff1331f42704355bac4c5366c1c4e5bfbd5cbeceabde893"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "    def prepare(self,\n            method=None, url=None, headers=None, files=None, data=None,\n            params=None, auth=None, cookies=None, hooks=None, json=None):\n        \"\"\"Prepares the entire request with the given parameters.\"\"\"\n\n        self.prepare_method(method)\n        self.prepare_url(url, params)\n        self.prepare_headers(headers)\n        self.prepare_cookies(cookies)\n        self.prepare_body(data, files, json)\n        self.prepare_auth(auth, url)",
+      "excerpt_digest": "cbf35b7c37ddaa89b4ce3b71fe2e49a24a509af64ae412096b4cc7d5afc2be55",
+      "id": "repository:F1",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "requests/models.py:L312-L322",
+      "source": "repository",
+      "source_digest": "c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "        # Support for unicode domain names and paths.\n        try:\n            scheme, auth, host, port, path, query, fragment = parse_url(url)\n        except LocationParseError as e:\n            raise InvalidURL(*e.args)",
+      "excerpt_digest": "f3d22eaff5a4f010ef3b48e8a45bef6f7fc1a884a4e82e4820061c2dd9101bc7",
+      "id": "repository:F2",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "requests/models.py:L382-L386",
+      "source": "repository",
+      "source_digest": "c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "        if not scheme:\n            error = (\"Invalid URL {0!r}: No schema supplied. Perhaps you meant http://{0}?\")\n            error = error.format(to_native_string(url, 'utf8'))\n\n            raise MissingSchema(error)\n\n        if not host:\n            raise InvalidURL(\"Invalid URL %r: No host supplied\" % url)",
+      "excerpt_digest": "ace562c337e391ebb672f1559bbc0f0d9184ed34b7013291c80583917c492ad6",
+      "id": "repository:F3",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "requests/models.py:L388-L395",
+      "source": "repository",
+      "source_digest": "c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "        # In general, we want to try IDNA encoding the hostname if the string contains\n        # non-ASCII characters. This allows users to automatically get the correct IDNA\n        # behaviour. For strings containing only ASCII characters, we need to also verify\n        # it doesn't start with a wildcard (*), before allowing the unencoded hostname.\n        if not unicode_is_ascii(host):\n            try:\n                host = self._get_idna_encoded_host(host)\n            except UnicodeError:\n                raise InvalidURL('URL has an invalid label.')\n        elif host.startswith(u'*'):\n            raise InvalidURL('URL has an invalid label.')",
+      "excerpt_digest": "3f839effe507cc0a9c6a55d6d73c7b3dc6a1eada39f9a31489135de180159852",
+      "id": "repository:F4",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "requests/models.py:L397-L407",
+      "source": "repository",
+      "source_digest": "c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "    @staticmethod\n    def _get_idna_encoded_host(host):\n        import idna\n\n        try:\n            host = idna.encode(host, uts46=True).decode('utf-8')\n        except idna.IDNAError:\n            raise UnicodeError\n        return host",
+      "excerpt_digest": "d06ceab5bb6254429d619803f28bb0a081674c96138e208239512b11478f3c22",
+      "id": "repository:F5",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "requests/models.py:L350-L358",
+      "source": "repository",
+      "source_digest": "c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "class MissingSchema(RequestException, ValueError):\n    \"\"\"The URL schema (e.g. http or https) is missing.\"\"\"\n\n\nclass InvalidSchema(RequestException, ValueError):\n    \"\"\"See defaults.py for valid schemas.\"\"\"\n\n\nclass InvalidURL(RequestException, ValueError):\n    \"\"\"The URL provided was somehow invalid.\"\"\"",
+      "excerpt_digest": "ac9d81316216d3f9eb5b4007821752b247889670e21e5b54fe49bd938689d36b",
+      "id": "repository:F6",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "requests/exceptions.py:L82-L91",
+      "source": "repository",
+      "source_digest": "d374f4f497332c86d5803a517842bc355e99073d9d9d9c4af23ae15a7ddb7211"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "    @pytest.mark.parametrize(\n        'exception, url', (\n            (MissingSchema, 'hiwpefhipowhefopw'),\n            (InvalidSchema, 'localhost:3128'),\n            (InvalidSchema, 'localhost.localdomain:3128/'),\n            (InvalidSchema, '10.122.1.1:3128/'),\n            (InvalidURL, 'http://'),\n        ))\n    def test_invalid_url(self, exception, url):\n        with pytest.raises(exception):\n            requests.get(url)",
+      "excerpt_digest": "b3d85c39c0a92a00ebb6997996657bd2dcf9158a91c26c4ef9af58b7f48cf3a8",
+      "id": "repository:F7",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "tests/test_requests.py:L77-L87",
+      "source": "repository",
+      "source_digest": "a932e188000e026b9da004969347a3e9d23f43874bfc32c5ba2aef38fcc913e6"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "    @pytest.mark.parametrize(\n        'url',\n        (\n            b\"http://*.google.com\",\n            b\"http://*\",\n            u\"http://*.google.com\",\n            u\"http://*\",\n            u\"http://☃.net/\"\n        )\n    )\n    def test_preparing_bad_url(self, url):\n        r = requests.Request('GET', url=url)\n        with pytest.raises(requests.exceptions.InvalidURL):\n            r.prepare()",
+      "excerpt_digest": "4018653375c4bf75910a804399a832cef3f82e69cd6894f5d7583befa15286df",
+      "id": "repository:F8",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "tests/test_requests.py:L2484-L2497",
+      "source": "repository",
+      "source_digest": "a932e188000e026b9da004969347a3e9d23f43874bfc32c5ba2aef38fcc913e6"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "requires = [\n    'charset_normalizer~=2.0.0; python_version >= \"3\"',\n    'chardet>=3.0.2,<5; python_version < \"3\"',\n    'idna>=2.5,<3; python_version < \"3\"',\n    'idna>=2.5,<4; python_version >= \"3\"',\n    'urllib3>=1.21.1,<1.27',\n    'certifi>=2017.4.17'",
+      "excerpt_digest": "952ff38607ac8d4ffe7a49308508411406142e5489aecd18e8b1e6cc5e416aad",
+      "id": "repository:F9",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "setup.py:L43-L49",
+      "source": "repository",
+      "source_digest": "f8df953275dbe3ce3646dabd04d23814dc29ca2366636c4204c08d17394fbe71"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "from urllib3.fields import RequestField\nfrom urllib3.filepost import encode_multipart_formdata\nfrom urllib3.util import parse_url\nfrom urllib3.exceptions import (\n    DecodeError, ReadTimeoutError, ProtocolError, LocationParseError)",
+      "excerpt_digest": "20473fc8bb206b13b9aa40b35e82711707d7b8a6f7a0ad8c7bb3b8841db22672",
+      "id": "repository:F10",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "requests/models.py:L18-L22",
+      "source": "repository",
+      "source_digest": "c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888"
+    }
+  ],
+  "hindsight_observations": [
+    {
+      "description": "The added focused test confirms that the reported `http://.example.com` case is the behavior that failed before the fix and passed afterward when `InvalidURL` was expected.",
+      "evidence_ids": [
+        "test-patch",
+        "fail-to-pass"
+      ],
+      "id": "H1"
+    },
+    {
+      "description": "The broader selected suite passed after the change, providing hindsight evidence that the fix did not regress the exercised URL preparation and request behaviors.",
+      "evidence_ids": [
+        "pass-to-pass"
+      ],
+      "id": "H2"
+    }
+  ],
+  "implementation_incidentals": [
+    {
+      "description": "The gold implementation rejects ASCII hosts beginning with `.` by extending the existing leading-wildcard conditional. This is a small implementation choice, not the only valid way to provide the issue-required `InvalidURL` behavior.",
+      "evidence_ids": [
+        "gold-patch",
+        "repository:F4"
+      ],
+      "id": "I1"
+    },
+    {
+      "description": "The test patch places the new case in the existing general invalid-URL parameter table and also adds `http://*example.com` as an explicit wildcard regression case; those test organization and supplemental-coverage choices are not unresolved product behavior.",
+      "evidence_ids": [
+        "test-patch",
+        "repository:F7",
+        "repository:F8"
+      ],
+      "id": "I2"
+    }
+  ],
+  "inputs": {
+    "fail_to_pass": {
+      "cache_key": "sha256:47397575d3b6c60d166af4ce17700f5d7bef0de788ceba6ae9ba2218b3953db4",
+      "digest": "47397575d3b6c60d166af4ce17700f5d7bef0de788ceba6ae9ba2218b3953db4"
+    },
+    "gold_patch": {
+      "cache_key": "sha256:41e9433ac5e2cdb17a3972bec818a1118ea4a3f2b7485cd11fff7e27f6f3f680",
+      "digest": "41e9433ac5e2cdb17a3972bec818a1118ea4a3f2b7485cd11fff7e27f6f3f680"
+    },
+    "issue": {
+      "cache_key": "sha256:08faa0ea47836476b5f4b3709c06a00569996ccc654011299f9c8587cd7007ba",
+      "digest": "08faa0ea47836476b5f4b3709c06a00569996ccc654011299f9c8587cd7007ba"
+    },
+    "pass_to_pass": {
+      "cache_key": "sha256:13f6b34dcb55ea86cff1331f42704355bac4c5366c1c4e5bfbd5cbeceabde893",
+      "digest": "13f6b34dcb55ea86cff1331f42704355bac4c5366c1c4e5bfbd5cbeceabde893"
+    },
+    "test_patch": {
+      "cache_key": "sha256:46e0fcf881a426fb44dcd64c29be1f1d81113fcbfffe658404fc6298bc028a53",
+      "digest": "46e0fcf881a426fb44dcd64c29be1f1d81113fcbfffe658404fc6298bc028a53"
+    }
+  },
+  "material_decisions": [],
+  "review_state": {
+    "dispositions_complete": true,
+    "status": "approved"
+  },
+  "schema": "SealedSWEbenchSource.v1"
+}

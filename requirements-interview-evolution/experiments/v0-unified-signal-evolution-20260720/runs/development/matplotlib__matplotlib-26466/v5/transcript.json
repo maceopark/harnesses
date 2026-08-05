@@ -1,0 +1,131 @@
+[
+  {
+    "answer": "Copy both (Recommended)",
+    "open_material_decisions": [
+      "Whether construction-time snapshot semantics apply only to `xy` or to both `xy` and an explicitly supplied `xytext`."
+    ],
+    "question": {
+      "header": "Copy scope",
+      "options": [
+        {
+          "description": "Snapshot `xy` and explicit `xytext` at construction so both annotation endpoints have consistent value semantics.",
+          "label": "Copy both (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Fix only the reported annotated-point mutation while leaving explicit `xytext` reference behavior unchanged.",
+          "label": "Copy xy only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which annotation coordinate inputs should be protected from later mutation of caller-owned mutable objects?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Shallow copy (Recommended)",
+    "open_material_decisions": [
+      "Whether construction snapshots should preserve each coordinate container’s type via shallow copying or normalize coordinates to an immutable tuple."
+    ],
+    "question": {
+      "header": "Copy form",
+      "options": [
+        {
+          "description": "Use shallow copies so later container mutation is isolated while preserving existing container types and coordinate element semantics.",
+          "label": "Shallow copy (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Store immutable two-value tuples, giving stronger container immutability but potentially changing type-sensitive or custom coordinate behavior.",
+          "label": "Convert to tuple",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should `Annotation` snapshot the supplied `xy` and explicit `xytext` values?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Fall back to tuple",
+    "open_material_decisions": [
+      "How construction should handle coordinate containers whose shallow-copy operation raises or is unsupported."
+    ],
+    "question": {
+      "header": "Copy failure",
+      "options": [
+        {
+          "description": "Attempt a shallow copy, then snapshot the two coordinate values as a tuple if copying is unsupported; this preserves broad input compatibility while still preventing container mutation.",
+          "label": "Fall back to tuple",
+          "recommended": true
+        },
+        {
+          "description": "Require coordinates to support shallow copying and expose the copy exception, which is simpler but may reject inputs that previously worked.",
+          "label": "Propagate error",
+          "recommended": false
+        },
+        {
+          "description": "Retain the original object when copying fails, preserving acceptance but leaving mutation behavior inconsistent.",
+          "label": "Keep reference",
+          "recommended": false
+        }
+      ],
+      "prompt": "If a supplied `xy` or explicit `xytext` container cannot be shallow-copied, what should `Annotation` do?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Construction only",
+    "open_material_decisions": [
+      "Whether assignments made after construction through `annotation.xy` and `annotation.xyann` should also be snapshotted or should retain their existing behavior."
+    ],
+    "question": {
+      "header": "Setter scope",
+      "options": [
+        {
+          "description": "Snapshot constructor inputs only; later explicit assignments keep existing setter semantics and minimize the behavioral change.",
+          "label": "Construction only",
+          "recommended": true
+        },
+        {
+          "description": "Snapshot values assigned later through `xy` and `xyann` too, providing uniform value semantics but broadening the compatibility impact.",
+          "label": "Include setters",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should mutation isolation apply only to coordinate objects supplied when constructing `Annotation`, or also to objects later assigned through its public coordinate properties?"
+    },
+    "turn": 4
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Construct an arrow annotation with a NumPy array as `xy`, mutate that original array after construction, draw or update positions, and verify the arrow's annotated endpoint remains at the construction-time coordinates.",
+          "Construct an arrow annotation with a mutable explicit `xytext`, mutate that original container after construction, draw or update positions, and verify the text/arrow-start endpoint remains at the construction-time coordinates.",
+          "Verify both endpoints remain unchanged when both original `xy` and explicit `xytext` containers are mutated after construction.",
+          "Verify omitted `xytext` still initializes the Text position from the construction-time `xy` values and does not regain an alias to the caller-owned object.",
+          "Exercise a valid two-value coordinate iterable whose shallow-copy operation raises and verify Annotation construction succeeds using a tuple snapshot and remains isolated from later source mutation where observable.",
+          "Verify shallow-copyable coordinate containers retain their container type in the stored constructor snapshot.",
+          "Run the existing nearby annotation-position tests to confirm movement through `set_position` and the `xyann` setter remains supported.",
+          "Run the targeted Matplotlib text/annotation test module successfully."
+        ],
+        "confirmed_decisions": [
+          "Both `xy` and an explicitly supplied `xytext` receive construction-time snapshot semantics.",
+          "Snapshots use shallow copying to preserve the coordinate container type and element semantics where supported.",
+          "If shallow copying raises or is unsupported, construction falls back to a two-value tuple snapshot instead of retaining the reference or rejecting an otherwise valid coordinate input.",
+          "Mutation isolation applies only to constructor inputs; later assignments through `annotation.xy` and `annotation.xyann` preserve existing semantics.",
+          "The fix belongs in the Annotation coordinate initialization path rather than only in `Axes.annotate`, so direct `Annotation` construction receives the same behavior.",
+          "Existing explicit repositioning through `set_position`, `xyann`, and direct supported coordinate assignment must remain functional."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Change `matplotlib.text.Annotation` construction to snapshot caller-supplied coordinate containers. In `_AnnotationBase.__init__`, store a shallow copy of `xy`; if shallow copying is unsupported or raises, unpack its two coordinate values and store them as a tuple. In `Annotation.__init__`, apply the same snapshot behavior to an explicitly supplied `xytext` before its values become the Text position. If `xytext` is omitted, retain the existing semantic that it initially uses the annotated point's construction-time values. Limit this isolation to construction: later assignments through `annotation.xy` or `annotation.xyann` retain their current behavior. Add regression tests proving that mutating original mutable `xy` or explicit `xytext` containers after construction does not move either arrow endpoint, while the existing public movement APIs continue to work."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The reported behavior, repository evidence, and four resolved material decisions are sufficient to define an implementation-ready change with observable acceptance criteria."
+    },
+    "turn": 5
+  }
+]

@@ -1,0 +1,53 @@
+[
+  {
+    "answer": "Documentation only (Recommended)",
+    "open_material_decisions": [
+      "Whether a documented type alias should suppress the generated “alias of …” message or retain it after the user-authored documentation."
+    ],
+    "question": {
+      "header": "Alias message",
+      "options": [
+        {
+          "description": "Render the user-authored documentation and omit the generated “alias of …” message, matching the stated expected behavior.",
+          "label": "Documentation only (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Preserve the user-authored documentation and append the generated “alias of …” message, matching existing Python 3.7+ GenericAlias behavior.",
+          "label": "Documentation plus alias",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has source-level documentation, what should autodoc render?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "An automatically discovered module-level type alias with next-line multiline documentation renders all authored documentation and no generated “alias of …” text.",
+          "The same documented alias targeted explicitly through autodata renders its authored documentation and no generated “alias of …” text.",
+          "An undocumented type alias still renders its generated alias description.",
+          "Regression coverage includes the automatic module-member path that previously selected ClassDocumenter and discarded supplied source documentation on the affected Python-version path.",
+          "Relevant existing parser coverage continues to confirm that multiline next-line string documentation is captured correctly."
+        ],
+        "confirmed_decisions": [
+          "For a type alias with nonempty source-level documentation, the rendered entry contains the complete user-authored documentation and does not contain the generated “alias of …” message.",
+          "Multiline documentation written as a string expression immediately following the alias assignment is preserved, including paragraph breaks and reStructuredText markup.",
+          "The documented-alias outcome is consistent whether autodoc discovers the alias as a module member or the alias is targeted through an explicit autodata directive.",
+          "A type alias without source-level documentation retains the existing generated alias description.",
+          "Existing documentation behavior for ordinary classes and non-alias data remains unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Autodoc must preserve source-level documentation for documented type aliases and suppress the generated “alias of …” content for those aliases. This must apply when aliases are discovered as module members as well as when they are documented explicitly. Undocumented aliases continue to receive the existing generated alias description."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The only material behavior choice has been answered, and the repository evidence is sufficient to define an observable, implementation-ready contract without relying on the unavailable Python 3.6 reproduction."
+    },
+    "turn": 2
+  }
+]

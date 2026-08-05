@@ -1,0 +1,84 @@
+[
+  {
+    "answer": "Only \"\" in constructor",
+    "open_material_decisions": [
+      "Whether registration-time `name=` overrides are in scope; the request specifically describes a Blueprint being given an empty constructor name.",
+      "Whether the new validation rejects only the zero-length string or also whitespace-only names."
+    ],
+    "question": {
+      "header": "Empty name",
+      "options": [
+        {
+          "description": "Reject exactly the zero-length constructor name with ValueError; preserve whitespace-only names and registration name overrides as existing behavior.",
+          "label": "Only \"\" in constructor",
+          "recommended": true
+        },
+        {
+          "description": "Reject zero-length and whitespace-only constructor names, while leaving registration name overrides unchanged.",
+          "label": "Blank in constructor",
+          "recommended": false
+        },
+        {
+          "description": "Reject empty names both at Blueprint construction and when a registration-time name override is supplied, expanding the compatibility impact.",
+          "label": "Constructor and overrides",
+          "recommended": false
+        }
+      ],
+      "prompt": "What should count as an invalid empty Blueprint name, and should this change remain limited to the constructor?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Approve contract",
+      "options": [
+        {
+          "description": "Seal this scope and acceptance criteria as implementation-ready.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a material change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: update Blueprint.__init__ to raise ValueError when name == \"\"; do not reject whitespace-only constructor names or validate registration-time name overrides; preserve the existing dotted-name rejection; add a focused constructor test proving Blueprint(\"\", import_name) raises ValueError while existing validation remains passing. Acceptance requires the targeted blueprint tests to pass. Implementation may choose the exact clear ValueError message and test placement consistent with repository conventions. Residual risk: an empty registration-time name override remains accepted and may retain existing naming problems, intentionally outside this request."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Constructing Blueprint(\"\", import_name) raises ValueError.",
+          "Whitespace-only constructor names are not rejected by the new validation.",
+          "Registration-time name override behavior remains unchanged.",
+          "Dotted constructor names still raise ValueError.",
+          "Targeted blueprint tests pass."
+        ],
+        "confirmed_decisions": [
+          "Validation applies only to Blueprint constructor names.",
+          "Only the exact zero-length string is newly invalid; whitespace-only names remain accepted.",
+          "Registration-time name overrides are unchanged, including empty overrides.",
+          "Existing dotted-name rejection remains unchanged.",
+          "A focused test will cover the empty constructor name.",
+          "Exact error wording and test placement are delegated to implementation, constrained by repository conventions.",
+          "The owner explicitly approved this contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update Blueprint.__init__ to raise ValueError when the constructor name is exactly the zero-length string. Preserve support for whitespace-only constructor names, preserve registration-time name override behavior (including empty overrides), and preserve the existing rejection of dotted constructor names. Add a focused constructor validation test proving Blueprint(\"\", import_name) raises ValueError while existing validation continues to pass. The implementation may choose a clear ValueError message and test placement consistent with repository conventions. Registration-time empty-name overrides remain intentionally out of scope; their existing naming problems are an acknowledged residual risk."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the proposed contract, and no material decisions remain unresolved."
+    },
+    "turn": 3
+  }
+]

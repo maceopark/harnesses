@@ -1,0 +1,45 @@
+diff --git a/astropy/io/fits/diff.py b/astropy/io/fits/diff.py
+index 100cdf1..d3608ef 100644
+--- a/astropy/io/fits/diff.py
++++ b/astropy/io/fits/diff.py
+@@ -1449,7 +1449,7 @@ class TableDataDiff(_BaseDiff):
+                 arrb.dtype, np.floating
+             ):
+                 diffs = where_not_allclose(arra, arrb, rtol=self.rtol, atol=self.atol)
+-            elif "P" in col.format:
++            elif "P" in col.format or "Q" in col.format:
+                 diffs = (
+                     [
+                         idx
+diff --git a/astropy/io/fits/tests/test_diff.py b/astropy/io/fits/tests/test_diff.py
+index adfebe6..5202e99 100644
+--- a/astropy/io/fits/tests/test_diff.py
++++ b/astropy/io/fits/tests/test_diff.py
+@@ -624,6 +624,27 @@ class TestDiff(FitsTestCase):
+         report = diff.report()
+         assert "No differences found." in report
+ 
++    def test_q_vla_table_data(self):
++        column = Column("a", format="QD", array=[[0.0], [0.0, 0.0]])
++        BinTableHDU.from_columns([column]).writeto(self.temp("q_vla.fits"))
++
++        assert FITSDiff(self.temp("q_vla.fits"), self.temp("q_vla.fits")).identical
++
++        with fits.open(self.temp("q_vla.fits")) as hdul_a, fits.open(
++            self.temp("q_vla.fits")
++        ) as hdul_b:
++            assert TableDataDiff(hdul_a[1].data, hdul_b[1].data).identical
++
++            hdul_b[1].data["a"][0][0] = 0.5
++            assert TableDataDiff(
++                hdul_a[1].data, hdul_b[1].data, atol=0.5
++            ).identical
++
++            diff = TableDataDiff(hdul_a[1].data, hdul_b[1].data, atol=0.1)
++            assert not diff.identical
++            assert diff.diff_values[0][0] == ("a", 0)
++            assert "Column a data differs in row 0" in diff.report()
++
+     def test_partially_identical_files1(self):
+         """
+         Test files that have some identical HDUs but a different extension

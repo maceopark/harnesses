@@ -1,0 +1,215 @@
+diff --git a/doc/usage/extensions/autodoc.rst b/doc/usage/extensions/autodoc.rst
+index 36be756..995b91f 100644
+--- a/doc/usage/extensions/autodoc.rst
++++ b/doc/usage/extensions/autodoc.rst
+@@ -447,12 +447,16 @@ There are also config values that you can set:
+    Functions imported from C modules cannot be introspected, and therefore the
+    signature for such functions cannot be automatically determined.  However, it
+    is an often-used convention to put the signature into the first line of the
+-   function's docstring.
++   function's docstring, and multiple overloaded signatures on consecutive
++   lines.
+ 
+    If this boolean value is set to ``True`` (which is the default), autodoc will
+    look at the first line of the docstring for functions and methods, and if it
+    looks like a signature, use the line as the signature and remove it from the
+-   docstring content.
++   docstring content.  If the next lines also contain signatures for the same
++   function or method, they are used and removed as well.  The process stops at
++   the first line which is not a signature or contains a signature for another
++   object.
+ 
+    .. versionadded:: 1.1
+ 
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index f8e4be9..6089546 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1037,40 +1037,52 @@ class DocstringSignatureMixin:
+     feature of reading the signature from the docstring.
+     """
+ 
+-    def _find_signature(self, encoding: str = None) -> Tuple[str, str]:
++    def _find_signatures(self, encoding: str = None) -> List[Tuple[str, str]]:
+         if encoding is not None:
+-            warnings.warn("The 'encoding' argument to autodoc.%s._find_signature() is "
++            warnings.warn("The 'encoding' argument to autodoc.%s._find_signatures() is "
+                           "deprecated." % self.__class__.__name__,
+                           RemovedInSphinx40Warning, stacklevel=2)
+         docstrings = self.get_doc()
+         self._new_docstrings = docstrings[:]
+-        result = None
++        result = []
+         for i, doclines in enumerate(docstrings):
+             # no lines in docstring, no match
+             if not doclines:
+                 continue
+-            # match first line of docstring against signature RE
+-            match = py_ext_sig_re.match(doclines[0])
+-            if not match:
+-                continue
+-            exmod, path, base, args, retann = match.groups()
+-            # the base name must match ours
+             valid_names = [self.objpath[-1]]  # type: ignore
+             if isinstance(self, ClassDocumenter):
+                 valid_names.append('__init__')
+                 if hasattr(self.object, '__mro__'):
+                     valid_names.extend(cls.__name__ for cls in self.object.__mro__)
+-            if base not in valid_names:
++
++            for line in doclines:
++                match = py_ext_sig_re.match(line)
++                if not match:
++                    break
++                exmod, path, base, args, retann = match.groups()
++                if base not in valid_names:
++                    break
++                result.append((args, retann))
++            if not result:
+                 continue
+             # re-prepare docstring to ignore more leading indentation
+             tab_width = self.directive.state.document.settings.tab_width  # type: ignore
+-            self._new_docstrings[i] = prepare_docstring('\n'.join(doclines[1:]),
++            self._new_docstrings[i] = prepare_docstring('\n'.join(doclines[len(result):]),
+                                                         tabsize=tab_width)
+-            result = args, retann
+             # don't look any further
+             break
+         return result
+ 
++    def _find_signature(self, encoding: str = None) -> Tuple[str, str]:
++        if encoding is not None:
++            warnings.warn("The 'encoding' argument to autodoc.%s._find_signature() is "
++                          "deprecated." % self.__class__.__name__,
++                          RemovedInSphinx40Warning, stacklevel=2)
++        signatures = self._find_signatures()
++        if signatures:
++            return signatures[0]
++        return None
++
+     def get_doc(self, encoding: str = None, ignore: int = None) -> List[List[str]]:
+         if encoding is not None:
+             warnings.warn("The 'encoding' argument to autodoc.%s.get_doc() is deprecated."
+@@ -1085,9 +1097,14 @@ class DocstringSignatureMixin:
+         if self.args is None and self.env.config.autodoc_docstring_signature:  # type: ignore
+             # only act if a signature is not explicitly given already, and if
+             # the feature is enabled
+-            result = self._find_signature()
+-            if result is not None:
+-                self.args, self.retann = result
++            signatures = self._find_signatures()
++            if signatures:
++                result = []
++                for self.args, self.retann in signatures:
++                    sig = super().format_signature(**kwargs)  # type: ignore
++                    if sig:
++                        result.append(sig)
++                return '\n'.join(result)
+         return super().format_signature(**kwargs)  # type: ignore
+ 
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/__init__.py b/tests/roots/test-ext-autodoc/target/__init__.py
+index b6684ee..cecd1fb 100644
+--- a/tests/roots/test-ext-autodoc/target/__init__.py
++++ b/tests/roots/test-ext-autodoc/target/__init__.py
+@@ -144,6 +144,27 @@ First line of docstring
+         return 456
+ 
+ 
++class OverloadedDocstringSig(object):
++    def meth(self):
++        """meth(value: int) -> int
++        meth(value: str, count: int = 1) -> str
++        First line of docstring.
++
++        Rest of docstring.
++        """
++
++    def terminated(self):
++        """terminated(value: int) -> int
++        other(value: str) -> str
++        Remaining content.
++        """
++
++    def invalid_first(self):
++        """Not a signature.
++        invalid_first(value: int) -> int
++        """
++
++
+ class StrRepr(str):
+     """docstring"""
+ 
+diff --git a/tests/test_ext_autodoc_configs.py b/tests/test_ext_autodoc_configs.py
+index 2255888..c2d91eb 100644
+--- a/tests/test_ext_autodoc_configs.py
++++ b/tests/test_ext_autodoc_configs.py
+@@ -275,6 +275,48 @@ def test_autodoc_docstring_signature(app):
+         '',
+     ]
+ 
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_docstring_overloaded_signatures(app):
++    options = {"members": None}
++    processed = []
++
++    def process_signature(app, what, name, obj, options, args, retann):
++        processed.append((args, retann))
++        if name.endswith('.meth') and args == '(value: int)':
++            return '(integer)', 'number'
++
++    app.connect('autodoc-process-signature', process_signature)
++    actual = list(do_autodoc(
++        app, 'method', 'target.OverloadedDocstringSig.meth'))
++    assert actual == [
++        '',
++        '.. py:method:: OverloadedDocstringSig.meth(integer) -> number',
++        '               OverloadedDocstringSig.meth(value: str, count: int = 1) -> str',
++        '   :module: target',
++        '',
++        '   First line of docstring.',
++        '',
++        '   Rest of docstring.',
++        '',
++    ]
++    assert processed == [
++        ('(value: int)', 'int'),
++        ('(value: str, count: int = 1)', 'str'),
++    ]
++
++    actual = list(do_autodoc(
++        app, 'method', 'target.OverloadedDocstringSig.terminated'))
++    assert '.. py:method:: OverloadedDocstringSig.terminated(value: int) -> int' in actual
++    assert '   other(value: str) -> str' in actual
++    assert '   Remaining content.' in actual
++
++    actual = list(do_autodoc(
++        app, 'method', 'target.OverloadedDocstringSig.invalid_first'))
++    assert '.. py:method:: OverloadedDocstringSig.invalid_first()' in actual
++    assert '   Not a signature.' in actual
++    assert '   invalid_first(value: int) -> int' in actual
++
+     # disable autodoc_docstring_signature
+     app.config.autodoc_docstring_signature = False
+     actual = do_autodoc(app, 'class', 'target.DocstringSig', options)
+@@ -320,6 +362,19 @@ def test_autodoc_docstring_signature(app):
+         '',
+     ]
+ 
++    actual = list(do_autodoc(
++        app, 'method', 'target.OverloadedDocstringSig.meth'))
++    assert '.. py:method:: OverloadedDocstringSig.meth()' in actual
++    assert '   meth(value: int) -> int' in actual
++    assert '   meth(value: str, count: int = 1) -> str' in actual
++
++    app.config.autodoc_docstring_signature = True
++    actual = list(do_autodoc(
++        app, 'method', 'target.OverloadedDocstringSig.meth(explicit)'))
++    assert '.. py:method:: OverloadedDocstringSig.meth(explicit)' in actual
++    assert '   meth(value: int) -> int' in actual
++    assert '   meth(value: str, count: int = 1) -> str' in actual
++
+ 
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autoclass_content_and_docstring_signature_class(app):

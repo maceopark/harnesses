@@ -1,0 +1,50 @@
+[
+  {
+    "answer": "Existing normalized form",
+    "open_material_decisions": [
+      "Whether failure to denest must preserve the input’s exact structure or preserve sqrtdenest’s existing preliminary normalization and return an equivalent normalized expression."
+    ],
+    "question": {
+      "header": "Unchanged form",
+      "options": [
+        {
+          "description": "Preserve current sqrtdenest preprocessing, so the reported input returns the supplied expanded equivalent without raising IndexError.",
+          "label": "Existing normalized form",
+          "recommended": true
+        },
+        {
+          "description": "Require structural equality with the expression passed by the caller, changing current expand_mul behavior on unsuccessful denesting.",
+          "label": "Exact input structure",
+          "recommended": false
+        }
+      ],
+      "prompt": "When denesting is not possible, which observable result should the contract require?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Calling sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) does not raise IndexError.",
+          "The reported expression produces 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.",
+          "Expressions that cannot be denested continue to return their existing normalized form rather than failing.",
+          "Previously supported successful denesting results remain unchanged."
+        ],
+        "confirmed_decisions": [
+          "For (3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2, sqrtdenest completes without raising IndexError and returns 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.",
+          "Failure to denest preserves sqrtdenest’s existing normalized form; exact structural preservation of the caller’s original input is not required.",
+          "Existing successful denesting behavior and existing unchanged-result behavior remain compatible."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Ensure sqrtdenest does not raise IndexError when a nested square-root candidate cannot be denested. After sqrtdenest’s existing preliminary normalization, an undenestable expression must be returned unchanged in that normalized form."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The reported failure, expected fallback behavior, and normalization semantics are fully resolved. No material product or compatibility decision remains open."
+    },
+    "turn": 2
+  }
+]

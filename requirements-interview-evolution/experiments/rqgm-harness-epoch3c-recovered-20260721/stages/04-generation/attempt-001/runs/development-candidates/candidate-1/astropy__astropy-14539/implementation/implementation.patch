@@ -1,0 +1,52 @@
+diff --git a/astropy/io/fits/diff.py b/astropy/io/fits/diff.py
+index 100cdf1..d3608ef 100644
+--- a/astropy/io/fits/diff.py
++++ b/astropy/io/fits/diff.py
+@@ -1449,7 +1449,7 @@ class TableDataDiff(_BaseDiff):
+                 arrb.dtype, np.floating
+             ):
+                 diffs = where_not_allclose(arra, arrb, rtol=self.rtol, atol=self.atol)
+-            elif "P" in col.format:
++            elif "P" in col.format or "Q" in col.format:
+                 diffs = (
+                     [
+                         idx
+diff --git a/astropy/io/fits/tests/test_diff.py b/astropy/io/fits/tests/test_diff.py
+index adfebe6..c0c8356 100644
+--- a/astropy/io/fits/tests/test_diff.py
++++ b/astropy/io/fits/tests/test_diff.py
+@@ -419,6 +419,34 @@ class TestDiff(FitsTestCase):
+         assert diff.diff_ratio == 0
+         assert diff.diff_total == 0
+ 
++    def test_q_format_variable_length_array(self):
++        """Regression test for Q-format variable-length array comparisons."""
++        column = Column("a", format="QD", array=[[0], [0, 0]])
++        table = BinTableHDU.from_columns([column])
++        filename = self.temp("q_vla.fits")
++        table.writeto(filename)
++
++        diff = FITSDiff(filename, filename)
++        assert diff.identical
++        assert diff.diff_hdus == []
++
++        equivalent = BinTableHDU.from_columns([column.copy()])
++        assert TableDataDiff(table.data, equivalent.data).identical
++
++        changed = BinTableHDU.from_columns(
++            [Column("a", format="QD", array=[[0], [0, 1]])]
++        )
++        diff = TableDataDiff(table.data, changed.data)
++        assert not diff.identical
++        assert diff.diff_total == 1
++        assert diff.diff_values[0][0] == ("a", 1)
++
++        close = BinTableHDU.from_columns(
++            [Column("a", format="QD", array=[[0.00001], [0, 0]])]
++        )
++        assert TableDataDiff(table.data, close.data, atol=1.0e-4).identical
++        assert not TableDataDiff(table.data, close.data, atol=1.0e-6).identical
++
+     def test_diff_empty_tables(self):
+         """
+         Regression test for https://aeon.stsci.edu/ssb/trac/pyfits/ticket/178

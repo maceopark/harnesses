@@ -1,0 +1,21 @@
+{
+  "compatibility_regressions": [
+    "Shared-boundary coercion could change dtype and backend behavior for boolean weights in weighted sums that were not implicated by the reported denominator bug.",
+    "Requiring integer coercion across every weighted reduction creates a broader behavioral change than the repository-consistent denominator-only fix demonstrated by the hindsight patch."
+  ],
+  "implementation_ready": false,
+  "invented_requirements": [
+    "Boolean-to-integer coercion at the shared weighted-reduction boundary for all weighted reductions; the public issue and repository evidence establish a boolean-denominator defect, while the hindsight gold patch fixes only _sum_of_weights.",
+    "Mandatory regression coverage for weighted sum in addition to sum_of_weights and mean; the sealed fail-to-pass tests cover only sum_of_weights and mean.",
+    "A requirement that coercion not mutate the supplied weights; reasonable implementation hygiene, but not a material issue-time requirement supported by the public request or audited repository facts.",
+    "Broad compatibility acceptance covering Dataset inputs, dimension/skipna behavior, and backend/lazy-array integer behavior, beyond what was needed to specify the reported defect."
+  ],
+  "material_blockers": [
+    "The sealed contract overcommits the implementation boundary: it requires shared coercion for all weighted reductions, but audited issue-time evidence only requires numeric accumulation when a boolean non-null mask is combined with boolean weights for sum_of_weights and mean.",
+    "The acceptance contract requires weighted-sum regression coverage not supported by the sealed fail-to-pass set or the hindsight implementation, making faithful implementation unnecessarily broader than the issue."
+  ],
+  "owner_recall": 1,
+  "redundant_questions": [],
+  "repository_fidelity": 0.68,
+  "summary": "The interview consistently recalled every owner-selected answer and obtained explicit approval, but its leading scope question turned a localized boolean denominator bug into an all-reductions coercion contract. Audited public facts support boolean 0/1 semantics and integer conversion as a valid fix, yet do not support requiring coercion at the shared reduction boundary or weighted-sum regression coverage. Hindsight confirms the minimal repository-consistent fix was local to _sum_of_weights, so those observations are diagnostic rather than grounds for scoring missing issue-time recall."
+}

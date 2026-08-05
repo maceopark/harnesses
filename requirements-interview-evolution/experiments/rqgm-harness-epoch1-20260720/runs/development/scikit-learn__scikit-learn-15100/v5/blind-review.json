@@ -1,0 +1,30 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/summary",
+          "quoted_value": "Fix `strip_accents_unicode` in `sklearn/feature_extraction/text.py` so it always removes Unicode combining characters from the NFKD-normalized input, including when the input is already in NFKD form. Remove or revise the equality-based early return that currently bypasses combining-character filtering. Preserve the existing behavior for precomposed accented text and leave `strip_accents_ascii` unchanged. Add regression coverage in `sklearn/feature_extraction/tests/test_text.py` proving that canonically equivalent precomposed and already-decomposed accented strings both produce the same unaccented result. Also exercise the public vectorizer path with `strip_accents='unicode'` to confirm decomposed accents are removed during analyzer preprocessing; this shared path covers `CountVectorizer` and inherited `TfidfVectorizer` behavior."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/2/statement",
+          "quoted_value": "The vectorizer preprocessing builder maps strip_accents='unicode' directly to strip_accents_unicode."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/6/statement",
+          "quoted_value": "Existing analyzer coverage verifies strip_accents='unicode' through CountVectorizer using precomposed French accented text."
+        }
+      ],
+      "description": "The TfidfVectorizer coverage claim is unsupported by the permitted audited evidence. It materially overstates what the proposed CountVectorizer acceptance coverage verifies and could allow TfidfVectorizer compatibility to be accepted without a grounded check.",
+      "failure_class": "invention",
+      "general_cause": "The contract extends the verified integration scope to TfidfVectorizer without audited evidence establishing its inheritance or use of the same preprocessing route.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "The summary claims that CountVectorizer integration coverage also covers inherited TfidfVectorizer behavior, while the audited evidence only establishes the vectorizer preprocessing mapping, shared accent-function invocation, and existing CountVectorizer analyzer coverage."
+    }
+  ],
+  "summary": "One material readiness failure: the contract invents an audited-unsupported claim that CountVectorizer integration coverage also verifies inherited TfidfVectorizer behavior."
+}

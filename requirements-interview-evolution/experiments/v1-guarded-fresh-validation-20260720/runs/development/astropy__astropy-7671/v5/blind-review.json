@@ -1,0 +1,40 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/0",
+          "quoted_value": "Use `pkg_resources.parse_version` as the required comparison implementation."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/5",
+          "quoted_value": "Do not add a dependency declaration."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/4",
+          "quoted_value": "The targeted introspection test suite passes without adding a new runtime dependency declaration."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/10/statement",
+          "quoted_value": "The repository's setup script imports `setup` from setuptools."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/11/statement",
+          "quoted_value": "Runtime installation requirements list NumPy as the sole entry in `install_requires`; no separate version-parsing package is listed there."
+        }
+      ],
+      "description": "The contract is not implementation-ready because its required parser can introduce a new import-time failure in installations where setuptools/pkg_resources is absent. Repository evidence establishes only that setup.py imports setuptools, not that pkg_resources is a declared or guaranteed runtime dependency. The acceptance checks also omit verification in an environment without setuptools/pkg_resources, so the asserted no-dependency approach does not protect the existing public astropy.utils import surface.",
+      "failure_class": "compatibility-regression",
+      "general_cause": "The contract conflates setup-time use of setuptools with guaranteed runtime availability of pkg_resources.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "It mandates importing pkg_resources.parse_version while also prohibiting a dependency declaration, although the audited runtime requirements contain only NumPy."
+    }
+  ],
+  "summary": "One material readiness failure: the contract requires an undeclared runtime parser dependency based only on setup-time setuptools usage, creating an unaddressed import compatibility risk."
+}

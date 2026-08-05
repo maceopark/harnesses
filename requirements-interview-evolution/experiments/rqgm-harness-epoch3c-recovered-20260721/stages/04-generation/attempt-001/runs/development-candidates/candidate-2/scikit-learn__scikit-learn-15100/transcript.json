@@ -1,0 +1,31 @@
+[
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "strip_accents_unicode(\"\\u00f1\") returns \"n\".",
+          "strip_accents_unicode(\"n\\u0303\") returns \"n\".",
+          "For canonically equivalent composed and decomposed accented text, strip_accents_unicode returns the same accent-free result.",
+          "CountVectorizer configured with strip_accents='unicode' processes already-decomposed accented input as its corresponding accent-free text.",
+          "TfidfVectorizer configured with strip_accents='unicode' exhibits the same corrected preprocessing behavior.",
+          "Previously supported composed Latin, composed Arabic, and mixed accented/plain inputs continue to produce their established accent-free results."
+        ],
+        "confirmed_decisions": [
+          "strip_accents_unicode removes combining accents even when its input is already in NFKD form.",
+          "Canonically equivalent composed and decomposed accented inputs yield identical accent-free output.",
+          "Vectorizers configured with strip_accents='unicode' inherit the corrected behavior through their existing shared preprocessing path.",
+          "Existing Unicode accent-stripping behavior for composed Latin, Arabic, and mixed accented/plain text is preserved.",
+          "No change is required to strip_accents='ascii', custom callable accent stripping, or strip_accents=None behavior."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Correct Unicode accent stripping so canonically equivalent composed and already-NFKD inputs produce the same accent-free text. In particular, both U+00F1 (LATIN SMALL LETTER N WITH TILDE) and the already-decomposed sequence U+006E U+0303 must produce \"n\" through strip_accents_unicode. The same behavior must be observable when strip_accents='unicode' is used by the shared vectorizer preprocessing path, including CountVectorizer and inheriting vectorizers such as TfidfVectorizer. Existing behavior for supported composed accented text remains unchanged."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The request, expected result, and audited repository evidence establish the required behavior without any remaining material ambiguity."
+    },
+    "turn": 1
+  }
+]

@@ -1,0 +1,60 @@
+diff --git a/astropy/io/fits/diff.py b/astropy/io/fits/diff.py
+index 100cdf1..d3608ef 100644
+--- a/astropy/io/fits/diff.py
++++ b/astropy/io/fits/diff.py
+@@ -1449,7 +1449,7 @@ class TableDataDiff(_BaseDiff):
+                 arrb.dtype, np.floating
+             ):
+                 diffs = where_not_allclose(arra, arrb, rtol=self.rtol, atol=self.atol)
+-            elif "P" in col.format:
++            elif "P" in col.format or "Q" in col.format:
+                 diffs = (
+                     [
+                         idx
+diff --git a/astropy/io/fits/tests/test_diff.py b/astropy/io/fits/tests/test_diff.py
+index adfebe6..5e75d68 100644
+--- a/astropy/io/fits/tests/test_diff.py
++++ b/astropy/io/fits/tests/test_diff.py
+@@ -601,6 +601,42 @@ class TestDiff(FitsTestCase):
+         assert "13 different table data element(s) found (65.00% different)" in report
+         assert report.count("more indices") == 1
+ 
++    def test_q_vla_data(self):
++        ca = Column("a", format="QD", array=[[0.0], [1.0, 2.0]])
++        cb = Column("a", format="QD", array=[[0.0], [1.0, 2.0]])
++        ta = BinTableHDU.from_columns([ca])
++        tb = BinTableHDU.from_columns([cb])
++
++        assert TableDataDiff(ta.data, tb.data).identical
++
++        tb.data["a"][1][1] = 3.0
++        diff = TableDataDiff(ta.data, tb.data)
++        assert not diff.identical
++        assert diff.diff_total == 1
++        assert diff.diff_values[0][0] == ("a", 1)
++
++        tb.data["a"][1][1] = 2.05
++        assert TableDataDiff(ta.data, tb.data, atol=0.1).identical
++        assert TableDataDiff(ta.data, tb.data, rtol=0.03).identical
++
++        diff = TableDataDiff(ta.data, tb.data, atol=0.01)
++        assert not diff.identical
++        assert diff.diff_values[0][0] == ("a", 1)
++
++        diff = TableDataDiff(ta.data, tb.data, rtol=0.01)
++        assert not diff.identical
++        assert diff.diff_values[0][0] == ("a", 1)
++
++    def test_identical_q_vla_file(self):
++        column = Column("a", format="QD", array=[[0.0], [0.0, 0.0]])
++        filename = self.temp("q-vla.fits")
++        BinTableHDU.from_columns([column]).writeto(filename)
++
++        diff = FITSDiff(filename, filename)
++        assert diff.identical
++        assert diff.diff_hdus == []
++        assert "No differences found." in diff.report()
++
+     def test_identical_files_basic(self):
+         """Test identicality of two simple, extensionless files."""
+ 

@@ -1,0 +1,304 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..14cd02e 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1723,7 +1723,12 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+ 
+     def add_content(self, more_content: Optional[StringList], no_docstring: bool = False
+                     ) -> None:
+-        if self.doc_as_attr:
++        has_source_comment = False
++        if self.doc_as_attr and self.analyzer and self.objpath:
++            key = ('.'.join(self.objpath[:-1]), self.objpath[-1])
++            has_source_comment = bool(self.analyzer.find_attr_docs().get(key))
++
++        if self.doc_as_attr and not has_source_comment:
+             try:
+                 more_content = StringList([_('alias of %s') % restify(self.object)], source='')
+             except AttributeError:
+@@ -1785,6 +1790,10 @@ class DataDocumenterMixinBase:
+         """Update docstring for the NewType object."""
+         pass
+ 
++    def has_source_comment(self) -> bool:
++        """Return whether the variable has documentation in the source code."""
++        return False
++
+ 
+ class GenericAliasMixin(DataDocumenterMixinBase):
+     """
+@@ -1797,7 +1806,7 @@ class GenericAliasMixin(DataDocumenterMixinBase):
+                 super().should_suppress_directive_header())
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if inspect.isgenericalias(self.object):
++        if inspect.isgenericalias(self.object) and not self.has_source_comment():
+             more_content.append(_('alias of %s') % restify(self.object), '')
+             more_content.append('', '')
+ 
+@@ -1815,7 +1824,7 @@ class NewTypeMixin(DataDocumenterMixinBase):
+                 super().should_suppress_directive_header())
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if inspect.isNewType(self.object):
++        if inspect.isNewType(self.object) and not self.has_source_comment():
+             supertype = restify(self.object.__supertype__)
+             more_content.append(_('alias of %s') % supertype, '')
+             more_content.append('', '')
+@@ -1848,7 +1857,7 @@ class TypeVarMixin(DataDocumenterMixinBase):
+             return super().get_doc()  # type: ignore
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if isinstance(self.object, TypeVar):
++        if isinstance(self.object, TypeVar) and not self.has_source_comment():
+             attrs = [repr(self.object.__name__)]
+             for constraint in self.object.__constraints__:
+                 attrs.append(stringify_typehint(constraint))
+@@ -2006,6 +2015,9 @@ class DataDocumenter(GenericAliasMixin, NewTypeMixin, TypeVarMixin,
+         else:
+             return super().get_doc(ignore)
+ 
++    def has_source_comment(self) -> bool:
++        return bool(self.get_module_comment(self.objpath[-1]))
++
+     def add_content(self, more_content: Optional[StringList], no_docstring: bool = False
+                     ) -> None:
+         # Disable analyzing variable comment on Documenter.add_content() to control it on
+@@ -2587,6 +2599,9 @@ class AttributeDocumenter(GenericAliasMixin, NewTypeMixin, SlotsMixin,  # type:
+         finally:
+             self.config.autodoc_inherit_docstrings = orig  # type: ignore
+ 
++    def has_source_comment(self) -> bool:
++        return bool(self.get_attribute_comment(self.parent, self.objpath[-1]))
++
+     def add_content(self, more_content: Optional[StringList], no_docstring: bool = False
+                     ) -> None:
+         # Disable analyzing attribute comment on Documenter.add_content() to control it on
+diff --git a/tests/roots/test-ext-autodoc/target/aliasdoc.py b/tests/roots/test-ext-autodoc/target/aliasdoc.py
+new file mode 100644
+index 0000000..4183bdd
+--- /dev/null
++++ b/tests/roots/test-ext-autodoc/target/aliasdoc.py
+@@ -0,0 +1,25 @@
++from pathlib import Path
++from typing import Any, Callable, Dict, NewType, Union
++
++
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary with options.
++
++This documentation spans multiple lines.
++"""
++
++FileContents = Union[str, None]
++"""Contents to write, or ``None``."""
++
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of file operations.
++
++The callable may return a path or ``None``.
++"""
++
++UndocumentedNewType = NewType("UndocumentedNewType", str)
++
++
++class Aliases:
++    FileContents = Union[str, None]
++    """Class-level alias documentation."""
+diff --git a/tests/test_ext_autodoc.py b/tests/test_ext_autodoc.py
+index 4c16886..02fe150 100644
+--- a/tests/test_ext_autodoc.py
++++ b/tests/test_ext_autodoc.py
+@@ -1943,16 +1943,12 @@ def test_autodoc_GenericAlias(app):
+             '',
+             '      A list of int',
+             '',
+-            '      alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+             '',
+             '.. py:data:: T',
+             '   :module: target.genericalias',
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
+@@ -1975,67 +1971,60 @@ def test_autodoc_TypeVar(app):
+         '',
+         '      T1',
+         '',
+-        "      alias of TypeVar('T1')",
+-        '',
+         '',
+         '   .. py:attribute:: Class.T6',
+         '      :module: target.typevar',
+         '',
+         '      T6',
+         '',
+-        '      alias of :class:`int`',
+-        '',
+         '',
+         '.. py:data:: T1',
+         '   :module: target.typevar',
+         '',
+         '   T1',
+         '',
+-        "   alias of TypeVar('T1')",
+-        '',
+         '',
+         '.. py:data:: T3',
+         '   :module: target.typevar',
+         '',
+         '   T3',
+         '',
+-        "   alias of TypeVar('T3', int, str)",
+-        '',
+         '',
+         '.. py:data:: T4',
+         '   :module: target.typevar',
+         '',
+         '   T4',
+         '',
+-        "   alias of TypeVar('T4', covariant=True)",
+-        '',
+         '',
+         '.. py:data:: T5',
+         '   :module: target.typevar',
+         '',
+         '   T5',
+         '',
+-        "   alias of TypeVar('T5', contravariant=True)",
+-        '',
+         '',
+         '.. py:data:: T6',
+         '   :module: target.typevar',
+         '',
+         '   T6',
+         '',
+-        '   alias of :class:`int`',
+-        '',
+         '',
+         '.. py:data:: T7',
+         '   :module: target.typevar',
+         '',
+         '   T7',
+         '',
+-        "   alias of TypeVar('T7', bound=\\ :class:`int`)",
+-        '',
+     ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_documented_alias_members(app):
++    options = {'members': None, 'undoc-members': None}
++    actual = do_autodoc(app, 'module', 'target.aliasdoc', options)
++    assert '   This documentation spans multiple lines.' in actual
++    assert '      Class-level alias documentation.' in actual
++    assert sum('alias of ' in line for line in actual) == 1
++
++
+ @pytest.mark.skipif(sys.version_info < (3, 9), reason='py39+ is required.')
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodoc_Annotated(app):
+diff --git a/tests/test_ext_autodoc_autoattribute.py b/tests/test_ext_autodoc_autoattribute.py
+index 5e72202..04a87de 100644
+--- a/tests/test_ext_autodoc_autoattribute.py
++++ b/tests/test_ext_autodoc_autoattribute.py
+@@ -156,8 +156,6 @@ def test_autoattribute_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
+@@ -171,8 +169,6 @@ def test_autoattribute_NewType(app):
+         '',
+         '   T6',
+         '',
+-        '   alias of :class:`int`',
+-        '',
+     ]
+ 
+ 
+@@ -186,11 +182,16 @@ def test_autoattribute_TypeVar(app):
+         '',
+         '   T1',
+         '',
+-        "   alias of TypeVar('T1')",
+-        '',
+     ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autoattribute_documented_typing_alias(app):
++    actual = do_autodoc(app, 'attribute', 'target.aliasdoc.Aliases.FileContents')
++    assert 'Class-level alias documentation.' in actual
++    assert not any('alias of ' in line for line in actual)
++
++
+ @pytest.mark.skipif(sys.version_info < (3, 6), reason='python 3.6+ is required.')
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autoattribute_hide_value(app):
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..2dd5827 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -96,8 +96,6 @@ def test_autodata_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
+@@ -111,8 +109,6 @@ def test_autodata_NewType(app):
+         '',
+         '   T6',
+         '',
+-        '   alias of :class:`int`',
+-        '',
+     ]
+ 
+ 
+@@ -126,11 +122,33 @@ def test_autodata_TypeVar(app):
+         '',
+         '   T1',
+         '',
+-        "   alias of TypeVar('T1')",
+-        '',
+     ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodata_undocumented_aliases(app):
++    generic_alias = do_autodoc(app, 'data', 'target.genericalias.C')
++    assert any('alias of ' in line for line in generic_alias)
++
++    type_var = do_autodoc(app, 'data', 'target.typevar.T2')
++    assert any("alias of TypeVar('T2')" in line for line in type_var)
++
++    new_type = do_autodoc(app, 'data', 'target.aliasdoc.UndocumentedNewType')
++    assert any('alias of :class:`str`' in line for line in new_type)
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++@pytest.mark.parametrize(('name', 'documentation'), [
++    ('ScaffoldOpts', 'This documentation spans multiple lines.'),
++    ('FileContents', 'Contents to write, or ``None``.'),
++    ('FileOp', 'The callable may return a path or ``None``.'),
++])
++def test_autodata_documented_typing_aliases(app, name, documentation):
++    actual = do_autodoc(app, 'data', 'target.aliasdoc.' + name)
++    assert documentation in actual
++    assert not any('alias of ' in line for line in actual)
++
++
+ @pytest.mark.skipif(sys.version_info < (3, 6), reason='python 3.6+ is required.')
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_hide_value(app):

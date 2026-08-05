@@ -1,0 +1,203 @@
+{
+  "implementation_agent_directive": {
+    "authority": "This file is the governing implementation contract for the SWE-bench interview-case pilot.",
+    "implementation_authorized": true,
+    "scope_rule": "Implement only this contract. Do not widen the corpus, weaken partition isolation, or treat gold patches as unique requirements.",
+    "specification_gap_protocol": {
+      "log_path": "decision.jsonl",
+      "required_before_deciding": true,
+      "required_fields": [
+        "timestamp",
+        "gap",
+        "options_considered",
+        "choice",
+        "reason",
+        "observable_impact",
+        "reversibility"
+      ],
+      "stop_for_owner_when": [
+        "destructive",
+        "security-sensitive",
+        "irreversible",
+        "costly beyond the agreed local pilot",
+        "scope-changing"
+      ]
+    }
+  },
+  "schema": "SWEbenchInterviewPilotBuildContract.v1",
+  "status": "implementation_ready",
+  "outcome": "Build and run a reproducible 15-instance SWE-bench Verified pilot that generates gold-informed interview training cases without leaking gold implementation details into Interviewer or Mutator inputs.",
+  "dataset": {
+    "dataset_id": "princeton-nlp/SWE-bench_Verified",
+    "split": "test",
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "parquet_sha256": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd",
+    "harness_revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9",
+    "selection_seed": "Derive deterministically from the dataset revision digest.",
+    "model": "gpt-5.6-sol",
+    "model_fallback": "forbidden"
+  },
+  "storage": {
+    "cache_env": "SWEBENCH_INTERVIEW_CACHE",
+    "default_cache": "OS user cache directory",
+    "image_retention": "Keep only the shared SWE-bench base image. Remove each environment and instance image after every baseline or gold harness invocation; rebuilding and downloading again is acceptable.",
+    "git_policy": "Commit identifiers, digests, schemas, minimal evidence excerpts, derived cases, manifests, and reports. Keep full issue, patch, test patch, repository checkout, role prompts, transcripts, and sealed raw artifacts in the gitignored cache.",
+    "evidence_excerpt_limit": {
+      "max_lines": 20,
+      "max_utf8_bytes": 2048
+    }
+  },
+  "case_layout": {
+    "root": "swebench-interview-cases/corpus",
+    "per_case_files": [
+      "case.json",
+      "sealed-source.json",
+      "review-a.json",
+      "review-b.json",
+      "audit.json",
+      "run-manifest.json"
+    ],
+    "partition_indexes": [
+      "development/index.json",
+      "validation/index.json",
+      "holdout/index.json"
+    ],
+    "public_case_rule": "case.json is Interviewer-safe and contains no owner answer, hindsight trap, expected omission, gold patch clue, or implementation incidental.",
+    "holdout_alias": "Plain SHA-256 pseudonymization; explicitly not confidential against enumeration."
+  },
+  "pilot_selection": {
+    "approved_total": 15,
+    "partitions": {
+      "development": 8,
+      "validation": 3,
+      "holdout": 4
+    },
+    "minimum_repository_families": 6,
+    "strata": [
+      "canonical repository family",
+      "Verified difficulty",
+      "dataset-wide patch and test change-size quantile"
+    ],
+    "selection_method": "Fixed-seed stratified random selection.",
+    "replacement_policy": "Continue deterministically within the same stratum until the approved quota is filled or the relevant Verified candidate pool is exhausted.",
+    "family_rule": "Canonical upstream repository identity with rename, transfer, and official fork lineage merged. A family may occur in exactly one partition."
+  },
+  "source_and_timing": {
+    "source_enum": [
+      "issue",
+      "repository",
+      "test",
+      "patch",
+      "inferred"
+    ],
+    "knowledge_timing_enum": [
+      "issue_time_author_knowable",
+      "repository_discoverable",
+      "implementation_time",
+      "hindsight_only"
+    ],
+    "hints_policy": "Keep hints_text separate from the problem statement. Expose only hints verified as public before the solution PR first commit; otherwise classify as hindsight_only.",
+    "test_visibility": "Only base-commit tests independently discovered from the repository are Interviewer-visible. test_patch, FAIL_TO_PASS/PASS_TO_PASS expectations, and gold execution results remain sealed."
+  },
+  "review": {
+    "reviewers": 2,
+    "reviewer_model": "gpt-5.6-sol",
+    "independence": "Separate ephemeral processes; neither reviewer sees the other output.",
+    "owner_oracle_gate": "Both reviewers must unanimously approve materiality, issue-time knowability, implementation independence, and correct separation from repository facts.",
+    "disagreement": "human_review_required and excluded from approved quota; continue deterministic replacement.",
+    "leakage_gate": "Reject both lexical and semantic leakage of patch-only symbols, paths, code fragments, internal structures, or implementation-specific wording.",
+    "alternative_implementation_test": "A public behavioral statement is acceptable only if multiple normal implementations could satisfy it."
+  },
+  "execution": {
+    "docker_platform": "linux/amd64",
+    "max_workers": 1,
+    "harness_validation": "Validate all 15 instances: base FAIL_TO_PASS fails, base PASS_TO_PASS passes, and gold-applied FAIL_TO_PASS plus PASS_TO_PASS pass.",
+    "invalid_instance_policy": "Record exclusion with environment, command, exit code, log digest, and reason; replace from the same stratum.",
+    "arbitrary_environment_repairs": "forbidden"
+  },
+  "native_evolution_integration": {
+    "mode": "--imported-case",
+    "preserve_existing_modes": true,
+    "skip_roles": [
+      "failure-lens-proposer",
+      "lens-auditor",
+      "lens-case-designer",
+      "owner-oracle-designer"
+    ],
+    "reuse_roles": [
+      "repository-discovery",
+      "evidence-auditor",
+      "interviewer",
+      "owner",
+      "adversarial-reviewer",
+      "judge",
+      "adjudicator",
+      "development-mutator"
+    ],
+    "blind_review_taxonomy": [
+      "omission",
+      "invention",
+      "repository-delegation",
+      "synthesis-loss",
+      "unverifiable-acceptance",
+      "compatibility-regression",
+      "implementation-leakage",
+      "redundant-question"
+    ]
+  },
+  "learning_and_partitions": {
+    "repeated_failure_rule": "Require at least two distinct development instances, the same fixed failure class, the same general cause, compatible observable signals, and unanimous review that the pattern is repository- and implementation-independent.",
+    "hindsight_mutation": "forbidden until reproduced as a blind readiness failure in a separate development case",
+    "mutation": "Run all eight development cases against frozen v5, then perform at most one minimal batch mutation using only repeated approved readiness failure summaries.",
+    "validation": "Use the three validation cases only to choose between baseline v5 and the single candidate; never mutate from validation findings.",
+    "validation_order": [
+      "zero contamination or leakage",
+      "fewer inventions and compatibility regressions",
+      "fewer approved material blockers",
+      "more implementation-ready cases",
+      "higher owner recall and repository fidelity",
+      "fewer redundant questions"
+    ],
+    "validation_tie": "keep baseline v5",
+    "holdout": "Run only the selected candidate once; do not expose individual holdout inputs to Interviewer or Mutator and do not mutate from holdout findings."
+  },
+  "holdout_promotion_gate": {
+    "required_cases": 4,
+    "all_implementation_ready": true,
+    "contamination": 0,
+    "leakage": 0,
+    "invented_requirements": 0,
+    "compatibility_regressions": 0,
+    "approved_material_blockers": 0,
+    "success_action": "Freeze candidate as evolution/v6/SKILL.md and make clarify-requirements/SKILL.md byte-identical.",
+    "failure_action": "Preserve candidate and evidence but keep deployed v5 unchanged."
+  },
+  "hindsight_scoring": {
+    "readiness_findings": "Only issue-time owner decision gaps, repository fact violations, synthesis loss, inventions, compatibility regressions, and objectively unverifiable acceptance can directly lower readiness.",
+    "diagnostics": "hindsight_only observations are reported separately and do not lower readiness unless separately adjudicated as contradicting the public request or repository contract."
+  },
+  "acceptance_checks": [
+    "Closed JSON schemas reject unknown fields, invalid provenance, invalid knowledge timing, missing dispositions, digest drift, leakage, and cross-partition family overlap.",
+    "The same dataset revision and derived seed reproduce the same initial candidate order, strata, partition assignment, and deterministic replacements.",
+    "Interviewer and Mutator recorded inputs contain no gold patch, test patch, owner oracle, hindsight trap, expected failure, or patch-only symbol/path sentinel.",
+    "Reviewer A and B run independently and every generated decision receives two dispositions; disagreement cannot enter an approved case.",
+    "All approved instances have successful official harness integrity evidence on linux/amd64 and immutable image digests.",
+    "Exactly 8 approved development, 3 approved validation, and 4 approved holdout cases span at least 6 non-overlapping canonical repository families.",
+    "Development mutation uses only failure patterns independently reproduced in at least two development instances and never uses validation or holdout details.",
+    "Validation applies the fixed lexicographic rule and keeps v5 on a complete tie.",
+    "Holdout never invokes Mutator and promotion occurs only when every strict absolute gate is satisfied.",
+    "Existing greenfield and repository native-evolution tests continue to pass unchanged in behavior.",
+    "A Korean completion report distinguishes readiness findings from hindsight diagnostics and states model-contamination, logical-isolation, license, sample-size, pseudonymization, and arm64-emulation limitations."
+  ],
+  "non_goals": [
+    "Measuring whether an implementation agent reproduces the gold patch",
+    "Treating the gold patch as the unique correct implementation",
+    "Using SWE-bench test pass rate as the primary interview-skill score",
+    "Claiming cryptographic holdout secrecy",
+    "Claiming OS-level isolation",
+    "Automatically converting hindsight-only observations into skill rules",
+    "Expanding beyond the 15 approved pilot cases in this implementation"
+  ],
+  "implementation_authorization": true,
+  "unresolved_non_blocking_items": []
+}

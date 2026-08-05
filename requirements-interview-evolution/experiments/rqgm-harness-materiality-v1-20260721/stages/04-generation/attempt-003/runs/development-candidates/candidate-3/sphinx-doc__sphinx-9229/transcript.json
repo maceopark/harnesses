@@ -1,0 +1,54 @@
+[
+  {
+    "answer": "Documentation and alias",
+    "open_material_decisions": [
+      "Whether a type alias with next-line variable documentation should retain the generated “alias of …” text in addition to the authored documentation."
+    ],
+    "question": {
+      "header": "Alias output",
+      "options": [
+        {
+          "description": "Render the authored variable documentation and retain the generated “alias of …” text, matching existing GenericAlias behavior on supported Python versions.",
+          "label": "Documentation and alias",
+          "recommended": true
+        },
+        {
+          "description": "Render the authored variable documentation and suppress the generated “alias of …” text.",
+          "label": "Documentation only",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has next-line variable documentation, what should autodoc render?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Automatically documenting a module containing documented Dict, Union, and Callable type aliases emits each alias’s complete next-line documentation.",
+          "Each documented alias also retains its generated “alias of …” text where autodoc currently provides one.",
+          "The regression is covered for the Python 3.6 behavior represented by the report, where affected aliases may be selected as class-like members.",
+          "Existing supported-version GenericAlias behavior continues to emit both authored documentation and the generated alias text.",
+          "An alias without next-line variable documentation continues to render without newly invented documentation.",
+          "Existing documentation behavior for genuine classes and ordinary class aliases does not regress."
+        ],
+        "confirmed_decisions": [
+          "A documented type alias renders its authored next-line variable documentation.",
+          "The generated “alias of …” text remains visible alongside the authored documentation.",
+          "The behavior applies when autodoc automatically selects a documenter for module members, including the reported Python 3.6 type-alias classifications.",
+          "Type aliases without authored variable documentation retain their existing generated alias output.",
+          "Ordinary class aliases and unrelated autodoc member behavior remain unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Autodoc must preserve next-line variable documentation for module-level type aliases during automatic member documentation, including aliases that are classified as class-like objects on Python 3.6. When such an alias also has a generated “alias of …” description, both the authored documentation and the alias description must appear."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "Repository evidence and the interview answer resolve the only material output ambiguity. The requested behavior can be implemented without inventing additional product behavior."
+    },
+    "turn": 2
+  }
+]

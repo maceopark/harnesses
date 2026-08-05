@@ -1,0 +1,42 @@
+diff --git a/sklearn/feature_extraction/tests/test_text.py b/sklearn/feature_extraction/tests/test_text.py
+index 7b7697f..5262493 100644
+--- a/sklearn/feature_extraction/tests/test_text.py
++++ b/sklearn/feature_extraction/tests/test_text.py
+@@ -97,6 +97,12 @@ def test_strip_accents():
+     expected = 'this is a test'
+     assert strip_accents_unicode(a) == expected
+ 
++    # check already decomposed unicode
++    a = 'n\u0303'
++    expected = 'n'
++    assert strip_accents_unicode(a) == expected
++    assert strip_accents_unicode(a) == strip_accents_unicode('\u00f1')
++
+ 
+ def test_to_ascii():
+     # check some classical latin accentuated symbols
+@@ -168,6 +174,8 @@ def test_word_analyzer_unigrams_and_bigrams():
+                 'etait pas', 'pas tres', 'tres bon']
+     assert wa(text) == expected
+ 
++    assert wa('n\u0303') == ['n']
++
+ 
+ def test_unicode_decode_error():
+     # decode_error default to strict, so this should fail
+diff --git a/sklearn/feature_extraction/text.py b/sklearn/feature_extraction/text.py
+index bb5a9d6..11236d9 100644
+--- a/sklearn/feature_extraction/text.py
++++ b/sklearn/feature_extraction/text.py
+@@ -130,10 +130,7 @@ def strip_accents_unicode(s):
+         ASCII equivalent.
+     """
+     normalized = unicodedata.normalize('NFKD', s)
+-    if normalized == s:
+-        return s
+-    else:
+-        return ''.join([c for c in normalized if not unicodedata.combining(c)])
++    return ''.join([c for c in normalized if not unicodedata.combining(c)])
+ 
+ 
+ def strip_accents_ascii(s):

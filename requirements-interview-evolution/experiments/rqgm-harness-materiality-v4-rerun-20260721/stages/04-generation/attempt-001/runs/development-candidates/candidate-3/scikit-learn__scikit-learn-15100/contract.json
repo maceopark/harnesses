@@ -1,0 +1,19 @@
+{
+  "acceptance_checks": [
+    "A direct regression test verifies `strip_accents_unicode('n\\u0303') == 'n'`.",
+    "A direct equivalence test verifies both `'\\u00f1'` and `'n\\u0303'` produce `'n'`.",
+    "A vectorizer preprocessing or analyzer test configured with `strip_accents='unicode'` verifies canonically equivalent composed and decomposed input is processed to the same unaccented text or tokens.",
+    "The existing feature-extraction text tests pass, including current composed Latin, Arabic, mixed-text, and word-analyzer accent-stripping cases.",
+    "Existing ASCII accent-stripping behavior remains passing and unchanged."
+  ],
+  "confirmed_decisions": [
+    "For `s1 = '\\u00f1'` and `s2 = 'n\\u0303'`, `strip_accents_unicode(s1)` and `strip_accents_unicode(s2)` must both return `'n'`.",
+    "Already-NFKD input must not bypass Unicode combining-mark removal.",
+    "The corrected behavior applies to all existing preprocessing paths that select `strip_accents_unicode`, including `CountVectorizer` and inherited or related vectorizer paths using `strip_accents='unicode'`.",
+    "The change is confined to Unicode accent stripping; `strip_accents_ascii` and unrelated tokenization, lowercasing, analyzer, and vectorizer behavior remain unchanged.",
+    "Regression coverage must include decomposed accented input while preserving the existing composed Latin, Arabic, mixed-text, and vectorizer expectations."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Correct Unicode accent preprocessing so `strip_accents_unicode` removes combining accent marks even when its input is already normalized to NFKD. Canonically equivalent composed and decomposed accented text must produce the same unaccented result through the direct helper and through vectorizers configured with `strip_accents='unicode'`. Keep ASCII accent stripping and unrelated preprocessing behavior unchanged."
+}

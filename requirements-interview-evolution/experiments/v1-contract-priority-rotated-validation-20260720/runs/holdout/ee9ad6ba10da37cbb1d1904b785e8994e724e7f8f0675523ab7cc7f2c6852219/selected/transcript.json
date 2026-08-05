@@ -1,0 +1,114 @@
+[
+  {
+    "answer": "Exact three values",
+    "open_material_decisions": [
+      "After resolving behavior, approve the complete inline implementation contract.",
+      "Define exactly which sys.path[0] values count as the current-directory entry and may be removed."
+    ],
+    "question": {
+      "header": "Path matching",
+      "options": [
+        {
+          "description": "Remove sys.path[0] only when it is exactly \"\", \".\", or exactly equal to os.getcwd(); preserve every other value, including equivalent relative, normalized, case-varied, or symlink paths.",
+          "label": "Exact three values",
+          "recommended": true
+        },
+        {
+          "description": "Also remove other paths that normalize or resolve to the working directory, broadening behavior beyond the values explicitly requested and existing evidence.",
+          "label": "Resolved equivalence",
+          "recommended": false
+        },
+        {
+          "description": "Remove only \"\" or exact os.getcwd(), preserving \".\" despite the expected behavior stated in the request.",
+          "label": "Empty or cwd only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which first-entry matching rule should govern removal by modify_sys_path()?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Remove cwd only",
+    "open_material_decisions": [
+      "After resolving that interaction, approve the complete inline implementation contract.",
+      "Define how PYTHONPATH colon handling behaves when sys.path[0] is preserved."
+    ],
+    "question": {
+      "header": "Colon handling",
+      "options": [
+        {
+          "description": "Preserve the arbitrary prefix and remove only the expected current-directory entry introduced by the leading/trailing empty PYTHONPATH component; retain existing behavior for established cases.",
+          "label": "Remove cwd only",
+          "recommended": true
+        },
+        {
+          "description": "Preserve the arbitrary prefix and perform no additional removal for leading/trailing-colon PYTHONPATH in that invocation, potentially leaving the working directory importable.",
+          "label": "Skip colon logic",
+          "recommended": false
+        },
+        {
+          "description": "Preserve the arbitrary prefix but keep removing the existing numeric index, which may delete a non-working-directory entry after indexes shift.",
+          "label": "Keep fixed indexes",
+          "recommended": false
+        }
+      ],
+      "prompt": "When sys.path[0] is not exactly \"\", \".\", or os.getcwd() and is therefore preserved, how should the existing leading/trailing-colon PYTHONPATH behavior apply?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve or revise the complete inline implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with the stated exact-match compatibility boundary and residual risk.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Do not seal it; provide corrections to scope, behavior, compatibility, acceptance, delegation, or residual risk.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: Scope—change only `pylint.modify_sys_path()` behavior used by `python -m pylint`/`runpy` and add minimum regression coverage. Required behavior—remove `sys.path[0]` only when its value is exactly `\"\"`, `\".\"`, or exactly equal to `os.getcwd()`; preserve every other first entry, including paths merely equivalent after normalization, resolution, case conversion, or symlink traversal. When an arbitrary first entry is preserved and `PYTHONPATH` begins or ends with a colon, preserve that arbitrary entry while removing only the applicable exact current-directory entry introduced by the empty PYTHONPATH component. Compatibility—retain the established removals for existing exact-empty-string/current-working-directory cases, retain explicit-current-directory PYTHONPATH exceptions, and retain trailing working-directory entries used by editable installations. Acceptance—tests must prove an arbitrary prefix survives, the applicable following exact cwd entry is removed under leading/trailing-colon handling, and existing covered path-stripping/plugin-import behavior remains passing. Exclusions—no changes to console-script behavior, path normalization/equivalence matching, unrelated import handling, supported environments, or public APIs. Implementation discretion—internal control flow and exact test fixture organization may vary, provided removals are value-qualified, safe for the exercised path shapes, and all acceptance checks pass. Residual risk—uncited unusual `sys.path` layouts may retain entries that are cwd-equivalent but not one of the approved exact values; this is intentionally accepted to avoid broader deletion behavior. Is this contract approved for implementation?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Regression coverage proves that an arbitrary value at `sys.path[0]` survives `modify_sys_path()`.",
+          "Coverage proves that, with an arbitrary first entry and a leading-colon `PYTHONPATH`, the arbitrary entry survives while only the applicable following exact cwd entry is removed.",
+          "Coverage proves that, with an arbitrary first entry and a trailing-colon `PYTHONPATH`, the arbitrary entry survives while only the applicable exact cwd entry is removed.",
+          "Existing covered behavior for removing exact `\"\"`, `\".\"`, or exact `os.getcwd()` current-directory entries remains passing.",
+          "Existing covered explicit-current-directory `PYTHONPATH` exception behavior remains passing.",
+          "Existing covered retention of trailing working-directory entries used by editable installations remains passing.",
+          "Existing path-stripping and local-plugin import integration tests remain passing."
+        ],
+        "confirmed_decisions": [
+          "The removable first-entry set is exactly `\"\"`, `\".\"`, and the exact string returned by `os.getcwd()`; no normalization, resolution, case folding, or symlink equivalence is authorized.",
+          "If an arbitrary `sys.path[0]` is preserved, leading- or trailing-colon `PYTHONPATH` handling must preserve that prefix and remove only the applicable exact current-directory entry introduced by the empty component.",
+          "The change is limited to `modify_sys_path()` and its `python -m pylint`/`runpy` path; installed console-script behavior is out of scope.",
+          "Existing exact empty-string/cwd removals, explicit-cwd `PYTHONPATH` exceptions, and retained trailing cwd entries for editable installations remain compatible behavior.",
+          "The owner accepts retention of cwd-equivalent but non-exact path spellings as a bounded residual risk.",
+          "The complete contract was explicitly approved by the owner."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Change only `pylint.modify_sys_path()` behavior used by `python -m pylint` and `runpy`, with minimum regression coverage. Remove `sys.path[0]` only when its value is exactly `\"\"`, `\".\"`, or exactly equal to `os.getcwd()`; preserve every other first entry, including paths merely equivalent after normalization, resolution, case conversion, or symlink traversal. When an arbitrary first entry is preserved and `PYTHONPATH` begins or ends with a colon, preserve that arbitrary entry while removing only the applicable exact current-directory entry introduced by the empty PYTHONPATH component. Retain established removals for existing exact-empty-string/current-working-directory cases, explicit-current-directory `PYTHONPATH` exceptions, and trailing working-directory entries used by editable installations. Exclude changes to console-script behavior, path normalization or equivalence matching, unrelated import handling, supported environments, and public APIs. Internal control flow and test-fixture organization remain implementation discretion provided removals are value-qualified, safe for exercised path shapes, and all acceptance checks pass. Accepted residual risk: unusual uncited `sys.path` layouts may retain cwd-equivalent entries not matching the approved exact values, intentionally avoiding broader deletion behavior."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the complete inline implementation contract after resolving both material behavior decisions. The contract is narrow, evidence-grounded, and implementation-ready; no material blocker remains."
+    },
+    "turn": 4
+  }
+]

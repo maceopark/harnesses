@@ -1,0 +1,105 @@
+[
+  {
+    "answer": "Restore parse_version",
+    "open_material_decisions": [
+      "Choose the version-comparison implementation and compatibility policy that replaces LooseVersion."
+    ],
+    "question": {
+      "header": "Version policy",
+      "options": [
+        {
+          "description": "Use pkg_resources.parse_version for both operands, restoring the parser explicitly identified as working in the issue and preserving the existing inclusive/exclusive branches.",
+          "label": "Restore parse_version",
+          "recommended": true
+        },
+        {
+          "description": "Keep LooseVersion and narrowly normalize or special-case the failing dev-version shape, limiting intended behavior changes but retaining LooseVersion quirks.",
+          "label": "Minimal bug workaround",
+          "recommended": false
+        },
+        {
+          "description": "Allow the implementer to choose an available parser, provided existing tests pass and 1.14.3 compares at least 1.14dev without raising; other ordering changes remain a bounded residual risk.",
+          "label": "Delegate parser choice",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which comparison policy should the implementation contract require?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Both branches",
+    "open_material_decisions": [
+      "Define whether regression coverage must prove both inclusive and exclusive behavior for the 1.14.3-versus-1.14dev case."
+    ],
+    "question": {
+      "header": "Regression scope",
+      "options": [
+        {
+          "description": "Require 1.14.3 compared with 1.14dev to return True without raising for both inclusive=True and inclusive=False, while retaining the existing minversion tests.",
+          "label": "Both branches",
+          "recommended": true
+        },
+        {
+          "description": "Require only the exact reported default inclusive comparison to return True without raising, while retaining the existing tests.",
+          "label": "Inclusive only",
+          "recommended": false
+        }
+      ],
+      "prompt": "What regression coverage should the implementation contract require for the reported dev-version case?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Approve the consolidated implementation contract or identify a required revision."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with no remaining material decisions.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a material change before implementation.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: replace LooseVersion with pkg_resources.parse_version for both installed and requested versions in minversion; preserve module/module-name handling, failed-import behavior, version_path lookup, and the existing inclusive >= versus exclusive > branches; retain existing tests and add regression coverage proving that installed 1.14.3 compared with requested 1.14dev returns True without raising in both inclusive and exclusive modes. Scope is limited to minversion and its tests; no broader version-ordering guarantees are added. Acknowledged residual risk: adopting parse_version may change ordering for version strings beyond existing and newly required cases, but that parser-level behavior is accepted by this choice."
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Existing minversion tests continue to pass.",
+          "With a module whose installed version is 1.14.3, minversion(module, '1.14dev', inclusive=True) returns True and does not raise.",
+          "With a module whose installed version is 1.14.3, minversion(module, '1.14dev', inclusive=False) returns True and does not raise.",
+          "minversion uses pkg_resources.parse_version for both installed and requested versions.",
+          "The existing module/module-name inputs, missing string-module return value, version_path lookup, and inclusive/exclusive branch semantics remain unchanged."
+        ],
+        "confirmed_decisions": [
+          "Use pkg_resources.parse_version as the required replacement parser for both version operands.",
+          "Cover both inclusive=True and inclusive=False for the 1.14.3-versus-1.14dev regression.",
+          "Preserve existing minversion input handling, import-failure behavior, version_path behavior, and comparison operators.",
+          "Limit implementation scope to minversion and its tests.",
+          "Accept that parse_version may order version strings outside the existing and newly required cases differently from LooseVersion; no broader compatibility guarantee is imposed.",
+          "The owner approved the complete contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Replace distutils.version.LooseVersion with pkg_resources.parse_version for both installed and requested version operands in astropy.utils.introspection.minversion. Preserve module and module-name handling, failed string-import behavior, version_path lookup, and the inclusive >= versus exclusive > comparison branches. Retain existing tests and add regression coverage showing that installed version 1.14.3 compared with requested version 1.14dev returns True without raising in both inclusive and exclusive modes. Scope is limited to minversion and its tests; no broader version-ordering guarantees are required."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the consolidated contract, resolving all material decisions and making the work implementation-ready."
+    },
+    "turn": 4
+  }
+]

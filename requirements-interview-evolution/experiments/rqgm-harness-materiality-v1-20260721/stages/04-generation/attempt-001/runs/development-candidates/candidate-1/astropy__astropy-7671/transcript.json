@@ -1,0 +1,82 @@
+[
+  {
+    "answer": "General version ordering",
+    "open_material_decisions": [
+      "Whether the contract is limited to the reported `1.14.3` versus `1.14dev` comparison shape or applies generally to supported release, development, and pre-release version strings."
+    ],
+    "question": {
+      "header": "Version scope",
+      "options": [
+        {
+          "description": "Require valid release, development, and pre-release versions to return a Boolean under established Python package-version ordering, including `1.14.3 >= 1.14dev`.",
+          "label": "General version ordering",
+          "recommended": true
+        },
+        {
+          "description": "Require only longer numeric installed releases compared with a shorter `dev` requirement to avoid the exception and produce the expected Boolean.",
+          "label": "Reported shape only",
+          "recommended": false
+        },
+        {
+          "description": "Guarantee only that installed `1.14.3` satisfies requested `1.14dev` without defining adjacent version forms.",
+          "label": "Exact example only",
+          "recommended": false
+        }
+      ],
+      "prompt": "What observable comparison scope should `minversion` guarantee after this fix?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "PEP 440 ordering",
+    "open_material_decisions": [
+      "Whether general comparisons follow standard Python package-version ordering (PEP 440) or preserve existing LooseVersion results wherever LooseVersion already completes."
+    ],
+    "question": {
+      "header": "Ordering rule",
+      "options": [
+        {
+          "description": "Use standard Python package-version ordering consistently, including development and pre-release precedence.",
+          "label": "PEP 440 ordering",
+          "recommended": true
+        },
+        {
+          "description": "Keep existing LooseVersion outcomes when they do not error, defining new behavior only for failing comparisons.",
+          "label": "Preserve LooseVersion",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which observable ordering should govern valid release, development, and pre-release version strings?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "For a module whose installed version is `1.14.3`, `minversion(module, '1.14dev')` returns `True` without raising an exception.",
+          "Representative valid release, development, and pre-release comparisons produce Booleans consistent with PEP 440 precedence.",
+          "Equal valid versions return `True` with inclusive comparison and `False` with exclusive comparison.",
+          "Existing successful and unsuccessful `minversion` cases, including the current `0.12.2` comparisons, remain correct under PEP 440 ordering.",
+          "A string naming a module that cannot be imported still returns `False`, and module-object and configured version-path inputs retain their existing observable behavior."
+        ],
+        "confirmed_decisions": [
+          "Version comparisons are governed consistently by PEP 440 ordering for valid release, development, and pre-release version strings.",
+          "The guarantee is general rather than limited to the reported example or only to longer numeric releases compared with `dev` requirements.",
+          "An installed release `1.14.3` satisfies an inclusive minimum requirement of `1.14dev` and the comparison does not raise `TypeError`.",
+          "Inclusive comparisons continue to accept versions equal to the requested minimum; exclusive comparisons continue to require a strictly newer version.",
+          "`minversion` continues to accept either an imported module or an import-name string, return `False` when a named module cannot be imported, and obtain the installed version through the configured version attribute path.",
+          "Behavior for invalid or non-PEP-440 version strings is outside the requested guarantee."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update `astropy.utils.minversion` so comparisons of valid release, development, and pre-release version strings return the correct Boolean according to PEP 440 ordering instead of failing because of mixed version components. Preserve the function’s established module resolution, version lookup, and inclusive/exclusive comparison behavior."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The prior answers resolve the only material ambiguity: the fix applies generally to valid package versions and uses PEP 440 ordering. Existing repository evidence defines the remaining input and comparison behavior, so the contract is implementation-ready."
+    },
+    "turn": 3
+  }
+]

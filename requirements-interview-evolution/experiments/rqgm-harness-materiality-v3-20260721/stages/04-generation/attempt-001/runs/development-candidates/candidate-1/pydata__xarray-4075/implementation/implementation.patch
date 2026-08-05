@@ -1,0 +1,42 @@
+diff --git a/xarray/core/weighted.py b/xarray/core/weighted.py
+index 996d2e4..768dc1f 100644
+--- a/xarray/core/weighted.py
++++ b/xarray/core/weighted.py
+@@ -106,6 +106,9 @@ class Weighted:
+                 "Missing values can be replaced by `weights.fillna(0)`."
+             )
+ 
++        if weights.dtype.kind == "b":
++            weights = weights.astype(int)
++
+         self.obj = obj
+         self.weights = weights
+ 
+diff --git a/xarray/tests/test_weighted.py b/xarray/tests/test_weighted.py
+index 2453121..b8dfaa6 100644
+--- a/xarray/tests/test_weighted.py
++++ b/xarray/tests/test_weighted.py
+@@ -29,6 +29,23 @@ def test_weighted_weights_nan_raises(as_dataset, weights):
+         data.weighted(DataArray(weights))
+ 
+ 
++@pytest.mark.parametrize("operation", ("sum_of_weights", "sum", "mean"))
++@pytest.mark.parametrize("as_dataset", (True, False))
++def test_weighted_operations_bool_weights(operation, as_dataset):
++
++    data = DataArray([1.0, 1.0, np.nan, 5.0])
++    if as_dataset:
++        data = data.to_dataset(name="data")
++
++    bool_weights = DataArray([True, True, True, False])
++    int_weights = DataArray([1, 1, 1, 0])
++
++    expected = getattr(data.weighted(int_weights), operation)()
++    result = getattr(data.weighted(bool_weights), operation)()
++
++    assert_equal(expected, result)
++
++
+ @pytest.mark.parametrize(
+     ("weights", "expected"),
+     (([1, 2], 3), ([2, 0], 2), ([0, 0], np.nan), ([-1, 1], np.nan)),

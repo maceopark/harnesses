@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "A regression test verifies DataArray([1., 1., 1.]).weighted(DataArray([True, True, False])).mean() equals DataArray(1.0).",
+    "A regression test verifies the corresponding weighted sum_of_weights equals DataArray(2).",
+    "Existing weighted tests for numeric weights, zero total weights, and missing data continue to pass.",
+    "No shared dot/einsum implementation or semantics are changed.",
+    "Boolean weights are not rejected by weighted construction or reduction."
+  ],
+  "confirmed_decisions": [
+    "Boolean weights remain accepted by the weighted API.",
+    "The correction is localized to the weighted sum-of-weights path.",
+    "Shared dot/einsum behavior is unchanged.",
+    "For DataArray([1., 1., 1.]) with DataArray([True, True, False]) weights, weighted mean must equal 1.0.",
+    "For the same data and weights, sum_of_weights must equal 2.",
+    "Existing numeric-weight and missing-data semantics must be preserved.",
+    "The bounded residual risk that unrelated direct boolean dot/einsum calls retain their existing behavior is accepted."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Implement a localized change in xarray/core/weighted.py so boolean weights are treated numerically when _sum_of_weights calculates the denominator. Do not change shared dot/einsum semantics and do not reject boolean weights. Preserve existing numeric-weight, zero-total-weight, and missing-data behavior. Add regression coverage for the reported boolean-weight case. Direct uses of dot/einsum with boolean operands remain outside scope and retain existing behavior."
+}

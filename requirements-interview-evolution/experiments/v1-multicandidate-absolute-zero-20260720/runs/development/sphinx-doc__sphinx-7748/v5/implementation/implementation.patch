@@ -1,0 +1,191 @@
+diff --git a/doc/usage/extensions/autodoc.rst b/doc/usage/extensions/autodoc.rst
+index 36be756..6c6da76 100644
+--- a/doc/usage/extensions/autodoc.rst
++++ b/doc/usage/extensions/autodoc.rst
+@@ -450,9 +450,9 @@ There are also config values that you can set:
+    function's docstring.
+ 
+    If this boolean value is set to ``True`` (which is the default), autodoc will
+-   look at the first line of the docstring for functions and methods, and if it
+-   looks like a signature, use the line as the signature and remove it from the
+-   docstring content.
++   look at the first line of the docstring for functions and methods.  If
++   consecutive lines at the start of the docstring look like signatures, each
++   line is used as a signature and removed from the docstring content.
+ 
+    .. versionadded:: 1.1
+ 
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index f8e4be9..1a48a8b 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1037,39 +1037,42 @@ class DocstringSignatureMixin:
+     feature of reading the signature from the docstring.
+     """
+ 
+-    def _find_signature(self, encoding: str = None) -> Tuple[str, str]:
++    def _find_signature(self, encoding: str = None
++                        ) -> Optional[List[Tuple[str, str]]]:
+         if encoding is not None:
+             warnings.warn("The 'encoding' argument to autodoc.%s._find_signature() is "
+                           "deprecated." % self.__class__.__name__,
+                           RemovedInSphinx40Warning, stacklevel=2)
+         docstrings = self.get_doc()
+         self._new_docstrings = docstrings[:]
+-        result = None
++        result = []
+         for i, doclines in enumerate(docstrings):
+             # no lines in docstring, no match
+             if not doclines:
+                 continue
+-            # match first line of docstring against signature RE
+-            match = py_ext_sig_re.match(doclines[0])
+-            if not match:
+-                continue
+-            exmod, path, base, args, retann = match.groups()
+             # the base name must match ours
+             valid_names = [self.objpath[-1]]  # type: ignore
+             if isinstance(self, ClassDocumenter):
+                 valid_names.append('__init__')
+                 if hasattr(self.object, '__mro__'):
+                     valid_names.extend(cls.__name__ for cls in self.object.__mro__)
+-            if base not in valid_names:
++            for line in doclines:
++                match = py_ext_sig_re.match(line)
++                if not match:
++                    break
++                exmod, path, base, args, retann = match.groups()
++                if base not in valid_names:
++                    break
++                result.append((args, retann))
++            if not result:
+                 continue
+             # re-prepare docstring to ignore more leading indentation
+             tab_width = self.directive.state.document.settings.tab_width  # type: ignore
+-            self._new_docstrings[i] = prepare_docstring('\n'.join(doclines[1:]),
++            self._new_docstrings[i] = prepare_docstring('\n'.join(doclines[len(result):]),
+                                                         tabsize=tab_width)
+-            result = args, retann
+             # don't look any further
+             break
+-        return result
++        return result or None
+ 
+     def get_doc(self, encoding: str = None, ignore: int = None) -> List[List[str]]:
+         if encoding is not None:
+@@ -1087,7 +1090,11 @@ class DocstringSignatureMixin:
+             # the feature is enabled
+             result = self._find_signature()
+             if result is not None:
+-                self.args, self.retann = result
++                signatures = []
++                for self.args, self.retann in result:
++                    signatures.append(super().format_signature(**kwargs))  # type: ignore
++                self.args, self.retann = result[0]
++                return "\n".join(signatures)
+         return super().format_signature(**kwargs)  # type: ignore
+ 
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/__init__.py b/tests/roots/test-ext-autodoc/target/__init__.py
+index b6684ee..200210a 100644
+--- a/tests/roots/test-ext-autodoc/target/__init__.py
++++ b/tests/roots/test-ext-autodoc/target/__init__.py
+@@ -129,6 +129,14 @@ First line of docstring
+             indented line
+         """
+ 
++    def overloaded(self):
++        """overloaded(FOO) -> FIRST
++        overloaded(FOO, BAR=1)
++        overloaded(FOO, BAR, BAZ) -> THIRD
++        not_overloaded(STOP)
++        First line after overloads
++        """
++
+     @property
+     def prop1(self):
+         """DocstringSig.prop1(self)
+diff --git a/tests/test_ext_autodoc_configs.py b/tests/test_ext_autodoc_configs.py
+index 2255888..9284dce 100644
+--- a/tests/test_ext_autodoc_configs.py
++++ b/tests/test_ext_autodoc_configs.py
+@@ -259,6 +259,15 @@ def test_autodoc_docstring_signature(app):
+         '          indented line',
+         '',
+         '',
++        '   .. py:method:: DocstringSig.overloaded(FOO) -> FIRST',
++        '               DocstringSig.overloaded(FOO, BAR=1)',
++        '               DocstringSig.overloaded(FOO, BAR, BAZ) -> THIRD',
++        '      :module: target',
++        '',
++        '      not_overloaded(STOP)',
++        '      First line after overloads',
++        '',
++        '',
+         '   .. py:method:: DocstringSig.prop1',
+         '      :module: target',
+         '      :property:',
+@@ -303,6 +312,16 @@ def test_autodoc_docstring_signature(app):
+         '          indented line',
+         '',
+         '',
++        '   .. py:method:: DocstringSig.overloaded()',
++        '      :module: target',
++        '',
++        '      overloaded(FOO) -> FIRST',
++        '      overloaded(FOO, BAR=1)',
++        '      overloaded(FOO, BAR, BAZ) -> THIRD',
++        '      not_overloaded(STOP)',
++        '      First line after overloads',
++        '',
++        '',
+         '   .. py:method:: DocstringSig.prop1',
+         '      :module: target',
+         '      :property:',
+@@ -321,6 +340,46 @@ def test_autodoc_docstring_signature(app):
+     ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_docstring_overload_process_signature(app):
++    processed = []
++
++    def process_signature(app, what, name, obj, options, args, retann):
++        processed.append((args, retann))
++        return args.replace('FOO', 'PROCESSED'), retann
++
++    app.connect('autodoc-process-signature', process_signature)
++    actual = list(do_autodoc(app, 'method',
++                             'target.DocstringSig.overloaded'))
++
++    assert processed == [
++        ('(FOO)', 'FIRST'),
++        ('(FOO, BAR=1)', None),
++        ('(FOO, BAR, BAZ)', 'THIRD'),
++    ]
++    assert actual[:6] == [
++        '',
++        '.. py:method:: DocstringSig.overloaded(PROCESSED) -> FIRST',
++        '               DocstringSig.overloaded(PROCESSED, BAR=1)',
++        '               DocstringSig.overloaded(PROCESSED, BAR, BAZ) -> THIRD',
++        '   :module: target',
++        '',
++    ]
++    assert '   not_overloaded(STOP)' in actual
++    assert '   First line after overloads' in actual
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_explicit_signature_preserves_docstring_overloads(app):
++    actual = list(do_autodoc(
++        app, 'method', 'target.DocstringSig.overloaded(EXPLICIT) -> RESULT'))
++
++    assert '.. py:method:: DocstringSig.overloaded(EXPLICIT) -> RESULT' in actual
++    assert '   overloaded(FOO) -> FIRST' in actual
++    assert '   overloaded(FOO, BAR=1)' in actual
++    assert '   overloaded(FOO, BAR, BAZ) -> THIRD' in actual
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autoclass_content_and_docstring_signature_class(app):
+     app.config.autoclass_content = 'class'

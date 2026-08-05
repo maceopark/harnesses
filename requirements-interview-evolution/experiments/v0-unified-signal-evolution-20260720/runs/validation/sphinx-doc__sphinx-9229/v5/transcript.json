@@ -1,0 +1,120 @@
+[
+  {
+    "answer": "Source docs only",
+    "open_material_decisions": [
+      "Whether explicit source documentation should replace generated alias text or be combined with it across all type-alias representations and supported Python versions."
+    ],
+    "question": {
+      "header": "Alias content",
+      "options": [
+        {
+          "description": "Render the explicit documentation and suppress generated “alias of …” text; retain generated alias text only for undocumented aliases.",
+          "label": "Source docs only",
+          "recommended": true
+        },
+        {
+          "description": "Render the explicit documentation followed by generated “alias of …” text consistently for every recognized alias.",
+          "label": "Docs plus alias",
+          "recommended": false
+        },
+        {
+          "description": "Keep different behavior for generic aliases, class-like aliases, and runtime/Python-version representations.",
+          "label": "Preserve by kind",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has explicit source documentation, what should autodoc render?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "All alias kinds",
+    "open_material_decisions": [
+      "Whether the source-documentation precedence rule applies only to generic type aliases such as Dict, Union, and Callable, or also to TypeVar aliases that use the same generated “alias of …” content path."
+    ],
+    "question": {
+      "header": "Alias scope",
+      "options": [
+        {
+          "description": "Apply the rule to generic aliases and TypeVar aliases consistently, while undocumented aliases retain generated text.",
+          "label": "All alias kinds",
+          "recommended": true
+        },
+        {
+          "description": "Fix Dict, Union, Callable, and similar generic aliases, but preserve current TypeVar output.",
+          "label": "Generic aliases only",
+          "recommended": false
+        },
+        {
+          "description": "Limit the regression behavior to the module-level Dict, Union, and Callable forms in the report.",
+          "label": "Reported forms only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which documented alias kinds should suppress generated “alias of …” text?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "All supported paths",
+    "open_material_decisions": [
+      "Whether documented aliases should suppress generated “alias of …” text uniformly across every supported Python version and both module-level and class-level alias documentation paths."
+    ],
+    "question": {
+      "header": "Coverage",
+      "options": [
+        {
+          "description": "Apply it across all supported Python versions and both module-level and class-level documented aliases; undocumented aliases keep generated text.",
+          "label": "All supported paths",
+          "recommended": true
+        },
+        {
+          "description": "Apply it only to module-level aliases like the reported Dict, Union, and Callable declarations.",
+          "label": "Module level only",
+          "recommended": false
+        },
+        {
+          "description": "Apply it only where the runtime already recognizes the object as a generic alias or TypeVar, preserving legacy version-dependent paths.",
+          "label": "Recognized aliases only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should the source-documentation precedence rule apply?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A documented module-level Dict alias renders its complete multiline source documentation and no generated “alias of …” paragraph.",
+          "A documented module-level Union alias renders its complete multiline source documentation and no generated “alias of …” paragraph.",
+          "A documented module-level Callable alias renders its complete multiline source documentation—including blank lines and indented directive or literal-block content—and no generated “alias of …” paragraph.",
+          "A documented TypeVar alias renders its source documentation and no generated “alias of TypeVar(…)” paragraph.",
+          "Documented class-level aliases follow the same source-documentation precedence rule.",
+          "An undocumented generic alias still renders generated “alias of …” content.",
+          "An undocumented TypeVar alias still renders its generated alias content.",
+          "Existing non-alias DataDocumenter and ClassDocumenter documentation behavior remains unchanged.",
+          "Relevant autodoc generic-alias, TypeVar, autodata, and parser tests pass on each supported version branch represented by the test suite."
+        ],
+        "confirmed_decisions": [
+          "Explicit next-line string documentation or other parsed source documentation replaces, rather than accompanies, generated “alias of …” text.",
+          "The precedence rule applies consistently to generic aliases and TypeVar aliases.",
+          "The rule applies across all supported Python versions and both module-level and class-level autodoc paths.",
+          "Undocumented aliases retain the existing generated “alias of …” output.",
+          "Preserve the existing parser and ModuleAnalyzer behavior that captures and formats variable documentation; change content composition in autodoc rather than parsing semantics.",
+          "Update existing generic-alias and TypeVar expectations that currently combine source documentation with generated alias text.",
+          "Add regression coverage using documented Dict, Union, and Callable aliases with multiline next-line string documentation, including blank lines and indented reStructuredText content."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Change autodoc so explicit source documentation on a type alias takes precedence over generated “alias of …” content. For every supported alias kind—including generic aliases such as Dict, Union, Callable and TypeVar aliases—and across all supported Python versions, module-level paths, and class-level paths, render the explicit source documentation without the generated alias paragraph. Continue rendering generated “alias of …” text for aliases that have no explicit source documentation."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested behavior, scope, and coverage are fully resolved from the three recorded answers and audited repository evidence. The result is implementable without further owner input."
+    },
+    "turn": 4
+  }
+]

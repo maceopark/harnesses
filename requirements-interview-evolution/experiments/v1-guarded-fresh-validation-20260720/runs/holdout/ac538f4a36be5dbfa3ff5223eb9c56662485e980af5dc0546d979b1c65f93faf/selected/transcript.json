@@ -1,0 +1,107 @@
+[
+  {
+    "answer": "Raw params only",
+    "open_material_decisions": [
+      "Choose which setup-show values receive safe representation and which existing string/ID rendering behavior must remain unchanged."
+    ],
+    "question": {
+      "header": "Render scope",
+      "options": [
+        {
+          "description": "Use saferepr for raw parameter values, so bytes render as b'Hello World'; preserve explicit string IDs exactly, while accepting that raw strings become quoted.",
+          "label": "Raw params only",
+          "recommended": true
+        },
+        {
+          "description": "Use saferepr only for bytes-like raw parameters, preserving current raw-string and explicit-ID output exactly.",
+          "label": "Bytes only",
+          "recommended": false
+        },
+        {
+          "description": "Use saferepr for raw parameters and explicit IDs alike, allowing quotes or other representation changes across setup-show output.",
+          "label": "All cached values",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which observable rendering contract should the fix implement?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Default saferepr limit",
+    "open_material_decisions": [
+      "Decide whether raw parameter representations may be truncated by saferepr's default limit or must remain complete."
+    ],
+    "question": {
+      "header": "Length limit",
+      "options": [
+        {
+          "description": "Use saferepr with its existing default size limit, accepting truncation of long raw parameter output.",
+          "label": "Default saferepr limit",
+          "recommended": true
+        },
+        {
+          "description": "Use safe representation without intentional truncation so long raw parameter values remain complete.",
+          "label": "Preserve full repr",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should --setup-show render long raw parameter values after switching raw parameters to safe representation?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve the executable implementation contract, or identify a required revision."
+    ],
+    "question": {
+      "header": "Approve fix",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with the stated behavior, tests, scope, and residual risk.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a material change before implementation.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: for --setup-show only, safely represent raw fixture parameters with saferepr using its default size limit in both SETUP and TEARDOWN output; explicit list/callable IDs remain rendered exactly as before. Raw strings may therefore gain quotes, bytes must render as a bytes repr without raising under python -bb, and long or faulty-repr raw values inherit saferepr’s bounded/failure-safe behavior. Add regression coverage proving the bytes case exits successfully under -bb and displays the safe bytes representation during setup and teardown, while existing explicit-ID tests remain passing. Scope is limited to setup-show parameter rendering; no parameterization, fixture lifecycle, test-node ID, or non-setup-show behavior changes. Residual risk: other raw parameter types may have visibly different or truncated output because all raw parameters use saferepr’s default policy."
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A parametrized bytes value run with Python -bb and --setup-show exits successfully without BytesWarning.",
+          "The bytes parameter is displayed using its safe bytes representation, such as b'Hello World', in both SETUP and TEARDOWN output.",
+          "Regression coverage exercises the bytes case under -bb.",
+          "Existing explicit list-ID and callable-ID setup-show tests continue to pass with unchanged displayed IDs.",
+          "Existing relevant setup-only tests pass.",
+          "No parameterization, fixture lifecycle, test-node ID, or non-setup-show behavior is changed."
+        ],
+        "confirmed_decisions": [
+          "Apply saferepr to all raw fixture parameter values, not only bytes-like values.",
+          "Do not apply saferepr to explicit IDs supplied through an ID list or callable; preserve their existing rendering exactly.",
+          "Use saferepr's existing default size limit, allowing long raw parameter representations to be truncated.",
+          "Use the same safe raw-parameter representation for SETUP and TEARDOWN output.",
+          "Accept that raw string parameters may become quoted because raw parameters now use repr-style rendering.",
+          "Limit the change to --setup-show parameter rendering.",
+          "Acknowledge the bounded residual risk that other raw parameter types may have visibly different or truncated output under saferepr's default policy."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "For --setup-show only, render raw fixture parameter values with saferepr using its default size limit in both SETUP and TEARDOWN output. Explicit list-derived and callable-derived IDs must continue to render exactly as before. Raw strings may gain quotes; bytes must render as a bytes representation without raising BytesWarning under Python -bb; long values and objects with faulty repr implementations inherit saferepr's bounded, failure-safe behavior. Implementation scope is limited to setup-show parameter rendering and must not change parameterization, fixture lifecycle, test node IDs, or behavior when setup-show is disabled."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the executable contract, and all material behavioral, compatibility, scope, acceptance, and residual-risk decisions are resolved."
+    },
+    "turn": 4
+  }
+]

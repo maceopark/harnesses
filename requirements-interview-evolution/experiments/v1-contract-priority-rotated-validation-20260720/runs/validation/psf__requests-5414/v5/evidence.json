@@ -1,0 +1,87 @@
+{
+  "audit_summary": "All 11 facts are directly supported by the cited repository files and line ranges.",
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 386,
+      "line_start": 382,
+      "path": "requests/models.py",
+      "statement": "PreparedRequest.prepare_url parses HTTP URLs and converts urllib3 LocationParseError failures into requests.exceptions.InvalidURL."
+    },
+    {
+      "id": "F2",
+      "line_end": 395,
+      "line_start": 388,
+      "path": "requests/models.py",
+      "statement": "After parsing, prepare_url raises InvalidURL when the URL has no host."
+    },
+    {
+      "id": "F3",
+      "line_end": 358,
+      "line_start": 350,
+      "path": "requests/models.py",
+      "statement": "The IDNA helper encodes a host with idna.encode(..., uts46=True) and translates idna.IDNAError into UnicodeError."
+    },
+    {
+      "id": "F4",
+      "line_end": 405,
+      "line_start": 397,
+      "path": "requests/models.py",
+      "statement": "prepare_url invokes the IDNA helper only for non-ASCII hosts; a UnicodeError from that helper is converted to InvalidURL with the message 'URL has an invalid label.'"
+    },
+    {
+      "id": "F5",
+      "line_end": 407,
+      "line_start": 399,
+      "path": "requests/models.py",
+      "statement": "For ASCII hosts, the only explicit label-related rejection in this branch is a hostname beginning with '*'; there is no corresponding leading-dot check."
+    },
+    {
+      "id": "F6",
+      "line_end": 415,
+      "line_start": 409,
+      "path": "requests/models.py",
+      "statement": "After hostname checks, prepare_url reconstructs the network location directly from auth, host, and optional port."
+    },
+    {
+      "id": "F7",
+      "line_end": 444,
+      "line_start": 433,
+      "path": "requests/models.py",
+      "statement": "The reconstructed URL is requoted and assigned to the prepared request without another hostname-label validation step in prepare_url."
+    },
+    {
+      "id": "F8",
+      "line_end": 91,
+      "line_start": 90,
+      "path": "requests/exceptions.py",
+      "statement": "InvalidURL is a Requests exception and also a ValueError subclass."
+    },
+    {
+      "id": "F9",
+      "line_end": 87,
+      "line_start": 77,
+      "path": "tests/test_requests.py",
+      "statement": "The general invalid-URL test covers a URL with no host ('http://') but does not include a leading-dot hostname."
+    },
+    {
+      "id": "F10",
+      "line_end": 2497,
+      "line_start": 2484,
+      "path": "tests/test_requests.py",
+      "statement": "The bad-URL preparation test expects InvalidURL for wildcard-prefixed hosts and one non-ASCII hostname, but contains no leading-dot hostname case."
+    },
+    {
+      "id": "F11",
+      "line_end": 415,
+      "line_start": 412,
+      "path": "requests/adapters.py",
+      "statement": "At adapter connection setup, LocationValueError is translated into InvalidURL associated with the request."
+    }
+  ],
+  "scope_summary": "Inspected only the supplied repository at base commit 39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e. Existing URL preparation validates missing hosts, non-ASCII IDNA failures, and wildcard-prefixed ASCII hosts, but does not validate an ASCII hostname beginning with a dot.",
+  "unknowns": [
+    "The repository contains no cited test establishing the behavior of 'http://.example.com' at this base commit.",
+    "The exact downstream standard-library or dependency call that emits the reported UnicodeError is not identified by the repository-local code inspected."
+  ]
+}

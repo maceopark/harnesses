@@ -1,0 +1,129 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..984efd5 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1457,7 +1457,11 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+     @classmethod
+     def can_document_member(cls, member: Any, membername: str, isattr: bool, parent: Any
+                             ) -> bool:
+-        return isinstance(member, type)
++        is_legacy_typing_alias = (getattr(member, '__module__', None) == 'typing' and
++                                  hasattr(member, '__args__'))
++        return (isinstance(member, type) and
++                not (isattr and isinstance(parent, ModuleDocumenter) and
++                     (inspect.isgenericalias(member) or is_legacy_typing_alias)))
+ 
+     def import_object(self, raiseerror: bool = False) -> bool:
+         ret = super().import_object(raiseerror)
+@@ -1797,7 +1801,11 @@ class GenericAliasMixin(DataDocumenterMixinBase):
+                 super().should_suppress_directive_header())
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if inspect.isgenericalias(self.object):
++        get_module_comment = getattr(self, 'get_module_comment', None)
++        has_module_comment = (self.objtype == 'data' and get_module_comment and
++                              get_module_comment(self.objpath[-1]) is not None)
++
++        if inspect.isgenericalias(self.object) and not has_module_comment:
+             more_content.append(_('alias of %s') % restify(self.object), '')
+             more_content.append('', '')
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/documented_type_aliases.py b/tests/roots/test-ext-autodoc/target/documented_type_aliases.py
+new file mode 100644
+index 0000000..98e3521
+--- /dev/null
++++ b/tests/roots/test-ext-autodoc/target/documented_type_aliases.py
+@@ -0,0 +1,18 @@
++from typing import Any, Callable, Dict, Union
++
++
++DictAlias = Dict[str, Any]
++"""First line of DictAlias.
++Second line with :class:`str` markup.
++"""
++
++UnionAlias = Union[str, None]
++"""First line of UnionAlias.
++Second line of UnionAlias.
++"""
++
++CallableAlias = Callable[[int], None]
++"""First line of CallableAlias::
++
++    Callable[[int], None]
++"""
+diff --git a/tests/test_ext_autodoc.py b/tests/test_ext_autodoc.py
+index 4c16886..a4c6548 100644
+--- a/tests/test_ext_autodoc.py
++++ b/tests/test_ext_autodoc.py
+@@ -1923,10 +1923,12 @@ def test_autodoc_GenericAlias(app):
+             '',
+             '      alias of :class:`~typing.List`\\ [:class:`int`]',
+             '',
+-            '.. py:attribute:: T',
++            '.. py:data:: T',
+             '   :module: target.genericalias',
++            '   :value: typing.List[int]',
++            '',
++            '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+         ]
+     else:
+         assert list(actual) == [
+@@ -1951,11 +1953,26 @@ def test_autodoc_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_documented_type_aliases(app):
++    options = {"members": ["DictAlias", "UnionAlias", "CallableAlias"]}
++    actual = list(do_autodoc(app, 'module', 'target.documented_type_aliases', options))
++
++    assert '.. py:data:: DictAlias' in actual
++    assert '   First line of DictAlias.' in actual
++    assert '   Second line with :class:`str` markup.' in actual
++    assert '.. py:data:: UnionAlias' in actual
++    assert '   First line of UnionAlias.' in actual
++    assert '   Second line of UnionAlias.' in actual
++    assert '.. py:data:: CallableAlias' in actual
++    assert '   First line of CallableAlias::' in actual
++    assert '   Callable[[int], None]' in actual
++    assert not any('alias of ' in line for line in actual)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodoc_TypeVar(app):
+     options = {"members": None,
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..3f386e2 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -96,11 +96,20 @@ def test_autodata_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodata_undocumented_GenericAlias(app):
++    actual = list(do_autodoc(app, 'data', 'target.genericalias.C'))
++
++    if sys.version_info < (3, 7):
++        assert any(':value: typing.Callable' in line for line in actual)
++        assert not any('alias of ' in line for line in actual)
++    else:
++        assert any('alias of ' in line for line in actual)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_NewType(app):
+     actual = do_autodoc(app, 'data', 'target.typevar.T6')

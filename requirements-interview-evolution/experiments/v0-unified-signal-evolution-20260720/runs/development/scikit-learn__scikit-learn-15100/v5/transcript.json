@@ -1,0 +1,59 @@
+[
+  {
+    "answer": "Helper + vectorizer",
+    "open_material_decisions": [
+      "Whether success requires only direct helper coverage or also end-to-end vectorizer coverage for already-NFKD input."
+    ],
+    "question": {
+      "header": "Test scope",
+      "options": [
+        {
+          "description": "Test both strip_accents_unicode directly and CountVectorizer preprocessing to protect the public helper and its main integration path.",
+          "label": "Helper + vectorizer",
+          "recommended": true
+        },
+        {
+          "description": "Add only a focused strip_accents_unicode regression test for composed and already-NFKD equivalent strings.",
+          "label": "Helper only",
+          "recommended": false
+        },
+        {
+          "description": "Also exercise word, char, and char_wb analyzer paths, providing broader but more redundant integration coverage.",
+          "label": "All analyzers",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which regression coverage should define success for already-NFKD accented text?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A direct regression test passes the composed string `\"\\u00f1\"` and its already-NFKD equivalent `\"n\\u0303\"` to `strip_accents_unicode` and asserts that both return `\"n\"`.",
+          "A vectorizer regression test using `CountVectorizer(strip_accents='unicode')` processes already-NFKD accented text and asserts that its resulting preprocessing or token output is unaccented and equivalent to the composed-input result.",
+          "Existing `test_strip_accents` cases for accented Latin characters, Arabic alef with hamza below, and mixed text continue to pass unchanged.",
+          "Existing analyzer tests using `strip_accents='unicode'`, including the French word-analyzer test, continue to pass.",
+          "The targeted feature-extraction text test module completes successfully with no regressions."
+        ],
+        "confirmed_decisions": [
+          "`strip_accents_unicode` must normalize every input with NFKD and then remove all characters for which `unicodedata.combining` is nonzero.",
+          "An already-NFKD sequence such as `\"n\\u0303\"` must produce `\"n\"`, matching the result for the composed equivalent `\"\\u00f1\"`.",
+          "The equality-based early return must be removed because it bypasses combining-character removal for already-normalized input.",
+          "The change applies automatically to vectorizers configured with `strip_accents='unicode'` through the existing shared preprocessing mapping; no analyzer or inheritance changes are required.",
+          "Regression coverage must include both direct `strip_accents_unicode` behavior and an end-to-end `CountVectorizer` preprocessing or analyzer path.",
+          "No documentation change is required because the existing documentation already promises accent removal with NFKD normalization."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update `strip_accents_unicode` so it always removes Unicode combining characters from the NFKD-normalized input, including when the original input is already in NFKD form. Remove the equality-based early return in `sklearn/feature_extraction/text.py` and return the filtered normalized string unconditionally. Preserve existing behavior for composed Latin, Arabic, and mixed text. Add regression coverage in `sklearn/feature_extraction/tests/test_text.py` for both the public helper and the `CountVectorizer(strip_accents='unicode')` preprocessing path, confirming canonically equivalent composed and already-NFKD accented inputs produce the same unaccented result."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested behavior, repository cause, affected integration path, and regression-test scope are fully determined. No material implementation decision remains open."
+    },
+    "turn": 2
+  }
+]

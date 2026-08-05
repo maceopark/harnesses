@@ -1,0 +1,72 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..a0f5b36 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1725,7 +1725,9 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+                     ) -> None:
+         if self.doc_as_attr:
+             try:
+-                more_content = StringList([_('alias of %s') % restify(self.object)], source='')
++                if more_content is None:
++                    more_content = StringList()
++                more_content.append(_('alias of %s') % restify(self.object), '')
+             except AttributeError:
+                 pass  # Invalid class object is passed.
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/class_alias.py b/tests/roots/test-ext-autodoc/target/class_alias.py
+new file mode 100644
+index 0000000..723ad77
+--- /dev/null
++++ b/tests/roots/test-ext-autodoc/target/class_alias.py
+@@ -0,0 +1,13 @@
++class _Aliased:
++    """Runtime docstring that must not be exposed through an alias."""
++
++
++DocumentedAlias = _Aliased
++"""First line of alias documentation.
++
++Second paragraph of alias documentation.
++"""
++
++UndocumentedAlias = _Aliased
++
++__all__ = ['DocumentedAlias', 'UndocumentedAlias']
+diff --git a/tests/test_ext_autodoc.py b/tests/test_ext_autodoc.py
+index 4c16886..feb5e3b 100644
+--- a/tests/test_ext_autodoc.py
++++ b/tests/test_ext_autodoc.py
+@@ -1956,6 +1956,33 @@ def test_autodoc_GenericAlias(app):
+         ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_class_alias(app):
++    options = {"members": None,
++               "undoc-members": None}
++    actual = do_autodoc(app, 'module', 'target.class_alias', options)
++    assert list(actual) == [
++        '',
++        '.. py:module:: target.class_alias',
++        '',
++        '',
++        '.. py:attribute:: DocumentedAlias',
++        '   :module: target.class_alias',
++        '',
++        '   First line of alias documentation.',
++        '',
++        '   Second paragraph of alias documentation.',
++        '',
++        '   alias of :class:`target.class_alias._Aliased`',
++        '',
++        '',
++        '.. py:attribute:: UndocumentedAlias',
++        '   :module: target.class_alias',
++        '',
++        '   alias of :class:`target.class_alias._Aliased`',
++    ]
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodoc_TypeVar(app):
+     options = {"members": None,

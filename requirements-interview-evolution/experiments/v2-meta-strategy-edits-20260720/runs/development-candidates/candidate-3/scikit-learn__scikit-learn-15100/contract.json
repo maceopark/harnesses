@@ -1,0 +1,25 @@
+{
+  "acceptance_checks": [
+    "strip_accents_unicode(chr(241)) returns 'n'.",
+    "strip_accents_unicode(chr(110) + chr(771)) returns 'n'.",
+    "Equivalent precomposed and already-NFKD decomposed accented input produces identical accent-free output.",
+    "After NFKD normalization, every character with a nonzero unicodedata.combining value is absent from the result, while remaining normalized characters preserve their relative order and content.",
+    "A CountVectorizer or shared vectorizer analyzer configured with strip_accents='unicode' strips combining marks from decomposed input.",
+    "Existing strip_accents_unicode tests for composed Latin characters, the composed Arabic character, and mixed text continue to pass.",
+    "Existing unicode word-analyzer expectations for composed French text continue to pass.",
+    "The targeted feature-extraction text test suite passes."
+  ],
+  "confirmed_decisions": [
+    "Accent removal applies to all characters with a nonzero unicodedata.combining value after NFKD normalization, not only the reported Latin tilde case.",
+    "Already-NFKD input must pass through the same combining-character filter as input changed by normalization.",
+    "All non-combining normalized characters must retain their relative order and content.",
+    "Direct regression tests must establish equivalent accent-free output for precomposed and decomposed forms.",
+    "Vectorizer-path regression coverage must exercise decomposed input with strip_accents='unicode'.",
+    "Existing composed Latin, Arabic, mixed-text, and word-analyzer behavior must continue to pass.",
+    "Production and test changes are scoped to sklearn/feature_extraction/text.py and sklearn/feature_extraction/tests/test_text.py, with only adjacent test-only adjustments permitted if required.",
+    "The owner acknowledges the compatibility effect that already-NFKD strings containing combining marks will now lose those marks."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "At base commit af8a6e592a1a15d92d77011856d5aa0ec4db4c6c, update strip_accents_unicode so it always NFKD-normalizes its input and removes every normalized character for which unicodedata.combining returns a nonzero value, including when the input was already NFKD-normalized. Preserve the relative order and content of every remaining normalized character. Remove the normalized-equality early-return behavior that currently bypasses filtering. Add direct regression coverage showing that equivalent precomposed and decomposed inputs produce the same accent-free result, and add vectorizer-path coverage showing that strip_accents='unicode' handles decomposed input. Retain existing composed Latin, Arabic, mixed-text, and analyzer behavior. Limit changes to sklearn/feature_extraction/text.py and sklearn/feature_extraction/tests/test_text.py unless an adjacent test-only adjustment is necessary."
+}

@@ -1,0 +1,116 @@
+[
+  {
+    "answer": "P and Q parity",
+    "open_material_decisions": [
+      "Choose the required variable-length-array detection boundary for TableDataDiff."
+    ],
+    "question": {
+      "header": "VLA scope",
+      "options": [
+        {
+          "description": "Recognize both FITS P- and Q-format VLA columns, preserving the existing comparison behavior and tolerances; add focused Q-format regression coverage.",
+          "label": "P and Q parity",
+          "recommended": true
+        },
+        {
+          "description": "Minimally extend the existing literal format check to Q, without requiring a more semantic P/Q detection approach.",
+          "label": "Q-only patch",
+          "recommended": false
+        },
+        {
+          "description": "Require semantic detection of every representation treated internally as variable-length, with broader compatibility and test obligations.",
+          "label": "Generic VLA detection",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which compatibility boundary should the implementation contract require for selecting TableDataDiff’s row-by-row VLA comparison?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Public FITSDiff path",
+    "open_material_decisions": [
+      "Choose the required regression-test boundary for the Q-format false-positive fix."
+    ],
+    "question": {
+      "header": "Test scope",
+      "options": [
+        {
+          "description": "Write a Q-format VLA table, compare the resulting file to itself through FITSDiff, and assert it is identical with no reported data differences; lower-level coverage may also be added.",
+          "label": "Public FITSDiff path",
+          "recommended": true
+        },
+        {
+          "description": "Add only an in-memory TableDataDiff Q-format parity case alongside the existing P-format identical-table test.",
+          "label": "TableDataDiff only",
+          "recommended": false
+        },
+        {
+          "description": "Require separate filename-based FITSDiff and in-memory TableDataDiff regression tests for the same Q-format behavior.",
+          "label": "Both required",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which regression path must the implementation contract require for Q-format VLA comparisons?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve or revise the complete implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this scope and acceptance criteria as implementation-ready.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a material change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Do you approve this implementation contract: update TableDataDiff so FITS P- and Q-format VLA columns both use the existing row-by-row numpy.allclose comparison with the configured rtol and atol; preserve behavior for non-VLA columns and the existing P-format path; add a regression test that writes a Q-format VLA table with differently sized row arrays, compares the resulting file to itself through public FITSDiff, and verifies identical is true with no reported table-data differences; optional lower-level coverage may be added but is not required; no generic expansion beyond P/Q VLA formats is required, with residual risk limited to other unrecognized VLA-like representations?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A Q-format VLA column is selected for the same row-by-row comparison path currently used for P-format VLA columns.",
+          "Row values in P- and Q-format VLA columns are compared with numpy.allclose using TableDataDiff's configured rtol and atol.",
+          "The existing P-format VLA comparison remains functional.",
+          "Non-VLA column comparison behavior is unchanged.",
+          "A regression test writes a Q-format VLA table whose rows have different array lengths, then invokes public FITSDiff on the file against itself.",
+          "The regression asserts FITSDiff.identical is true.",
+          "The regression verifies there are no reported table-data differences for the self-comparison.",
+          "Relevant existing and new FITS diff tests pass."
+        ],
+        "confirmed_decisions": [
+          "The required VLA detection compatibility boundary is parity for FITS P and Q formats.",
+          "Both P- and Q-format VLA columns must use the existing row-by-row numpy.allclose strategy and configured rtol/atol tolerances.",
+          "The required regression boundary is the public filename-based FITSDiff path.",
+          "The regression fixture must use a Q-format VLA with differently sized row arrays and compare the written file to itself.",
+          "The regression must establish that FITSDiff.identical is true and that no table-data differences are reported.",
+          "Existing P-format behavior and non-VLA comparison behavior must remain unchanged.",
+          "Semantic detection of every possible VLA-like representation is not required.",
+          "Additional lower-level regression coverage may be added at implementation discretion but is not an acceptance requirement.",
+          "The owner explicitly approved the implementation contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update TableDataDiff so FITS P- and Q-format variable-length-array columns both use the existing row-by-row numpy.allclose comparison with the configured rtol and atol. Preserve the existing P-format behavior and comparison behavior for non-VLA columns. Add a public-path regression test that writes a Q-format VLA table containing differently sized row arrays, compares the resulting file to itself through FITSDiff, and verifies that it is identical with no reported table-data differences. Lower-level TableDataDiff coverage is optional, not required. Generic support beyond P/Q VLA formats is out of scope."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the complete contract, and all material decisions are resolved from repository evidence and the interview transcript."
+    },
+    "turn": 4
+  }
+]

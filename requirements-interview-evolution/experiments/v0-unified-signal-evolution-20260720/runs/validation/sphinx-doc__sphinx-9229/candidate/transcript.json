@@ -1,0 +1,103 @@
+[
+  {
+    "answer": "Docs plus alias",
+    "open_material_decisions": [
+      "Whether a type alias with source-level variable documentation should retain the generated “alias of …” paragraph or replace it with only the supplied documentation."
+    ],
+    "question": {
+      "header": "Alias output",
+      "options": [
+        {
+          "description": "Preserve the complete supplied documentation and also show the generated “alias of …” paragraph, matching existing DataDocumenter behavior and tests.",
+          "label": "Docs plus alias",
+          "recommended": true
+        },
+        {
+          "description": "Show the complete supplied documentation and suppress the generated “alias of …” paragraph for documented aliases.",
+          "label": "Docs only",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has a next-line variable docstring, what output should autodoc require?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "All class aliases",
+    "open_material_decisions": [
+      "Whether preservation of supplied documentation should apply generally whenever ClassDocumenter documents an object as an alias attribute, or be narrowly limited to the reported module-level type-alias case."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Preserve supplied documentation for every ClassDocumenter alias-as-attribute case, then include “alias of …”; aliases without supplied documentation remain alias-only. This directly fixes the content-overwrite mechanism.",
+          "label": "All class aliases",
+          "recommended": true
+        },
+        {
+          "description": "Limit the change to module-level typing aliases matching the report, minimizing behavioral change but requiring special-case detection.",
+          "label": "Module type aliases",
+          "recommended": false
+        }
+      ],
+      "prompt": "When ClassDocumenter handles an alias and receives supplied source documentation, where should the preservation rule apply?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the complete implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this scope and acceptance criteria as implementation-ready.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open and specify which behavior, scope, test, or risk boundary must change.",
+          "label": "Request changes",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: change ClassDocumenter alias-as-attribute handling so supplied content is preserved in full and followed by the generated “alias of …” paragraph; apply this to all class aliases handled through doc_as_attr, while aliases with no supplied content remain alias-only; do not expose the aliased class’s runtime docstring; add regression coverage for documented and undocumented aliases, including multiline next-line variable documentation and ordering; retain existing DataDocumenter behavior and version-dependent generic-alias recognition; accept the bounded risk that other ClassDocumenter alias users with supplied content will now see that content instead of it being discarded?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A regression test demonstrates that a documented ClassDocumenter alias preserves complete multiline next-line variable documentation and then renders “alias of …”.",
+          "A regression test demonstrates that an undocumented ClassDocumenter alias remains alias-only.",
+          "Regression coverage verifies documentation-before-alias ordering.",
+          "Regression coverage verifies that the aliased class’s runtime docstring is not exposed.",
+          "Existing DataDocumenter generic-alias tests continue to pass without changed expectations.",
+          "Existing version-dependent generic-alias behavior remains passing."
+        ],
+        "confirmed_decisions": [
+          "Documented aliases must render supplied documentation plus the generated “alias of …” paragraph, in that order.",
+          "The preservation rule applies to every ClassDocumenter alias-as-attribute case handled through doc_as_attr, not only the reported module-level typing aliases.",
+          "Supplied multiline next-line variable documentation must be retained in full.",
+          "Aliases without supplied documentation must continue to render only the generated alias paragraph.",
+          "The aliased class’s runtime docstring must remain suppressed when doc_as_attr is true.",
+          "Existing DataDocumenter behavior must remain unchanged.",
+          "Existing version-dependent generic-alias recognition must remain unchanged.",
+          "The owner accepts the bounded compatibility risk that other ClassDocumenter alias users who provide content will now see that content instead of having it discarded."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update ClassDocumenter alias-as-attribute handling so that when doc_as_attr is true and supplied content exists, the supplied content is preserved in full and the generated “alias of …” paragraph follows it. Apply this rule to all class aliases handled through doc_as_attr. Aliases without supplied content remain alias-only. Continue suppressing the aliased class’s runtime docstring. Do not change DataDocumenter behavior or the existing version-dependent recognition of generic aliases."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the complete implementation contract, and no material decisions remain unresolved."
+    },
+    "turn": 4
+  }
+]

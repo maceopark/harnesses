@@ -1,0 +1,30 @@
+diff --git a/sympy/simplify/sqrtdenest.py b/sympy/simplify/sqrtdenest.py
+index f0b7653..16bc885 100644
+--- a/sympy/simplify/sqrtdenest.py
++++ b/sympy/simplify/sqrtdenest.py
+@@ -157,6 +157,8 @@ def _sqrt_match(p):
+     elif p.is_Add:
+         pargs = sorted(p.args, key=default_sort_key)
+         if all((x**2).is_Rational for x in pargs):
++            if not any(x.as_coeff_Mul()[1].is_Pow for x in pargs):
++                return []
+             r, b, a = split_surds(p)
+             res = a, b, r
+             return list(res)
+diff --git a/sympy/simplify/tests/test_sqrtdenest.py b/sympy/simplify/tests/test_sqrtdenest.py
+index c30f7a3..8432cb6 100644
+--- a/sympy/simplify/tests/test_sqrtdenest.py
++++ b/sympy/simplify/tests/test_sqrtdenest.py
+@@ -91,6 +91,12 @@ def test_issue_6241():
+     assert sqrtdenest(z) == z
+ 
+ 
++def test_issue_12420():
++    z = (3 - sqrt(2)*sqrt(4 + 3*S.ImaginaryUnit) +
++         3*S.ImaginaryUnit)/2
++    assert sqrtdenest(z) == z.expand()
++
++
+ def test_sqrtdenest3():
+     z = sqrt(13 - 2*r10 + 2*r2*sqrt(-2*r10 + 11))
+     assert sqrtdenest(z) == -1 + r2 + r10

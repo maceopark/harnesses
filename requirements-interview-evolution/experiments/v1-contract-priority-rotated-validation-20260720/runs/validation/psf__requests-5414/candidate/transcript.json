@@ -1,0 +1,112 @@
+[
+  {
+    "answer": "Leading dot only",
+    "open_material_decisions": [
+      "Define which ASCII empty-label hostname forms must raise requests.exceptions.InvalidURL."
+    ],
+    "question": {
+      "header": "Invalid hosts",
+      "options": [
+        {
+          "description": "Cover the reported `.example.com` form without authorizing behavior changes for trailing dots or consecutive internal dots.",
+          "label": "Leading dot only",
+          "recommended": true
+        },
+        {
+          "description": "Also reject forms such as `example..com` and `example.com.`, broadening the compatibility boundary beyond the reported case.",
+          "label": "Any empty label",
+          "recommended": false
+        },
+        {
+          "description": "Reject `.example.com` and `example..com` while preserving a trailing dot as a potentially valid fully qualified hostname.",
+          "label": "Leading and internal",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which ASCII hostname forms should this change require Requests to reject with `InvalidURL('URL has an invalid label.')` during request preparation?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Text URLs only",
+    "open_material_decisions": [
+      "After resolving input representation, approve the complete inline implementation contract.",
+      "Decide whether the required leading-dot rejection covers only text URLs or both text and byte-string URLs."
+    ],
+    "question": {
+      "header": "Input form",
+      "options": [
+        {
+          "description": "Require the reported Python string case only; byte-string behavior remains outside the contract and at implementation discretion.",
+          "label": "Text URLs only",
+          "recommended": true
+        },
+        {
+          "description": "Require identical rejection for both `http://.example.com` and `b'http://.example.com'`, expanding the compatibility boundary to byte-string URLs.",
+          "label": "Text and bytes",
+          "recommended": false
+        }
+      ],
+      "prompt": "For the leading-dot hostname case, which URL input representations must raise `InvalidURL('URL has an invalid label.')` during preparation?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve the complete inline implementation contract or identify a material revision."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with no remaining material decisions.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Do not seal it; provide the specific behavior, boundary, oracle, or risk acceptance that must change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this complete implementation contract: At base commit 39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e, change Requests so preparing a Python text URL whose parsed ASCII hostname begins with a dot—specifically including `http://.example.com`—raises `requests.exceptions.InvalidURL` with the exact message `URL has an invalid label.` before sending or adapter connection setup. The public `requests.get` path must exhibit the same preparation-time exception because it uses normal Session preparation. Add the minimum regression coverage proving that the reported text URL raises that exception and message during preparation; existing valid URL-preparation behavior must continue to pass the repository’s relevant tests. Scope is limited to leading-dot ASCII hostnames supplied as text URLs. Consecutive internal empty labels, trailing-dot hostnames, byte-string URLs, non-HTTP schemes, changes to urllib3/idna, and broader hostname validation are excluded and remain unchanged or implementation discretion where this contract does not otherwise constrain them. The implementation mechanism and exact test placement are delegated to the implementer, provided the check occurs early enough to satisfy the preparation-time oracle and does not introduce new dependencies. Compatibility is bounded to the repository’s declared urllib3 and idna ranges and supported test environments. Accepted residual risk: other ASCII empty-label forms may retain their existing downstream behavior because broader normalization or rejection was not authorized. This contract is authorized by the public request and expected result, repository evidence F1–F16, and the owner decisions “Leading dot only” and “Text URLs only.”"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Preparing a request for the Python text URL `http://.example.com` raises `requests.exceptions.InvalidURL`.",
+          "The raised exception has the exact message `URL has an invalid label.`.",
+          "The exception occurs during preparation, before adapter connection setup or network sending.",
+          "Calling `requests.get('http://.example.com')` reaches the same preparation-time `InvalidURL` behavior.",
+          "The minimum regression test for the reported text URL passes.",
+          "Relevant existing valid URL-preparation tests continue to pass.",
+          "No new dependency is introduced."
+        ],
+        "confirmed_decisions": [
+          "Reject leading-dot ASCII hostnames with `InvalidURL('URL has an invalid label.')`.",
+          "Require the behavior only for Python text URL inputs.",
+          "Raise during request preparation, before sending or adapter connection setup.",
+          "Require the public `requests.get` path to expose the same preparation-time exception.",
+          "Use minimum regression coverage for the reported text URL, including the exact exception message.",
+          "Preserve relevant existing valid URL-preparation tests.",
+          "Exclude internal empty labels, trailing-dot hosts, byte-string URLs, non-HTTP schemes, dependency changes, and broader hostname validation.",
+          "Delegate implementation mechanism and test placement within the stated scope and oracle.",
+          "Add no new dependencies.",
+          "Accept residual risk that other ASCII empty-label forms may retain existing downstream behavior."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "At base commit 39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e, change Requests so preparing a Python text URL whose parsed ASCII hostname begins with a dot—specifically including `http://.example.com`—raises `requests.exceptions.InvalidURL` with the exact message `URL has an invalid label.` before sending or adapter connection setup. The public `requests.get` path must exhibit the same preparation-time exception because it uses normal Session preparation. Add the minimum regression coverage proving that the reported text URL raises that exception and message during preparation; existing valid URL-preparation behavior must continue to pass the repository’s relevant tests. Scope is limited to leading-dot ASCII hostnames supplied as text URLs. Consecutive internal empty labels, trailing-dot hostnames, byte-string URLs, non-HTTP schemes, changes to urllib3/idna, and broader hostname validation are excluded and remain unchanged or at implementation discretion where this contract does not otherwise constrain them. The implementation mechanism and exact test placement are delegated to the implementer, provided the check occurs early enough to satisfy the preparation-time oracle and introduces no new dependencies. Compatibility is bounded to the repository’s declared urllib3 and idna ranges and supported test environments. Accepted residual risk: other ASCII empty-label forms may retain their existing downstream behavior because broader normalization or rejection was not authorized. This contract is authorized by the public request and expected result, audited repository evidence F1–F16, and the owner decisions `Leading dot only`, `Text URLs only`, and `Approve contract`."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner approved the complete inline contract, and no material decisions remain open."
+    },
+    "turn": 4
+  }
+]

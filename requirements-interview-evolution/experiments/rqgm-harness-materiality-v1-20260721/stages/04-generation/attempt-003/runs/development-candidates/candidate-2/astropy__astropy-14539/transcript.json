@@ -1,0 +1,52 @@
+[
+  {
+    "answer": "All Q VLAs",
+    "open_material_decisions": [
+      "Whether correctness is required for every Q-format variable-length-array subtype or only the reported `QD` case."
+    ],
+    "question": {
+      "header": "Q VLA scope",
+      "options": [
+        {
+          "description": "Require correct FITSDiff behavior for every Q-format VLA subtype, including both equality and real-difference detection.",
+          "label": "All Q VLAs",
+          "recommended": true
+        },
+        {
+          "description": "Limit the requirement to the exact double-precision `QD` reproduction supplied in the issue.",
+          "label": "QD only",
+          "recommended": false
+        }
+      ],
+      "prompt": "What scope should the contract require for Q-format variable-length-array comparisons?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A FITS file containing the reported QD column with rows [0] and [0, 0], when compared to itself by filename, yields FITSDiff.identical == true and no reported data difference.",
+          "Equal Q-format VLA columns are treated as identical across all supported Q element subtypes.",
+          "A changed value or row content in a Q-format VLA column causes FITSDiff.identical == false and identifies a table-data difference.",
+          "Numeric Q-format VLA differences within configured tolerances are not reported, while differences outside those tolerances are reported."
+        ],
+        "confirmed_decisions": [
+          "The fix applies to every Q-format variable-length-array subtype, not only QD columns.",
+          "Comparing a FITS file containing Q-format VLA columns with itself reports the files as identical and produces no table-data differences.",
+          "Comparing separate FITS inputs whose Q-format VLA column data is equal reports no differences for those columns.",
+          "When corresponding Q-format VLA values genuinely differ, FITSDiff reports the affected table data as different.",
+          "Existing FITSDiff tolerance settings continue to determine whether numeric Q-format VLA values count as different, consistently with variable-length-array comparison behavior."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Correct FITSDiff handling of all Q-format variable-length-array columns so that equal data is reported as identical and actual data differences are still reported."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The repository evidence identifies a Q-format VLA comparison gap, and the interview confirms that the required scope covers every Q-format VLA subtype for both equality and genuine-difference detection. No material decision remains open."
+    },
+    "turn": 2
+  }
+]

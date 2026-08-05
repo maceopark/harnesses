@@ -1,0 +1,20 @@
+{
+  "acceptance_checks": [
+    "A regression test reproduces an unqualified pytest run with foobar/__init__.py raising AssertionError and an ordinary test file; collection does not import foobar/__init__.py and the ordinary test passes.",
+    "A package whose non-matching __init__.py would fail on import can still contain nested matching test files, and those tests are collected and run successfully without executing the initializer.",
+    "Configuring python_files to include __init__.py continues to collect tests from discovered package initializers.",
+    "Explicitly selecting a path such as tests/__init__.py continues to collect it even when the default python_files patterns do not include __init__.py.",
+    "Existing package collection, --pyargs/testpaths, and collect_ignore regression tests continue to pass.",
+    "The implementation avoids creating a Package collector for a discovered non-matching __init__.py while preserving recursive discovery beneath its directory."
+  ],
+  "confirmed_decisions": [
+    "During ordinary recursive directory collection, discovered __init__.py files must satisfy python_files before becoming Python collectors.",
+    "When a discovered package initializer does not match python_files, pytest must recurse into the package directory without collecting or importing that initializer.",
+    "An explicitly supplied __init__.py path remains eligible for collection even when it does not match python_files, preserving initial-path behavior.",
+    "When python_files explicitly includes __init__.py, discovered initializers remain collectable and existing tests defined in them continue to work.",
+    "Existing pytest_ignore_collect and collect_ignore behavior must remain effective before collection or import."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Restore ordinary recursive collection so that a discovered package __init__.py is collected and imported only when its path matches the configured python_files patterns. A non-matching initializer must not be imported merely to traverse the package; pytest must still recurse into that directory and collect matching test files below it. Explicitly supplied __init__.py paths remain collectable."
+}

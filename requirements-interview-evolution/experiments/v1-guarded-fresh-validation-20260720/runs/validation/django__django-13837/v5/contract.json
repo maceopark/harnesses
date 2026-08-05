@@ -1,0 +1,27 @@
+{
+  "acceptance_checks": [
+    "A `python -m django runserver` context produces `[sys.executable, *warning_options, '-m', 'django', 'runserver']`.",
+    "A `python -m pkg_other_than_django runserver` context produces `[sys.executable, *warning_options, '-m', 'pkg_other_than_django', 'runserver']`.",
+    "Module relaunch detection succeeds without reading or requiring `django.__main__.__file__`.",
+    "Multiple or existing Python warning options remain ordered between `sys.executable` and `-m`.",
+    "If `__main__.__spec__` is absent or `None`, existing ordinary-script behavior remains unchanged.",
+    "If `__main__.__spec__.parent` is empty, the invocation is not reconstructed as `-m`; existing directory/zip or applicable fallback behavior remains unchanged.",
+    "Existing missing-path and Windows `.exe` and `-script.py` fallback tests continue to pass.",
+    "Targeted tests in `tests/utils_tests/test_autoreload.py` pass."
+  ],
+  "confirmed_decisions": [
+    "Generalize module detection using the documented top-level `__main__.__spec__.parent` value.",
+    "Treat only a non-empty `__main__.__spec__.parent` as a `-m <package>` invocation; an empty parent does not trigger module reconstruction.",
+    "Preserve Python warning options before `-m` in the reconstructed command.",
+    "Preserve `sys.argv[1:]` after the detected module package.",
+    "Remove the module-detection dependency on `django.__main__.__file__`.",
+    "Keep ordinary-script, directory/zip, missing-path, and Windows entry-point fallback behavior unchanged.",
+    "Limit scope to autoreloader child-command reconstruction; do not alter management-command dispatch or display naming.",
+    "Add focused coverage for Django and non-Django module relaunch, warning-option preservation, and unchanged fallback behavior.",
+    "Acceptance requires the targeted autoreload tests to pass.",
+    "Acknowledge bounded residual risk only for Python runtimes that violate documented `__main__.__spec__.parent` semantics."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update `django.utils.autoreload.get_child_arguments()` to inspect the top-level `__main__.__spec__`. When `__main__.__spec__.parent` is a non-empty string, reconstruct the child command as `[sys.executable, *warning_options, '-m', parent, *sys.argv[1:]]`. This must support both `python -m django` and `python -m <other_package>` without relying on `__file__`. When the spec is absent or its parent is empty, preserve existing behavior for ordinary scripts, directory/zip execution, missing paths, and Windows `.exe` and `-script.py` fallbacks. Do not change management-command dispatch or display naming."
+}

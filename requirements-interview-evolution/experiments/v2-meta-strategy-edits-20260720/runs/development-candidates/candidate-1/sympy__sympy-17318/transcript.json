@@ -1,0 +1,81 @@
+[
+  {
+    "answer": "Local sqrtdenest guard",
+    "open_material_decisions": [
+      "Choose whether the fix must be local to sqrtdenest or may change split_surds behavior for all callers."
+    ],
+    "question": {
+      "header": "Fix boundary",
+      "options": [
+        {
+          "description": "Treat the empty-surd case as no match inside sqrtdenest, preserving split_surds behavior for every other caller; add the reported expression as an unchanged-result regression test.",
+          "label": "Local sqrtdenest guard",
+          "recommended": true
+        },
+        {
+          "description": "Make split_surds handle an empty surd collection for all callers, with acceptance tests covering its general return semantics as well as sqrtdenest.",
+          "label": "General split_surds guard",
+          "recommended": false
+        },
+        {
+          "description": "Delegate guard placement to the implementer, constrained to returning the reported expression unchanged and proving no regressions with targeted tests.",
+          "label": "Implementation discretion",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which compatibility boundary should the implementation contract require for handling an additive match with no Pow-based surds?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve or reject the compiled implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Authorize implementation exactly within this scope and acceptance boundary.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Do not authorize implementation until you provide required changes.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: add a local guard in sqrtdenest’s additive matching path so an empty Pow-based surd collection is treated as no match; the reported expression must complete without IndexError and return unchanged; preserve split_surds behavior for all callers; add the exact reported expression as a regression test; verify that regression plus the existing sqrtdenest test module; no broader split_surds semantics or additional denesting behavior are in scope?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Calling `sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2)` does not raise IndexError.",
+          "The call returns an expression equal to the unchanged input, displayed equivalently as `3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2`.",
+          "A regression test containing the exact reported expression passes.",
+          "The existing `sympy/simplify/tests/test_sqrtdenest.py` test module passes.",
+          "No change is made to split_surds behavior or its general caller contract."
+        ],
+        "confirmed_decisions": [
+          "The fix boundary is local to sqrtdenest; split_surds behavior must remain unchanged.",
+          "An empty Pow-based surd collection in sqrtdenest’s additive matching path represents no match and must use the existing unchanged-expression fallback.",
+          "The exact reported complex expression is required as a regression case.",
+          "Verification must cover the new regression and the existing sqrtdenest test module.",
+          "The owner explicitly approved this contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "At base commit d4e0231b08147337745dcf601e62de7eefe2fb2d, add a local guard in sqrtdenest’s additive matching path so an additive candidate with no Pow-based surds is treated as no match. The exact reported expression `(3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2` must complete without IndexError and be returned unchanged. Preserve split_surds behavior for all callers. Add the exact reported expression as a regression test. No broader split_surds semantics or additional denesting behavior are in scope."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly selected the local sqrtdenest compatibility boundary and approved the compiled contract. Repository evidence resolves the failure mechanism and existing fallback convention, leaving no material implementation decision open."
+    },
+    "turn": 3
+  }
+]

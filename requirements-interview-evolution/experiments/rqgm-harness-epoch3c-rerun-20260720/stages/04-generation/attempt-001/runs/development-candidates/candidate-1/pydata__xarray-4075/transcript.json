@@ -1,0 +1,78 @@
+[
+  {
+    "answer": "All denominator uses",
+    "open_material_decisions": [
+      "Whether boolean weights must be corrected only for weighted mean or for every weighted operation that reports or uses the sum of weights."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Treat booleans as 0/1 whenever weighted operations report or use the sum of weights, including mean and sum_of_weights.",
+          "label": "All denominator uses",
+          "recommended": true
+        },
+        {
+          "description": "Require the reported weighted-mean result only, without expanding the contract to sum_of_weights.",
+          "label": "Mean only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which public behavior should the contract require for boolean weights?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "DataArray and Dataset",
+    "open_material_decisions": [
+      "Whether the boolean-weight behavior is required for DataArray only or for both DataArray and Dataset weighted operations."
+    ],
+    "question": {
+      "header": "Object scope",
+      "options": [
+        {
+          "description": "Require consistent boolean-weight behavior across both public weighted APIs that use the shared reduction machinery.",
+          "label": "DataArray and Dataset",
+          "recommended": true
+        },
+        {
+          "description": "Limit the contract to the object type demonstrated by the reported example.",
+          "label": "DataArray only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which xarray objects must support boolean weights as 0/1 for all denominator uses?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A DataArray weighted mean with values [1.0, 1.0, 1.0] and boolean weights [true, true, false] equals 1.0.",
+          "For boolean weights, sum_of_weights equals the count of true weights associated with data values included by the operation.",
+          "DataArray and Dataset weighted operations produce denominator results consistent with treating boolean weights as numeric 0/1.",
+          "Boolean-weight denominator behavior remains correct when data contain missing values under the existing inclusion and skipna semantics.",
+          "An all-false boolean weighting preserves the existing zero-total-weight result behavior.",
+          "Existing weighted-operation tests using numeric weights continue to pass without changed observable results."
+        ],
+        "confirmed_decisions": [
+          "Boolean weights are valid weights under the existing public API and are interpreted numerically as true = 1 and false = 0.",
+          "The requirement applies to every public weighted operation that reports or uses the sum of weights, including weighted mean and sum_of_weights.",
+          "The requirement applies consistently to both DataArray and Dataset weighted operations.",
+          "For the reported DataArray values [1.0, 1.0, 1.0] with boolean weights [true, true, false], weighted mean returns 1.0 rather than 2.0.",
+          "The existing rule that weights must be a DataArray without missing values remains unchanged.",
+          "Existing behavior for numeric weights, missing data, skipna handling, and zero total weight remains unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Correct boolean-weight denominator behavior across xarray weighted operations. For both DataArray and Dataset, boolean weights contribute 1 when true and 0 when false whenever the sum of weights is reported or used, while preserving the established handling of missing data and zero total weight."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The reported expected behavior, audited repository evidence, and interview answers fully resolve the material scope: boolean weights are supported as 0/1 for every denominator-reporting or denominator-using weighted operation on both DataArray and Dataset. No material implementation decision remains open."
+    },
+    "turn": 3
+  }
+]

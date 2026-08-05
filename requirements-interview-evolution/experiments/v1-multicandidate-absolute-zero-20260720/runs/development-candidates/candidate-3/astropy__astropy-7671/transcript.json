@@ -1,0 +1,79 @@
+[
+  {
+    "answer": "Standard parser (Recommended)",
+    "open_material_decisions": [
+      "Choose the comparison-semantics boundary for all versions accepted by the public `minversion` utility."
+    ],
+    "question": {
+      "header": "Semantics",
+      "options": [
+        {
+          "description": "Replace LooseVersion comparisons with the repository-appropriate standard package-version parser, require both inclusive and exclusive modes to use it, preserve the existing API/import behavior, and add regression coverage for `1.14.3` versus `1.14dev`; acknowledge that other unusual version strings may consequently follow the parser's semantics.",
+          "label": "Standard parser (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Fix only mixed numeric/dev comparisons such as `1.14.3` versus `1.14dev`, while preserving LooseVersion behavior for all other inputs as far as practical.",
+          "label": "Narrow workaround",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which version-comparison boundary should the implementation contract require?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve or revise the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this scope and make it ready for implementation exactly as stated.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the selected standard-parser direction but provide changes to scope, parser, compatibility boundary, or acceptance tests.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: replace LooseVersion comparison in public `minversion` with `pkg_resources.parse_version` for both inclusive (`>=`) and exclusive (`>`) modes; preserve the function signature, module/module-name handling, failed-import result, `version_path` lookup, exceptions unrelated to version comparison, and public re-export; add regression coverage proving installed `1.14.3` satisfies requested `1.14dev` without raising, while retaining the existing minversion expectations; accept standards-parser semantics for other parseable unusual version strings as the bounded compatibility change; make no changes to NumPy thresholds, startup enforcement, or packaging requirements. Acceptance requires the focused introspection tests to pass, including both comparison branches and the reported regression."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Focused introspection tests pass.",
+          "`minversion` comparing installed `1.14.3` with requested `1.14dev` returns true in inclusive mode without raising `TypeError`.",
+          "Inclusive mode continues to perform a `>=` comparison using parsed versions.",
+          "Exclusive mode continues to perform a `>` comparison using parsed versions.",
+          "Existing `test_minversion` expectations for installed `0.12.2` against `0.12`, `0.12.1`, `0.12.0.dev`, `1`, and `1.2rc1` remain passing.",
+          "Module objects, module-name strings, failed named-module imports, and direct or dotted `version_path` behavior remain unchanged.",
+          "No NumPy compatibility threshold, Astropy startup check, or setup requirement is modified."
+        ],
+        "confirmed_decisions": [
+          "Use `pkg_resources.parse_version` as the standard version parser instead of a narrow LooseVersion workaround.",
+          "Use the same parser for inclusive and exclusive comparison modes.",
+          "Preserve all existing `minversion` API, import, lookup, failure, exception, and public-export behavior outside version-comparison semantics.",
+          "Cover the reported `1.14.3` versus `1.14dev` regression and both comparison branches while retaining existing test expectations.",
+          "Accept standard-parser semantics for other parseable unusual version strings as a bounded compatibility change.",
+          "Exclude changes to NumPy thresholds, startup minimum-version enforcement, and packaging requirements."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Replace `distutils.version.LooseVersion` comparisons in the public `astropy.utils.introspection.minversion` utility with `pkg_resources.parse_version`. Apply the parser consistently to both inclusive (`>=`) and exclusive (`>`) comparisons. Preserve the existing function signature; imported-module and module-name inputs; `False` result for a failed named-module import; direct and dotted `version_path` lookup; existing exceptions unrelated to version comparison; and re-export through `astropy.utils`. Add regression coverage proving that installed version `1.14.3` satisfies requested version `1.14dev` without raising, retain the existing `minversion` expectations, and exercise both comparison branches. Do not change NumPy compatibility thresholds, Astropy startup enforcement, or packaging requirements. Other parseable unusual version strings may adopt `pkg_resources.parse_version` semantics as the acknowledged bounded compatibility change."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner selected the standard package-version parser boundary and explicitly approved the proposed contract. All material behavioral, compatibility, scope, and acceptance decisions are resolved."
+    },
+    "turn": 3
+  }
+]

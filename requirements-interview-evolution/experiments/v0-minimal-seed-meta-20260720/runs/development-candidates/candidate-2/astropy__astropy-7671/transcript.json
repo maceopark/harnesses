@@ -1,0 +1,94 @@
+[
+  {
+    "answer": "pkg_resources.parse_version",
+    "open_material_decisions": [
+      "Which version parser and comparison policy should replace distutils.version.LooseVersion in minversion?"
+    ],
+    "question": {
+      "header": "Version parser",
+      "options": [
+        {
+          "description": "Restore the previously working behavior cited in the report, including 1.14.3 >= 1.14dev, using setuptools' parser.",
+          "label": "pkg_resources.parse_version",
+          "recommended": true
+        },
+        {
+          "description": "Use the standards-focused Packaging parser, potentially requiring dependency and invalid-version policy decisions.",
+          "label": "packaging.version",
+          "recommended": false
+        },
+        {
+          "description": "Keep LooseVersion for ordinary inputs and add special handling for mixed numeric/text components, preserving more legacy behavior but adding bespoke logic.",
+          "label": "Custom fallback",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which comparison implementation should the contract require for minversion?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Direct import",
+    "open_material_decisions": [
+      "How minversion should handle the runtime availability of pkg_resources/setuptools."
+    ],
+    "question": {
+      "header": "Dependency",
+      "options": [
+        {
+          "description": "Import pkg_resources.parse_version directly and rely on setuptools being present, restoring the prior implementation with the smallest change.",
+          "label": "Direct import",
+          "recommended": true
+        },
+        {
+          "description": "Use pkg_resources.parse_version and add setuptools as an explicit runtime installation dependency.",
+          "label": "Declare setuptools",
+          "recommended": false
+        },
+        {
+          "description": "Prefer pkg_resources.parse_version but define fallback behavior when setuptools is unavailable, increasing implementation and compatibility scope.",
+          "label": "Graceful fallback",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should the contract handle pkg_resources availability at runtime?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "minversion on a synthetic module whose __version__ is 1.14.3 with requested version 1.14dev returns True and does not raise TypeError.",
+          "The existing test cases for installed 0.12.2 continue to accept 0.12, 0.12.1, and 0.12.0.dev and reject 1 and 1.2rc1.",
+          "inclusive=True continues to accept equal parsed versions, while inclusive=False requires the installed parsed version to be strictly greater.",
+          "A missing module named by string continues to return False.",
+          "Direct module objects and dotted version_path resolution continue to work unchanged.",
+          "astropy.utils continues to expose minversion.",
+          "astropy.utils.introspection no longer imports or constructs distutils.version.LooseVersion.",
+          "setup.py install_requires remains unchanged with respect to setuptools.",
+          "The targeted introspection test suite passes."
+        ],
+        "confirmed_decisions": [
+          "Use pkg_resources.parse_version as the version parsing and comparison implementation.",
+          "Import pkg_resources.parse_version directly and rely on setuptools/pkg_resources being available at runtime.",
+          "Remove the LooseVersion dependency from astropy.utils.introspection.",
+          "Parse both have_version and the requested version before comparison.",
+          "Keep inclusive=True as >= and inclusive=False as >.",
+          "Preserve minversion's accepted module forms, failed named-import result of False, version_path resolution, exceptions for unsupported module arguments, and public re-export from astropy.utils.",
+          "Add focused regression coverage for installed 1.14.3 versus requested 1.14dev.",
+          "Do not add setuptools as an explicit install_requires dependency.",
+          "Do not add custom mixed-component handling or a graceful fallback parser."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Replace distutils.version.LooseVersion with a direct import of pkg_resources.parse_version in astropy.utils.introspection.minversion. Parse both the installed version obtained through version_path and the requested version before applying the existing inclusive comparison semantics (>= when inclusive=True and > when inclusive=False). Preserve all existing module resolution, missing-import, invalid-module-argument, version_path, and public API behavior. Add regression coverage proving that an installed version of 1.14.3 satisfies a requested version of 1.14dev without raising TypeError, while retaining coverage for the existing ordinary release, development-version, and failing-threshold cases. Do not add setuptools to install_requires and do not introduce a fallback parser."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The material implementation choices are resolved: restore pkg_resources.parse_version and import it directly without adding a new declared runtime dependency or fallback policy. The reported regression and existing minversion behavior provide sufficient acceptance criteria."
+    },
+    "turn": 3
+  }
+]

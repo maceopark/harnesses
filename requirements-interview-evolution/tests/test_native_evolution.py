@@ -31,6 +31,19 @@ LENS = {
     "why_material": "Implementers can produce a different observable result.",
     "minimal_test_shape": "Confirm one behavior, then compare it with the completed contract.",
 }
+LENSES = [
+    LENS,
+    {**LENS, "id": "handoff-gap", "stage": "handoff",
+     "failure_description": "A fresh implementer must choose an observable behavior.",
+     "observable_signal": "Two implementations differ while satisfying the contract.",
+     "why_material": "The delivered behavior changes.",
+     "minimal_test_shape": "Give the contract to two implementers and compare outputs."},
+    {**LENS, "id": "unverifiable-result", "stage": "verification",
+     "failure_description": "The contract cannot be checked objectively.",
+     "observable_signal": "Reviewers cannot assign the same pass or fail result.",
+     "why_material": "Completion cannot be established.",
+     "minimal_test_shape": "Ask two reviewers to evaluate one result independently."},
+]
 
 
 class FakeBackend:
@@ -72,9 +85,15 @@ class FakeBackend:
     def invoke(self, role: str, prompt: str, schema: dict) -> dict:
         self.prompts.append((role, prompt))
         if role == "failure-lens-proposer":
-            return {"lenses": [LENS]}
+            return {"lenses": LENSES}
         if role == "lens-auditor":
-            return {"accepted_lens_ids": [LENS["id"]], "rejected_lenses": [], "audit_summary": "distinct"}
+            return {"accepted_lens_ids": [lens["id"] for lens in LENSES],
+                    "rejected_lenses": [],
+                    "assessments": [{
+                        "id": lens["id"], "observable": True, "material": True,
+                        "solution_neutral": True, "duplicate_of": None,
+                    } for lens in LENSES],
+                    "audit_summary": "distinct"}
         if role == "lens-case-designer":
             repository = '"context_mode":"repository"' in prompt
             return {
@@ -199,6 +218,35 @@ class NativeEvolutionTests(unittest.TestCase):
                 result["manifest"]["lens_set_sha256"],
                 result["manifest"]["case_identity"]["lens_set_sha256"],
             )
+            call = json.loads(next((run_dir / "calls").glob("*.json")).read_text())
+            self.assertIn("Return only the JSON object", call["prompt"])
+            self.assertEqual(MODULE.digest_text(call["prompt"]), call["prompt_sha256"])
+            recorded = [json.loads(path.read_text()) for path in sorted((run_dir / "calls").glob("*.json"))]
+            inputs = {item["role"]: item["input"] for item in recorded}
+            self.assertEqual(set(inputs["failure-lens-proposer"]), {"seed_category", "fixed_goal"})
+            self.assertEqual(
+                set(inputs["lens-case-designer"]),
+                {"seed", "context_mode", "frozen_failure_lenses", "audited_repository_evidence"},
+            )
+            self.assertNotIn("owner_oracle", inputs["adversarial-reviewer"])
+            self.assertEqual(
+                set(inputs["mutator"]),
+                {"candidate_skill_md", "public_request", "audited_repository_evidence",
+                 "transcript", "judge_failure_summary", "approved_adversarial_findings"},
+            )
+            self.assertNotIn("blind_review", inputs["mutator"])
+
+    def test_role_output_closed_schema_is_validated_by_coordinator(self) -> None:
+        class Malformed(FakeBackend):
+            def invoke(self, role: str, prompt: str, schema: dict) -> dict:
+                result = super().invoke(role, prompt, schema)
+                if role == "failure-lens-proposer":
+                    result["unexpected"] = True
+                return result
+
+        with tempfile.TemporaryDirectory() as raw:
+            with self.assertRaisesRegex(ValueError, "schema validation.*extra"):
+                MODULE.run("reminder", "candidate skill", Path(raw) / "run", Malformed(), 30)
 
     def test_repository_ground_truth_is_discovered_audited_and_shared(self) -> None:
         backend = FakeBackend()
@@ -230,15 +278,51 @@ class NativeEvolutionTests(unittest.TestCase):
 
     def test_lens_auditor_must_disposition_every_lens_and_reject_tool_dependency(self) -> None:
         proposal = {"lenses": [LENS, {**LENS, "id": "second-lens"}]}
-        audit = {"accepted_lens_ids": [LENS["id"]], "rejected_lenses": [], "audit_summary": "partial"}
+        audit = {
+            "accepted_lens_ids": [LENS["id"]], "rejected_lenses": [],
+            "assessments": [{
+                "id": lens["id"], "observable": True, "material": True,
+                "solution_neutral": True, "duplicate_of": None,
+            } for lens in proposal["lenses"]],
+            "audit_summary": "partial",
+        }
         with self.assertRaisesRegex(ValueError, "disposition every"):
             MODULE.validate_lens_set(proposal, audit)
         named = {**LENS, "id": "named-tool", "failure_description": "Ultimateinterview fails"}
         with self.assertRaisesRegex(ValueError, "named tool"):
             MODULE.validate_lens_set(
                 {"lenses": [named]},
-                {"accepted_lens_ids": [named["id"]], "rejected_lenses": [], "audit_summary": "bad"},
+                {"accepted_lens_ids": [named["id"]], "rejected_lenses": [],
+                 "assessments": [{"id": named["id"], "observable": True,
+                                  "material": True, "solution_neutral": True,
+                                  "duplicate_of": None}], "audit_summary": "bad"},
             )
+
+    def test_lens_auditor_rejects_unobservable_and_duplicate_lenses(self) -> None:
+        duplicate = {**LENS, "id": "duplicate"}
+        vague = {**LENS, "id": "vague"}
+        proposal = {"lenses": [LENS, duplicate, vague]}
+        audit = {
+            "accepted_lens_ids": [LENS["id"]],
+            "rejected_lenses": [
+                {"id": "duplicate", "reason": "same failure"},
+                {"id": "vague", "reason": "not observable"},
+            ],
+            "assessments": [
+                {"id": LENS["id"], "observable": True, "material": True,
+                 "solution_neutral": True, "duplicate_of": None},
+                {"id": "duplicate", "observable": True, "material": True,
+                 "solution_neutral": True, "duplicate_of": LENS["id"]},
+                {"id": "vague", "observable": False, "material": True,
+                 "solution_neutral": True, "duplicate_of": None},
+            ],
+            "audit_summary": "one accepted",
+        }
+        self.assertEqual(MODULE.validate_lens_set(proposal, audit), [LENS])
+        audit["accepted_lens_ids"].append("vague")
+        audit["rejected_lenses"] = audit["rejected_lenses"][:1]
+        with self.assertRaisesRegex(ValueError, "accepted an unobservable"):
+            MODULE.validate_lens_set(proposal, audit)
 
     def test_review_citations_and_adjudication_fail_closed(self) -> None:
         review = {
@@ -260,7 +344,10 @@ class NativeEvolutionTests(unittest.TestCase):
         review["findings"][0]["citations"][0]["pointer"] = "/final_contract/summary"
         MODULE.validate_adversarial_review(review, [LENS], {"summary": "actual"}, [], {"facts": []})
         review["findings"][0]["citations"][0]["quoted_text"] = "act"
-        MODULE.validate_adversarial_review(review, [LENS], {"summary": "actual"}, [], {"facts": []})
+        with self.assertRaisesRegex(ValueError, "does not match"):
+            MODULE.validate_adversarial_review(
+                review, [LENS], {"summary": "actual"}, [], {"facts": []}
+            )
         inconsistent = {
             "verdicts": [{
                 "finding_id": "f1", "approved": True, "evidence_supported": False,
@@ -271,6 +358,16 @@ class NativeEvolutionTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(ValueError, "inconsistent"):
             MODULE.approved_findings(review, inconsistent)
+
+        preference = {
+            "verdicts": [{
+                "finding_id": "f1", "approved": False, "evidence_supported": True,
+                "lens_match": True, "material": False, "oracle_conflict": False,
+                "reason": "style preference only",
+            }],
+            "adjudication_summary": "rejected",
+        }
+        self.assertEqual(MODULE.approved_findings(review, preference), [])
 
     def test_unsafe_or_out_of_bounds_evidence_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -331,6 +428,36 @@ class NativeEvolutionTests(unittest.TestCase):
                     "case_sha256": "holdout-case",
                 }, root / "holdout")
 
+    def test_study_registry_rejects_each_case_identity_overlap(self) -> None:
+        for shared_key in ("lens_case_sha256", "case_sha256"):
+            with self.subTest(shared_key=shared_key), tempfile.TemporaryDirectory() as raw:
+                root = Path(raw)
+                registry = root / "registry.json"
+                first = {
+                    "seed_sha256": "dev-seed", "public_request_sha256": "dev-request",
+                    "lens_set_sha256": "dev-lenses", "lens_case_sha256": "dev-lens-case",
+                    "case_sha256": "dev-case",
+                }
+                second = {
+                    "seed_sha256": "holdout-seed", "public_request_sha256": "holdout-request",
+                    "lens_set_sha256": "holdout-lenses",
+                    "lens_case_sha256": "holdout-lens-case", "case_sha256": "holdout-case",
+                }
+                second[shared_key] = first[shared_key]
+                MODULE.reserve_study_run(registry, "development", first, root / "dev")
+                with self.assertRaisesRegex(ValueError, shared_key):
+                    MODULE.reserve_study_run(registry, "holdout", second, root / "holdout")
+
+    def test_manifest_integrity_rejects_lens_identity_drift(self) -> None:
+        backend = FakeBackend()
+        with tempfile.TemporaryDirectory() as raw:
+            run_dir = Path(raw) / "run"
+            result = MODULE.run("reminder", "candidate skill", run_dir, backend, 30)
+            manifest = result["manifest"]
+            manifest["case_identity"]["lens_set_sha256"] = "different"
+            with self.assertRaisesRegex(ValueError, "identity mismatch"):
+                MODULE.verify_run_artifacts(run_dir, manifest)
+
     def test_auditor_must_disposition_every_fact_and_preserve_conflicts(self) -> None:
         discovery = {
             "scope_summary": "x",
@@ -370,6 +497,28 @@ class NativeEvolutionTests(unittest.TestCase):
             transcript = json.loads((run_dir / "transcript.json").read_text())
             self.assertEqual(transcript[-1]["termination"], "safety_ceiling")
             self.assertFalse(transcript[-1]["interviewer"]["contract"]["implementation_ready"])
+
+    def test_omitted_safety_ceiling_allows_adaptive_completion(self) -> None:
+        class FourDecisions(FakeBackend):
+            def invoke(self, role: str, prompt: str, schema: dict) -> dict:
+                if role == "interviewer" and '"force_close":true' not in prompt:
+                    self.prompts.append((role, prompt))
+                    self.interviewer_calls += 1
+                    if self.interviewer_calls <= 4:
+                        result = self.question()
+                        result["open_material_decisions"] = [f"decision-{self.interviewer_calls}"]
+                        result["question"]["header"] = f"Decision {self.interviewer_calls}"
+                        result["question"]["prompt"] = f"Resolve decision {self.interviewer_calls}?"
+                        return result
+                    return self.complete()
+                return super().invoke(role, prompt, schema)
+
+        with tempfile.TemporaryDirectory() as raw:
+            result = MODULE.run(
+                "reminder", "candidate skill", Path(raw) / "run", FourDecisions(), None
+            )
+            self.assertEqual(result["manifest"]["termination_reason"], "completed")
+            self.assertIsNone(result["manifest"]["safety_max_turns"])
 
     def test_forced_close_rejects_false_ready_claim(self) -> None:
         class Dishonest(FakeBackend):

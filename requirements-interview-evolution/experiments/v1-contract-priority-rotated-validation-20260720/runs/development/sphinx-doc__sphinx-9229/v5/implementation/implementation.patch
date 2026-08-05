@@ -1,0 +1,114 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..4fbd975 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1457,7 +1457,7 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+     @classmethod
+     def can_document_member(cls, member: Any, membername: str, isattr: bool, parent: Any
+                             ) -> bool:
+-        return isinstance(member, type)
++        return isinstance(member, type) and not inspect.isgenericalias(member)
+ 
+     def import_object(self, raiseerror: bool = False) -> bool:
+         ret = super().import_object(raiseerror)
+diff --git a/sphinx/util/inspect.py b/sphinx/util/inspect.py
+index f216e87..d450a09 100644
+--- a/sphinx/util/inspect.py
++++ b/sphinx/util/inspect.py
+@@ -404,6 +404,9 @@ def isgenericalias(obj: Any) -> bool:
+     elif (hasattr(typing, '_SpecialGenericAlias') and  # for py39+
+             isinstance(obj, typing._SpecialGenericAlias)):  # type: ignore
+         return True
++    elif (getattr(obj, '__module__', None) == 'typing' and  # for py36
++          getattr(obj, '__origin__', None) is not None):
++        return True
+     else:
+         return False
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/typingaliases.py b/tests/roots/test-ext-autodoc/target/typingaliases.py
+new file mode 100644
+index 0000000..0755fd0
+--- /dev/null
++++ b/tests/roots/test-ext-autodoc/target/typingaliases.py
+@@ -0,0 +1,24 @@
++from pathlib import Path
++from typing import Any, Callable, Dict, Union
++
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary with options."""
++FileContents = Union[str, None]
++"""Contents to write, or none."""
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of file operations."""
++Undocumented = Callable[[int], None]
++ordinary_data = 42
++"""Ordinary data documentation."""
++
++class Class:
++    """An ordinary class."""
++    ScaffoldOpts = Dict[str, Any]
++    """Dictionary with class options."""
++    FileContents = Union[str, None]
++    """Class contents to write, or none."""
++    FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++    """Signature of class file operations."""
++    Undocumented = Callable[[int], None]
++    ordinary_data = 42
++    """Ordinary class data documentation."""
+diff --git a/tests/test_ext_autodoc.py b/tests/test_ext_autodoc.py
+index 4c16886..66bb7d2 100644
+--- a/tests/test_ext_autodoc.py
++++ b/tests/test_ext_autodoc.py
+@@ -1956,6 +1956,29 @@ def test_autodoc_GenericAlias(app):
+         ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_typing_alias_next_line_docstrings(app):
++    options = {"members": None, "undoc-members": None}
++    actual = list(do_autodoc(app, 'module', 'target.typingaliases', options))
++
++    docs = ['Dictionary with options.', 'Contents to write, or none.',
++            'Signature of file operations.', 'Dictionary with class options.',
++            'Class contents to write, or none.', 'Signature of class file operations.']
++    for doc in docs:
++        index = actual.index(next(line for line in actual if line.strip() == doc))
++        assert any('alias of ' in line for line in actual[index + 1:index + 5])
++
++    assert actual.count('   Ordinary data documentation.') == 1
++    assert actual.count('      Ordinary class data documentation.') == 1
++    assert actual.count('   An ordinary class.') == 1
++
++    undocumented = [i for i, line in enumerate(actual) if 'Undocumented' in line]
++    assert len(undocumented) == 2
++    for index in undocumented:
++        block = actual[index:index + 8]
++        assert sum('alias of ' in line for line in block) == 1
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodoc_TypeVar(app):
+     options = {"members": None,
+diff --git a/tests/test_util_inspect.py b/tests/test_util_inspect.py
+index dd9bd14..e737510 100644
+--- a/tests/test_util_inspect.py
++++ b/tests/test_util_inspect.py
+@@ -659,6 +659,18 @@ def test_isgenericalias(app):
+     assert inspect.isgenericalias(Base) is False
+ 
+ 
++def test_isgenericalias_python36_compatibility():
++    class LegacyTypingAlias(type):
++        __module__ = 'typing'
++        __origin__ = list
++
++    class ThirdPartyAlias(type):
++        __origin__ = list
++
++    assert inspect.isgenericalias(LegacyTypingAlias) is True
++    assert inspect.isgenericalias(ThirdPartyAlias) is False
++
++
+ def test_unpartial():
+     def func1(a, b, c):
+         pass

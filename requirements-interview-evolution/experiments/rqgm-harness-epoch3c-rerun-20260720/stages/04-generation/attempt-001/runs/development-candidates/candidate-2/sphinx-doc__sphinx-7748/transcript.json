@@ -1,0 +1,93 @@
+[
+  {
+    "answer": "Consecutive valid lines",
+    "open_material_decisions": [
+      "Boundary rule for collecting multiple docstring signatures",
+      "Handling of per-overload return annotations"
+    ],
+    "question": {
+      "header": "Signature block",
+      "options": [
+        {
+          "description": "Collect valid matching signatures from the start and stop at the first non-signature or non-matching-name line.",
+          "label": "Consecutive valid lines",
+          "recommended": true
+        },
+        {
+          "description": "Continue scanning initial lines and collect matching signatures even when intervening lines are not signatures.",
+          "label": "All leading candidates",
+          "recommended": false
+        },
+        {
+          "description": "Collect consecutive valid signatures, but treat a signature-looking line with the wrong object name as ordinary content rather than merely a boundary.",
+          "label": "First invalid is content",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc determine which leading docstring lines are overload signatures?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Keep each annotation",
+    "open_material_decisions": [
+      "Handling of per-overload return annotations"
+    ],
+    "question": {
+      "header": "Return types",
+      "options": [
+        {
+          "description": "Render every overload with the return annotation parsed from its own docstring line.",
+          "label": "Keep each annotation",
+          "recommended": true
+        },
+        {
+          "description": "Render every overload using the return annotation from the first signature line.",
+          "label": "Use first annotation",
+          "recommended": false
+        },
+        {
+          "description": "Render the overload signatures without any return annotations when they differ.",
+          "label": "Omit all annotations",
+          "recommended": false
+        }
+      ],
+      "prompt": "When consecutive overload signatures have different return annotations, how should autodoc render them?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A method docstring beginning with two valid matching signatures followed by prose produces two method signature lines in the same order, and neither signature appears in the rendered prose.",
+          "Two consecutive overload signatures with different return annotations each render with their respective annotation.",
+          "A non-signature line terminates the leading overload block and remains in the rendered content together with every following line.",
+          "A signature-shaped line with an unaccepted object name terminates collection and remains in rendered content together with every following line.",
+          "A docstring with one valid leading signature continues to render that signature and remove only that line from content.",
+          "With autodoc_docstring_signature disabled, runtime signature rendering remains in effect and all signature-looking docstring lines remain content.",
+          "When an explicit signature is provided, docstring overload extraction does not replace it or remove the leading docstring lines."
+        ],
+        "confirmed_decisions": [
+          "When autodoc_docstring_signature is enabled and no explicit signature was supplied, autodoc collects consecutive valid signature lines beginning with the first docstring line.",
+          "Collection stops at the first line that is not a valid signature for the documented object, including a signature-shaped line whose name is not accepted for that object.",
+          "Every collected overload is rendered as a separate directive signature in its original docstring order.",
+          "Each rendered overload retains the return annotation parsed from its own signature line, including when overload return annotations differ.",
+          "All collected signature lines are removed from rendered docstring content; the boundary line and all subsequent content remain as docstring content.",
+          "Existing accepted-name behavior remains unchanged, including the additional names accepted for class documenters.",
+          "When only one valid leading signature exists, observable behavior remains the same as the current single-signature feature.",
+          "When autodoc_docstring_signature is disabled, no docstring signature lines are extracted or removed.",
+          "An explicitly supplied signature continues to take precedence over docstring-derived signatures."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend autodoc_docstring_signature so functions and methods may expose an overload block consisting of consecutive valid signature lines at the start of a docstring. Each collected signature is displayed separately, preserves its own return annotation, and is removed from rendered docstring content."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The repository evidence and interview answers resolve all material behavior decisions needed for implementation."
+    },
+    "turn": 3
+  }
+]

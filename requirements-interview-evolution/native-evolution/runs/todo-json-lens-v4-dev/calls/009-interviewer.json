@@ -1,0 +1,312 @@
+{
+  "role": "interviewer",
+  "prompt": "You are the Interviewer. Follow the supplied skill. Treat audited repository evidence as discoverable ground truth and never ask the Owner to repeat it. Ask one material structured question or complete when no open material decision remains. Report the current open material decisions explicitly.\nReturn only the JSON object required by the supplied output schema.\nINPUT:\n{\"audited_repository_evidence\":{\"audit_summary\":\"Repository file hashes and Git HEAD match the supplied snapshot. Fourteen facts are directly supported; two were rejected for overstating the cited evidence. No conflicts were reported, so none required disposition.\",\"facts\":[{\"authority\":\"code\",\"claim\":\"The existing list path loads the configured store, applies the priority and due filters, sorts the filtered tasks, prints one human-readable row per task, and returns exit code 0.\",\"evidence\":[{\"line_end\":359,\"line_start\":353,\"path\":\"todo_cli.py\",\"quoted_text\":\"def _cmd_list(args: argparse.Namespace) -> int:\\n    path = get_store_path()\\n    store = load_store(path)\\n    tasks = filter_tasks(store.tasks, priority=args.priority, due=args.due)\\n    for task in sort_tasks(tasks):\\n        print(_format_row(task))\\n    return EXIT_OK\",\"quoted_text_sha256\":\"f088735ec33727de8302295db2b84b372dae4474767362dbe8b9de221b284d42\"}],\"id\":\"F2\"},{\"authority\":\"code\",\"claim\":\"Human-readable list rows are tab-separated and contain id, status ([ ] or [x]), priority, due date (or -), and title in that order.\",\"evidence\":[{\"line_end\":341,\"line_start\":338,\"path\":\"todo_cli.py\",\"quoted_text\":\"def _format_row(task: Task) -> str:\\n    status = \\\"[x]\\\" if task.done else \\\"[ ]\\\"\\n    due = task.due if task.due is not None else \\\"-\\\"\\n    return f\\\"{task.id}\\\\t{status}\\\\t{task.priority}\\\\t{due}\\\\t{task.title}\\\"\",\"quoted_text_sha256\":\"6c6c4a9adf3f01e0bf99c733302e2f1aeab83ddeb2aa40d5b77700c8ff2d8bdf\"}],\"id\":\"F3\"},{\"authority\":\"test\",\"claim\":\"Tests lock the exact existing human-readable output for a task as `1\\\\t[ ]\\\\thigh\\\\t-\\\\talpha\\\\n`.\",\"evidence\":[{\"line_end\":81,\"line_start\":76,\"path\":\"tests/test_todo.py\",\"quoted_text\":\"def test_list_outputs_tasks(todo_file, capsys):\\n    todo_cli.main([\\\"add\\\", \\\"alpha\\\", \\\"--priority\\\", \\\"high\\\"])\\n    capsys.readouterr()\\n    assert todo_cli.main([\\\"list\\\"]) == 0\\n    out = capsys.readouterr().out\\n    assert out == \\\"1\\\\t[ ]\\\\thigh\\\\t-\\\\talpha\\\\n\\\"\",\"quoted_text_sha256\":\"027cb612f5044ed9413449c17d16b9a50a00cbce29f93124eba990b209f11c41\"}],\"id\":\"F4\"},{\"authority\":\"test\",\"claim\":\"Listing an empty or missing store currently emits no stdout or stderr, exits 0, and does not create the store file.\",\"evidence\":[{\"line_end\":48,\"line_start\":43,\"path\":\"tests/test_todo.py\",\"quoted_text\":\"def test_missing_file_list_empty_exit0_no_create(todo_file, capsys):\\n    assert todo_cli.main([\\\"list\\\"]) == 0\\n    out = capsys.readouterr()\\n    assert out.out == \\\"\\\"\\n    assert out.err == \\\"\\\"\\n    assert not todo_file.exists()\",\"quoted_text_sha256\":\"c9dd732f8a6cf6f305d02cf78febe18195d11f003c09fadfd8c61ed001fb9bf7\"}],\"id\":\"F5\"},{\"authority\":\"code\",\"claim\":\"Each task record has exactly five modeled fields: id (integer), title (string), done (boolean), due (string or null), and priority (string).\",\"evidence\":[{\"line_end\":57,\"line_start\":51,\"path\":\"todo_cli.py\",\"quoted_text\":\"@dataclass(frozen=True)\\nclass Task:\\n    id: int\\n    title: str\\n    done: bool = False\\n    due: str | None = None\\n    priority: str = DEFAULT_PRIORITY\",\"quoted_text_sha256\":\"3b4328d6b90f465c4821151ad3c35c043ded1e74a4fe50ad2cb59b1340ba9ac0\"},{\"line_end\":93,\"line_start\":86,\"path\":\"todo_cli.py\",\"quoted_text\":\"def task_to_dict(task: Task) -> dict[str, object]:\\n    return {\\n        \\\"id\\\": task.id,\\n        \\\"title\\\": task.title,\\n        \\\"done\\\": task.done,\\n        \\\"due\\\": task.due,\\n        \\\"priority\\\": task.priority,\\n    }\",\"quoted_text_sha256\":\"178ca675516e0963cf50a9a282f622858b1c194b3f2518dafc3952fef358e143\"}],\"id\":\"F6\"},{\"authority\":\"code\",\"claim\":\"The existing task-to-dictionary serialization uses keys id, title, done, due, and priority and preserves their native JSON-compatible types.\",\"evidence\":[{\"line_end\":93,\"line_start\":86,\"path\":\"todo_cli.py\",\"quoted_text\":\"def task_to_dict(task: Task) -> dict[str, object]:\\n    return {\\n        \\\"id\\\": task.id,\\n        \\\"title\\\": task.title,\\n        \\\"done\\\": task.done,\\n        \\\"due\\\": task.due,\\n        \\\"priority\\\": task.priority,\\n    }\",\"quoted_text_sha256\":\"178ca675516e0963cf50a9a282f622858b1c194b3f2518dafc3952fef358e143\"}],\"id\":\"F7\"},{\"authority\":\"code\",\"claim\":\"List filtering is exact-match filtering by priority and/or due date, with both filters applied when both are supplied.\",\"evidence\":[{\"line_end\":276,\"line_start\":268,\"path\":\"todo_cli.py\",\"quoted_text\":\"def filter_tasks(\\n    tasks: list[Task], priority: str | None = None, due: str | None = None\\n) -> list[Task]:\\n    result = list(tasks)\\n    if priority is not None:\\n        result = [t for t in result if t.priority == priority]\\n    if due is not None:\\n        result = [t for t in result if t.due == due]\\n    return result\",\"quoted_text_sha256\":\"62622254c1d7000e5d65017d72aa2d8a34c250ef3a7a5bfcd73263a04052799a\"}],\"id\":\"F8\"},{\"authority\":\"test\",\"claim\":\"Tests require combined priority and due filters to restrict list results to records matching both conditions.\",\"evidence\":[{\"line_end\":181,\"line_start\":175,\"path\":\"tests/test_todo.py\",\"quoted_text\":\"def test_list_filter_priority_and_due_combined(todo_file, capsys):\\n    todo_cli.main([\\\"add\\\", \\\"a\\\", \\\"--priority\\\", \\\"high\\\", \\\"--due\\\", \\\"2026-07-10\\\"])\\n    todo_cli.main([\\\"add\\\", \\\"b\\\", \\\"--priority\\\", \\\"high\\\", \\\"--due\\\", \\\"2026-07-11\\\"])\\n    todo_cli.main([\\\"add\\\", \\\"c\\\", \\\"--priority\\\", \\\"low\\\", \\\"--due\\\", \\\"2026-07-10\\\"])\\n    capsys.readouterr()\\n    assert todo_cli.main([\\\"list\\\", \\\"--priority\\\", \\\"high\\\", \\\"--due\\\", \\\"2026-07-10\\\"]) == 0\\n    assert _list_ids(capsys) == [1]\",\"quoted_text_sha256\":\"34f486c574ce9ee05878a0c3f7e8dfa9440ebaba56ff0e4700c7b0872f3e2792\"}],\"id\":\"F9\"},{\"authority\":\"code\",\"claim\":\"List sorting orders incomplete tasks before completed tasks, then higher priority first, then earlier due dates with null due dates last, then lower task id.\",\"evidence\":[{\"line_end\":284,\"line_start\":279,\"path\":\"todo_cli.py\",\"quoted_text\":\"def sort_tasks(tasks: list[Task]) -> list[Task]:\\n    def key(task: Task) -> tuple[bool, int, date, int]:\\n        due_date = date.fromisoformat(task.due) if task.due is not None else date.max\\n        return (task.done, -PRIORITIES[task.priority], due_date, task.id)\\n\\n    return sorted(tasks, key=key)\",\"quoted_text_sha256\":\"f17bb60b5d9036693cd4b0ec48f7f794bc86400de03fcb8f2ece24ee37131627\"}],\"id\":\"F10\"},{\"authority\":\"documentation\",\"claim\":\"The README documents list as producing the current text rows, supporting exact-match combinable filters, producing no output for an empty list, and applying sorting after filtering.\",\"evidence\":[{\"line_end\":81,\"line_start\":59,\"path\":\"README.md\",\"quoted_text\":\"### list\\n\\n```bash\\ntodo list [--priority {low,medium,high}] [--due YYYY-MM-DD]\\n```\\n\\n- Prints one row per task:\\n\\n  ```\\n  {id}\\\\t{[ ]|[x]}\\\\t{priority}\\\\t{due|-}\\\\t{title}\\n  ```\\n\\n  where the status is `[ ]` for incomplete and `[x]` for done, and the due\\n  column shows `-` when there is no due date.\\n- Filters (`--priority`, `--due`) are exact matches and can be combined.\\n- An empty list prints nothing and exits 0.\\n\\n**Default sort order** (applied after filtering):\\n\\n1. incomplete tasks before done tasks,\\n2. higher priority first (`high` > `medium` > `low`),\\n3. nearer due date first (tasks with no due date sort *after* any dated task),\\n4. lower id first as a deterministic tiebreaker.\",\"quoted_text_sha256\":\"a85e551dfd4e002b6df9bab97ed98eaaa99fcc010dc7aadf0c4ab20993288bc5\"}],\"id\":\"F12\"},{\"authority\":\"test\",\"claim\":\"Invalid list due-date syntax is handled by argument parsing and returns usage exit code 2.\",\"evidence\":[{\"line_end\":223,\"line_start\":222,\"path\":\"tests/test_todo.py\",\"quoted_text\":\"def test_list_invalid_due_returns_2_no_systemexit(todo_file):\\n    assert todo_cli.main([\\\"list\\\", \\\"--due\\\", \\\"2026-02-30\\\"]) == 2\",\"quoted_text_sha256\":\"03d7c6c7732bbf2320dab6ee4c3d47c6f66ada6c4abfc08d5a633671ef28b28c\"}],\"id\":\"F13\"},{\"authority\":\"code\",\"claim\":\"Store and domain failures are printed to stderr as `error: ...` and return exit codes 3 and 1 respectively; successful list execution returns 0.\",\"evidence\":[{\"line_end\":359,\"line_start\":353,\"path\":\"todo_cli.py\",\"quoted_text\":\"def _cmd_list(args: argparse.Namespace) -> int:\\n    path = get_store_path()\\n    store = load_store(path)\\n    tasks = filter_tasks(store.tasks, priority=args.priority, due=args.due)\\n    for task in sort_tasks(tasks):\\n        print(_format_row(task))\\n    return EXIT_OK\",\"quoted_text_sha256\":\"f088735ec33727de8302295db2b84b372dae4474767362dbe8b9de221b284d42\"},{\"line_end\":410,\"line_start\":391,\"path\":\"todo_cli.py\",\"quoted_text\":\"def main(argv: list[str] | None = None) -> int:\\n    parser = build_parser()\\n    try:\\n        args = parser.parse_args(argv)\\n    except SystemExit as exc:\\n        if isinstance(exc.code, int):\\n            return exc.code\\n        if exc.code is None:\\n            return EXIT_OK\\n        return EXIT_USAGE\\n\\n    handler = _HANDLERS[args.command]\\n    try:\\n        return handler(args)\\n    except StoreError as exc:\\n        print(f\\\"error: {exc}\\\", file=sys.stderr)\\n        return EXIT_STORAGE\\n    except TodoError as exc:\\n        print(f\\\"error: {exc}\\\", file=sys.stderr)\\n        return EXIT_DOMAIN\",\"quoted_text_sha256\":\"e1f5bec1061465f588f6961cbd64f92154e2dc8613daef79f212d7ae81d69555\"}],\"id\":\"F14\"},{\"authority\":\"test\",\"claim\":\"Listing a corrupt store returns exit code 3 and leaves the store byte-for-byte unchanged.\",\"evidence\":[{\"line_end\":261,\"line_start\":255,\"path\":\"tests/test_todo.py\",\"quoted_text\":\"def test_corrupt_json_exit3_file_unchanged_on_list(todo_file, capsys):\\n    todo_file.write_text(\\\"{ not json\\\", encoding=\\\"utf-8\\\")\\n    before = todo_file.read_bytes()\\n    assert todo_cli.main([\\\"list\\\"]) == 3\\n    err = capsys.readouterr().err\\n    assert \\\"corrupt\\\" in err.lower() or \\\"error\\\" in err.lower()\\n    assert todo_file.read_bytes() == before\",\"quoted_text_sha256\":\"656cc8641c77665915b4f5c7f2d09d31ab56c347a97d4c3a0c3bd876fecb7b06\"}],\"id\":\"F15\"},{\"authority\":\"configuration\",\"claim\":\"The CLI uses only the Python standard library at runtime and declares no runtime dependencies.\",\"evidence\":[{\"line_end\":10,\"line_start\":5,\"path\":\"pyproject.toml\",\"quoted_text\":\"[project]\\nname = \\\"todo-cli-deep-interview\\\"\\nversion = \\\"0.1.0\\\"\\ndescription = \\\"A 4-command (add/list/done/rm) standard-library-only todo CLI.\\\"\\nrequires-python = \\\">=3.10\\\"\\ndependencies = []\",\"quoted_text_sha256\":\"c3d8873a54636e04f7a48d3b14718eedadea881ef273c2228110a19187fdbf62\"}],\"id\":\"F16\"}],\"repository_snapshot\":{\"cited_file_sha256\":{\"README.md\":\"fa0dc77f0025340f0a8109bcc27aab2185a1bb225feaccb4b998dd4c88f78307\",\"pyproject.toml\":\"75cbfd0b6b9b8d3c42429bc9f4784dea7c008e6991578a1788ea091119d1f92d\",\"tests/test_todo.py\":\"6a388c86d1f961c8b6e6e814d2815b20d10225aa252998c71930a18abad92375\",\"todo_cli.py\":\"aab51fc04d2c069ef749a7c8667212c18419144559a21285af5da497b8901567\"},\"git_head\":\"2753f9dc12efb3cadfea9aa9751289fd397d749e\",\"git_status_sha256\":\"06c9612388b11b349615612dc879a60efe6c24176c96adad0b2e038cba4b739b\"},\"resolved_conflicts\":[],\"scope_summary\":\"Repository discovery for adding an optional --json flag to the existing todo list command while preserving current behavior. The implementation is a single Python module with pytest coverage and README-defined CLI behavior.\",\"unknowns\":[\"The repository does not specify whether JSON output should be a bare array of task records or an object containing a tasks property or metadata.\",\"The repository does not specify whether JSON should be compact or indented, whether object key order is contractual, or whether the output should end with a newline.\",\"The repository does not specify the exact JSON output for an empty filtered result beyond the existing text mode producing no output.\",\"The repository does not explicitly state whether JSON records must follow the same filtered and sorted sequence as text output, although filtering and sorting are integral to the current list execution path.\",\"The repository does not specify whether --json is valid only after the list subcommand or should also be accepted before it as a global option.\",\"No tests or documentation currently define --json behavior, compatibility expectations for machine consumers, or handling of titles containing control characters in JSON output.\"],\"unresolved_conflicts\":[]},\"force_close\":false,\"public_request\":\"Preserve all existing behavior while adding an optional --json flag to the todo list command so automation can consume task records.\",\"safety_turns_remaining\":11,\"skill_md\":\"---\\nname: clarify-requirements\\ndescription: Turn ambiguous product, software, workflow, or change requests into an agreed and testable contract before planning or implementation. Use when requirements are vague, behavior or scope has multiple plausible interpretations, acceptance criteria are missing, consequential defaults would otherwise be invented, or the user asks for an interview, clarification, specification, PRD, or implementation handoff.\\n---\\n\\n# Clarify Requirements\\n\\nResolve only ambiguity that can materially change the result. Do not implement unless the user separately authorizes implementation.\\n\\n## Build the decision map\\n\\n1. Restate the requested outcome in one sentence.\\n2. Inspect user-authorized context for answers that are safely discoverable. Do not ask the user to repeat facts already established.\\n3. List plausible interpretations privately. Treat a choice as material when it changes observable behavior, scope, safety, compatibility, cost, reversibility, or acceptance.\\n4. Track each material decision as `confirmed`, `inferred`, or `open`, with its evidence. Never silently default an open material decision.\\n\\nConsider these lenses only when relevant: actors and permissions; inputs and outputs; happy path; edge, failure, and misuse behavior; data lifecycle; compatibility; operational constraints; rollout and rollback; acceptance evidence.\\n\\n## Interview\\n\\nAsk the highest-leverage open question first. Ask one bounded decision per turn unless the user explicitly prefers batching.\\n\\nUse the runtime's structured question UI whenever it is available. Put the decision in a short header, state the material consequence in the prompt, provide two or three mutually exclusive choices, mark the recommended choice, give each choice a one-sentence tradeoff, and preserve a free-form answer path. Fall back to the same structure in plain text only when the runtime has no structured question mechanism.\\n\\nFor each question:\\n\\n- explain in one short sentence why the answer changes the result;\\n- offer two or three concrete, mutually exclusive options when the space is known;\\n- recommend one option and state its tradeoff when evidence supports a recommendation;\\n- accept a free-form answer;\\n- update the decision map before selecting the next question.\\n\\nDo not ask about low-impact preferences one at a time. When several low-risk choices are conventional, reversible, and do not alter the core outcome or safety posture, collect two to five recommended defaults into one structured approval question. Show the bundle explicitly, let the user approve all defaults or identify exceptions, and record the approved items separately. Never bundle a destructive, security-sensitive, irreversible, costly, or scope-changing decision.\\n\\nDo not convert examples into requirements, infer permission for destructive behavior, or widen the requested scope. If the user cannot decide, record an explicit assumption only after explaining its consequence and obtaining approval.\\n\\n## Challenge the emerging contract\\n\\nBefore closing, assess implementation readiness from multiple relevant angles: representative happy path, edge case, failure case, misuse case, data lifecycle, compatibility, operability, and acceptance evidence. Reopen only a material decision exposed by this challenge.\\n\\n## Close\\n\\nStop when every material decision is confirmed or explicitly approved as an assumption and the acceptance criteria can distinguish success from failure. More questions are not evidence of a better interview.\\n\\nReturn a compact contract containing:\\n\\n- outcome and success measure;\\n- in-scope and out-of-scope behavior;\\n- confirmed decisions and approved assumptions;\\n- failure, edge, and misuse behavior where relevant;\\n- constraints and acceptance checks;\\n- unresolved non-blocking items;\\n- whether implementation is authorized.\\n\\nUse [references/contract-template.md](references/contract-template.md) when a durable prose contract is requested.\\n\\nWhen the contract is implementation-ready, create `build-contract.json`. Make `implementation_agent_directive` the first top-level field. In that directive, require the implementing agent to append one JSON object per line to `decision.jsonl` before making any implementation decision forced by a specification gap. Require at least `timestamp`, `gap`, `options_considered`, `choice`, `reason`, `observable_impact`, and `reversibility`. The agent must not use the log to override confirmed requirements, and must stop for owner input instead of choosing when the gap is destructive, security-sensitive, irreversible, costly, or scope-changing.\\n\\nInclude requirements, non-goals, confirmed decisions, approved defaults, acceptance checks, remaining non-blocking gaps, evidence provenance, and implementation authorization in the JSON contract. Validate the JSON before presenting it.\\n\\nMake the best evidence-based readiness judgment; do not ask the user to approve whether the specification is sufficient. If a material decision remains open, continue the interview. Otherwise seal the contract and allow corrections without adding an approval gate. Label anything not confirmed by the user or authoritative evidence. Preserve the user's terminology and distinguish `must`, `should`, and `could`.\\n\\nAfter the interview is complete, print an implementation-start prompt that points to the contract path, declares it authoritative, repeats the `decision.jsonl` rule, forbids widening scope, names the required verification, and states whether implementation is authorized.\\n\",\"transcript\":[{\"answer\":\"{\\\"selected\\\":\\\"Bare array\\\",\\\"answer\\\":\\\"Emit a bare JSON array of task objects, with no `tasks` wrapper or metadata. Represent an empty result as `[]`.\\\"}\",\"open_material_decisions\":[\"Empty JSON result representation and whether it emits output.\",\"JSON serialization defaults: compact versus indented output, newline termination, and whether key order is contractual.\",\"JSON top-level shape: bare array versus an object containing tasks or metadata.\",\"Whether --json is list-local only or also accepted before the subcommand.\"],\"question\":{\"header\":\"JSON shape\",\"options\":[{\"description\":\"Emit task records directly, such as `[{\\\"id\\\":1,...}]`; this is simplest and naturally represents an empty result as `[]`.\",\"label\":\"Bare array\",\"recommended\":true},{\"description\":\"Emit `{\\\"tasks\\\":[...]}`, allowing metadata to be added later but introducing an extra access layer.\",\"label\":\"Tasks object\",\"recommended\":false},{\"description\":\"Emit a structured object containing tasks plus fields such as count or active filters, widening the requested output contract.\",\"label\":\"Metadata object\",\"recommended\":false}],\"prompt\":\"What top-level JSON shape should `todo list --json` emit? This becomes the machine-consumer compatibility contract.\"},\"turn\":1}],\"turn\":2}",
+  "prompt_sha256": "d282608256863bb50c80adaf9314d8bbe5dca7c24a66457e7360341458c03e1a",
+  "input": {
+    "skill_md": "---\nname: clarify-requirements\ndescription: Turn ambiguous product, software, workflow, or change requests into an agreed and testable contract before planning or implementation. Use when requirements are vague, behavior or scope has multiple plausible interpretations, acceptance criteria are missing, consequential defaults would otherwise be invented, or the user asks for an interview, clarification, specification, PRD, or implementation handoff.\n---\n\n# Clarify Requirements\n\nResolve only ambiguity that can materially change the result. Do not implement unless the user separately authorizes implementation.\n\n## Build the decision map\n\n1. Restate the requested outcome in one sentence.\n2. Inspect user-authorized context for answers that are safely discoverable. Do not ask the user to repeat facts already established.\n3. List plausible interpretations privately. Treat a choice as material when it changes observable behavior, scope, safety, compatibility, cost, reversibility, or acceptance.\n4. Track each material decision as `confirmed`, `inferred`, or `open`, with its evidence. Never silently default an open material decision.\n\nConsider these lenses only when relevant: actors and permissions; inputs and outputs; happy path; edge, failure, and misuse behavior; data lifecycle; compatibility; operational constraints; rollout and rollback; acceptance evidence.\n\n## Interview\n\nAsk the highest-leverage open question first. Ask one bounded decision per turn unless the user explicitly prefers batching.\n\nUse the runtime's structured question UI whenever it is available. Put the decision in a short header, state the material consequence in the prompt, provide two or three mutually exclusive choices, mark the recommended choice, give each choice a one-sentence tradeoff, and preserve a free-form answer path. Fall back to the same structure in plain text only when the runtime has no structured question mechanism.\n\nFor each question:\n\n- explain in one short sentence why the answer changes the result;\n- offer two or three concrete, mutually exclusive options when the space is known;\n- recommend one option and state its tradeoff when evidence supports a recommendation;\n- accept a free-form answer;\n- update the decision map before selecting the next question.\n\nDo not ask about low-impact preferences one at a time. When several low-risk choices are conventional, reversible, and do not alter the core outcome or safety posture, collect two to five recommended defaults into one structured approval question. Show the bundle explicitly, let the user approve all defaults or identify exceptions, and record the approved items separately. Never bundle a destructive, security-sensitive, irreversible, costly, or scope-changing decision.\n\nDo not convert examples into requirements, infer permission for destructive behavior, or widen the requested scope. If the user cannot decide, record an explicit assumption only after explaining its consequence and obtaining approval.\n\n## Challenge the emerging contract\n\nBefore closing, assess implementation readiness from multiple relevant angles: representative happy path, edge case, failure case, misuse case, data lifecycle, compatibility, operability, and acceptance evidence. Reopen only a material decision exposed by this challenge.\n\n## Close\n\nStop when every material decision is confirmed or explicitly approved as an assumption and the acceptance criteria can distinguish success from failure. More questions are not evidence of a better interview.\n\nReturn a compact contract containing:\n\n- outcome and success measure;\n- in-scope and out-of-scope behavior;\n- confirmed decisions and approved assumptions;\n- failure, edge, and misuse behavior where relevant;\n- constraints and acceptance checks;\n- unresolved non-blocking items;\n- whether implementation is authorized.\n\nUse [references/contract-template.md](references/contract-template.md) when a durable prose contract is requested.\n\nWhen the contract is implementation-ready, create `build-contract.json`. Make `implementation_agent_directive` the first top-level field. In that directive, require the implementing agent to append one JSON object per line to `decision.jsonl` before making any implementation decision forced by a specification gap. Require at least `timestamp`, `gap`, `options_considered`, `choice`, `reason`, `observable_impact`, and `reversibility`. The agent must not use the log to override confirmed requirements, and must stop for owner input instead of choosing when the gap is destructive, security-sensitive, irreversible, costly, or scope-changing.\n\nInclude requirements, non-goals, confirmed decisions, approved defaults, acceptance checks, remaining non-blocking gaps, evidence provenance, and implementation authorization in the JSON contract. Validate the JSON before presenting it.\n\nMake the best evidence-based readiness judgment; do not ask the user to approve whether the specification is sufficient. If a material decision remains open, continue the interview. Otherwise seal the contract and allow corrections without adding an approval gate. Label anything not confirmed by the user or authoritative evidence. Preserve the user's terminology and distinguish `must`, `should`, and `could`.\n\nAfter the interview is complete, print an implementation-start prompt that points to the contract path, declares it authoritative, repeats the `decision.jsonl` rule, forbids widening scope, names the required verification, and states whether implementation is authorized.\n",
+    "public_request": "Preserve all existing behavior while adding an optional --json flag to the todo list command so automation can consume task records.",
+    "audited_repository_evidence": {
+      "scope_summary": "Repository discovery for adding an optional --json flag to the existing todo list command while preserving current behavior. The implementation is a single Python module with pytest coverage and README-defined CLI behavior.",
+      "facts": [
+        {
+          "id": "F2",
+          "claim": "The existing list path loads the configured store, applies the priority and due filters, sorts the filtered tasks, prints one human-readable row per task, and returns exit code 0.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "todo_cli.py",
+              "line_start": 353,
+              "line_end": 359,
+              "quoted_text": "def _cmd_list(args: argparse.Namespace) -> int:\n    path = get_store_path()\n    store = load_store(path)\n    tasks = filter_tasks(store.tasks, priority=args.priority, due=args.due)\n    for task in sort_tasks(tasks):\n        print(_format_row(task))\n    return EXIT_OK",
+              "quoted_text_sha256": "f088735ec33727de8302295db2b84b372dae4474767362dbe8b9de221b284d42"
+            }
+          ]
+        },
+        {
+          "id": "F3",
+          "claim": "Human-readable list rows are tab-separated and contain id, status ([ ] or [x]), priority, due date (or -), and title in that order.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "todo_cli.py",
+              "line_start": 338,
+              "line_end": 341,
+              "quoted_text": "def _format_row(task: Task) -> str:\n    status = \"[x]\" if task.done else \"[ ]\"\n    due = task.due if task.due is not None else \"-\"\n    return f\"{task.id}\\t{status}\\t{task.priority}\\t{due}\\t{task.title}\"",
+              "quoted_text_sha256": "6c6c4a9adf3f01e0bf99c733302e2f1aeab83ddeb2aa40d5b77700c8ff2d8bdf"
+            }
+          ]
+        },
+        {
+          "id": "F4",
+          "claim": "Tests lock the exact existing human-readable output for a task as `1\\t[ ]\\thigh\\t-\\talpha\\n`.",
+          "authority": "test",
+          "evidence": [
+            {
+              "path": "tests/test_todo.py",
+              "line_start": 76,
+              "line_end": 81,
+              "quoted_text": "def test_list_outputs_tasks(todo_file, capsys):\n    todo_cli.main([\"add\", \"alpha\", \"--priority\", \"high\"])\n    capsys.readouterr()\n    assert todo_cli.main([\"list\"]) == 0\n    out = capsys.readouterr().out\n    assert out == \"1\\t[ ]\\thigh\\t-\\talpha\\n\"",
+              "quoted_text_sha256": "027cb612f5044ed9413449c17d16b9a50a00cbce29f93124eba990b209f11c41"
+            }
+          ]
+        },
+        {
+          "id": "F5",
+          "claim": "Listing an empty or missing store currently emits no stdout or stderr, exits 0, and does not create the store file.",
+          "authority": "test",
+          "evidence": [
+            {
+              "path": "tests/test_todo.py",
+              "line_start": 43,
+              "line_end": 48,
+              "quoted_text": "def test_missing_file_list_empty_exit0_no_create(todo_file, capsys):\n    assert todo_cli.main([\"list\"]) == 0\n    out = capsys.readouterr()\n    assert out.out == \"\"\n    assert out.err == \"\"\n    assert not todo_file.exists()",
+              "quoted_text_sha256": "c9dd732f8a6cf6f305d02cf78febe18195d11f003c09fadfd8c61ed001fb9bf7"
+            }
+          ]
+        },
+        {
+          "id": "F6",
+          "claim": "Each task record has exactly five modeled fields: id (integer), title (string), done (boolean), due (string or null), and priority (string).",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "todo_cli.py",
+              "line_start": 51,
+              "line_end": 57,
+              "quoted_text": "@dataclass(frozen=True)\nclass Task:\n    id: int\n    title: str\n    done: bool = False\n    due: str | None = None\n    priority: str = DEFAULT_PRIORITY",
+              "quoted_text_sha256": "3b4328d6b90f465c4821151ad3c35c043ded1e74a4fe50ad2cb59b1340ba9ac0"
+            },
+            {
+              "path": "todo_cli.py",
+              "line_start": 86,
+              "line_end": 93,
+              "quoted_text": "def task_to_dict(task: Task) -> dict[str, object]:\n    return {\n        \"id\": task.id,\n        \"title\": task.title,\n        \"done\": task.done,\n        \"due\": task.due,\n        \"priority\": task.priority,\n    }",
+              "quoted_text_sha256": "178ca675516e0963cf50a9a282f622858b1c194b3f2518dafc3952fef358e143"
+            }
+          ]
+        },
+        {
+          "id": "F7",
+          "claim": "The existing task-to-dictionary serialization uses keys id, title, done, due, and priority and preserves their native JSON-compatible types.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "todo_cli.py",
+              "line_start": 86,
+              "line_end": 93,
+              "quoted_text": "def task_to_dict(task: Task) -> dict[str, object]:\n    return {\n        \"id\": task.id,\n        \"title\": task.title,\n        \"done\": task.done,\n        \"due\": task.due,\n        \"priority\": task.priority,\n    }",
+              "quoted_text_sha256": "178ca675516e0963cf50a9a282f622858b1c194b3f2518dafc3952fef358e143"
+            }
+          ]
+        },
+        {
+          "id": "F8",
+          "claim": "List filtering is exact-match filtering by priority and/or due date, with both filters applied when both are supplied.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "todo_cli.py",
+              "line_start": 268,
+              "line_end": 276,
+              "quoted_text": "def filter_tasks(\n    tasks: list[Task], priority: str | None = None, due: str | None = None\n) -> list[Task]:\n    result = list(tasks)\n    if priority is not None:\n        result = [t for t in result if t.priority == priority]\n    if due is not None:\n        result = [t for t in result if t.due == due]\n    return result",
+              "quoted_text_sha256": "62622254c1d7000e5d65017d72aa2d8a34c250ef3a7a5bfcd73263a04052799a"
+            }
+          ]
+        },
+        {
+          "id": "F9",
+          "claim": "Tests require combined priority and due filters to restrict list results to records matching both conditions.",
+          "authority": "test",
+          "evidence": [
+            {
+              "path": "tests/test_todo.py",
+              "line_start": 175,
+              "line_end": 181,
+              "quoted_text": "def test_list_filter_priority_and_due_combined(todo_file, capsys):\n    todo_cli.main([\"add\", \"a\", \"--priority\", \"high\", \"--due\", \"2026-07-10\"])\n    todo_cli.main([\"add\", \"b\", \"--priority\", \"high\", \"--due\", \"2026-07-11\"])\n    todo_cli.main([\"add\", \"c\", \"--priority\", \"low\", \"--due\", \"2026-07-10\"])\n    capsys.readouterr()\n    assert todo_cli.main([\"list\", \"--priority\", \"high\", \"--due\", \"2026-07-10\"]) == 0\n    assert _list_ids(capsys) == [1]",
+              "quoted_text_sha256": "34f486c574ce9ee05878a0c3f7e8dfa9440ebaba56ff0e4700c7b0872f3e2792"
+            }
+          ]
+        },
+        {
+          "id": "F10",
+          "claim": "List sorting orders incomplete tasks before completed tasks, then higher priority first, then earlier due dates with null due dates last, then lower task id.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "todo_cli.py",
+              "line_start": 279,
+              "line_end": 284,
+              "quoted_text": "def sort_tasks(tasks: list[Task]) -> list[Task]:\n    def key(task: Task) -> tuple[bool, int, date, int]:\n        due_date = date.fromisoformat(task.due) if task.due is not None else date.max\n        return (task.done, -PRIORITIES[task.priority], due_date, task.id)\n\n    return sorted(tasks, key=key)",
+              "quoted_text_sha256": "f17bb60b5d9036693cd4b0ec48f7f794bc86400de03fcb8f2ece24ee37131627"
+            }
+          ]
+        },
+        {
+          "id": "F12",
+          "claim": "The README documents list as producing the current text rows, supporting exact-match combinable filters, producing no output for an empty list, and applying sorting after filtering.",
+          "authority": "documentation",
+          "evidence": [
+            {
+              "path": "README.md",
+              "line_start": 59,
+              "line_end": 81,
+              "quoted_text": "### list\n\n```bash\ntodo list [--priority {low,medium,high}] [--due YYYY-MM-DD]\n```\n\n- Prints one row per task:\n\n  ```\n  {id}\\t{[ ]|[x]}\\t{priority}\\t{due|-}\\t{title}\n  ```\n\n  where the status is `[ ]` for incomplete and `[x]` for done, and the due\n  column shows `-` when there is no due date.\n- Filters (`--priority`, `--due`) are exact matches and can be combined.\n- An empty list prints nothing and exits 0.\n\n**Default sort order** (applied after filtering):\n\n1. incomplete tasks before done tasks,\n2. higher priority first (`high` > `medium` > `low`),\n3. nearer due date first (tasks with no due date sort *after* any dated task),\n4. lower id first as a deterministic tiebreaker.",
+              "quoted_text_sha256": "a85e551dfd4e002b6df9bab97ed98eaaa99fcc010dc7aadf0c4ab20993288bc5"
+            }
+          ]
+        },
+        {
+          "id": "F13",
+          "claim": "Invalid list due-date syntax is handled by argument parsing and returns usage exit code 2.",
+          "authority": "test",
+          "evidence": [
+            {
+              "path": "tests/test_todo.py",
+              "line_start": 222,
+              "line_end": 223,
+              "quoted_text": "def test_list_invalid_due_returns_2_no_systemexit(todo_file):\n    assert todo_cli.main([\"list\", \"--due\", \"2026-02-30\"]) == 2",
+              "quoted_text_sha256": "03d7c6c7732bbf2320dab6ee4c3d47c6f66ada6c4abfc08d5a633671ef28b28c"
+            }
+          ]
+        },
+        {
+          "id": "F14",
+          "claim": "Store and domain failures are printed to stderr as `error: ...` and return exit codes 3 and 1 respectively; successful list execution returns 0.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "todo_cli.py",
+              "line_start": 353,
+              "line_end": 359,
+              "quoted_text": "def _cmd_list(args: argparse.Namespace) -> int:\n    path = get_store_path()\n    store = load_store(path)\n    tasks = filter_tasks(store.tasks, priority=args.priority, due=args.due)\n    for task in sort_tasks(tasks):\n        print(_format_row(task))\n    return EXIT_OK",
+              "quoted_text_sha256": "f088735ec33727de8302295db2b84b372dae4474767362dbe8b9de221b284d42"
+            },
+            {
+              "path": "todo_cli.py",
+              "line_start": 391,
+              "line_end": 410,
+              "quoted_text": "def main(argv: list[str] | None = None) -> int:\n    parser = build_parser()\n    try:\n        args = parser.parse_args(argv)\n    except SystemExit as exc:\n        if isinstance(exc.code, int):\n            return exc.code\n        if exc.code is None:\n            return EXIT_OK\n        return EXIT_USAGE\n\n    handler = _HANDLERS[args.command]\n    try:\n        return handler(args)\n    except StoreError as exc:\n        print(f\"error: {exc}\", file=sys.stderr)\n        return EXIT_STORAGE\n    except TodoError as exc:\n        print(f\"error: {exc}\", file=sys.stderr)\n        return EXIT_DOMAIN",
+              "quoted_text_sha256": "e1f5bec1061465f588f6961cbd64f92154e2dc8613daef79f212d7ae81d69555"
+            }
+          ]
+        },
+        {
+          "id": "F15",
+          "claim": "Listing a corrupt store returns exit code 3 and leaves the store byte-for-byte unchanged.",
+          "authority": "test",
+          "evidence": [
+            {
+              "path": "tests/test_todo.py",
+              "line_start": 255,
+              "line_end": 261,
+              "quoted_text": "def test_corrupt_json_exit3_file_unchanged_on_list(todo_file, capsys):\n    todo_file.write_text(\"{ not json\", encoding=\"utf-8\")\n    before = todo_file.read_bytes()\n    assert todo_cli.main([\"list\"]) == 3\n    err = capsys.readouterr().err\n    assert \"corrupt\" in err.lower() or \"error\" in err.lower()\n    assert todo_file.read_bytes() == before",
+              "quoted_text_sha256": "656cc8641c77665915b4f5c7f2d09d31ab56c347a97d4c3a0c3bd876fecb7b06"
+            }
+          ]
+        },
+        {
+          "id": "F16",
+          "claim": "The CLI uses only the Python standard library at runtime and declares no runtime dependencies.",
+          "authority": "configuration",
+          "evidence": [
+            {
+              "path": "pyproject.toml",
+              "line_start": 5,
+              "line_end": 10,
+              "quoted_text": "[project]\nname = \"todo-cli-deep-interview\"\nversion = \"0.1.0\"\ndescription = \"A 4-command (add/list/done/rm) standard-library-only todo CLI.\"\nrequires-python = \">=3.10\"\ndependencies = []",
+              "quoted_text_sha256": "c3d8873a54636e04f7a48d3b14718eedadea881ef273c2228110a19187fdbf62"
+            }
+          ]
+        }
+      ],
+      "unknowns": [
+        "The repository does not specify whether JSON output should be a bare array of task records or an object containing a tasks property or metadata.",
+        "The repository does not specify whether JSON should be compact or indented, whether object key order is contractual, or whether the output should end with a newline.",
+        "The repository does not specify the exact JSON output for an empty filtered result beyond the existing text mode producing no output.",
+        "The repository does not explicitly state whether JSON records must follow the same filtered and sorted sequence as text output, although filtering and sorting are integral to the current list execution path.",
+        "The repository does not specify whether --json is valid only after the list subcommand or should also be accepted before it as a global option.",
+        "No tests or documentation currently define --json behavior, compatibility expectations for machine consumers, or handling of titles containing control characters in JSON output."
+      ],
+      "unresolved_conflicts": [],
+      "resolved_conflicts": [],
+      "audit_summary": "Repository file hashes and Git HEAD match the supplied snapshot. Fourteen facts are directly supported; two were rejected for overstating the cited evidence. No conflicts were reported, so none required disposition.",
+      "repository_snapshot": {
+        "git_head": "2753f9dc12efb3cadfea9aa9751289fd397d749e",
+        "git_status_sha256": "06c9612388b11b349615612dc879a60efe6c24176c96adad0b2e038cba4b739b",
+        "cited_file_sha256": {
+          "todo_cli.py": "aab51fc04d2c069ef749a7c8667212c18419144559a21285af5da497b8901567",
+          "tests/test_todo.py": "6a388c86d1f961c8b6e6e814d2815b20d10225aa252998c71930a18abad92375",
+          "README.md": "fa0dc77f0025340f0a8109bcc27aab2185a1bb225feaccb4b998dd4c88f78307",
+          "pyproject.toml": "75cbfd0b6b9b8d3c42429bc9f4784dea7c008e6991578a1788ea091119d1f92d"
+        }
+      }
+    },
+    "transcript": [
+      {
+        "turn": 1,
+        "open_material_decisions": [
+          "Empty JSON result representation and whether it emits output.",
+          "JSON serialization defaults: compact versus indented output, newline termination, and whether key order is contractual.",
+          "JSON top-level shape: bare array versus an object containing tasks or metadata.",
+          "Whether --json is list-local only or also accepted before the subcommand."
+        ],
+        "question": {
+          "header": "JSON shape",
+          "prompt": "What top-level JSON shape should `todo list --json` emit? This becomes the machine-consumer compatibility contract.",
+          "options": [
+            {
+              "label": "Bare array",
+              "description": "Emit task records directly, such as `[{\"id\":1,...}]`; this is simplest and naturally represents an empty result as `[]`.",
+              "recommended": true
+            },
+            {
+              "label": "Tasks object",
+              "description": "Emit `{\"tasks\":[...]}`, allowing metadata to be added later but introducing an extra access layer.",
+              "recommended": false
+            },
+            {
+              "label": "Metadata object",
+              "description": "Emit a structured object containing tasks plus fields such as count or active filters, widening the requested output contract.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "{\"selected\":\"Bare array\",\"answer\":\"Emit a bare JSON array of task objects, with no `tasks` wrapper or metadata. Represent an empty result as `[]`.\"}"
+      }
+    ],
+    "turn": 2,
+    "safety_turns_remaining": 11,
+    "force_close": false
+  },
+  "output": {
+    "action": "question",
+    "reason": "The top-level shape and empty-result behavior are confirmed as a bare array and `[]`. The next material compatibility decision is whether JSON preserves the list command’s existing filtering and sort semantics.",
+    "open_material_decisions": [
+      "Whether JSON records use the same exact-match filters and post-filter sort order as text output.",
+      "JSON serialization defaults: compact versus indented output, newline termination, and whether object key order is contractual.",
+      "Whether --json is list-local only or also accepted before the subcommand."
+    ],
+    "question": {
+      "header": "Record order",
+      "prompt": "Should `todo list --json` contain exactly the records that text mode would list, in the same filtered and sorted order? This determines whether changing only the output format preserves list semantics for automation.",
+      "options": [
+        {
+          "label": "Same semantics",
+          "description": "Apply the existing filters and sort order, then serialize those task records; only the presentation format changes.",
+          "recommended": true
+        },
+        {
+          "label": "Filter only",
+          "description": "Apply existing filters but emit records in store order, making JSON ordering differ from text output.",
+          "recommended": false
+        },
+        {
+          "label": "Store order",
+          "description": "Emit all stored records in storage order regardless of list filters or text sorting, widening the flag’s behavior.",
+          "recommended": false
+        }
+      ]
+    },
+    "contract": null
+  }
+}

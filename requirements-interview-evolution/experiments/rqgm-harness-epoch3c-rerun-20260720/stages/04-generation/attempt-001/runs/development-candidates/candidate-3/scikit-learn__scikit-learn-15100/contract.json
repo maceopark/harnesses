@@ -1,0 +1,18 @@
+{
+  "acceptance_checks": [
+    "Calling strip_accents_unicode with \"ñ\" yields \"n\".",
+    "Calling strip_accents_unicode with \"n\\u0303\" yields \"n\" rather than returning the decomposed input unchanged.",
+    "Canonically equivalent precomposed and already-NFKD accented inputs yield the same result from strip_accents_unicode.",
+    "A CountVectorizer analyzer configured with strip_accents='unicode' yields the same unaccented tokens for equivalent precomposed and decomposed accented text.",
+    "Previously supported precomposed Latin, Arabic, and mixed accented inputs continue to produce their established unaccented results."
+  ],
+  "confirmed_decisions": [
+    "strip_accents_unicode returns \"n\" for both precomposed \"ñ\" and the canonically equivalent decomposed sequence \"n\\u0303\".",
+    "Already-NFKD input is not exempt from Unicode accent removal; combining accent marks are removed consistently regardless of the input's prior normalization form.",
+    "CountVectorizer and related vectorizers using the shared preprocessing path with strip_accents='unicode' produce equivalent unaccented analysis results for canonically equivalent precomposed and decomposed input.",
+    "Existing Unicode accent-stripping behavior for supported precomposed accented text remains compatible."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Unicode accent stripping must remove combining accents consistently whether input characters arrive precomposed or already decomposed in NFKD form. Text vectorizers configured with strip_accents='unicode' must expose the same corrected behavior through their shared preprocessing path."
+}

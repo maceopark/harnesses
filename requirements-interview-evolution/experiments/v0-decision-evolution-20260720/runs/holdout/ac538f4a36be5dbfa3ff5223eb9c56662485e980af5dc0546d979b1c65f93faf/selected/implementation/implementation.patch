@@ -1,0 +1,113 @@
+diff --git a/src/_pytest/setuponly.py b/src/_pytest/setuponly.py
+index c9cc589..4adb8d0 100644
+--- a/src/_pytest/setuponly.py
++++ b/src/_pytest/setuponly.py
+@@ -1,4 +1,5 @@
+ import pytest
++from _pytest._io.saferepr import saferepr
+ 
+ 
+ def pytest_addoption(parser):
+@@ -30,7 +31,7 @@ def pytest_fixture_setup(fixturedef, request):
+                 else:
+                     fixturedef.cached_param = fixturedef.ids[request.param_index]
+             else:
+-                fixturedef.cached_param = request.param
++                fixturedef.cached_param = saferepr(request.param)
+         _show_fixture_action(fixturedef, "SETUP")
+ 
+ 
+diff --git a/testing/test_setuponly.py b/testing/test_setuponly.py
+index e26a33d..284d862 100644
+--- a/testing/test_setuponly.py
++++ b/testing/test_setuponly.py
+@@ -146,10 +146,55 @@ def test_show_fixtures_with_parameters(testdir, mode):
+ 
+     result.stdout.fnmatch_lines(
+         [
+-            "SETUP    S arg_same?foo?",
+-            "TEARDOWN S arg_same?foo?",
+-            "SETUP    S arg_same?bar?",
+-            "TEARDOWN S arg_same?bar?",
++            "SETUP    S arg_same?'foo'?",
++            "TEARDOWN S arg_same?'foo'?",
++            "SETUP    S arg_same?'bar'?",
++            "TEARDOWN S arg_same?'bar'?",
++        ]
++    )
++
++
++def test_show_fixtures_with_bytes_parameter(testdir, mode):
++    p = testdir.makepyfile(
++        """
++        import pytest
++        @pytest.mark.parametrize('data', [b'Hello World'])
++        def test_data(data):
++            pass
++        """
++    )
++
++    result = testdir.runpytest(mode, "-W", "error::BytesWarning", p)
++    assert result.ret == 0
++    result.stdout.fnmatch_lines(
++        [
++            "*SETUP    F data?b'Hello World'?*",
++            "*TEARDOWN F data?b'Hello World'?*",
++        ]
++    )
++
++
++def test_show_fixtures_with_broken_repr_parameter(testdir, mode):
++    p = testdir.makepyfile(
++        """
++        import pytest
++        class BrokenRepr:
++            def __repr__(self):
++                raise RuntimeError('cannot represent')
++        @pytest.fixture(params=[BrokenRepr()])
++        def data(request):
++            return request.param
++        def test_data(data):
++            pass
++        """
++    )
++
++    result = testdir.runpytest(mode, p)
++    assert result.ret == 0
++    result.stdout.fnmatch_lines(
++        [
++            "*SETUP    F data?*BrokenRepr object at *",
++            "*TEARDOWN F data?*BrokenRepr object at *",
+         ]
+     )
+ 
+@@ -179,7 +224,12 @@ def test_show_fixtures_with_parameter_ids(testdir, mode):
+     assert result.ret == 0
+ 
+     result.stdout.fnmatch_lines(
+-        ["SETUP    S arg_same?spam?", "SETUP    S arg_same?ham?"]
++        [
++            "SETUP    S arg_same?spam?",
++            "TEARDOWN S arg_same?spam?",
++            "SETUP    S arg_same?ham?",
++            "TEARDOWN S arg_same?ham?",
++        ]
+     )
+ 
+ 
+@@ -198,7 +248,14 @@ def test_show_fixtures_with_parameter_ids_function(testdir, mode):
+     result = testdir.runpytest(mode, p)
+     assert result.ret == 0
+ 
+-    result.stdout.fnmatch_lines(["*SETUP    F foobar?FOO?", "*SETUP    F foobar?BAR?"])
++    result.stdout.fnmatch_lines(
++        [
++            "*SETUP    F foobar?FOO?",
++            "*TEARDOWN F foobar?FOO?",
++            "*SETUP    F foobar?BAR?",
++            "*TEARDOWN F foobar?BAR?",
++        ]
++    )
+ 
+ 
+ def test_dynamic_fixture_request(testdir):

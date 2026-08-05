@@ -1,0 +1,89 @@
+[
+  {
+    "answer": "Remove all marks",
+    "open_material_decisions": [
+      "Define the compatibility boundary for combining characters in already-NFKD input."
+    ],
+    "question": {
+      "header": "Combining marks",
+      "options": [
+        {
+          "description": "Always remove every character for which `unicodedata.combining` is nonzero, making already-decomposed input follow the function’s existing filtering behavior; require direct-function and vectorizer regression coverage.",
+          "label": "Remove all marks",
+          "recommended": true
+        },
+        {
+          "description": "Guarantee only the decomposed `n` plus combining-tilde case, leaving broader combining-character behavior unspecified for implementation.",
+          "label": "Reported tilde only",
+          "recommended": false
+        },
+        {
+          "description": "Remove combining marks only when they represent canonical accent decomposition, requiring additional classification logic and compatibility tests.",
+          "label": "Canonical accents",
+          "recommended": false
+        }
+      ],
+      "prompt": "What behavior should `strip_accents_unicode` require for input that is already in NFKD form?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve or revise the executable implementation contract."
+    ],
+    "question": {
+      "header": "Contract approval",
+      "options": [
+        {
+          "description": "Seal this scope and acceptance evidence as implementation-ready.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Reopen the required observable behavior or compatibility boundary before implementation.",
+          "label": "Revise behavior",
+          "recommended": false
+        },
+        {
+          "description": "Keep the behavior decision but change the required regression evidence.",
+          "label": "Revise tests",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: update `strip_accents_unicode` so both composed and already-NFKD inputs are NFKD-normalized and have every character with nonzero `unicodedata.combining` removed; preserve the public signature and existing composed-input behavior; add direct regression coverage proving composed `ñ` and decomposed `n` plus combining tilde both produce `n`, plus vectorizer-path coverage proving `strip_accents='unicode'` strips the decomposed mark; the implementer may choose the minimal internal code shape, provided these behaviors and the relevant existing text-feature tests pass; no documentation change or broader API change is required; bounded residual risk: removing the faulty equality shortcut changes already-NFKD strings containing combining characters by design, including marks beyond the reported tilde."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A direct test verifies `strip_accents_unicode('\\u00f1') == 'n'`.",
+          "A direct test verifies `strip_accents_unicode('n\\u0303') == 'n'`.",
+          "A vectorizer/analyzer regression test verifies that `strip_accents='unicode'` removes the combining tilde from already-decomposed input.",
+          "Relevant existing tests in `sklearn/feature_extraction/tests/test_text.py` pass, including existing composed accented Latin, Arabic, mixed-text, and vectorizer behavior.",
+          "The implementation retains the existing public function signature and introduces no broader API or documentation changes."
+        ],
+        "confirmed_decisions": [
+          "Already-NFKD input must have all characters with nonzero `unicodedata.combining` removed.",
+          "Composed and decomposed forms of `ñ` must both yield `n`.",
+          "The public `strip_accents_unicode` signature must remain unchanged.",
+          "Existing composed-input accent-stripping behavior must be preserved.",
+          "Regression evidence must cover both the direct function and the vectorizer preprocessing path using `strip_accents='unicode'`.",
+          "The implementer may select the minimal internal implementation shape provided the required behavior and relevant existing text-feature tests pass.",
+          "No documentation change or broader API change is required.",
+          "The owner acknowledges the bounded compatibility impact on all already-NFKD strings containing combining characters, not only combining tilde."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update `strip_accents_unicode` so it always NFKD-normalizes input and removes every character for which `unicodedata.combining` is nonzero, including when the input was already in NFKD form. Preserve the public signature and existing behavior for composed accented input. Add direct regression coverage proving both composed `ñ` and decomposed `n` plus combining tilde produce `n`, and vectorizer-path coverage proving `strip_accents='unicode'` removes the decomposed mark. No documentation or broader API change is required. The implementer may choose the minimal internal code shape consistent with this contract. Bounded residual risk: already-NFKD strings containing combining characters will change by design, including marks beyond the reported tilde."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the executable contract, and all material behavior, compatibility, acceptance, delegation, and residual-risk decisions are resolved."
+    },
+    "turn": 3
+  }
+]

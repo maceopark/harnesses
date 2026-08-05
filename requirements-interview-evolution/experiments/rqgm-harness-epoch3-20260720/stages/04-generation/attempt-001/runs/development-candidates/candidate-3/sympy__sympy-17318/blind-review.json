@@ -1,0 +1,35 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/summary",
+          "quoted_value": "Ensure sqrtdenest handles the reported expression and equivalent non-denestable inputs without raising IndexError, returning the unchanged expanded expression when denesting is not possible while preserving successful denesting behavior."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/0",
+          "quoted_value": "The reported reproduction evaluates successfully and equals 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/1",
+          "quoted_value": "Existing cases asserting unchanged results for non-denestable expressions continue to pass."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/3/statement",
+          "quoted_value": "For an Add whose terms all have rational squares, _sqrt_match calls split_surds without guarding against failure or an empty surd collection."
+        }
+      ],
+      "description": "Readiness is materially incomplete because the summary requires equivalent non-denestable inputs to avoid IndexError, while the acceptance checks cover only the reported expression, existing unchanged-result cases, and broad preservation of successful behavior. A second path-equivalent regression case is needed to verify that the fix addresses the failure class rather than only the reported value.",
+      "failure_class": "omission",
+      "general_cause": "The contract broadens the required behavior to equivalent inputs but validates only the single reported reproduction and unrelated pre-existing fallback cases.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "No acceptance check exercises another non-denestable input that reaches the audited empty-surds failure path."
+    }
+  ],
+  "summary": "One material readiness failure: the contract requires coverage of equivalent non-denestable inputs but provides no acceptance check for a second input reaching the audited empty-surds path."
+}

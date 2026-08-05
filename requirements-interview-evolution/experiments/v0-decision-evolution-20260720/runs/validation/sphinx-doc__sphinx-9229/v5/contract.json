@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "Add regression coverage for module-level type aliases using immediately following multiline string docstrings, including representative Dict, Union, and Callable aliases; each documented alias contains its complete source documentation and no generated “alias of …” text.",
+    "Add or update coverage for documented aliases using #: assignment comments; recognized documentation is rendered and “alias of …” is absent.",
+    "Add coverage for documented class attributes and classes exposed under alias names; recognized source documentation is preserved rather than replaced by “alias of …”.",
+    "Retain coverage for an undocumented alias and verify that it still renders the generated “alias of …” content.",
+    "Update existing generic-alias expectations that currently require both documentation and alias text so documented aliases expect documentation only.",
+    "Verify that directive kinds, module headers, signatures, and displayed values remain identical to their pre-change output apart from removal of generated alias content where recognized source documentation exists.",
+    "Run the targeted autodoc and autodata test modules across the repository’s supported Python-version branches where available, ensuring the result is consistent despite version-dependent generic-alias recognition.",
+    "Run the broader autodoc test suite to confirm that ordinary classes, data values, attributes, imported members, and undocumented aliases retain existing behavior."
+  ],
+  "confirmed_decisions": [
+    "Documented aliases render source documentation only; they do not append or substitute generated “alias of …” text.",
+    "The rule applies consistently to module-level aliases, class attributes, and aliased classes.",
+    "Both immediately following string docstrings and assignment comments such as #: comments count when recognized by ModuleAnalyzer.",
+    "Aliases without recognized source documentation retain the existing generated “alias of …” content.",
+    "The change affects content precedence only; existing directive selection, headers, signatures, values, documenter priorities, and unrelated autodoc behavior remain unchanged.",
+    "Behavior must not depend on whether a runtime or Python version classifies an alias for ClassDocumenter, DataDocumenter, or another existing alias-capable documenter: whichever documenter is selected must honor recognized source documentation."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Change Sphinx autodoc so that whenever an alias has assignment documentation recognized by ModuleAnalyzer, autodoc renders that source documentation as the alias content and suppresses the generated “alias of …” content. Apply this consistently to module-level data aliases, class attributes, and classes documented under alias names, regardless of which eligible documenter wins. If no recognized source documentation exists, preserve the current generated “alias of …” content. Do not otherwise normalize or change directive kinds, headers, signatures, displayed values, member selection, or documenter priority."
+}

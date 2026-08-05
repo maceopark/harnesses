@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "`strip_accents_unicode('\\u00f1') == 'n'`.",
+    "`strip_accents_unicode('n\\u0303') == 'n'`.",
+    "The composed and decomposed forms produce identical results.",
+    "An already-NFKD string containing combining marks no longer passes through unchanged.",
+    "Existing `test_strip_accents` expectations for composed Latin characters, Arabic characters, and mixed text continue to pass.",
+    "Existing analyzer/vectorizer tests using `strip_accents='unicode'` continue to pass.",
+    "The relevant `sklearn/feature_extraction/tests/test_text.py` test suite passes without introducing a new dependency or public API change."
+  ],
+  "confirmed_decisions": [
+    "`strip_accents_unicode` must always filter combining characters from the NFKD-normalized value, regardless of whether normalization changed the input.",
+    "Canonically equivalent composed and decomposed accented strings must yield the same unaccented output.",
+    "The fix applies transitively to `CountVectorizer`, `TfidfVectorizer`, and shared word/character analyzer preprocessing when `strip_accents='unicode'`.",
+    "The change is limited to correcting Unicode accent stripping; no public API, parameter, or documentation semantics need to change.",
+    "Regression tests belong alongside the existing direct `strip_accents_unicode` tests and must explicitly cover an already-NFKD decomposed sequence."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Fix `strip_accents_unicode` so it removes Unicode combining characters after NFKD normalization even when the input was already NFKD-normalized. Remove or bypass the equality-based early return in `sklearn/feature_extraction/text.py`, ensuring both composed `ñ` and decomposed `n\\u0303` produce `n`. Add regression coverage in `sklearn/feature_extraction/tests/test_text.py` for already-decomposed input while preserving existing behavior for composed Latin, Arabic, mixed-text, and vectorizer preprocessing cases."
+}

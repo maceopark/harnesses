@@ -1,0 +1,59 @@
+[
+  {
+    "answer": "All weighted reductions",
+    "open_material_decisions": [
+      "Scope of boolean-weight semantics across weighted reductions"
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Apply consistent 0/1 semantics across mean, sum, sum_of_weights, and supported DataArray/Dataset weighted paths.",
+          "label": "All weighted reductions",
+          "recommended": true
+        },
+        {
+          "description": "Require the correction only for weighted mean and its denominator, leaving other weighted reductions outside the contract.",
+          "label": "Mean paths only",
+          "recommended": false
+        },
+        {
+          "description": "Cover only DataArray weighted mean with numeric data and boolean weights, minimizing the compatibility surface.",
+          "label": "Reported case only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should boolean weights be required to behave as numeric 0/1 weights?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "The reported example returns a scalar weighted mean equal to 1.0.",
+          "For data [1.0, 1.0, 1.0] and weights [True, True, False], weighted sum returns 2.0 and sum_of_weights returns numeric 2.",
+          "Boolean weights produce the same reduction values as otherwise identical integer weights containing 1 and 0 across supported weighted operations.",
+          "Boolean-weight reductions correctly exclude False-weighted values and continue to honor existing missing-data and skipna behavior.",
+          "Equivalent boolean-weight behavior is observed for DataArray and Dataset weighted reductions.",
+          "Existing tests for integer, floating-point, zero, negative, and cancelling weights continue to pass without changed results."
+        ],
+        "confirmed_decisions": [
+          "Boolean weights remain valid inputs rather than being rejected.",
+          "True contributes numeric weight 1 and False contributes numeric weight 0.",
+          "The correction covers all supported weighted reductions, including mean, sum, and sum_of_weights.",
+          "The correction covers supported DataArray and Dataset weighted paths.",
+          "Results derived from accumulating boolean weights are numeric and reflect the number or weighted contribution of True entries."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Correct boolean-weight handling so every supported weighted reduction treats True as weight 1 and False as weight 0. For the reported DataArray [1.0, 1.0, 1.0] with weights [True, True, False], weighted mean returns 1.0, weighted sum returns 2.0, and sum of weights returns the numeric value 2 rather than a boolean result. The same semantics apply through supported Dataset weighted operations. Existing behavior for non-boolean weights and existing missing-data, skipna, alignment, dimension-reduction, and zero-total-weight semantics remains compatible."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The prior answer resolves the only material scope choice: boolean weights are accepted as numeric 0/1 weights across all supported weighted reductions and DataArray/Dataset paths. Repository evidence is sufficient to define an implementable, observable contract without prescribing a particular coercion mechanism."
+    },
+    "turn": 2
+  }
+]

@@ -1,0 +1,55 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/4",
+          "quoted_value": "Reject the URL during `PreparedRequest.prepare_url`, before connection lookup or network I/O."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/2",
+          "quoted_value": "The regression is exercised through request preparation, demonstrating failure before adapter connection handling."
+        },
+        {
+          "artifact": "transcript",
+          "pointer": "/0/answer",
+          "quoted_value": "Leading dot only"
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/unknowns/0",
+          "quoted_value": "The exact urllib3 source line that raises the reported `UnicodeError` is not present in the supplied repository."
+        }
+      ],
+      "description": "The public outcome is that the reported URL raises Requests `InvalidURL` with the expected message. Mandating preparation-time rejection excludes other potentially valid exception-translation fixes and is not established by the sole interview decision, which addressed hostname scope only.",
+      "failure_class": "implementation-leakage",
+      "general_cause": "The contract converts an externally observable exception requirement into a mandatory internal rejection stage without obtaining that implementation choice from the user.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "It requires the failure to occur inside `PreparedRequest.prepare_url` and before adapter connection handling, even though the audited evidence explicitly says the exact urllib3 source of the reported `UnicodeError` is unknown."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/5",
+          "quoted_value": "The targeted URL-preparation tests pass, followed by the repository’s applicable test suite without regressions."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        }
+      ],
+      "description": "An implementer or reviewer cannot determine conclusively whether the final regression requirement has been satisfied, making the implementation-ready declaration premature unless the suite boundary is specified or the check is limited to concrete repository test targets.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The acceptance criteria use an undefined test-suite boundary.",
+      "id": "FINDING-2",
+      "material": true,
+      "observable_signal": "The contract requires the repository’s “applicable test suite” to pass but never identifies which suite, command, environment, or bounded test set is applicable."
+    }
+  ],
+  "summary": "The contract is not materially implementation-ready: it hard-codes an unconfirmed internal failure stage and leaves the required regression-suite boundary undefined."
+}

@@ -1,0 +1,53 @@
+{
+  "material_decisions": [
+    {
+      "id": "severity-boundaries",
+      "answer": "Use three severities. SEV-1 applies when there is confirmed ongoing customer-wide unavailability, confirmed unauthorized access to production data, or an immediate safety risk. SEV-2 applies when production impact is confirmed but does not meet any SEV-1 condition, including partial degradation or impact limited to a customer subset. SEV-3 applies when there is no confirmed production impact. Evaluate these predicates in order; the first matching severity wins. Unknown impact alone is SEV-3, but a confirmed production-data access event is SEV-1 regardless of customer-visible impact.",
+      "why_material": "Ordered, fact-based predicates make boundary incidents classify and route identically."
+    },
+    {
+      "id": "initial-routing",
+      "answer": "SEV-1 notifies the primary on-call and incident commander simultaneously at creation. SEV-2 notifies only the primary on-call at creation. SEV-3 creates a triage-queue item without paging. Notification recipients are snapshotted from the active roster at the instant each escalation step starts.",
+      "why_material": "Severity must produce one objectively determined initial route and recipient set."
+    },
+    {
+      "id": "acknowledgement-semantics",
+      "answer": "Only an explicit ACK action by an eligible paged responder counts. ACK atomically records that responder as the sole accountable owner, changes the incident from PAGING to OWNED, starts the response deadline, and cancels only future ownership-acquisition escalation. Delivery receipts, message reads, comments, and automated replies do not count. A second ACK is rejected while an owner exists. Ownership changes only through an explicit accepted transfer.",
+      "why_material": "Acknowledgement must have one observable meaning for accountability, obligations, and escalation."
+    },
+    {
+      "id": "ownership-transfer",
+      "answer": "A transfer requires the current owner to nominate an eligible responder and that responder to accept. Until acceptance, the current owner remains accountable and all active deadlines continue unchanged. Acceptance atomically replaces the owner and records both identities and the timestamp; it does not reset any deadline.",
+      "why_material": "This prevents unowned gaps and deadline manipulation during handoff."
+    },
+    {
+      "id": "escalation-clock",
+      "answer": "All deadlines use monotonic elapsed time from persisted event timestamps. SEV-1 must be acknowledged within 5 minutes of creation; at exactly 5:00 without ACK, page the secondary on-call. At exactly 10:00 without ACK, page the engineering manager and incident commander. Retry each failed delivery to the current step's recipients at 1, 2, and 4 minutes after that step began. SEV-2 must be acknowledged within 15 minutes; at exactly 15:00 page the secondary, and at exactly 30:00 page the engineering manager. SEV-3 has no paging escalation. Events sharing a timestamp are ordered by persisted sequence number; an ACK processed before the escalation event suppresses it, while an ACK processed after it does not retract already-sent notifications.",
+      "why_material": "Exact clocks, boundaries, retry points, and tie-breaking yield the same next state from the same event sequence."
+    },
+    {
+      "id": "post-ack-response-obligation",
+      "answer": "After ACK, the owner must record RESPONSE_STARTED within 5 minutes for SEV-1 and 15 minutes for SEV-2. Missing that deadline starts a separate response escalation to the secondary on-call and engineering manager while ownership remains with the acknowledger. RESPONSE_STARTED stops that escalation. Incident closure requires an owner-recorded resolution summary and a separate incident-commander approval for SEV-1; SEV-2 and SEV-3 require the owner's resolution summary only.",
+      "why_material": "Stopping acquisition escalation must not allow an acknowledgement without active response or accountable closure."
+    },
+    {
+      "id": "delivery-outage-recovery",
+      "answer": "Every notification attempt is durably recorded as PENDING before delivery. A provider error or missing provider confirmation within 30 seconds marks the attempt FAILED and schedules the defined retries without advancing the incident clock. When delivery capability returns, replay every still-required PENDING or FAILED attempt in original incident-event order. Do not replay a notification whose purpose became obsolete before recovery, such as an acquisition page after a valid ACK; instead mark it CANCELLED_OBSOLETE with the cancelling event. Alerts created during the outage retain their original creation timestamps, so any escalation thresholds already crossed are emitted immediately in step order. Provider idempotency keys are incident ID plus escalation step plus recipient, preventing duplicate delivery from changing workflow state.",
+      "why_material": "Recovery must establish an observable final disposition for missed alerts without losing incidents or creating contradictory state."
+    },
+    {
+      "id": "end-to-end-acceptance-trace",
+      "answer": "For a SEV-1 created at 12:00:00 during normal delivery, initial notifications go to the snapshotted primary and incident commander. With no ACK, the secondary is paged at 12:05:00. If the secondary ACKs at 12:06:00, the incident becomes OWNED by that responder and the 12:10 ownership escalation is suppressed. RESPONSE_STARTED must be recorded by 12:11:00; if recorded at 12:10:30, no response escalation occurs. Closure is accepted only after the owner records a resolution summary and the incident commander approves it. The test passes only if the event log proves recipients, provider-confirmed delivery, ACK identity and time, continuous ownership, suppressed and emitted escalation steps, response timing, and closure prerequisites.",
+      "why_material": "A canonical trace establishes an objective end-to-end outcome rather than relying on component success alone."
+    }
+  ],
+  "owner_rules": [
+    "Every state transition must be derived from persisted events and must record its triggering event, timestamp, and sequence number.",
+    "At most one accountable owner may exist at any instant; every acknowledged but unclosed incident must have exactly one owner.",
+    "Notification delivery, acknowledgement, ownership, response start, and resolution are distinct observable events and must not imply one another.",
+    "Escalation deadlines never reset because of retries, delivery outages, duplicate events, or ownership transfer.",
+    "All emitted, retried, suppressed, cancelled, and failed notifications remain in an auditable per-incident history with recipient and reason.",
+    "Acceptance tests must use a controllable clock, deterministic roster snapshots, and scripted delivery outcomes.",
+    "An end-to-end pass requires assertions on severity, recipients, delivery evidence, state sequence, owner identity, applicable deadlines, escalation disposition, and valid closure; absence of any assertion is a test failure."
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "acceptance_checks": [
+    "With autodoc_docstring_signature enabled, two or more consecutive valid leading signatures for the documented method are all emitted as aligned py:method directive signature lines in their original order.",
+    "The equivalent behavior works through the shared DocstringSignatureMixin path for functions as well as methods.",
+    "Different return annotations on overload lines are preserved on their corresponding rendered signatures.",
+    "After a leading overload block, the first ordinary prose line and all following docstring content are preserved and rendered.",
+    "A malformed signature-looking line or a signature with an unaccepted base name stops the leading block; that line and all later lines remain content, and later signature-looking lines are not extracted.",
+    "A single leading signature continues to produce the existing output and is removed from rendered content.",
+    "When autodoc_docstring_signature is false, introspected signatures are used and every signature-looking docstring line remains content.",
+    "When an explicit directive signature is supplied, docstring overload extraction does not override it.",
+    "Existing accepted class-name behavior, including __init__ and MRO names where applicable, remains unchanged for every consumed line.",
+    "Documentation for autodoc_docstring_signature states that consecutive matching signatures at the start of a function or method docstring are used and removed, with extraction ending at the first non-matching line.",
+    "Targeted autodoc configuration tests cover multiple overloads, distinct return annotations, stopping at the first non-signature line, preservation of remaining content, disabled configuration behavior, and the existing single-signature case.",
+    "The relevant autodoc test suite passes without regressions."
+  ],
+  "confirmed_decisions": [
+    "Only a consecutive leading block of valid, matching signature lines is consumed.",
+    "The first non-signature, malformed-signature, or non-matching-name line terminates extraction and remains in docstring content with everything after it.",
+    "Overload signatures retain their source order.",
+    "Each overload retains its own argument list and return annotation.",
+    "The existing signature grammar and object-name validation rules remain authoritative; no new signature syntax is introduced.",
+    "Extraction remains disabled when an explicit signature is supplied or autodoc_docstring_signature is false.",
+    "The existing newline-aware directive-header path is used to render one aligned directive signature line per overload.",
+    "Configuration documentation and comprehensive regression coverage are required."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Extend autodoc_docstring_signature for function and method documenters so a docstring may begin with an ordered block of overloaded signatures. Starting at the first docstring line, consume consecutive lines that match the existing signature grammar and whose base name is accepted by the existing object-name validation. Stop at the first non-signature or invalid-name line, preserving that line and all subsequent lines as rendered docstring content. Format every consumed overload as a newline-separated directive signature in original order, preserving each overload’s own argument list and return annotation. Retain existing gating: extraction occurs only when autodoc_docstring_signature is enabled and no explicit signature was supplied. Preserve existing single-signature behavior and update the configuration documentation to describe leading overload blocks."
+}

@@ -1,0 +1,277 @@
+2026-07-20 06:32:31,524 - INFO - Building image sweb.eval.x86_64.django__django-13837:latest
+Using dockerfile:
+FROM --platform=linux/x86_64 sweb.env.py.x86_64.988483313c4444799011ac:latest
+
+COPY ./setup_repo.sh /root/
+RUN sed -i -e 's/\r$//' /root/setup_repo.sh
+RUN /bin/bash /root/setup_repo.sh
+
+WORKDIR /testbed/
+
+Adding (1) setup scripts to image build repo
+2026-07-20 06:32:31,524 - INFO - [SETUP SCRIPT] setup_repo.sh:
+#!/bin/bash
+set -euxo pipefail
+git clone -o origin  --single-branch https://github.com/django/django /testbed
+chmod -R 777 /testbed
+cd /testbed
+git reset --hard 415f50298f97fb17f841a9df38d995ccf347dfcc
+git remote remove origin
+TARGET_TIMESTAMP=$(git show -s --format=%ci 415f50298f97fb17f841a9df38d995ccf347dfcc)
+git tag -l | while read tag; do TAG_COMMIT=$(git rev-list -n 1 "$tag"); TAG_TIME=$(git show -s --format=%ci "$TAG_COMMIT"); if [[ "$TAG_TIME" > "$TARGET_TIMESTAMP" ]]; then git tag -d "$tag"; fi; done
+git reflog expire --expire=now --all
+git gc --prune=now --aggressive
+AFTER_TIMESTAMP=$(date -d "$TARGET_TIMESTAMP + 1 second" '+%Y-%m-%d %H:%M:%S')
+COMMIT_COUNT=$(git log --oneline --all --since="$AFTER_TIMESTAMP" | wc -l)
+[ "$COMMIT_COUNT" -eq 0 ] || exit 1
+source /opt/miniconda3/bin/activate
+conda activate testbed
+echo "Current environment: $CONDA_DEFAULT_ENV"
+python -m pip install -e .
+git config --global user.email setup@swebench.config
+git config --global user.name SWE-bench
+git commit --allow-empty -am SWE-bench
+
+2026-07-20 06:32:31,525 - INFO - Building docker image sweb.eval.x86_64.django__django-13837:latest in logs/build_images/instances/sweb.eval.x86_64.django__django-13837__latest with platform linux/x86_64
+2026-07-20 06:32:32,609 - INFO - Step 1/5 : FROM --platform=linux/x86_64 sweb.env.py.x86_64.988483313c4444799011ac:latest
+2026-07-20 06:32:32,610 - INFO - 
+2026-07-20 06:32:32,614 - INFO - ---> 7d16ebc92a41
+2026-07-20 06:32:32,614 - INFO - Step 2/5 : COPY ./setup_repo.sh /root/
+2026-07-20 06:32:32,614 - INFO - 
+2026-07-20 06:32:36,300 - INFO - ---> e57d8251b2cf
+2026-07-20 06:32:36,301 - INFO - Step 3/5 : RUN sed -i -e 's/\r$//' /root/setup_repo.sh
+2026-07-20 06:32:36,301 - INFO - 
+2026-07-20 06:32:36,382 - INFO - ---> [Warning] The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
+2026-07-20 06:32:36,383 - INFO - ---> Running in 72933c5a9c1e
+2026-07-20 06:32:40,224 - INFO - ---> Removed intermediate container 72933c5a9c1e
+2026-07-20 06:32:40,224 - INFO - ---> cf474e62d38b
+2026-07-20 06:32:40,224 - INFO - Step 4/5 : RUN /bin/bash /root/setup_repo.sh
+2026-07-20 06:32:40,224 - INFO - 
+2026-07-20 06:32:40,306 - INFO - ---> [Warning] The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
+2026-07-20 06:32:40,306 - INFO - ---> Running in 90bcf58d9080
+2026-07-20 06:32:40,428 - INFO - + git clone -o origin --single-branch https://github.com/django/django /testbed
+2026-07-20 06:32:40,451 - INFO - Cloning into '/testbed'...
+2026-07-20 06:33:10,546 - INFO - + chmod -R 777 /testbed
+2026-07-20 06:33:10,591 - INFO - + cd /testbed
+2026-07-20 06:33:10,591 - INFO - + git reset --hard 415f50298f97fb17f841a9df38d995ccf347dfcc
+2026-07-20 06:33:11,154 - INFO - HEAD is now at 415f50298f Fixed #32231 -- Allowed passing None params to QuerySet.raw().
+2026-07-20 06:33:11,157 - INFO - + git remote remove origin
+2026-07-20 06:33:11,200 - INFO - ++ git show -s --format=%ci 415f50298f97fb17f841a9df38d995ccf347dfcc
+2026-07-20 06:33:11,246 - INFO - + TARGET_TIMESTAMP='2021-01-05 10:37:11 +0100'
+2026-07-20 06:33:11,248 - INFO - + git tag -l
+2026-07-20 06:33:11,249 - INFO - + read tag
+2026-07-20 06:33:11,279 - INFO - ++ git rev-list -n 1 1.0
+2026-07-20 06:33:11,322 - INFO - + TAG_COMMIT=42ef6557a9b88cfc277eb79ddb980e1c62add144
+2026-07-20 06:33:11,323 - INFO - ++ git show -s --format=%ci 42ef6557a9b88cfc277eb79ddb980e1c62add144
+2026-07-20 06:33:11,368 - INFO - + TAG_TIME='2008-09-03 23:38:45 +0000'
+2026-07-20 06:33:11,369 - INFO - + [[ 2008-09-03 23:38:45 +0000 > 2021-01-05 10:37:11 +0100 ]]
+2026-07-20 06:33:11,369 - INFO - + read tag
+2026-07-20 06:33:11,370 - INFO - ++ git rev-list -n 1 1.1
+2026-07-20 06:33:11,409 - INFO - + TAG_COMMIT=27358368879cc7d56756f12155393d3277fc52aa
+2026-07-20 06:33:11,410 - INFO - ++ git show -s --format=%ci 27358368879cc7d56756f12155393d3277fc52aa
+2026-07-20 06:33:11,456 - INFO - + TAG_TIME='2009-07-29 05:51:03 +0000'
++ [[ 2009-07-29 05:51:03 +0000 > 2021-01-05 10:37:11 +0100 ]]
++ read tag
+2026-07-20 06:33:11,457 - INFO - ++ git rev-list -n 1 1.2
+2026-07-20 06:33:11,496 - INFO - + TAG_COMMIT=6276167b728256b59071781b2f40d3f48f85cbbe
+2026-07-20 06:33:11,497 - INFO - ++ git show -s --format=%ci 6276167b728256b59071781b2f40d3f48f85cbbe
+2026-07-20 06:33:11,541 - INFO - + TAG_TIME='2010-05-17 17:31:49 +0000'
++ [[ 2010-05-17 17:31:49 +0000 > 2021-01-05 10:37:11 +0100 ]]
++ read tag
+2026-07-20 06:33:11,542 - INFO - ++ git rev-list -n 1 1.2.1
+2026-07-20 06:33:11,581 - INFO - + TAG_COMMIT=6cffb9b8804278c4a617109e65493dc782ef2f7d
+2026-07-20 06:33:11,582 - INFO - ++ git show -s --format=%ci 6cffb9b8804278c4a617109e65493dc782ef2f7d
+2026-07-20 06:33:11,627 - INFO - + TAG_TIME='2010-05-24 19:10:30 +0000'
++ [[ 2010-05-24 19:10:30 +0000 > 2021-01-05 10:37:11 +0100 ]]
++ read tag
+2026-07-20 06:33:11,628 - INFO - ++ git rev-list -n 1 1.3
+2026-07-20 06:33:11,667 - INFO - + TAG_COMMIT=7c08f4c6351f7e53a01ff800d8a61f19ca961b29
+2026-07-20 06:33:11,668 - INFO - ++ git show -s --format=%ci 7c08f4c6351f7e53a01ff800d8a61f19ca961b29
+2026-07-20 06:33:11,714 - INFO - + TAG_TIME='2011-03-23 05:06:31 +0000'
++ [[ 2011-03-23 05:06:31 +0000 > 2021-01-05 10:37:11 +0100 ]]
++ read tag
+2026-07-20 06:33:11,715 - INFO - ++ git rev-list -n 1 1.4
+2026-07-20 06:33:11,755 - INFO - + TAG_COMMIT=2591fb8d4c0246f68b79554976c012039df75359
+2026-07-20 06:33:11,755 - INFO - ++ git show -s --format=%ci 2591fb8d4c0246f68b79554976c012039df75359
+2026-07-20 06:33:11,801 - INFO - + TAG_TIME='2012-03-23 16:53:23 +0000'
++ [[ 2012-03-23 16:53:23 +0000 > 2021-01-05 10:37:11 +0100 ]]
++ read tag
+2026-07-20 06:33:11,802 - INFO - ++ git rev-list -n 1 1.7a1
+2026-07-20 06:33:11,841 - INFO - + TAG_COMMIT=8be9a250c190d9dd8615da4616cdfe401ad6e0af
+2026-07-20 06:33:11,842 - INFO - ++ git show -s --format=%ci 8be9a250c190d9dd8615da4616cdfe401ad6e0af
+2026-07-20 06:33:11,886 - INFO - + TAG_TIME='2014-01-22 21:48:37 -0600'
++ [[ 2014-01-22 21:48:37 -0600 > 2021-01-05 10:37:11 +0100 ]]
++ read tag
+2026-07-20 06:33:11,887 - INFO - ++ git rev-list -n 1 1.7a2
+2026-07-20 06:33:11,925 - INFO - + TAG_COMMIT=43510cffcbf64e73232da1d6209151c7232fd2b6
+2026-07-20 06:33:11,926 - INFO - ++ git show -s --format=%ci 43510cffcbf64e73232da1d6209151c7232fd2b6
+2026-07-20 06:33:11,969 - INFO - + TAG_TIME='2014-02-06 15:54:27 -0600'
++ [[ 2014-02-06 15:54:27 -0600 > 2021-01-05 10:37:11 +0100 ]]
++ read tag
+2026-07-20 06:33:11,970 - INFO - + git reflog expire --expire=now --all
+2026-07-20 06:33:12,006 - INFO - + git gc --prune=now --aggressive
+2026-07-20 06:34:59,444 - INFO - Expanding reachable commits in commit graph: 22180
+2026-07-20 06:34:59,547 - INFO - Expanding reachable commits in commit graph: 29099, done.
+2026-07-20 06:34:59,680 - INFO - ++ date -d '2021-01-05 10:37:11 +0100 + 1 second' '+%Y-%m-%d %H:%M:%S'
+2026-07-20 06:34:59,942 - INFO - + AFTER_TIMESTAMP='2021-01-05 09:37:12'
+2026-07-20 06:34:59,969 - INFO - ++ wc -l
+2026-07-20 06:34:59,972 - INFO - ++ git log --oneline --all '--since=2021-01-05 09:37:12'
+2026-07-20 06:35:00,069 - INFO - + COMMIT_COUNT=0
+2026-07-20 06:35:00,070 - INFO - + '[' 0 -eq 0 ']'
+2026-07-20 06:35:00,072 - INFO - + source /opt/miniconda3/bin/activate
+2026-07-20 06:35:00,073 - INFO - ++ _CONDA_ROOT=/opt/miniconda3
+2026-07-20 06:35:00,073 - INFO - ++ . /opt/miniconda3/etc/profile.d/conda.sh
+2026-07-20 06:35:00,074 - INFO - +++ export CONDA_EXE=/opt/miniconda3/bin/conda
+2026-07-20 06:35:00,074 - INFO - +++ CONDA_EXE=/opt/miniconda3/bin/conda
++++ export _CE_M=
++++ _CE_M=
++++ export _CE_CONDA=
++++ _CE_CONDA=
++++ export CONDA_PYTHON_EXE=/opt/miniconda3/bin/python
++++ CONDA_PYTHON_EXE=/opt/miniconda3/bin/python
+2026-07-20 06:35:00,543 - INFO - +++ '[' -z '' ']'
+2026-07-20 06:35:00,544 - INFO - +++ export CONDA_SHLVL=0
++++ CONDA_SHLVL=0
+2026-07-20 06:35:00,544 - INFO - +++ '[' -n '' ']'
+2026-07-20 06:35:00,544 - INFO - +++++ dirname /opt/miniconda3/bin/conda
+2026-07-20 06:35:00,544 - INFO - ++++ dirname /opt/miniconda3/bin
+2026-07-20 06:35:00,545 - INFO - +++ PATH=/opt/miniconda3/condabin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+2026-07-20 06:35:00,736 - INFO - +++ export PATH
+2026-07-20 06:35:00,736 - INFO - +++ '[' -z '' ']'
++++ PS1=
+2026-07-20 06:35:00,737 - INFO - ++ conda activate
+2026-07-20 06:35:00,737 - INFO - ++ local cmd=activate
+2026-07-20 06:35:00,738 - INFO - ++ case "$cmd" in
+2026-07-20 06:35:00,738 - INFO - ++ __conda_activate activate
+++ '[' -n '' ']'
+++ local ask_conda
+2026-07-20 06:35:00,738 - INFO - +++ PS1=
++++ __conda_exe shell.posix activate
+2026-07-20 06:35:00,738 - INFO - +++ /opt/miniconda3/bin/conda shell.posix activate
+2026-07-20 06:35:00,738 - INFO - ++ ask_conda='PS1='\''(base) '\''
+export PATH='\''/opt/miniconda3/bin:/opt/miniconda3/condabin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'\''
+export CONDA_PREFIX='\''/opt/miniconda3'\''
+export CONDA_SHLVL='\''1'\''
+export CONDA_DEFAULT_ENV='\''base'\''
+export CONDA_PROMPT_MODIFIER='\''(base) '\''
+export CONDA_EXE='\''/opt/miniconda3/bin/conda'\''
+export _CE_M='\'''\''
+export _CE_CONDA='\'''\''
+export CONDA_PYTHON_EXE='\''/opt/miniconda3/bin/python'\'''
+++ eval 'PS1='\''(base) '\''
+export PATH='\''/opt/miniconda3/bin:/opt/miniconda3/condabin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'\''
+export CONDA_PREFIX='\''/opt/miniconda3'\''
+export CONDA_SHLVL='\''1'\''
+export CONDA_DEFAULT_ENV='\''base'\''
+export CONDA_PROMPT_MODIFIER='\''(base) '\''
+export CONDA_EXE='\''/opt/miniconda3/bin/conda'\''
+export _CE_M='\'''\''
+export _CE_CONDA='\'''\''
+export CONDA_PYTHON_EXE='\''/opt/miniconda3/bin/python'\'''
+2026-07-20 06:35:00,738 - INFO - +++ PS1='(base) '
++++ export PATH=/opt/miniconda3/bin:/opt/miniconda3/condabin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
++++ PATH=/opt/miniconda3/bin:/opt/miniconda3/condabin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
++++ export CONDA_PREFIX=/opt/miniconda3
++++ CONDA_PREFIX=/opt/miniconda3
+2026-07-20 06:35:00,739 - INFO - +++ export CONDA_SHLVL=1
++++ CONDA_SHLVL=1
++++ export CONDA_DEFAULT_ENV=base
++++ CONDA_DEFAULT_ENV=base
++++ export 'CONDA_PROMPT_MODIFIER=(base) '
++++ CONDA_PROMPT_MODIFIER='(base) '
++++ export CONDA_EXE=/opt/miniconda3/bin/conda
++++ CONDA_EXE=/opt/miniconda3/bin/conda
++++ export _CE_M=
++++ _CE_M=
++++ export _CE_CONDA=
++++ _CE_CONDA=
++++ export CONDA_PYTHON_EXE=/opt/miniconda3/bin/python
++++ CONDA_PYTHON_EXE=/opt/miniconda3/bin/python
+++ __conda_hashr
+2026-07-20 06:35:00,739 - INFO - ++ '[' -n '' ']'
+++ '[' -n '' ']'
+++ hash -r
+2026-07-20 06:35:00,739 - INFO - + conda activate testbed
++ local cmd=activate
++ case "$cmd" in
++ __conda_activate activate testbed
++ '[' -n '' ']'
++ local ask_conda
+2026-07-20 06:35:00,739 - INFO - ++ PS1='(base) '
+++ __conda_exe shell.posix activate testbed
+2026-07-20 06:35:00,739 - INFO - ++ /opt/miniconda3/bin/conda shell.posix activate testbed
+2026-07-20 06:35:00,912 - INFO - + ask_conda='PS1='\''(testbed) '\''
+export PATH='\''/opt/miniconda3/envs/testbed/bin:/opt/miniconda3/condabin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'\''
+export CONDA_PREFIX='\''/opt/miniconda3/envs/testbed'\''
+export CONDA_SHLVL='\''2'\''
+export CONDA_DEFAULT_ENV='\''testbed'\''
+export CONDA_PROMPT_MODIFIER='\''(testbed) '\''
+export CONDA_PREFIX_1='\''/opt/miniconda3'\''
+export CONDA_EXE='\''/opt/miniconda3/bin/conda'\''
+export _CE_M='\'''\''
+export _CE_CONDA='\'''\''
+export CONDA_PYTHON_EXE='\''/opt/miniconda3/bin/python'\'''
++ eval 'PS1='\''(testbed) '\''
+export PATH='\''/opt/miniconda3/envs/testbed/bin:/opt/miniconda3/condabin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'\''
+export CONDA_PREFIX='\''/opt/miniconda3/envs/testbed'\''
+export CONDA_SHLVL='\''2'\''
+export CONDA_DEFAULT_ENV='\''testbed'\''
+export CONDA_PROMPT_MODIFIER='\''(testbed) '\''
+export CONDA_PREFIX_1='\''/opt/miniconda3'\''
+export CONDA_EXE='\''/opt/miniconda3/bin/conda'\''
+export _CE_M='\'''\''
+export _CE_CONDA='\'''\''
+export CONDA_PYTHON_EXE='\''/opt/miniconda3/bin/python'\'''
+++ PS1='(testbed) '
+++ export PATH=/opt/miniconda3/envs/testbed/bin:/opt/miniconda3/condabin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+++ PATH=/opt/miniconda3/envs/testbed/bin:/opt/miniconda3/condabin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+2026-07-20 06:35:00,912 - INFO - ++ export CONDA_PREFIX=/opt/miniconda3/envs/testbed
+++ CONDA_PREFIX=/opt/miniconda3/envs/testbed
+++ export CONDA_SHLVL=2
+++ CONDA_SHLVL=2
+++ export CONDA_DEFAULT_ENV=testbed
+++ CONDA_DEFAULT_ENV=testbed
+++ export 'CONDA_PROMPT_MODIFIER=(testbed) '
+++ CONDA_PROMPT_MODIFIER='(testbed) '
+++ export CONDA_PREFIX_1=/opt/miniconda3
+++ CONDA_PREFIX_1=/opt/miniconda3
+++ export CONDA_EXE=/opt/miniconda3/bin/conda
+++ CONDA_EXE=/opt/miniconda3/bin/conda
+++ export _CE_M=
+++ _CE_M=
+++ export _CE_CONDA=
+++ _CE_CONDA=
+++ export CONDA_PYTHON_EXE=/opt/miniconda3/bin/python
+++ CONDA_PYTHON_EXE=/opt/miniconda3/bin/python
++ __conda_hashr
++ '[' -n '' ']'
+2026-07-20 06:35:00,913 - INFO - + '[' -n '' ']'
++ hash -r
++ echo 'Current environment: testbed'
+2026-07-20 06:35:00,913 - INFO - + python -m pip install -e .
+2026-07-20 06:35:00,913 - INFO - Current environment: testbed
+2026-07-20 06:35:01,729 - INFO - Obtaining file:///testbed
+2026-07-20 06:35:02,631 - INFO - Requirement already satisfied: asgiref>=3.2.10 in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from Django==3.2) (3.4.1)
+2026-07-20 06:35:02,632 - INFO - Requirement already satisfied: pytz in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from Django==3.2) (2024.2)
+2026-07-20 06:35:02,634 - INFO - Requirement already satisfied: sqlparse>=0.2.2 in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from Django==3.2) (0.4.4)
+2026-07-20 06:35:02,645 - INFO - Requirement already satisfied: typing-extensions in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from asgiref>=3.2.10->Django==3.2) (4.1.1)
+2026-07-20 06:35:02,907 - INFO - Installing collected packages: Django
+2026-07-20 06:35:02,918 - INFO - Running setup.py develop for Django
+2026-07-20 06:35:03,816 - INFO - WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+2026-07-20 06:35:03,816 - INFO - Successfully installed Django-3.2
+2026-07-20 06:35:03,917 - INFO - + git config --global user.email setup@swebench.config
+2026-07-20 06:35:03,977 - INFO - + git config --global user.name SWE-bench
+2026-07-20 06:35:04,016 - INFO - + git commit --allow-empty -am SWE-bench
+2026-07-20 06:35:04,325 - INFO - [main
+2026-07-20 06:35:04,327 - INFO - c2dcd8196d] SWE-bench
+2026-07-20 06:35:19,637 - INFO - ---> Removed intermediate container 90bcf58d9080
+2026-07-20 06:35:19,637 - INFO - ---> fecadb069f4b
+2026-07-20 06:35:19,637 - INFO - Step 5/5 : WORKDIR /testbed/
+2026-07-20 06:35:19,637 - INFO - 
+2026-07-20 06:35:19,844 - INFO - ---> [Warning] The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
+2026-07-20 06:35:19,844 - INFO - ---> Running in a5ec430f4db3
+2026-07-20 06:35:26,319 - INFO - ---> Removed intermediate container a5ec430f4db3
+2026-07-20 06:35:26,321 - INFO - ---> 38a404c9765f
+2026-07-20 06:35:26,322 - INFO - Successfully built 38a404c9765f
+2026-07-20 06:35:26,334 - INFO - Successfully tagged sweb.eval.x86_64.django__django-13837:latest
+2026-07-20 06:35:26,347 - INFO - Image built successfully!

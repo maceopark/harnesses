@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "`strip_accents_unicode('\\u00f1') == 'n'`.",
+    "`strip_accents_unicode('n\\u0303') == 'n'`.",
+    "Precomposed and NFKD-decomposed forms of the same accented text yield identical unaccented output.",
+    "An already-NFKD string containing a combining mark does not pass through unchanged.",
+    "Existing `test_strip_accents` cases for Latin, Arabic, and mixed text continue to pass.",
+    "A `CountVectorizer` analyzer using `strip_accents='unicode'` produces the expected unaccented token from decomposed input.",
+    "The targeted feature-extraction text test module passes without regressions."
+  ],
+  "confirmed_decisions": [
+    "Normalize every input with NFKD before Unicode accent filtering.",
+    "Filter combining characters regardless of whether NFKD normalization changed the input string.",
+    "For the reported example, both `LATIN SMALL LETTER N WITH TILDE` (`\\u00f1`) and `LATIN SMALL LETTER N` followed by `COMBINING TILDE` (`n\\u0303`) must return `n`.",
+    "Limit the production change to `strip_accents_unicode`; do not change `strip_accents_ascii` or vectorizer API configuration.",
+    "Preserve existing Unicode accent-removal behavior for precomposed Latin, Arabic, and mixed text.",
+    "Add direct regression tests for already-decomposed combining-character input and canonical-equivalence behavior.",
+    "Add integration coverage through a vectorizer analyzer configured with `strip_accents='unicode'` so the shared preprocessing route is verified."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Fix `strip_accents_unicode` in `sklearn/feature_extraction/text.py` so it always removes Unicode combining characters from the NFKD-normalized input, including when the input is already in NFKD form. Remove or revise the equality-based early return that currently bypasses combining-character filtering. Preserve the existing behavior for precomposed accented text and leave `strip_accents_ascii` unchanged. Add regression coverage in `sklearn/feature_extraction/tests/test_text.py` proving that canonically equivalent precomposed and already-decomposed accented strings both produce the same unaccented result. Also exercise the public vectorizer path with `strip_accents='unicode'` to confirm decomposed accents are removed during analyzer preprocessing; this shared path covers `CountVectorizer` and inherited `TfidfVectorizer` behavior."
+}

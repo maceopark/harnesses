@@ -1,0 +1,186 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..7f6aa7b 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1785,6 +1785,10 @@ class DataDocumenterMixinBase:
+         """Update docstring for the NewType object."""
+         pass
+ 
++    def has_doc_comment(self) -> bool:
++        """Check whether the object has documentation in the source code."""
++        return False
++
+ 
+ class GenericAliasMixin(DataDocumenterMixinBase):
+     """
+@@ -1797,7 +1801,7 @@ class GenericAliasMixin(DataDocumenterMixinBase):
+                 super().should_suppress_directive_header())
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if inspect.isgenericalias(self.object):
++        if inspect.isgenericalias(self.object) and not self.has_doc_comment():
+             more_content.append(_('alias of %s') % restify(self.object), '')
+             more_content.append('', '')
+ 
+@@ -1848,7 +1852,7 @@ class TypeVarMixin(DataDocumenterMixinBase):
+             return super().get_doc()  # type: ignore
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if isinstance(self.object, TypeVar):
++        if isinstance(self.object, TypeVar) and not self.has_doc_comment():
+             attrs = [repr(self.object.__name__)]
+             for constraint in self.object.__constraints__:
+                 attrs.append(stringify_typehint(constraint))
+@@ -1998,6 +2002,9 @@ class DataDocumenter(GenericAliasMixin, NewTypeMixin, TypeVarMixin,
+ 
+         return None
+ 
++    def has_doc_comment(self) -> bool:
++        return bool(self.get_module_comment(self.objpath[-1]))
++
+     def get_doc(self, ignore: int = None) -> Optional[List[List[str]]]:
+         # Check the variable has a docstring-comment
+         comment = self.get_module_comment(self.objpath[-1])
+@@ -2571,6 +2578,9 @@ class AttributeDocumenter(GenericAliasMixin, NewTypeMixin, SlotsMixin,  # type:
+ 
+         return None
+ 
++    def has_doc_comment(self) -> bool:
++        return bool(self.get_attribute_comment(self.parent, self.objpath[-1]))
++
+     def get_doc(self, ignore: int = None) -> Optional[List[List[str]]]:
+         # Check the attribute has a docstring-comment
+         comment = self.get_attribute_comment(self.parent, self.objpath[-1])
+diff --git a/tests/roots/test-ext-autodoc/target/genericalias.py b/tests/roots/test-ext-autodoc/target/genericalias.py
+index 9909efc..775046c 100644
+--- a/tests/roots/test-ext-autodoc/target/genericalias.py
++++ b/tests/roots/test-ext-autodoc/target/genericalias.py
+@@ -1,10 +1,28 @@
+-from typing import Callable, List
++from typing import Callable, Dict, List, Union
+ 
+ #: A list of int
+ T = List[int]
+ 
+ C = Callable[[int], None]  # a generic alias not having a doccomment
+ 
++D = Dict[str, int]
++"""A dictionary alias.
++
++With more details.
++"""
++
++U = Union[str, None]
++"""An optional string alias."""
++
++F = Callable[[int], None]
++"""A callable alias::
++
++    Callable[[int], None]
++
++.. note::
++   Callable details.
++"""
++
+ 
+ class Class:
+     #: A list of int
+diff --git a/tests/test_ext_autodoc.py b/tests/test_ext_autodoc.py
+index 4c16886..85cfbc0 100644
+--- a/tests/test_ext_autodoc.py
++++ b/tests/test_ext_autodoc.py
+@@ -1943,19 +1943,39 @@ def test_autodoc_GenericAlias(app):
+             '',
+             '      A list of int',
+             '',
+-            '      alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+             '',
+             '.. py:data:: T',
+             '   :module: target.genericalias',
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++@pytest.mark.parametrize(('name', 'documentation'), [
++    ('D', ['A dictionary alias.', '', 'With more details.']),
++    ('U', ['An optional string alias.']),
++    ('F', ['A callable alias::', '', '    Callable[[int], None]', '',
++           '.. note::', '   Callable details.']),
++])
++def test_autodoc_multiline_generic_alias(app, name, documentation):
++    actual = list(do_autodoc(app, 'data', 'target.genericalias.' + name))
++    content = '\n'.join(line[3:] if line.startswith('   ') else line for line in actual)
++    assert '\n'.join(documentation) in content
++    assert not any('alias of ' in line for line in actual)
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++@pytest.mark.parametrize(('name', 'alias_text'), [
++    ('target.genericalias.C', 'alias of '),
++    ('target.typevar.T2', "alias of TypeVar('T2')"),
++])
++def test_autodoc_undocumented_alias(app, name, alias_text):
++    actual = do_autodoc(app, 'data', name)
++    assert any(alias_text in line for line in actual)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodoc_TypeVar(app):
+     options = {"members": None,
+@@ -1975,8 +1995,6 @@ def test_autodoc_TypeVar(app):
+         '',
+         '      T1',
+         '',
+-        "      alias of TypeVar('T1')",
+-        '',
+         '',
+         '   .. py:attribute:: Class.T6',
+         '      :module: target.typevar',
+@@ -1991,32 +2009,24 @@ def test_autodoc_TypeVar(app):
+         '',
+         '   T1',
+         '',
+-        "   alias of TypeVar('T1')",
+-        '',
+         '',
+         '.. py:data:: T3',
+         '   :module: target.typevar',
+         '',
+         '   T3',
+         '',
+-        "   alias of TypeVar('T3', int, str)",
+-        '',
+         '',
+         '.. py:data:: T4',
+         '   :module: target.typevar',
+         '',
+         '   T4',
+         '',
+-        "   alias of TypeVar('T4', covariant=True)",
+-        '',
+         '',
+         '.. py:data:: T5',
+         '   :module: target.typevar',
+         '',
+         '   T5',
+         '',
+-        "   alias of TypeVar('T5', contravariant=True)",
+-        '',
+         '',
+         '.. py:data:: T6',
+         '   :module: target.typevar',
+@@ -2031,8 +2041,6 @@ def test_autodoc_TypeVar(app):
+         '',
+         '   T7',
+         '',
+-        "   alias of TypeVar('T7', bound=\\ :class:`int`)",
+-        '',
+     ]
+ 
+ 

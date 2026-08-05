@@ -1,0 +1,18 @@
+{
+  "acceptance_checks": [
+    "strip_accents_unicode(\"\\u00f1\") returns \"n\".",
+    "strip_accents_unicode(\"n\\u0303\") returns \"n\".",
+    "Equivalent composed and decomposed accented inputs yield identical unaccented output.",
+    "Precomposed Latin, Arabic, and mixed accented inputs covered by existing behavior continue to yield their expected unaccented output.",
+    "Preprocessing through vectorizers configured with strip_accents=\"unicode\" does not preserve combining accents merely because the input was already normalized to NFKD."
+  ],
+  "confirmed_decisions": [
+    "strip_accents_unicode must remove combining accent characters from input that is already in NFKD form, rather than returning such input unchanged when it contains combining characters.",
+    "Canonically equivalent composed and decomposed accented strings must produce the same unaccented result; specifically, both U+00F1 and the sequence U+006E U+0303 must produce \"n\".",
+    "Vectorizer preprocessing configured with strip_accents=\"unicode\" must exhibit the corrected behavior wherever the shared Unicode accent stripping behavior is used, including CountVectorizer, TfidfVectorizer, and HashingVectorizer.",
+    "Existing Unicode accent stripping behavior for precomposed accented text must remain intact."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Correct Unicode accent stripping so canonically equivalent composed and already-decomposed text is processed consistently."
+}

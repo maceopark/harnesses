@@ -1,0 +1,125 @@
+[
+  {
+    "answer": "Treat as 0/1",
+    "open_material_decisions": [
+      "Whether boolean weights remain supported and are interpreted as 0/1, or are rejected at weighted-object construction."
+    ],
+    "question": {
+      "header": "Boolean weights",
+      "options": [
+        {
+          "description": "Keep boolean weights valid and make weighted reductions interpret False as 0 and True as 1, producing 1.0 for the reported mean.",
+          "label": "Treat as 0/1",
+          "recommended": true
+        },
+        {
+          "description": "Raise a clear validation error when boolean weights are supplied, changing the currently accepted input contract.",
+          "label": "Reject booleans",
+          "recommended": false
+        }
+      ],
+      "prompt": "What public behavior should xarray guarantee when a weighted operation receives boolean weights?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "All reductions",
+    "open_material_decisions": [
+      "Whether boolean weights must be converted to a numeric 0/1 representation for every weighted reduction, or only when computing sum_of_weights/mean denominators."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Convert boolean weights at the shared weighted-reduction boundary so sum, sum_of_weights, and mean consistently use numeric 0/1 arithmetic.",
+          "label": "All reductions",
+          "recommended": true
+        },
+        {
+          "description": "Convert boolean weights only for sum_of_weights, narrowly fixing weighted mean while leaving other reduction paths unchanged.",
+          "label": "Denominator only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should xarray enforce numeric 0/1 semantics for boolean weights?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Integer 0/1",
+    "open_material_decisions": [
+      "The final executable contract still requires explicit owner approval after remaining material decisions are resolved.",
+      "Whether boolean weights should be converted to integer 0/1 or floating-point 0.0/1.0 before the shared weighted reduction."
+    ],
+    "question": {
+      "header": "Coercion dtype",
+      "options": [
+        {
+          "description": "Convert booleans to integer weights, matching the issue's proposed `weights * 1` behavior and existing integer-weight semantics.",
+          "label": "Integer 0/1",
+          "recommended": true
+        },
+        {
+          "description": "Convert booleans to floating-point weights, ensuring numeric arithmetic but potentially promoting weighted-sum and denominator result dtypes.",
+          "label": "Float 0/1",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which numeric representation should the shared weighted-reduction path use for boolean weights?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the complete executable contract."
+    ],
+    "question": {
+      "header": "Approve contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with no remaining material decisions.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open and specify which behavior, compatibility boundary, or acceptance criterion must change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this executable contract: Scope—update the weighted-reduction implementation so boolean DataArray weights remain valid and are converted to integer 0/1 at the shared weighted-reduction boundary used by all weighted reductions. Required behavior—False contributes zero and True contributes one for weighted sum, sum_of_weights, and mean; the reported example must return 1.0. Compatibility—retain current validation that weights are DataArray objects without missing values; preserve existing behavior for non-boolean weights, missing data, zero or cancelling total weights, DataArray and Dataset inputs, and dimension/skipna handling. Acceptance—add regression coverage for boolean weights across sum, sum_of_weights, and mean, including the reported case, and confirm existing weighted tests pass. Implementation delegation—the implementer may choose the smallest repository-consistent coercion expression and exact test organization, provided coercion occurs before dot/einsum arithmetic, produces integer 0/1 values, does not mutate the supplied weights, and the tests demonstrate the stated behavior and compatibility boundary. Residual risk—backend-specific integer dtype selection or lazy-array behavior may vary, but observable numeric results must match integer 0/1 weight semantics. Is this contract approved for implementation?"
+    },
+    "turn": 4
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "The reported DataArray example with boolean weights [True, True, False] returns a weighted mean of 1.0.",
+          "Regression tests cover boolean weights for weighted sum, sum_of_weights, and mean.",
+          "Tests demonstrate False contributes zero and True contributes one.",
+          "Coercion happens before dot/einsum arithmetic and does not mutate the supplied weights.",
+          "Existing weighted tests pass, including numeric weights, missing-data behavior, zero or cancelling total weights, DataArray and Dataset inputs, and dimension/skipna behavior."
+        ],
+        "confirmed_decisions": [
+          "Boolean weights remain supported and are interpreted as 0/1.",
+          "Boolean-to-numeric coercion applies at the shared weighted-reduction boundary for all weighted reductions.",
+          "Boolean weights are converted to integer 0/1 rather than floating-point 0.0/1.0.",
+          "Existing validation remains unchanged: weights must be a DataArray and cannot contain missing values.",
+          "Existing observable behavior is preserved for non-boolean weights, missing data, zero or cancelling total weights, DataArray and Dataset inputs, and dimension/skipna handling.",
+          "The implementer may select the smallest repository-consistent coercion expression and test organization within the stated constraints.",
+          "The owner explicitly approved the executable contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update xarray's weighted-reduction implementation so boolean DataArray weights remain valid and are converted to integer 0/1 at the shared weighted-reduction boundary used by all weighted reductions. False contributes zero and True contributes one for weighted sum, sum_of_weights, and mean; the reported example must return 1.0. Retain current validation that weights are DataArray objects without missing values. Preserve existing behavior for non-boolean weights, missing data, zero or cancelling total weights, DataArray and Dataset inputs, and dimension/skipna handling. The implementer may choose the smallest repository-consistent coercion expression and exact test organization, provided coercion occurs before dot/einsum arithmetic, produces integer 0/1 values, and does not mutate the supplied weights. Acknowledged residual risk: backend-specific integer dtype selection or lazy-array behavior may vary, but observable numeric results must match integer 0/1 weight semantics."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the complete executable contract. All material behavior, scope, compatibility, acceptance, implementation-delegation, and residual-risk decisions are resolved."
+    },
+    "turn": 5
+  }
+]

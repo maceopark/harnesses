@@ -1,0 +1,63 @@
+[
+  {
+    "answer": "First non-signature",
+    "open_material_decisions": [
+      "Define the boundary of the overload-signature block at the start of the docstring."
+    ],
+    "question": {
+      "header": "Block end",
+      "options": [
+        {
+          "description": "Collect consecutive valid signature lines from the first line, then preserve the first non-signature line and everything after it as docstring content.",
+          "label": "First non-signature",
+          "recommended": true
+        },
+        {
+          "description": "Treat all lines before the first blank line as candidate signatures, requiring a blank line between overload signatures and prose.",
+          "label": "Blank separator",
+          "recommended": false
+        },
+        {
+          "description": "Scan the entire docstring, extracting every matching signature line even when prose or blank lines occur between them.",
+          "label": "All matching lines",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc determine where the leading overload-signature block ends?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A method docstring beginning with two consecutive valid signatures followed by prose produces two displayed method signatures, and the rendered docstring begins with the prose.",
+          "A function docstring beginning with multiple consecutive valid signatures, including distinct return annotations, displays every signature with its corresponding return annotation.",
+          "A single leading signature continues to produce the existing single-signature output.",
+          "A non-signature first line prevents later lines from being extracted as overload signatures.",
+          "After one or more leading signatures, the first non-signature line and every subsequent line remain in the rendered docstring.",
+          "Disabling autodoc_docstring_signature leaves the leading signature lines in the docstring content and does not use them as displayed signatures.",
+          "Supplying an explicit signature prevents docstring-signature extraction, preserving the existing precedence behavior."
+        ],
+        "confirmed_decisions": [
+          "The overload-signature block begins at the first docstring line.",
+          "The block contains consecutive valid signature lines for the documented object.",
+          "The first non-signature line ends the block and is preserved together with all subsequent docstring content.",
+          "All signatures in the leading block are displayed as signatures for the same documented function or method.",
+          "Each recognized overload retains its own argument list and return annotation.",
+          "Existing single-signature docstrings continue to produce one displayed signature and omit that leading signature line from rendered content.",
+          "Docstrings whose first line is not a valid signature remain ordinary docstring content.",
+          "The behavior applies only under the existing autodoc_docstring_signature conditions: the option is enabled and no explicit signature was supplied."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "When autodoc_docstring_signature is enabled for a function or method with no explicit signature, autodoc recognizes every consecutive valid signature line at the start of the docstring as an overload signature. It displays all recognized signatures and removes only those leading signature lines from the rendered docstring. The first non-signature line ends the overload-signature block and remains part of the rendered content."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The repository evidence and the answered block-boundary question resolve the only material ambiguity. The requested behavior can now be specified without inventing additional edge-case policy."
+    },
+    "turn": 2
+  }
+]

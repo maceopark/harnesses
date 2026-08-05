@@ -1,0 +1,99 @@
+[
+  {
+    "answer": "Both operations",
+    "open_material_decisions": [
+      "Whether boolean weights must produce correct 0/1 semantics only for weighted mean or also for the public sum_of_weights operation."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Require correct boolean-weight results from mean and sum_of_weights, including their shared denominator semantics.",
+          "label": "Both operations",
+          "recommended": true
+        },
+        {
+          "description": "Require only weighted mean’s observable result to be corrected; sum_of_weights behavior remains outside the contract.",
+          "label": "Mean only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should boolean weights behave as numeric 0/1 weights for both weighted mean and the public sum_of_weights result?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Both types",
+    "open_material_decisions": [
+      "Whether the boolean-as-0/1 requirement applies only to DataArray weighted reductions or to both DataArray and Dataset weighted reductions."
+    ],
+    "question": {
+      "header": "Object scope",
+      "options": [
+        {
+          "description": "Apply the same observable boolean-as-0/1 semantics to DataArray and Dataset weighted operations.",
+          "label": "Both types",
+          "recommended": true
+        },
+        {
+          "description": "Limit the contract to the DataArray behavior demonstrated by the bug report.",
+          "label": "DataArray only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should correct boolean-weight behavior for mean and sum_of_weights be required for both DataArray and Dataset weighted operations?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Weighted only",
+    "open_material_decisions": [
+      "Whether the fix must alter the public xarray.dot behavior for boolean operands or remain confined to weighted operations."
+    ],
+    "question": {
+      "header": "Change boundary",
+      "options": [
+        {
+          "description": "Correct mean and sum_of_weights without changing the observable behavior of standalone xarray.dot calls.",
+          "label": "Weighted only",
+          "recommended": true
+        },
+        {
+          "description": "Also require standalone xarray.dot with boolean operands to perform numeric 0/1 accumulation.",
+          "label": "Include dot",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should this contract require boolean-as-0/1 behavior only in weighted operations, or also change public xarray.dot semantics for boolean operands?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "For data [1.0, 1.0, 1.0] and boolean weights [True, True, False], weighted mean returns 1.0.",
+          "For the same inputs, sum_of_weights returns 2 rather than a boolean result.",
+          "Equivalent DataArray and Dataset weighted operations produce correct numeric results with boolean weights.",
+          "Zero effective boolean weight continues to follow the existing weighted-operation behavior for a zero sum of weights.",
+          "Standalone xarray.dot with boolean operands retains its existing observable behavior.",
+          "Existing weighted reductions with non-boolean weights continue to produce their prior results."
+        ],
+        "confirmed_decisions": [
+          "DataArray.weighted(...).mean(...) and DataArray.weighted(...).sum_of_weights(...) must treat True as weight 1 and False as weight 0.",
+          "Dataset.weighted(...).mean(...) and Dataset.weighted(...).sum_of_weights(...) must provide the same boolean-weight semantics.",
+          "The change is confined to weighted operations; standalone xarray.dot behavior is not changed.",
+          "Existing weighted-operation behavior for non-boolean weights remains unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Correct weighted reductions so boolean weights are treated as numeric 0/1 weights when calculating weighted means and sums of weights."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The interview resolved all material scope decisions: boolean weights use numeric 0/1 semantics for both mean and sum_of_weights, across DataArray and Dataset weighted operations, while standalone xarray.dot behavior remains unchanged."
+    },
+    "turn": 4
+  }
+]

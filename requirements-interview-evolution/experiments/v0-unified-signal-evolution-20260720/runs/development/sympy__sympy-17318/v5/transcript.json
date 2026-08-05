@@ -1,0 +1,60 @@
+[
+  {
+    "answer": "Guard in _sqrt_match",
+    "open_material_decisions": [
+      "Choose whether the fix should be local to sqrtdenest or establish empty-surds behavior for all split_surds callers."
+    ],
+    "question": {
+      "header": "Fix boundary",
+      "options": [
+        {
+          "description": "Return no match before calling split_surds when the Add contains no representational Pow/surd terms; this is the narrowest regression fix.",
+          "label": "Guard in _sqrt_match",
+          "recommended": true
+        },
+        {
+          "description": "Make the shared helper define a safe result for inputs with no detected surds, affecting every current and future caller.",
+          "label": "Guard in split_surds",
+          "recommended": false
+        },
+        {
+          "description": "Add a caller-side check plus defensive shared-helper behavior, increasing robustness but broadening the patch and tests.",
+          "label": "Guard both layers",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should the empty-surds case be handled so the reported expression is returned unchanged without affecting unrelated simplification behavior?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "The exact reported reproducer completes without IndexError.",
+          "The reproducer result equals 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.",
+          "The new regression test fails on base commit d4e0231b08147337745dcf601e62de7eefe2fb2d for the reported IndexError and passes with the fix.",
+          "Existing tests in sympy/simplify/tests/test_sqrtdenest.py pass.",
+          "Targeted tests covering _sqrt_match/sqrtdenest successful denesting continue to pass.",
+          "No shared behavior in split_surds or _split_gcd is modified."
+        ],
+        "confirmed_decisions": [
+          "Place the fix in sympy/simplify/sqrtdenest.py within _sqrt_match, not in the shared split_surds or _split_gcd helpers.",
+          "Before calling split_surds for an Add, detect that there are no representational Pow/surd terms eligible for split_surds and return an empty/no-match result.",
+          "Preserve the existing public behavior that expressions which cannot be denested are returned unchanged.",
+          "Do not change split_surds semantics for other callers.",
+          "Add a regression test using (3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2 and assert that sqrtdenest returns the same expanded SymPy expression without raising IndexError.",
+          "Retain existing successful denesting behavior and existing unchanged-result behavior."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Prevent sqrtdenest from raising IndexError when _sqrt_match encounters an Add whose terms all have rational squares but none are represented as Pow/surd terms. Handle the case locally in _sqrt_match by returning no match before calling split_surds, allowing _sqrtdenest1 and the existing recursion to return the affected expression unchanged."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested result and success criteria are explicit, and the only material implementation-boundary decision was resolved in favor of a narrow _sqrt_match guard. The contract is implementation-ready."
+    },
+    "turn": 2
+  }
+]

@@ -1,0 +1,55 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/2",
+          "quoted_value": "Isolate all supported mutable two-value coordinate containers, including NumPy arrays and built-in mutable containers."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/6",
+          "quoted_value": "Bounded residual risk is accepted: unusual custom coordinate containers may have distinct copying semantics, but the implementation must not intentionally broaden into deep copying or normalization."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/2",
+          "quoted_value": "Construct an annotation with at least one built-in mutable two-value container as `xy`, mutate the original container afterward, and verify that the annotation remains unchanged."
+        }
+      ],
+      "description": "The requirement to isolate “all supported mutable two-value coordinate containers” is not implementation-ready because neither the contract nor audited evidence defines “supported.” The accepted residual risk for unusual custom containers does not supply an objective inclusion rule. Consequently, an implementation can pass the listed examples while still failing the stated universal requirement, with no deterministic readiness or acceptance judgment.",
+      "failure_class": "omission",
+      "general_cause": "The contract requires coverage of an undefined class of supported mutable coordinate containers while simultaneously exempting some custom containers, without defining the boundary between them.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "An implementer cannot determine which container types beyond NumPy arrays and one built-in example are required to satisfy the universal compatibility claim."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/5",
+          "quoted_value": "Verify that `xytext` retains its existing behavior and is not newly copied by this change."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/0",
+          "quoted_value": "Copy only `xy`; do not copy `xytext`."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/3/statement",
+          "quoted_value": "Annotation initialization forwards xy unchanged to _AnnotationBase; by contrast, it explicitly copies the arrowprops dictionary before modifying it."
+        }
+      ],
+      "description": "“Verify that `xytext` retains its existing behavior” is not independently executable. This is material because audited evidence shows the omitted-xytext path derives it from `self.xy`; changing when `xy` is snapshotted can therefore interact with that path. The contract needs a scalar expected outcome for explicit and/or omitted `xytext`, rather than delegating interpretation of compatibility to the repository or implementer.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The compatibility requirement for xytext is expressed only as preserving unspecified existing behavior, without a concrete observable mutation scenario or expected result.",
+      "id": "FINDING-2",
+      "material": true,
+      "observable_signal": "The acceptance check does not identify whether xytext is supplied explicitly or omitted, what object is mutated, or which annotation state must remain aliased or isolated."
+    }
+  ],
+  "summary": "The contract is not materially implementation-ready: it leaves the required mutable-container boundary undefined and provides no concrete, observable acceptance oracle for preserving xytext behavior."
+}

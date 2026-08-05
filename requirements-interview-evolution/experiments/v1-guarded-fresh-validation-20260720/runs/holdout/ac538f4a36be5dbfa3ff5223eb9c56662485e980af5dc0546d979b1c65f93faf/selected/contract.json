@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "A parametrized bytes value run with Python -bb and --setup-show exits successfully without BytesWarning.",
+    "The bytes parameter is displayed using its safe bytes representation, such as b'Hello World', in both SETUP and TEARDOWN output.",
+    "Regression coverage exercises the bytes case under -bb.",
+    "Existing explicit list-ID and callable-ID setup-show tests continue to pass with unchanged displayed IDs.",
+    "Existing relevant setup-only tests pass.",
+    "No parameterization, fixture lifecycle, test-node ID, or non-setup-show behavior is changed."
+  ],
+  "confirmed_decisions": [
+    "Apply saferepr to all raw fixture parameter values, not only bytes-like values.",
+    "Do not apply saferepr to explicit IDs supplied through an ID list or callable; preserve their existing rendering exactly.",
+    "Use saferepr's existing default size limit, allowing long raw parameter representations to be truncated.",
+    "Use the same safe raw-parameter representation for SETUP and TEARDOWN output.",
+    "Accept that raw string parameters may become quoted because raw parameters now use repr-style rendering.",
+    "Limit the change to --setup-show parameter rendering.",
+    "Acknowledge the bounded residual risk that other raw parameter types may have visibly different or truncated output under saferepr's default policy."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "For --setup-show only, render raw fixture parameter values with saferepr using its default size limit in both SETUP and TEARDOWN output. Explicit list-derived and callable-derived IDs must continue to render exactly as before. Raw strings may gain quotes; bytes must render as a bytes representation without raising BytesWarning under Python -bb; long values and objects with faulty repr implementations inherit saferepr's bounded, failure-safe behavior. Implementation scope is limited to setup-show parameter rendering and must not change parameterization, fixture lifecycle, test node IDs, or behavior when setup-show is disabled."
+}

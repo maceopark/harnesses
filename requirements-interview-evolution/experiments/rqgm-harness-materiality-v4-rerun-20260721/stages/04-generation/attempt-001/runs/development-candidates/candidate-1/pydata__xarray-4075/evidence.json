@@ -1,0 +1,72 @@
+{
+  "audit_summary": "All nine facts are directly supported by the cited repository files.",
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 110,
+      "line_start": 98,
+      "path": "xarray/core/weighted.py",
+      "statement": "Weighted operations require weights to be a DataArray and reject missing values, but impose no numeric dtype requirement; boolean DataArray weights therefore pass the existing constructor validation."
+    },
+    {
+      "id": "F2",
+      "line_end": 135,
+      "line_start": 112,
+      "path": "xarray/core/weighted.py",
+      "statement": "The shared weighted reduction is implemented with dot(da, weights); it fills missing data when appropriate but does not cast either operand before the dot operation."
+    },
+    {
+      "id": "F3",
+      "line_end": 150,
+      "line_start": 137,
+      "path": "xarray/core/weighted.py",
+      "statement": "The sum-of-weights calculation creates a boolean mask with da.notnull() and reduces that mask directly against self.weights, so boolean weights produce a boolean-by-boolean dot input."
+    },
+    {
+      "id": "F4",
+      "line_end": 174,
+      "line_start": 162,
+      "path": "xarray/core/weighted.py",
+      "statement": "Weighted mean computes the weighted sum separately, computes sum_of_weights through the mask-based path, and returns their quotient; an incorrect denominator directly changes the mean result."
+    },
+    {
+      "id": "F5",
+      "line_end": 1215,
+      "line_start": 1191,
+      "path": "xarray/core/computation.py",
+      "statement": "xarray.dot constructs einsum subscripts and delegates computation to duck_array_ops.einsum without adding dtype coercion."
+    },
+    {
+      "id": "F6",
+      "line_end": 52,
+      "line_start": 35,
+      "path": "xarray/core/duck_array_ops.py",
+      "statement": "For eager arrays, duck_array_ops.einsum dispatches to the eager module's einsum implementation; the dispatch wrapper itself performs no dtype conversion."
+    },
+    {
+      "id": "F7",
+      "line_end": 180,
+      "line_start": 161,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "The test helper's reference denominator masks the weights and calls sum, which expresses arithmetic summation rather than the production boolean-mask dot path."
+    },
+    {
+      "id": "F8",
+      "line_end": 158,
+      "line_start": 128,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "Existing direct weighted-mean tests cover numeric integer weights, including positive and zero weights, but do not include boolean weights in their parameter cases."
+    },
+    {
+      "id": "F9",
+      "line_end": 59,
+      "line_start": 32,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "Existing sum-of-weights tests likewise use numeric integer weight lists and cover positive, zero, negative, and missing-data cases."
+    }
+  ],
+  "scope_summary": "Inspected pydata/xarray at base commit 19b088636eb7d3f65ab7a1046ac672e0689371d8. The existing weighted-mean denominator path applies a dot/einsum reduction directly to a boolean validity mask and the supplied weights without dtype conversion.",
+  "unknowns": [
+    "The repository runtime reproduction could not be executed in the supplied environment because importing the base-commit xarray package failed on the unavailable pkg_resources dependency."
+  ]
+}

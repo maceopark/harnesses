@@ -1,0 +1,117 @@
+[
+  {
+    "answer": "Contiguous prefix",
+    "open_material_decisions": [
+      "How multiple extracted signatures interact with the autodoc-process-signature event.",
+      "Whether extraction consumes only a contiguous run of valid leading signatures and stops at the first non-signature line."
+    ],
+    "question": {
+      "header": "Scan boundary",
+      "options": [
+        {
+          "description": "Extract and remove every consecutive valid signature from the start, then preserve the first non-signature line and everything after it.",
+          "label": "Contiguous prefix",
+          "recommended": true
+        },
+        {
+          "description": "Continue scanning after prose or blank separators and extract later matching signature lines too.",
+          "label": "Entire docstring",
+          "recommended": false
+        },
+        {
+          "description": "Extract at most two leading valid signatures and leave any additional signature-looking lines as content.",
+          "label": "Exactly two",
+          "recommended": false
+        }
+      ],
+      "prompt": "When multiple overload signatures lead a docstring, where should signature extraction stop?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Once, combined",
+    "open_material_decisions": [
+      "How multiple extracted signatures interact with the autodoc-process-signature event."
+    ],
+    "question": {
+      "header": "Signature event",
+      "options": [
+        {
+          "description": "Invoke the event once through the existing formatting path, representing the overload signatures as newline-delimited signature text; this minimizes changes to event behavior.",
+          "label": "Once, combined",
+          "recommended": true
+        },
+        {
+          "description": "Invoke the event separately for every extracted signature, allowing extensions to transform or suppress each overload independently.",
+          "label": "Once per overload",
+          "recommended": false
+        },
+        {
+          "description": "Render extracted overload signatures directly without exposing them to autodoc-process-signature.",
+          "label": "Bypass event",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc-process-signature handle multiple signatures extracted from a docstring?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the consolidated implementation contract."
+    ],
+    "question": {
+      "header": "Contract approval",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with no remaining material decisions.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Do not seal it; provide the specific behavior or acceptance requirement that should change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: when autodoc_docstring_signature is enabled and no explicit signature was supplied, functions and methods must extract every consecutive valid, accepted-name signature line at the start of the selected docstring; stop at the first non-signature or invalid-name line; remove only the extracted prefix from rendered content; preserve that stopping line and everything after it; format all extracted signatures as newline-delimited signature text so the existing directive writer emits aligned overloads; invoke autodoc-process-signature once through the existing formatting path with the combined representation; preserve existing single-signature behavior and disabled-option behavior. Acceptance requires tests covering multiple leading overloads, the contiguous-prefix stopping boundary, removal/preservation of content, single-signature compatibility, and disabled configuration behavior, plus the relevant autodoc test suite passing. Implementation details may be chosen by the implementer only within these constraints and without changing explicit-signature precedence or expanding extraction beyond functions and methods."
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A test demonstrates that multiple consecutive valid overload signatures at the beginning of a method docstring are all emitted as aligned py:method signatures.",
+          "Tests cover the contiguous-prefix boundary: extraction stops at the first non-signature or invalid-name line, and later signature-looking lines are not extracted.",
+          "Tests verify that all extracted signature lines are removed from rendered docstring content while the stopping line and all following content are preserved.",
+          "Existing or equivalent coverage confirms unchanged single-signature extraction and rendering.",
+          "Existing or equivalent coverage confirms that disabling autodoc_docstring_signature retains signature-looking lines as content and uses the normal introspected signature.",
+          "Coverage confirms explicit signatures continue to suppress docstring signature discovery.",
+          "The relevant autodoc test suite passes."
+        ],
+        "confirmed_decisions": [
+          "Extract a contiguous prefix of valid, accepted-name signature lines from the start of the selected docstring.",
+          "Stop extraction at the first non-signature or invalid-name line; do not scan later content for signatures.",
+          "Remove only successfully extracted leading signature lines and preserve the stopping line and everything after it.",
+          "Represent overloads as newline-delimited signature text so the existing directive writer emits aligned signature lines.",
+          "Invoke autodoc-process-signature once through the existing formatting path using the combined signature representation.",
+          "Preserve existing behavior for a single extracted signature.",
+          "When autodoc_docstring_signature is disabled, preserve introspected signature behavior and retain signature-looking docstring lines as content.",
+          "Explicitly supplied signatures retain precedence over docstring signature extraction.",
+          "Do not expand docstring signature extraction beyond function and method documenters.",
+          "Implementation details are delegated to the implementer only within these behavioral and compatibility constraints."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend autodoc_docstring_signature so that, when enabled and no explicit signature was supplied, function and method documenters extract every consecutive valid, accepted-name signature line at the beginning of the selected docstring. Extraction stops at the first non-signature or invalid-name line. Only the extracted prefix is removed; the stopping line and all subsequent content are preserved. The extracted overloads are formatted as newline-delimited signature text, allowing the existing directive-header writer to emit aligned signatures. autodoc-process-signature is invoked once through the existing formatting path with the combined representation. Existing single-signature behavior, disabled-option behavior, explicit-signature precedence, and scope limited to functions and methods are preserved."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner approved the consolidated contract, and no material implementation decision remains unresolved."
+    },
+    "turn": 4
+  }
+]

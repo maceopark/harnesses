@@ -1,0 +1,24 @@
+{
+  "acceptance_checks": [
+    "Construct an arrow annotation using a mutable two-value `xy` input, mutate the original input, then update or draw the annotation; the annotated point and arrow endpoint remain at the construction-time coordinates.",
+    "The regression test establishes that the original mutable input is not retained as the source of later annotation positioning.",
+    "A valid tuple supplied as `xy` continues to produce the existing valid annotation behavior.",
+    "An iterable yielding exactly two coordinate values remains accepted.",
+    "Inputs that cannot be unpacked into exactly two values still fail in substance, without asserting unsupported exact exception text or type.",
+    "The change does not alter `xytext`, `arrowprops`, coordinate-transform, setter, or other-artist behavior.",
+    "No new dependency is introduced."
+  ],
+  "confirmed_decisions": [
+    "Snapshot `xy` as an immutable two-value tuple by unpacking the supplied iterable exactly once.",
+    "Apply the snapshot to all `Annotation` instances, not only annotations with arrows, because repository evidence establishes `xy` as the shared annotated position.",
+    "Preserve support for existing iterable `xy` inputs yielding exactly two coordinate values.",
+    "Do not require an exact exception type or message for invalid inputs that cannot be unpacked into exactly two values.",
+    "Exclude changes to `xytext`, `arrowprops`, coordinate transforms, setters, and other artists.",
+    "Limit isolation to a shallow coordinate-value snapshot; nested mutable coordinate values are outside scope.",
+    "Delegate the precise implementation location, mechanism, and minimal test fixture to the implementer, constrained by the observable behavior and no-new-dependency boundary.",
+    "The owner explicitly approved the complete implementation contract."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "At Annotation construction, capture `xy` by unpacking it exactly once into two coordinate values and store those values as an immutable two-value tuple. Later mutation of the caller’s original mutable two-value input must not change the annotation’s annotated position or arrow endpoint. Apply this behavior to `Annotation` generally, including annotations without arrows. Do not broaden the change to `xytext`, `arrowprops`, coordinate transforms, setters, or other artists. Continue accepting `xy` inputs that are iterable and yield exactly two coordinate values. Preserve failure behavior in substance for inputs that cannot be unpacked into exactly two values; exact exception type and text are not required. Use no new dependency. The implementation location, mechanism, and regression-test fixture details are delegated to the implementer provided the observable contract is satisfied. The compatibility boundary is a shallow snapshot of the two coordinate values. Mutation inside a coordinate value, unusual iterables with side effects, and consistency changes to `xytext` or adjacent APIs are excluded residual risks accepted by the owner."
+}

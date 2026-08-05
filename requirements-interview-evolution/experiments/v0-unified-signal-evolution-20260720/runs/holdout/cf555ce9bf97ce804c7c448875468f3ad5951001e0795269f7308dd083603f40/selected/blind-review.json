@@ -1,0 +1,55 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "transcript",
+          "pointer": "/1/question/options/0/description",
+          "quoted_value": "Continue discovering matching test files below the package, but do not collect or import its non-matching __init__.py."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/1",
+          "quoted_value": "A package whose non-matching __init__.py would fail on import can still contain nested matching test files, and those tests are collected and run successfully without executing the initializer."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/unknowns/1",
+          "quoted_value": "No future fix shape, compatibility policy, or owner-selected behavior is established by the inspected base-commit repository."
+        }
+      ],
+      "description": "The transcript establishes that pytest should continue discovering matching files below the package without collecting or importing the initializer for traversal. It does not establish that importing or executing a nested test module can never execute the package initializer through Python import semantics. The stronger acceptance requirement is material because it may require changes beyond collection traversal, while the audit explicitly states that no future fix shape or compatibility policy is established.",
+      "failure_class": "invention",
+      "general_cause": "The contract strengthens the selected traversal outcome into an unconfirmed execution guarantee.",
+      "id": "F1",
+      "material": true,
+      "observable_signal": "The interview confirmed continued discovery beneath a non-matching initializer, but the contract additionally requires nested tests to run successfully without executing that initializer."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/5",
+          "quoted_value": "The implementation avoids creating a Package collector for a discovered non-matching __init__.py while preserving recursive discovery beneath its directory."
+        },
+        {
+          "artifact": "transcript",
+          "pointer": "/1/answer",
+          "quoted_value": "Recurse without import"
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/2/statement",
+          "quoted_value": "pytest_pycollect_makemodule creates a Package collector whenever the collected path's basename is __init__.py."
+        }
+      ],
+      "description": "The collector-type restriction unnecessarily excludes alternative implementations that satisfy all observable requirements. This is material because Package is an internal mechanism evidenced by the repository, not an owner-selected implementation constraint.",
+      "failure_class": "implementation-leakage",
+      "general_cause": "An acceptance check prescribes a specific internal collector construction strategy instead of testing observable behavior.",
+      "id": "F2",
+      "material": true,
+      "observable_signal": "The contract requires avoiding creation of a Package collector, although the confirmed outcome only requires preventing collection/import of non-matching discovered initializers while retaining recursive discovery."
+    }
+  ],
+  "summary": "The contract is not materially implementation-ready: it invents a stronger nested-test execution guarantee than the interview established and embeds an unnecessary internal Package-collector constraint in acceptance criteria."
+}

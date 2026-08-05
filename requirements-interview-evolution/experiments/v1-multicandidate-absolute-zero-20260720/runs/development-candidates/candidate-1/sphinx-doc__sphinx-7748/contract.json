@@ -1,0 +1,33 @@
+{
+  "acceptance_checks": [
+    "With `autodoc_docstring_signature` enabled and no explicit signature, a function or method docstring containing at least two consecutive valid leading signatures renders both as aligned directive signature lines in source order.",
+    "All consumed leading signature lines are absent from rendered docstring content.",
+    "The first blank, non-signature, or invalid-name line stops extraction and remains in content together with every following line.",
+    "A single valid leading signature produces the existing output and content behavior.",
+    "When the configuration is disabled, introspected signature behavior remains unchanged and signature-looking docstring lines remain content.",
+    "An explicit signature prevents docstring-derived signature extraction as before.",
+    "A docstring whose first line is not a valid accepted-name signature remains unchanged by extraction.",
+    "Existing accepted-name behavior remains intact.",
+    "Relevant existing autodoc tests and the new overload regression tests pass.",
+    "The configuration documentation states that consecutive valid leading signatures are recognized and removed from content."
+  ],
+  "confirmed_decisions": [
+    "Recognize only consecutive valid leading signatures.",
+    "Each consumed signature must pass the existing parsed base-name validation.",
+    "Stop at the first blank, non-signature, or invalid-name line and preserve the remainder as content.",
+    "Apply multi-signature behavior to both functions and methods through their shared docstring-signature path.",
+    "Emit signatures in source order using the existing newline-separated multi-signature directive mechanism.",
+    "Remove exactly the consumed signature lines from rendered content.",
+    "Preserve existing single-signature behavior.",
+    "Preserve behavior when `autodoc_docstring_signature` is disabled.",
+    "Explicitly supplied signatures continue to take precedence.",
+    "Preserve existing accepted-name rules, including applicable class, `__init__`, and MRO names.",
+    "Preserve behavior when the first docstring line is not a valid signature.",
+    "Update user documentation to describe consecutive leading signature recognition.",
+    "Add regression tests without introducing dependencies.",
+    "The owner approved the contract as stated."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Extend `autodoc_docstring_signature` for both `FunctionDocumenter` and `MethodDocumenter`. When enabled and no explicit signature was supplied, consume every consecutive leading docstring line that parses as a signature and whose base name passes the existing object-name validation. Emit the consumed signatures in source order as newline-separated directive signatures, and remove exactly those lines from rendered docstring content. Stop at the first blank, non-signature, or invalid-name line; preserve that line and everything after it as content. Preserve existing behavior for a single signature, disabled configuration, explicit signatures, accepted class names, and docstrings without a valid first-line signature. Update the configuration documentation and add regression coverage. Implementation details are delegated to the implementer within existing autodoc patterns, with no new dependencies. Residual risk: SWIG formatting variants other than consecutive valid leading signature lines are outside the guaranteed scope."
+}

@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "Preparing a request whose URL is `http://.example.com` raises `requests.exceptions.InvalidURL`.",
+    "The exception message is `URL has an invalid label.`",
+    "The failure occurs from `Request.prepare()`/`PreparedRequest.prepare_url`, without requiring request execution or network access.",
+    "Existing wildcard-host and non-ASCII invalid-label tests continue to pass.",
+    "No new rule rejects interior empty labels or trailing-dot ASCII hostnames as part of this change.",
+    "The targeted URL-preparation tests and relevant Requests test suite pass."
+  ],
+  "confirmed_decisions": [
+    "Reject ASCII hostnames beginning with an empty label, such as `.example.com`.",
+    "Do not broaden validation to interior empty labels such as `example..com` or trailing-dot hostnames.",
+    "Raise the error during prepared-request URL preparation, before adapter selection or network activity.",
+    "Use the existing Requests exception and message: `InvalidURL('URL has an invalid label.')`.",
+    "Extend the existing bad-URL preparation regression coverage with a leading-dot hostname case.",
+    "Preserve existing handling of non-ASCII IDNA failures, wildcard-prefixed ASCII hosts, and other optimistic ASCII-host cases."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update Requests URL preparation so an ASCII hostname beginning with `.` is rejected during `PreparedRequest.prepare_url` with `InvalidURL('URL has an invalid label.')`. Limit the change to leading-dot ASCII hosts, preserving the existing optimistic handling of other technically invalid ASCII hostnames."
+}

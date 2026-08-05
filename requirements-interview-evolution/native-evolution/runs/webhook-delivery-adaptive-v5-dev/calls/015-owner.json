@@ -1,0 +1,277 @@
+{
+  "role": "owner",
+  "prompt": "You are the Owner. Answer only the current question from the private owner oracle. Do not volunteer unasked decisions, evaluate the interviewer, mention the oracle, or reinterpret repository evidence.\nReturn only the JSON object required by the supplied output schema.\nINPUT:\n{\"oracle\":{\"material_decisions\":[{\"answer\":\"Each endpoint delivery has at most 6 automatic attempts including the initial attempt. Connection refusal, DNS failure, connect timeout, TLS failure, response timeout, HTTP 408, HTTP 425, HTTP 429, and HTTP 5xx consume an attempt and are retryable. Other HTTP 4xx responses consume an attempt and immediately make the delivery terminally failed. A complete 2xx response makes it succeeded. Redirects are not followed and are treated as terminal 4xx-class failures. Retryable outcomes schedule delays of 10, 30, 120, 600, and 3600 seconds after attempts 1 through 5, measured from completion of the preceding attempt. For 429 or 503, a valid Retry-After value replaces the scheduled delay only when it is between 1 and 3600 seconds; otherwise the normal delay applies. No seventh automatic attempt is created.\",\"id\":\"retry-outcome-matrix\",\"why_material\":\"This fixes delivery volume, latency, terminal-state timing, and behavior for every required failure class.\"},{\"answer\":\"Send the exact persisted UTF-8 JSON byte sequence as the HTTP body without reserialization or content encoding. Required headers are Webhook-Id containing the immutable event UUID, Webhook-Timestamp containing base-10 Unix seconds, and Webhook-Signature containing comma-separated v1=<lowercase hex HMAC-SHA256> entries. The signed byte sequence is the ASCII string Webhook-Id, a period, Webhook-Timestamp, a period, and the exact body bytes. Header names are case-insensitive, but values are not trimmed or normalized before verification. Verification requires all three headers, rejects timestamps more than 300 seconds from receiver time, and succeeds if any v1 signature matches any currently accepted secret using constant-time comparison. During rotation, both old and new secrets are accepted for 24 hours; the sender signs new attempts only with the new secret after rotation begins. Each retry gets a fresh timestamp and signature over the unchanged persisted body and event ID.\",\"id\":\"signature-wire-contract\",\"why_material\":\"This makes signatures reproducible across byte encodings, retries, timestamp checks, and secret rotation.\"},{\"answer\":\"Webhook-Id is an immutable UUID assigned once to the logical account event and is the receiver-facing idempotency key. Automatic retries and manual replays preserve it. A distinct event always receives a distinct UUID even if its payload is byte-identical. Receivers deduplicate by the tuple of sender tenant identifier and Webhook-Id for 30 days after first successful processing. The same event sent to multiple endpoints retains its Webhook-Id, while sender-side delivery state is keyed separately by event ID and endpoint ID. Changing or replacing an endpoint creates a new endpoint delivery but does not create a new event identity. A manual replay after 30 days may be processed again and must be labeled as outside the promised deduplication window.\",\"id\":\"idempotency-identity-and-scope\",\"why_material\":\"This prevents retries from causing duplicate side effects without suppressing distinct events or conflating endpoint delivery records.\"},{\"answer\":\"Store one logical delivery record per event-and-endpoint pair and one immutable attempt record per actual HTTP attempt. Delivery states are pending, retry_scheduled, in_flight, succeeded, and failed_exhausted; a terminal non-retryable client response uses failed_permanent. Each attempt records its sequential number, trigger type (automatic or manual), scheduled time, start and finish times, outcome class, HTTP status when available, sanitized error, signature key version, and next-retry time. Manual replay creates a new replay run linked to the original delivery, preserves the event ID, starts attempt numbering at 1 within that run, and never rewrites prior records. The operator view shows the current logical state, every run and attempt in order, the reason for each transition, and correlation IDs that map visible entries to worker and request logs.\",\"id\":\"history-state-model\",\"why_material\":\"This gives operators an auditable mapping from lifecycle state to every real attempt, retry, terminal outcome, and replay.\"},{\"answer\":\"The mandatory end-to-end test uses a receiver that verifies the signature, records the event ID and side effect, then drops the first response after processing. The sender must record attempt 1 as a response timeout, schedule and execute attempt 2 with the same event ID and body but a fresh valid timestamp and signature, and finish succeeded after the receiver returns 200. The receiver must record exactly one business side effect and one duplicate suppression. History must show both attempt records, their outcome classes and timestamps, the retry transition, and the final succeeded state. A subsequent manual replay must remain linked to the original delivery, use the same event ID, be visibly labeled manual, and cause no second business side effect within the 30-day window.\",\"id\":\"partial-acknowledgement-acceptance-test\",\"why_material\":\"This proves the combined retry, authentication, idempotency, terminal-state, and operator-history guarantees under a realistic partial failure.\"}],\"owner_rules\":[\"The case is complete only if the resulting specification makes every oracle decision directly testable without relying on undocumented framework defaults.\",\"Automatic attempts and manual replay runs must remain distinguishable in both persistence and the operator interface.\",\"Secrets, full payloads, and sensitive response bodies must not appear in delivery-history error details or ordinary logs.\",\"Endpoint disablement cancels scheduled future attempts but does not delete or rewrite existing delivery and attempt history.\",\"The acceptance suite must include unchanged payload verification, one-byte payload mutation, stale timestamp, missing signature metadata, old-secret and new-secret rotation cases, every retry outcome class, distinct identical-payload events, retries across endpoint changes, replay inside and outside the deduplication window, and the lost-acknowledgement scenario.\"]},\"owner_rules\":[\"The case is complete only if the resulting specification makes every oracle decision directly testable without relying on undocumented framework defaults.\",\"Automatic attempts and manual replay runs must remain distinguishable in both persistence and the operator interface.\",\"Secrets, full payloads, and sensitive response bodies must not appear in delivery-history error details or ordinary logs.\",\"Endpoint disablement cancels scheduled future attempts but does not delete or rewrite existing delivery and attempt history.\",\"The acceptance suite must include unchanged payload verification, one-byte payload mutation, stale timestamp, missing signature metadata, old-secret and new-secret rotation cases, every retry outcome class, distinct identical-payload events, retries across endpoint changes, replay inside and outside the deduplication window, and the lost-acknowledgement scenario.\"],\"question\":{\"header\":\"Retry policy\",\"options\":[{\"description\":\"Treat any network error or timeout as ambiguous and retry; accept only 200–299; retry 408, 425, 429, and 500–599; treat other 300–499 responses as terminal; never follow redirects; honor bounded Retry-After before exponential backoff.\",\"label\":\"Conservative transient set\",\"recommended\":true},{\"description\":\"Retry every response outside 200–299, maximizing recovery from receiver mistakes but wasting capacity on permanent failures and potentially retrying redirects or authorization errors indefinitely.\",\"label\":\"All non-2xx retry\",\"recommended\":false},{\"description\":\"Retry network errors, timeouts, and 500–599 only; treat all 300–499 responses as terminal, simplifying behavior but potentially dropping recoverable throttling and timeout responses.\",\"label\":\"5xx and network only\",\"recommended\":false}],\"prompt\":\"Which HTTP outcome policy should be authoritative? This determines when a receiver may see the same Webhook-Id again and when a delivery becomes terminal.\"},\"transcript\":[{\"answer\":\"At-least-once\",\"open_material_decisions\":[\"Abuse protections, SSRF defenses, destination restrictions, payload limits, and tenant isolation\",\"Acceptance-test matrix and implementation authorization\",\"Delivery guarantee and receiver deduplication responsibility, especially after lost acknowledgements\",\"Delivery-history audience, filters, statuses, detail exposure, and support actions\",\"Effect of endpoint edits, disablement, deletion, and secret rotation on queued deliveries and historical replay\",\"Manual replay semantics, authorization, rate limits, whether replay reuses the original event identity, and how replay appears in history\",\"Ordering and concurrency guarantees per account and endpoint\",\"Persistence lifecycle, uniqueness constraints, retention, payload redaction, and audit requirements\",\"Retryable versus terminal outcomes, backoff schedule, attempt limits, timeouts, and Retry-After handling\",\"Secret lifecycle, overlap during rotation, storage protection, disclosure rules, and operator permissions\",\"Sender API boundaries for endpoint configuration, verification, event submission, validation, quotas, and authorization\",\"Signed HTTP contract, including signature algorithm, canonical signed bytes, timestamp tolerance, headers, payload/versioning, and response acknowledgement rules\",\"Stable identifiers and idempotency semantics for events, endpoint deliveries, retry attempts, and manual replays\",\"Whether endpoint fanout is snapshotted when an account event occurs or resolved later by workers\",\"Worker scaling, leasing, crash recovery, scheduling, dead-letter behavior, and observability/SLO expectations\"],\"question\":{\"header\":\"Delivery guarantee\",\"options\":[{\"description\":\"Retry ambiguous outcomes and require receivers to deduplicate using a stable event or delivery identifier; duplicates are possible, but silent loss is minimized.\",\"label\":\"At-least-once (Recommended)\",\"recommended\":true},{\"description\":\"Do not retry ambiguous outcomes, preventing sender-created duplicates but allowing events to be permanently lost when acknowledgements disappear.\",\"label\":\"At-most-once\",\"recommended\":false},{\"description\":\"Let each endpoint choose at-least-once or at-most-once behavior, increasing flexibility but materially expanding API, persistence, UI, testing, and support complexity.\",\"label\":\"Configurable per endpoint\",\"recommended\":false}],\"prompt\":\"Which receiver-facing guarantee should be authoritative? This determines whether retries after a lost acknowledgement may repeat a successfully processed request and what receivers must deduplicate.\"},\"turn\":1},{\"answer\":\"Receivers must deduplicate automatic retries using the stable Webhook-Id event UUID, scoped by sender tenant identifier. The same Webhook-Id is preserved across all automatic attempts, endpoints, endpoint changes, and manual replays; sender-side delivery identity remains separately keyed by event ID and endpoint ID.\",\"open_material_decisions\":[\"Acceptance-test matrix and implementation authorization\",\"Delivery-history audience, filters, statuses, exposed details, and support actions\",\"Endpoint edit, disablement, deletion, and secret-rotation effects on queued deliveries and historical replay\",\"Manual replay identity, authorization, rate limits, execution semantics, and history representation\",\"Ordering and concurrency guarantees per account and endpoint\",\"Persistence model, uniqueness constraints, retention, redaction, and audit requirements\",\"Receiver-visible event, delivery, attempt, and replay identifiers and their idempotency semantics\",\"Retryable versus terminal outcomes, backoff, attempt limits, timeouts, and Retry-After handling\",\"SSRF and abuse protections, destination restrictions, payload limits, and tenant isolation\",\"Secret lifecycle, rotation overlap, protected storage, disclosure, and operator permissions\",\"Sender API boundaries for endpoint configuration, verification, event submission, validation, quotas, and authorization\",\"Signed HTTP contract: signature algorithm, signed bytes, timestamp tolerance, headers, payload versioning, and acknowledgement rules\",\"Whether endpoint fanout and destination configuration are snapshotted when an event occurs\",\"Worker leasing, crash recovery, scheduling, dead-letter behavior, scaling, observability, and SLOs\"],\"question\":{\"header\":\"Deduplication key\",\"options\":[{\"description\":\"Assign one delivery ID per event-endpoint pair and reuse it across every automatic attempt, while also exposing a separate stable event ID for business correlation.\",\"label\":\"Stable delivery ID\",\"recommended\":true},{\"description\":\"Require deduplication by event ID across endpoints, which is simpler but can incorrectly collapse intentionally distinct subscriptions or endpoint configurations.\",\"label\":\"Stable event ID\",\"recommended\":false},{\"description\":\"Give every retry a new receiver-visible identity, preserving attempt traceability but providing no reliable key for suppressing duplicate processing.\",\"label\":\"Unique attempt ID\",\"recommended\":false}],\"prompt\":\"Which identifier must receivers use to deduplicate automatic retries? This determines the persistence uniqueness rules and whether a lost acknowledgement can safely trigger the same logical delivery again.\"},\"turn\":2},{\"answer\":\"Freeze full delivery config. When the account event is accepted, snapshot each eligible endpoint’s immutable endpoint ID, destination URL, and signing-key version into its event-and-endpoint delivery record. Automatic attempts and their scheduling use that snapshot, so later endpoint edits, deletion, or signing-key rotation affect only deliveries created for new events and cannot redirect or alter an already-queued delivery. Endpoint disablement is the exception: it cancels that endpoint’s scheduled future attempts without deleting or rewriting existing delivery or attempt history. Manual replay remains linked to the original delivery and event ID but creates a new run using the endpoint configuration and active signing key selected at replay initiation; that replay configuration is then frozen for the run and displayed in history.\",\"open_material_decisions\":[\"Acceptance-test matrix and implementation authorization\",\"Delivery-history audience, filters, statuses, exposed details, and support actions\",\"Effect of endpoint edits, disablement, deletion, and secret rotation on queued deliveries and historical replay\",\"Manual replay authorization, rate limits, execution semantics, and history representation; receiver-visible Webhook-Id reuse is already confirmed\",\"Ordering and concurrency guarantees per account and endpoint\",\"Persistence model, uniqueness constraints, retention, payload redaction, and audit requirements\",\"Retryable versus terminal outcomes, backoff schedule, attempt limits, timeouts, and Retry-After handling\",\"SSRF and abuse protections, destination restrictions, payload limits, and tenant isolation\",\"Secret lifecycle, rotation overlap, protected storage, disclosure rules, and operator permissions\",\"Sender API boundaries for endpoint configuration, verification, event submission, validation, quotas, and authorization\",\"Signed HTTP contract: signature algorithm, canonical signed bytes, timestamp tolerance, headers, payload versioning, and acknowledgement rules\",\"Whether endpoint fanout and destination/signing configuration are snapshotted when an event occurs\",\"Worker leasing, crash recovery, scheduling, dead-letter behavior, scaling, observability, and SLO expectations\"],\"question\":{\"header\":\"Fanout snapshot\",\"options\":[{\"description\":\"Snapshot eligible endpoint IDs, destination URLs, and signing-key versions per delivery; later changes affect only new events, giving queued deliveries deterministic behavior.\",\"label\":\"Freeze full delivery config\",\"recommended\":true},{\"description\":\"Snapshot which endpoints receive the event but resolve their current URL and signing configuration at attempt time, allowing edits to affect queued deliveries.\",\"label\":\"Freeze membership only\",\"recommended\":false},{\"description\":\"Workers use endpoint membership and configuration current at execution time, reducing snapshots but allowing edits or disablement to change event fanout.\",\"label\":\"Resolve everything later\",\"recommended\":false}],\"prompt\":\"When an account event is accepted, what endpoint state should be frozen for its automatic deliveries? This determines whether later endpoint edits or rotations can redirect or alter already-queued requests.\"},\"turn\":3},{\"answer\":\"Versioned HMAC-SHA256\",\"open_material_decisions\":[\"Acceptance-test matrix and implementation authorization\",\"Authoritative signature mechanism and canonical signed bytes\",\"Delivery-history audience, filters, statuses, exposed details, and support actions\",\"Manual replay authorization, rate limits, execution semantics, and history representation\",\"Ordering and concurrency guarantees per account and endpoint\",\"Persistence model, uniqueness constraints, retention, payload redaction, and audit requirements\",\"Retryable versus terminal outcomes, backoff schedule, attempt limits, timeouts, and Retry-After handling\",\"SSRF and abuse protections, destination restrictions, payload limits, and tenant isolation\",\"Secret lifecycle, rotation overlap, protected storage, disclosure rules, and operator permissions\",\"Sender API boundaries for endpoint configuration, verification, event submission, validation, quotas, and authorization\",\"Signature headers, key-version exposure, timestamp tolerance, payload schema/versioning, and acknowledgement rules\",\"Worker leasing, crash recovery, scheduling, dead-letter behavior, scaling, observability, and SLO expectations\"],\"question\":{\"header\":\"Signing scheme\",\"options\":[{\"description\":\"Sign an unambiguous byte sequence containing the timestamp, sender tenant ID, Webhook-Id, and exact raw JSON body using the snapshotted secret version; simple and broadly interoperable, but each receiver holds a symmetric secret.\",\"label\":\"Versioned HMAC-SHA256\",\"recommended\":true},{\"description\":\"Sign the same canonical inputs with a private key and let receivers keep only public keys; improves verifier-side secret safety but adds asymmetric-key distribution and operational complexity.\",\"label\":\"Ed25519 signatures\",\"recommended\":false},{\"description\":\"Adopt the standards-based HTTP signature framework for covered components and body integrity; most extensible, but substantially more complex for receiver implementations and interoperability testing.\",\"label\":\"HTTP Message Signatures\",\"recommended\":false}],\"prompt\":\"Which signing mechanism should be authoritative? This security-sensitive choice determines how receivers authenticate the exact request and how signing keys are stored and rotated.\"},\"turn\":4},{\"answer\":\"Send the exact persisted UTF-8 JSON byte sequence as the HTTP body without reserialization or content encoding. HMAC-SHA256 must cover the ASCII value of Webhook-Id, followed by a period byte (0x2E), the ASCII base-10 Unix-seconds value of Webhook-Timestamp, another period byte, and the exact transmitted body bytes: Webhook-Id + \\\".\\\" + Webhook-Timestamp + \\\".\\\" + body. Header values are not trimmed or normalized.\",\"open_material_decisions\":[\"Acceptance-test matrix and implementation authorization\",\"Canonical signed bytes for HMAC-SHA256 verification\",\"Delivery-history audience, filters, statuses, exposed details, and support actions\",\"Manual replay authorization, rate limits, execution semantics, and history representation\",\"Ordering and concurrency guarantees per account and endpoint\",\"Persistence model, uniqueness constraints, retention, payload redaction, and audit requirements\",\"Retryable versus terminal outcomes, backoff schedule, attempt limits, timeouts, and Retry-After handling\",\"SSRF and abuse protections, destination restrictions, payload limits, and tenant isolation\",\"Secret lifecycle, rotation overlap, protected storage, disclosure rules, and operator permissions\",\"Sender API boundaries for endpoint configuration, verification, event submission, validation, quotas, and authorization\",\"Signature headers, key-version exposure, timestamp tolerance, payload schema/versioning, and acknowledgement rules\",\"Worker leasing, crash recovery, scheduling, dead-letter behavior, scaling, observability, and SLO expectations\"],\"question\":{\"header\":\"Signed bytes\",\"options\":[{\"description\":\"Sign a versioned, length-framed sequence containing timestamp, sender tenant ID, Webhook-Id, and the exact transmitted body bytes; strongest unambiguous binding with modest receiver complexity.\",\"label\":\"Framed metadata + body\",\"recommended\":true},{\"description\":\"Sign the timestamp followed by a delimiter and exact body bytes; simpler and familiar, but tenant and Webhook-Id headers are not independently authenticated unless duplicated in the body.\",\"label\":\"Timestamp + raw body\",\"recommended\":false},{\"description\":\"Sign a canonical JSON representation containing metadata and payload; human-readable but requires every receiver SDK to implement identical canonicalization.\",\"label\":\"Canonicalized JSON\",\"recommended\":false}],\"prompt\":\"What exact byte sequence must HMAC-SHA256 cover? This determines whether independent receiver implementations can verify the request without JSON reserialization or ambiguous field boundaries.\"},\"turn\":5}]}",
+  "prompt_sha256": "a1898b4e952d7f7232592577212a083bf89185d0355b5059c23e73c24bc6fb39",
+  "input": {
+    "oracle": {
+      "material_decisions": [
+        {
+          "id": "retry-outcome-matrix",
+          "answer": "Each endpoint delivery has at most 6 automatic attempts including the initial attempt. Connection refusal, DNS failure, connect timeout, TLS failure, response timeout, HTTP 408, HTTP 425, HTTP 429, and HTTP 5xx consume an attempt and are retryable. Other HTTP 4xx responses consume an attempt and immediately make the delivery terminally failed. A complete 2xx response makes it succeeded. Redirects are not followed and are treated as terminal 4xx-class failures. Retryable outcomes schedule delays of 10, 30, 120, 600, and 3600 seconds after attempts 1 through 5, measured from completion of the preceding attempt. For 429 or 503, a valid Retry-After value replaces the scheduled delay only when it is between 1 and 3600 seconds; otherwise the normal delay applies. No seventh automatic attempt is created.",
+          "why_material": "This fixes delivery volume, latency, terminal-state timing, and behavior for every required failure class."
+        },
+        {
+          "id": "signature-wire-contract",
+          "answer": "Send the exact persisted UTF-8 JSON byte sequence as the HTTP body without reserialization or content encoding. Required headers are Webhook-Id containing the immutable event UUID, Webhook-Timestamp containing base-10 Unix seconds, and Webhook-Signature containing comma-separated v1=<lowercase hex HMAC-SHA256> entries. The signed byte sequence is the ASCII string Webhook-Id, a period, Webhook-Timestamp, a period, and the exact body bytes. Header names are case-insensitive, but values are not trimmed or normalized before verification. Verification requires all three headers, rejects timestamps more than 300 seconds from receiver time, and succeeds if any v1 signature matches any currently accepted secret using constant-time comparison. During rotation, both old and new secrets are accepted for 24 hours; the sender signs new attempts only with the new secret after rotation begins. Each retry gets a fresh timestamp and signature over the unchanged persisted body and event ID.",
+          "why_material": "This makes signatures reproducible across byte encodings, retries, timestamp checks, and secret rotation."
+        },
+        {
+          "id": "idempotency-identity-and-scope",
+          "answer": "Webhook-Id is an immutable UUID assigned once to the logical account event and is the receiver-facing idempotency key. Automatic retries and manual replays preserve it. A distinct event always receives a distinct UUID even if its payload is byte-identical. Receivers deduplicate by the tuple of sender tenant identifier and Webhook-Id for 30 days after first successful processing. The same event sent to multiple endpoints retains its Webhook-Id, while sender-side delivery state is keyed separately by event ID and endpoint ID. Changing or replacing an endpoint creates a new endpoint delivery but does not create a new event identity. A manual replay after 30 days may be processed again and must be labeled as outside the promised deduplication window.",
+          "why_material": "This prevents retries from causing duplicate side effects without suppressing distinct events or conflating endpoint delivery records."
+        },
+        {
+          "id": "history-state-model",
+          "answer": "Store one logical delivery record per event-and-endpoint pair and one immutable attempt record per actual HTTP attempt. Delivery states are pending, retry_scheduled, in_flight, succeeded, and failed_exhausted; a terminal non-retryable client response uses failed_permanent. Each attempt records its sequential number, trigger type (automatic or manual), scheduled time, start and finish times, outcome class, HTTP status when available, sanitized error, signature key version, and next-retry time. Manual replay creates a new replay run linked to the original delivery, preserves the event ID, starts attempt numbering at 1 within that run, and never rewrites prior records. The operator view shows the current logical state, every run and attempt in order, the reason for each transition, and correlation IDs that map visible entries to worker and request logs.",
+          "why_material": "This gives operators an auditable mapping from lifecycle state to every real attempt, retry, terminal outcome, and replay."
+        },
+        {
+          "id": "partial-acknowledgement-acceptance-test",
+          "answer": "The mandatory end-to-end test uses a receiver that verifies the signature, records the event ID and side effect, then drops the first response after processing. The sender must record attempt 1 as a response timeout, schedule and execute attempt 2 with the same event ID and body but a fresh valid timestamp and signature, and finish succeeded after the receiver returns 200. The receiver must record exactly one business side effect and one duplicate suppression. History must show both attempt records, their outcome classes and timestamps, the retry transition, and the final succeeded state. A subsequent manual replay must remain linked to the original delivery, use the same event ID, be visibly labeled manual, and cause no second business side effect within the 30-day window.",
+          "why_material": "This proves the combined retry, authentication, idempotency, terminal-state, and operator-history guarantees under a realistic partial failure."
+        }
+      ],
+      "owner_rules": [
+        "The case is complete only if the resulting specification makes every oracle decision directly testable without relying on undocumented framework defaults.",
+        "Automatic attempts and manual replay runs must remain distinguishable in both persistence and the operator interface.",
+        "Secrets, full payloads, and sensitive response bodies must not appear in delivery-history error details or ordinary logs.",
+        "Endpoint disablement cancels scheduled future attempts but does not delete or rewrite existing delivery and attempt history.",
+        "The acceptance suite must include unchanged payload verification, one-byte payload mutation, stale timestamp, missing signature metadata, old-secret and new-secret rotation cases, every retry outcome class, distinct identical-payload events, retries across endpoint changes, replay inside and outside the deduplication window, and the lost-acknowledgement scenario."
+      ]
+    },
+    "owner_rules": [
+      "The case is complete only if the resulting specification makes every oracle decision directly testable without relying on undocumented framework defaults.",
+      "Automatic attempts and manual replay runs must remain distinguishable in both persistence and the operator interface.",
+      "Secrets, full payloads, and sensitive response bodies must not appear in delivery-history error details or ordinary logs.",
+      "Endpoint disablement cancels scheduled future attempts but does not delete or rewrite existing delivery and attempt history.",
+      "The acceptance suite must include unchanged payload verification, one-byte payload mutation, stale timestamp, missing signature metadata, old-secret and new-secret rotation cases, every retry outcome class, distinct identical-payload events, retries across endpoint changes, replay inside and outside the deduplication window, and the lost-acknowledgement scenario."
+    ],
+    "transcript": [
+      {
+        "turn": 1,
+        "open_material_decisions": [
+          "Abuse protections, SSRF defenses, destination restrictions, payload limits, and tenant isolation",
+          "Acceptance-test matrix and implementation authorization",
+          "Delivery guarantee and receiver deduplication responsibility, especially after lost acknowledgements",
+          "Delivery-history audience, filters, statuses, detail exposure, and support actions",
+          "Effect of endpoint edits, disablement, deletion, and secret rotation on queued deliveries and historical replay",
+          "Manual replay semantics, authorization, rate limits, whether replay reuses the original event identity, and how replay appears in history",
+          "Ordering and concurrency guarantees per account and endpoint",
+          "Persistence lifecycle, uniqueness constraints, retention, payload redaction, and audit requirements",
+          "Retryable versus terminal outcomes, backoff schedule, attempt limits, timeouts, and Retry-After handling",
+          "Secret lifecycle, overlap during rotation, storage protection, disclosure rules, and operator permissions",
+          "Sender API boundaries for endpoint configuration, verification, event submission, validation, quotas, and authorization",
+          "Signed HTTP contract, including signature algorithm, canonical signed bytes, timestamp tolerance, headers, payload/versioning, and response acknowledgement rules",
+          "Stable identifiers and idempotency semantics for events, endpoint deliveries, retry attempts, and manual replays",
+          "Whether endpoint fanout is snapshotted when an account event occurs or resolved later by workers",
+          "Worker scaling, leasing, crash recovery, scheduling, dead-letter behavior, and observability/SLO expectations"
+        ],
+        "question": {
+          "header": "Delivery guarantee",
+          "prompt": "Which receiver-facing guarantee should be authoritative? This determines whether retries after a lost acknowledgement may repeat a successfully processed request and what receivers must deduplicate.",
+          "options": [
+            {
+              "label": "At-least-once (Recommended)",
+              "description": "Retry ambiguous outcomes and require receivers to deduplicate using a stable event or delivery identifier; duplicates are possible, but silent loss is minimized.",
+              "recommended": true
+            },
+            {
+              "label": "At-most-once",
+              "description": "Do not retry ambiguous outcomes, preventing sender-created duplicates but allowing events to be permanently lost when acknowledgements disappear.",
+              "recommended": false
+            },
+            {
+              "label": "Configurable per endpoint",
+              "description": "Let each endpoint choose at-least-once or at-most-once behavior, increasing flexibility but materially expanding API, persistence, UI, testing, and support complexity.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "At-least-once"
+      },
+      {
+        "turn": 2,
+        "open_material_decisions": [
+          "Acceptance-test matrix and implementation authorization",
+          "Delivery-history audience, filters, statuses, exposed details, and support actions",
+          "Endpoint edit, disablement, deletion, and secret-rotation effects on queued deliveries and historical replay",
+          "Manual replay identity, authorization, rate limits, execution semantics, and history representation",
+          "Ordering and concurrency guarantees per account and endpoint",
+          "Persistence model, uniqueness constraints, retention, redaction, and audit requirements",
+          "Receiver-visible event, delivery, attempt, and replay identifiers and their idempotency semantics",
+          "Retryable versus terminal outcomes, backoff, attempt limits, timeouts, and Retry-After handling",
+          "SSRF and abuse protections, destination restrictions, payload limits, and tenant isolation",
+          "Secret lifecycle, rotation overlap, protected storage, disclosure, and operator permissions",
+          "Sender API boundaries for endpoint configuration, verification, event submission, validation, quotas, and authorization",
+          "Signed HTTP contract: signature algorithm, signed bytes, timestamp tolerance, headers, payload versioning, and acknowledgement rules",
+          "Whether endpoint fanout and destination configuration are snapshotted when an event occurs",
+          "Worker leasing, crash recovery, scheduling, dead-letter behavior, scaling, observability, and SLOs"
+        ],
+        "question": {
+          "header": "Deduplication key",
+          "prompt": "Which identifier must receivers use to deduplicate automatic retries? This determines the persistence uniqueness rules and whether a lost acknowledgement can safely trigger the same logical delivery again.",
+          "options": [
+            {
+              "label": "Stable delivery ID",
+              "description": "Assign one delivery ID per event-endpoint pair and reuse it across every automatic attempt, while also exposing a separate stable event ID for business correlation.",
+              "recommended": true
+            },
+            {
+              "label": "Stable event ID",
+              "description": "Require deduplication by event ID across endpoints, which is simpler but can incorrectly collapse intentionally distinct subscriptions or endpoint configurations.",
+              "recommended": false
+            },
+            {
+              "label": "Unique attempt ID",
+              "description": "Give every retry a new receiver-visible identity, preserving attempt traceability but providing no reliable key for suppressing duplicate processing.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Receivers must deduplicate automatic retries using the stable Webhook-Id event UUID, scoped by sender tenant identifier. The same Webhook-Id is preserved across all automatic attempts, endpoints, endpoint changes, and manual replays; sender-side delivery identity remains separately keyed by event ID and endpoint ID."
+      },
+      {
+        "turn": 3,
+        "open_material_decisions": [
+          "Acceptance-test matrix and implementation authorization",
+          "Delivery-history audience, filters, statuses, exposed details, and support actions",
+          "Effect of endpoint edits, disablement, deletion, and secret rotation on queued deliveries and historical replay",
+          "Manual replay authorization, rate limits, execution semantics, and history representation; receiver-visible Webhook-Id reuse is already confirmed",
+          "Ordering and concurrency guarantees per account and endpoint",
+          "Persistence model, uniqueness constraints, retention, payload redaction, and audit requirements",
+          "Retryable versus terminal outcomes, backoff schedule, attempt limits, timeouts, and Retry-After handling",
+          "SSRF and abuse protections, destination restrictions, payload limits, and tenant isolation",
+          "Secret lifecycle, rotation overlap, protected storage, disclosure rules, and operator permissions",
+          "Sender API boundaries for endpoint configuration, verification, event submission, validation, quotas, and authorization",
+          "Signed HTTP contract: signature algorithm, canonical signed bytes, timestamp tolerance, headers, payload versioning, and acknowledgement rules",
+          "Whether endpoint fanout and destination/signing configuration are snapshotted when an event occurs",
+          "Worker leasing, crash recovery, scheduling, dead-letter behavior, scaling, observability, and SLO expectations"
+        ],
+        "question": {
+          "header": "Fanout snapshot",
+          "prompt": "When an account event is accepted, what endpoint state should be frozen for its automatic deliveries? This determines whether later endpoint edits or rotations can redirect or alter already-queued requests.",
+          "options": [
+            {
+              "label": "Freeze full delivery config",
+              "description": "Snapshot eligible endpoint IDs, destination URLs, and signing-key versions per delivery; later changes affect only new events, giving queued deliveries deterministic behavior.",
+              "recommended": true
+            },
+            {
+              "label": "Freeze membership only",
+              "description": "Snapshot which endpoints receive the event but resolve their current URL and signing configuration at attempt time, allowing edits to affect queued deliveries.",
+              "recommended": false
+            },
+            {
+              "label": "Resolve everything later",
+              "description": "Workers use endpoint membership and configuration current at execution time, reducing snapshots but allowing edits or disablement to change event fanout.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Freeze full delivery config. When the account event is accepted, snapshot each eligible endpoint’s immutable endpoint ID, destination URL, and signing-key version into its event-and-endpoint delivery record. Automatic attempts and their scheduling use that snapshot, so later endpoint edits, deletion, or signing-key rotation affect only deliveries created for new events and cannot redirect or alter an already-queued delivery. Endpoint disablement is the exception: it cancels that endpoint’s scheduled future attempts without deleting or rewriting existing delivery or attempt history. Manual replay remains linked to the original delivery and event ID but creates a new run using the endpoint configuration and active signing key selected at replay initiation; that replay configuration is then frozen for the run and displayed in history."
+      },
+      {
+        "turn": 4,
+        "open_material_decisions": [
+          "Acceptance-test matrix and implementation authorization",
+          "Authoritative signature mechanism and canonical signed bytes",
+          "Delivery-history audience, filters, statuses, exposed details, and support actions",
+          "Manual replay authorization, rate limits, execution semantics, and history representation",
+          "Ordering and concurrency guarantees per account and endpoint",
+          "Persistence model, uniqueness constraints, retention, payload redaction, and audit requirements",
+          "Retryable versus terminal outcomes, backoff schedule, attempt limits, timeouts, and Retry-After handling",
+          "SSRF and abuse protections, destination restrictions, payload limits, and tenant isolation",
+          "Secret lifecycle, rotation overlap, protected storage, disclosure rules, and operator permissions",
+          "Sender API boundaries for endpoint configuration, verification, event submission, validation, quotas, and authorization",
+          "Signature headers, key-version exposure, timestamp tolerance, payload schema/versioning, and acknowledgement rules",
+          "Worker leasing, crash recovery, scheduling, dead-letter behavior, scaling, observability, and SLO expectations"
+        ],
+        "question": {
+          "header": "Signing scheme",
+          "prompt": "Which signing mechanism should be authoritative? This security-sensitive choice determines how receivers authenticate the exact request and how signing keys are stored and rotated.",
+          "options": [
+            {
+              "label": "Versioned HMAC-SHA256",
+              "description": "Sign an unambiguous byte sequence containing the timestamp, sender tenant ID, Webhook-Id, and exact raw JSON body using the snapshotted secret version; simple and broadly interoperable, but each receiver holds a symmetric secret.",
+              "recommended": true
+            },
+            {
+              "label": "Ed25519 signatures",
+              "description": "Sign the same canonical inputs with a private key and let receivers keep only public keys; improves verifier-side secret safety but adds asymmetric-key distribution and operational complexity.",
+              "recommended": false
+            },
+            {
+              "label": "HTTP Message Signatures",
+              "description": "Adopt the standards-based HTTP signature framework for covered components and body integrity; most extensible, but substantially more complex for receiver implementations and interoperability testing.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Versioned HMAC-SHA256"
+      },
+      {
+        "turn": 5,
+        "open_material_decisions": [
+          "Acceptance-test matrix and implementation authorization",
+          "Canonical signed bytes for HMAC-SHA256 verification",
+          "Delivery-history audience, filters, statuses, exposed details, and support actions",
+          "Manual replay authorization, rate limits, execution semantics, and history representation",
+          "Ordering and concurrency guarantees per account and endpoint",
+          "Persistence model, uniqueness constraints, retention, payload redaction, and audit requirements",
+          "Retryable versus terminal outcomes, backoff schedule, attempt limits, timeouts, and Retry-After handling",
+          "SSRF and abuse protections, destination restrictions, payload limits, and tenant isolation",
+          "Secret lifecycle, rotation overlap, protected storage, disclosure rules, and operator permissions",
+          "Sender API boundaries for endpoint configuration, verification, event submission, validation, quotas, and authorization",
+          "Signature headers, key-version exposure, timestamp tolerance, payload schema/versioning, and acknowledgement rules",
+          "Worker leasing, crash recovery, scheduling, dead-letter behavior, scaling, observability, and SLO expectations"
+        ],
+        "question": {
+          "header": "Signed bytes",
+          "prompt": "What exact byte sequence must HMAC-SHA256 cover? This determines whether independent receiver implementations can verify the request without JSON reserialization or ambiguous field boundaries.",
+          "options": [
+            {
+              "label": "Framed metadata + body",
+              "description": "Sign a versioned, length-framed sequence containing timestamp, sender tenant ID, Webhook-Id, and the exact transmitted body bytes; strongest unambiguous binding with modest receiver complexity.",
+              "recommended": true
+            },
+            {
+              "label": "Timestamp + raw body",
+              "description": "Sign the timestamp followed by a delimiter and exact body bytes; simpler and familiar, but tenant and Webhook-Id headers are not independently authenticated unless duplicated in the body.",
+              "recommended": false
+            },
+            {
+              "label": "Canonicalized JSON",
+              "description": "Sign a canonical JSON representation containing metadata and payload; human-readable but requires every receiver SDK to implement identical canonicalization.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Send the exact persisted UTF-8 JSON byte sequence as the HTTP body without reserialization or content encoding. HMAC-SHA256 must cover the ASCII value of Webhook-Id, followed by a period byte (0x2E), the ASCII base-10 Unix-seconds value of Webhook-Timestamp, another period byte, and the exact transmitted body bytes: Webhook-Id + \".\" + Webhook-Timestamp + \".\" + body. Header values are not trimmed or normalized."
+      }
+    ],
+    "question": {
+      "header": "Retry policy",
+      "prompt": "Which HTTP outcome policy should be authoritative? This determines when a receiver may see the same Webhook-Id again and when a delivery becomes terminal.",
+      "options": [
+        {
+          "label": "Conservative transient set",
+          "description": "Treat any network error or timeout as ambiguous and retry; accept only 200–299; retry 408, 425, 429, and 500–599; treat other 300–499 responses as terminal; never follow redirects; honor bounded Retry-After before exponential backoff.",
+          "recommended": true
+        },
+        {
+          "label": "All non-2xx retry",
+          "description": "Retry every response outside 200–299, maximizing recovery from receiver mistakes but wasting capacity on permanent failures and potentially retrying redirects or authorization errors indefinitely.",
+          "recommended": false
+        },
+        {
+          "label": "5xx and network only",
+          "description": "Retry network errors, timeouts, and 500–599 only; treat all 300–499 responses as terminal, simplifying behavior but potentially dropping recoverable throttling and timeout responses.",
+          "recommended": false
+        }
+      ]
+    }
+  },
+  "output": {
+    "answer": "Use the conservative transient set. Each endpoint delivery has at most 6 automatic attempts including the initial attempt. Connection refusal, DNS failure, connect timeout, TLS failure, response timeout, HTTP 408, HTTP 425, HTTP 429, and HTTP 5xx consume an attempt and are retryable. Other HTTP 4xx responses consume an attempt and immediately make the delivery terminally failed. A complete 2xx response makes it succeeded. Redirects are not followed and are treated as terminal 4xx-class failures. Retryable outcomes schedule delays of 10, 30, 120, 600, and 3600 seconds after attempts 1 through 5, measured from completion of the preceding attempt. For 429 or 503, a valid Retry-After value replaces the scheduled delay only when it is between 1 and 3600 seconds; otherwise the normal delay applies. No seventh automatic attempt is created."
+  }
+}

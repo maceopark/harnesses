@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "For an un-IDed `b'Hello World'` parameter, each covered setup-display mode exits successfully with `BytesWarning` configured as an error.",
+    "Setup and teardown output render the bytes parameter as `[b'Hello World']` wherever that mode displays fixture actions.",
+    "All un-IDed parameters are formatted through `saferepr`, avoiding implicit `str()` conversion and inheriting bounded, exception-safe representation behavior.",
+    "Existing raw-string expectations are updated to quoted representations such as `['foo']` and `['bar']`.",
+    "Explicit string IDs remain literal and unquoted, including callable results such as `[FOO]` and `[BAR]`.",
+    "The targeted setup-display test suite passes without regressions."
+  ],
+  "confirmed_decisions": [
+    "Apply `saferepr` to all raw parameter values that have no explicit ID, not only bytes-like values.",
+    "Cache the resulting safe representation rather than the original un-IDed parameter object so both setup and teardown use the same safe text.",
+    "Expect bytes parameters to display with their bytes literal representation, including the `b` prefix and quotes.",
+    "Accept the intentional output change for un-IDed string parameters from unquoted values to quoted representations.",
+    "Preserve explicit IDs from `ids=[...]` and callable `ids=` exactly as currently displayed, without adding quotes.",
+    "Cover the bytes regression through the existing mode parametrization for `--setup-show`, `--setup-only`, and `--setup-plan`.",
+    "Make `BytesWarning` fatal during the regression and require every covered mode to exit successfully."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update setup-display parameter handling so every parameter without an explicit ID is converted once with the repository’s `saferepr` utility before being cached and displayed. This prevents implicit `str()` conversion and makes representations bounded and resilient to failing `__repr__` implementations. Consequently, bytes display as `[b'Hello World']` and raw strings become quoted, such as `['foo']`. Preserve explicit list-based and callable IDs literally, without applying `saferepr`, so outputs such as `[FOO]` remain unchanged. Add regression coverage across `--setup-show`, `--setup-only`, and `--setup-plan`, treating `BytesWarning` as an error."
+}

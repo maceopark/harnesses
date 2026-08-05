@@ -1,0 +1,115 @@
+[
+  {
+    "answer": "First non-matching line",
+    "open_material_decisions": [
+      "Define where scanning of consecutive leading overload signatures stops."
+    ],
+    "question": {
+      "header": "Scan boundary",
+      "options": [
+        {
+          "description": "Consume consecutive leading lines whose parsed base name matches the documented object, then preserve that line and everything after it as docstring content.",
+          "label": "First non-matching line",
+          "recommended": true
+        },
+        {
+          "description": "Consume consecutive signature-shaped leading lines regardless of their parsed base name, stopping at the first line that is not signature-shaped.",
+          "label": "First non-signature line",
+          "recommended": false
+        },
+        {
+          "description": "Treat every leading line before the first blank line as an overload signature block and preserve content after the blank line.",
+          "label": "Blank-line delimiter",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc decide where the leading block of overloaded signatures ends?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Functions and methods",
+    "open_material_decisions": [
+      "Decide whether multiple leading signatures are supported for methods only or for both functions and methods."
+    ],
+    "question": {
+      "header": "Feature scope",
+      "options": [
+        {
+          "description": "Extend the shared docstring-signature behavior consistently for both documenter types and test both paths.",
+          "label": "Functions and methods",
+          "recommended": true
+        },
+        {
+          "description": "Limit the new multi-signature behavior to MethodDocumenter while preserving single-signature behavior for functions.",
+          "label": "Methods only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should consecutive leading overload signatures be recognized for both functions and methods, or only methods?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Include classes",
+    "open_material_decisions": [
+      "Decide whether ClassDocumenter also recognizes multiple consecutive leading signatures or retains its current single-signature behavior."
+    ],
+    "question": {
+      "header": "Class scope",
+      "options": [
+        {
+          "description": "Update the shared mixin consistently so functions, methods, and classes can all consume multiple matching leading signatures.",
+          "label": "Include classes",
+          "recommended": true
+        },
+        {
+          "description": "Apply multiple-signature extraction only to functions and methods while preserving the current single-signature behavior for classes.",
+          "label": "Exclude classes",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should the new consecutive-signature behavior also apply when autodoc extracts a signature from a class docstring?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A function docstring beginning with two or more matching signature lines produces the same number of aligned py:function signature lines in original order, with those lines removed from rendered content.",
+          "A method docstring beginning with two or more matching signature lines produces aligned py:method signature lines in original order, with each return annotation attached to its corresponding signature.",
+          "A class docstring beginning with multiple accepted class, __init__, or MRO-name signature lines produces aligned py:class signature lines in original order.",
+          "The first leading line that does not match py_ext_sig_re or has an unaccepted base name terminates scanning and remains in the rendered docstring together with every subsequent line.",
+          "A matching-looking signature after the stopping line is not extracted.",
+          "A docstring containing one valid leading signature retains the existing output and content-removal behavior.",
+          "A docstring whose first line is not an accepted signature retains existing introspected-signature and content behavior.",
+          "An explicit directive signature continues to take precedence and prevents docstring-signature extraction.",
+          "With autodoc_docstring_signature=False, no leading signatures are consumed and existing disabled-configuration expectations continue to pass.",
+          "Existing singledispatch function and singledispatch-method multi-signature tests continue to pass, confirming compatibility with newline-separated signature rendering.",
+          "Relevant autodoc configuration tests and the broader targeted autodoc test suite pass."
+        ],
+        "confirmed_decisions": [
+          "Recognize consecutive overload signatures only from the start of each candidate docstring.",
+          "Consume a line only when py_ext_sig_re matches it and its parsed base name is accepted for the documented object.",
+          "Stop at the first non-matching line, including a signature-shaped line whose base name is not accepted, and preserve that line plus all subsequent lines as docstring content.",
+          "Apply multi-signature extraction to functions, methods, and classes through DocstringSignatureMixin.",
+          "Preserve the current accepted-name rules: functions and methods accept the documented object's final path component; classes additionally accept __init__ and names from the documented class MRO.",
+          "Render every consumed signature in source order, including its own optional return annotation, as newline-separated signatures supported by the existing directive-header renderer.",
+          "Retain autodoc_docstring_signature=True as the default and perform extraction only when it is enabled and no explicit signature arguments were supplied.",
+          "When autodoc_docstring_signature is disabled, retain introspected signatures and all signature-looking docstring lines exactly as content.",
+          "Update the user documentation from first-line/single-signature wording to describe consecutive leading matching signatures and the stopping rule.",
+          "Add fixtures and regression coverage for overloaded functions, methods, and classes while preserving the existing single-signature tests."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend autodoc_docstring_signature so a leading consecutive block of matching signature lines is extracted as multiple displayed signatures for functions, methods, and classes. Scanning stops at the first line that is absent, malformed, or has a base name not accepted for the documented object; that line and all following lines remain docstring content. Existing configuration gating, explicit-signature precedence, single-signature behavior, and disabled behavior remain intact."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The material behavior is fully specified by the repository evidence and the three confirmed answers. The change can now be implemented without inventing product behavior."
+    },
+    "turn": 4
+  }
+]

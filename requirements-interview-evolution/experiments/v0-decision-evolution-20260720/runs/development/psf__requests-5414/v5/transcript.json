@@ -1,0 +1,83 @@
+[
+  {
+    "answer": "Leading dot only",
+    "open_material_decisions": [
+      "Whether to reject only ASCII hosts beginning with an empty label or every ASCII hostname containing an empty label."
+    ],
+    "question": {
+      "header": "Host scope",
+      "options": [
+        {
+          "description": "Reject `.example.com` (including the reported URL) while preserving other optimistic ASCII-host handling.",
+          "label": "Leading dot only",
+          "recommended": true
+        },
+        {
+          "description": "Also reject forms such as `example..com` and trailing-dot hosts, broadening behavior beyond the reported case.",
+          "label": "Any empty label",
+          "recommended": false
+        },
+        {
+          "description": "Cover only `http://.example.com`, without defining behavior for equivalent leading-dot hosts.",
+          "label": "Exact case only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which ASCII hostname forms should raise `InvalidURL('URL has an invalid label.')`?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "During preparation",
+    "open_material_decisions": [
+      "Whether leading-dot ASCII hosts must raise InvalidURL during PreparedRequest preparation, before any adapter or network activity."
+    ],
+    "question": {
+      "header": "Failure point",
+      "options": [
+        {
+          "description": "Reject it in `PreparedRequest.prepare_url`, so both `Request.prepare()` and `requests.get()` fail consistently before adapter or network work.",
+          "label": "During preparation",
+          "recommended": true
+        },
+        {
+          "description": "Allow preparation to succeed and only translate the downstream failure when the prepared request is sent.",
+          "label": "Request execution only",
+          "recommended": false
+        }
+      ],
+      "prompt": "At what point must a leading-dot ASCII hostname raise `InvalidURL('URL has an invalid label.')`?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Preparing a request whose URL is `http://.example.com` raises `requests.exceptions.InvalidURL`.",
+          "The exception message is `URL has an invalid label.`",
+          "The failure occurs from `Request.prepare()`/`PreparedRequest.prepare_url`, without requiring request execution or network access.",
+          "Existing wildcard-host and non-ASCII invalid-label tests continue to pass.",
+          "No new rule rejects interior empty labels or trailing-dot ASCII hostnames as part of this change.",
+          "The targeted URL-preparation tests and relevant Requests test suite pass."
+        ],
+        "confirmed_decisions": [
+          "Reject ASCII hostnames beginning with an empty label, such as `.example.com`.",
+          "Do not broaden validation to interior empty labels such as `example..com` or trailing-dot hostnames.",
+          "Raise the error during prepared-request URL preparation, before adapter selection or network activity.",
+          "Use the existing Requests exception and message: `InvalidURL('URL has an invalid label.')`.",
+          "Extend the existing bad-URL preparation regression coverage with a leading-dot hostname case.",
+          "Preserve existing handling of non-ASCII IDNA failures, wildcard-prefixed ASCII hosts, and other optimistic ASCII-host cases."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update Requests URL preparation so an ASCII hostname beginning with `.` is rejected during `PreparedRequest.prepare_url` with `InvalidURL('URL has an invalid label.')`. Limit the change to leading-dot ASCII hosts, preserving the existing optimistic handling of other technically invalid ASCII hostnames."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The reported behavior, rejection scope, failure phase, exception type, and message are all resolved. The remaining dependency-internal uncertainty does not block a repository-local implementation."
+    },
+    "turn": 3
+  }
+]

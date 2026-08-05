@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "For DataArray([1.0, 1.0, 1.0]) with weights DataArray([True, True, False]), weighted.mean() equals the result obtained with DataArray([1, 1, 0]), including dtype, and its value is 1.0.",
+    "For the same inputs, weighted.sum_of_weights() equals the integer-weight result, including dtype, and its value is 2.",
+    "Boolean-weight results match equivalent integer 0/1-weight results for every exposed weighted reduction that accepts the weights, on both DataArray and Dataset weighted objects.",
+    "Equivalence with integer 0/1 weights holds when data contain missing values and across supported skipna settings.",
+    "All-False boolean weights have the same result values, missing-value behavior, and dtypes as all-zero integer weights, including the existing invalid zero-total-weight behavior for mean and sum_of_weights.",
+    "Mixed True/False weights reduced over explicitly selected dimensions match equivalent integer 0/1 weights, including output coordinates, dimensions, values, and dtypes.",
+    "Existing tests for integer and other numeric weights continue to pass unchanged."
+  ],
+  "confirmed_decisions": [
+    "The fix covers all public weighted APIs for both DataArray and Dataset weighted objects, not only the reported DataArray weighted-mean example.",
+    "Boolean weights are interpreted numerically: False contributes weight 0 and True contributes weight 1.",
+    "For every weighted operation, boolean weights produce the same values, missing-value behavior, and result dtype as equivalent same-shaped integer 0/1 weights.",
+    "The reported DataArray([1.0, 1.0, 1.0]) weighted by DataArray([True, True, False]) has weighted mean 1.0, not 2.0.",
+    "sum_of_weights with boolean weights returns the numeric count or sum represented by the corresponding integer 0/1 weights rather than a boolean reduction result.",
+    "Existing behavior for numeric weights remains unchanged.",
+    "Existing handling of missing data, skipna choices, dimension selection, coordinate alignment, and zero total weight remains unchanged except that boolean weights now follow the equivalent integer 0/1 outcomes."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Boolean DataArray weights are supported across all public weighted APIs and behave exactly like same-shaped integer 0/1 weights, with False equivalent to 0 and True equivalent to 1. This applies to DataArray and Dataset weighted operations, including weighted mean and sum_of_weights, while preserving existing missing-data and zero-total-weight behavior."
+}

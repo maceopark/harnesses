@@ -1,0 +1,35 @@
+{
+  "material_decisions": [
+    {
+      "id": "D1",
+      "answer": "`--overdue` is a boolean flag that takes no value.",
+      "why_material": "This determines the public CLI syntax and argument-error behavior."
+    },
+    {
+      "id": "D2",
+      "answer": "A task is overdue only when it has a due date strictly earlier than the current date; a task due today is not overdue.",
+      "why_material": "The boundary condition directly determines which tasks the filter returns."
+    },
+    {
+      "id": "D3",
+      "answer": "Completed tasks are excluded from `--overdue`, even when their due date is in the past.",
+      "why_material": "Completion-state treatment changes externally visible filter membership."
+    },
+    {
+      "id": "D4",
+      "answer": "Determine the current date in UTC, and structure the overdue calculation so tests can supply a fixed current date without changing the CLI.",
+      "why_material": "A specified date boundary and controllable clock prevent host-time-zone and midnight-dependent results."
+    },
+    {
+      "id": "D5",
+      "answer": "Allow `--overdue` to be combined with `--priority` and `--due`; all supplied filters are intersected. Therefore, `--due DATE --overdue` returns matches only when DATE is strictly before the current UTC date and the task is incomplete.",
+      "why_material": "This defines accepted option combinations and removes ambiguity about their membership semantics."
+    }
+  ],
+  "owner_rules": [
+    "Overdue is a derived listing condition, not persisted task state.",
+    "Apply overdue filtering without changing row formatting or the established post-filter sorting behavior.",
+    "An empty overdue result is a successful empty listing.",
+    "Test the overdue boundary with incomplete past-due, due-today, future-due, undated, and completed past-due tasks using a fixed current date."
+  ]
+}

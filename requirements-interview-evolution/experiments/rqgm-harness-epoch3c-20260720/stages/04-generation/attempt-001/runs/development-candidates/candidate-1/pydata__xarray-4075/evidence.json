@@ -1,0 +1,70 @@
+{
+  "audit_summary": "All nine facts are directly supported by the cited repository files and line ranges.",
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 110,
+      "line_start": 94,
+      "path": "xarray/core/weighted.py",
+      "statement": "Weighted construction requires weights to be a DataArray and rejects missing values, but performs no dtype validation or conversion; the supplied weights are stored unchanged."
+    },
+    {
+      "id": "F2",
+      "line_end": 135,
+      "line_start": 112,
+      "path": "xarray/core/weighted.py",
+      "statement": "The common weighted reduction helper delegates directly to dot(da, weights); it only fills missing data when skipna applies and does not coerce either operand's dtype."
+    },
+    {
+      "id": "F3",
+      "line_end": 150,
+      "line_start": 137,
+      "path": "xarray/core/weighted.py",
+      "statement": "The sum-of-weights calculation creates a boolean validity mask with da.notnull() and reduces that mask against the stored weights. With boolean weights, both operands passed to the reduction are boolean."
+    },
+    {
+      "id": "F4",
+      "line_end": 174,
+      "line_start": 162,
+      "path": "xarray/core/weighted.py",
+      "statement": "Weighted mean computes the weighted sum and sum of weights separately, then returns weighted_sum / sum_of_weights; therefore an incorrect boolean sum-of-weights value directly changes the mean result."
+    },
+    {
+      "id": "F5",
+      "line_end": 1215,
+      "line_start": 1191,
+      "path": "xarray/core/computation.py",
+      "statement": "The dot implementation builds einsum subscripts and dispatches the original arrays to duck_array_ops.einsum through apply_ufunc without dtype conversion."
+    },
+    {
+      "id": "F6",
+      "line_end": 59,
+      "line_start": 32,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "Existing sum-of-weights unit cases use integer weight lists and cover positive, zero, and cancelling weights, but do not include boolean weights."
+    },
+    {
+      "id": "F7",
+      "line_end": 158,
+      "line_start": 128,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "Existing weighted-mean unit cases use numeric integer weights and cover ordinary, zero, and all-zero denominators, but do not include boolean weights."
+    },
+    {
+      "id": "F8",
+      "line_end": 180,
+      "line_start": 161,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "The test helper's reference calculation computes masked weights with weights.where(da.notnull()) and then calls sum, whereas the production sum-of-weights path uses dot."
+    },
+    {
+      "id": "F9",
+      "line_end": 217,
+      "line_start": 186,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "The broader parameterized weighted-operation tests generate floating-point weights with np.random.randn, so those cases also do not exercise boolean weights."
+    }
+  ],
+  "scope_summary": "Base commit 19b088636eb7d3f65ab7a1046ac672e0689371d8 implements weighted means by dividing a dot-based weighted sum by a dot-based sum of weights. Boolean weights are accepted without dtype conversion, so the denominator dot receives two boolean arrays.",
+  "unknowns": []
+}

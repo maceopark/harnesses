@@ -1,0 +1,119 @@
+{
+  "audit_summary": "Accepted 16 facts with direct repository support; rejected F9 because its cited range does not directly support the P/Q heap-loading linkage.",
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 336,
+      "line_start": 289,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "FITSDiff opens each filename independently, executes the comparison, and closes both opened HDU lists afterward; therefore comparing one pathname to itself still produces two independently opened inputs."
+    },
+    {
+      "id": "F2",
+      "line_end": 380,
+      "line_start": 363,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "FITSDiff compares corresponding HDUs with HDUDiff and records an HDU whenever that nested diff is not identical."
+    },
+    {
+      "id": "F3",
+      "line_end": 607,
+      "line_start": 601,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "For two table-like HDUs, HDUDiff delegates their data comparison to TableDataDiff."
+    },
+    {
+      "id": "F4",
+      "line_end": 1446,
+      "line_start": 1429,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "TableDataDiff obtains each common column's arrays from both tables before selecting its comparison strategy."
+    },
+    {
+      "id": "F5",
+      "line_end": 1461,
+      "line_start": 1452,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "TableDataDiff has a row-by-row VLA comparison branch only when the column format contains \"P\"; that branch applies numpy.allclose to the two arrays in each row."
+    },
+    {
+      "id": "F6",
+      "line_end": 1463,
+      "line_start": 1448,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "Columns not handled by the floating-array branch or the P-format branch fall back to numpy.where(arra != arrb). Thus Q-format VLA columns do not use the existing row-by-row VLA comparison branch."
+    },
+    {
+      "id": "F7",
+      "line_end": 312,
+      "line_start": 300,
+      "path": "astropy/io/fits/column.py",
+      "statement": "Astropy's binary-table format parser explicitly recognizes both P and Q as variable-length-array formats and constructs distinct _FormatP or _FormatQ representations for them."
+    },
+    {
+      "id": "F8",
+      "line_end": 480,
+      "line_start": 471,
+      "path": "astropy/io/fits/column.py",
+      "statement": "_FormatQ inherits from _FormatP and differs by using Q as its format code and two 64-bit descriptor integers."
+    },
+    {
+      "id": "F10",
+      "line_end": 823,
+      "line_start": 793,
+      "path": "astropy/io/fits/fitsrec.py",
+      "statement": "The FITS record reader's VLA conversion routine explicitly handles both P and Q descriptors and fills each _VLF row with an array read from the heap."
+    },
+    {
+      "id": "F11",
+      "line_end": 416,
+      "line_start": 398,
+      "path": "astropy/io/fits/tests/test_diff.py",
+      "statement": "The existing identical-table test includes a P-format VLA column, creates a copied table, and asserts that TableDataDiff is identical."
+    },
+    {
+      "id": "F12",
+      "line_end": 562,
+      "line_start": 536,
+      "path": "astropy/io/fits/tests/test_diff.py",
+      "statement": "The existing different-table-data test also exercises a P-format VLA column and verifies row-level differences, but its listed VLA format is PI rather than Q."
+    },
+    {
+      "id": "F13",
+      "line_end": 3014,
+      "line_start": 2995,
+      "path": "astropy/io/fits/tests/test_table.py",
+      "statement": "Separate VLA table tests exercise both PJ and QJ formats for writing and reading, showing that Q-format VLA support exists outside the diff-specific tests."
+    },
+    {
+      "id": "F14",
+      "line_end": 1488,
+      "line_start": 1465,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "TableDataDiff increments diff_total from the distinct row indices returned by its selected comparison and stores those rows in diff_values; these non-empty diff attributes make the diff non-identical."
+    },
+    {
+      "id": "F15",
+      "line_end": 134,
+      "line_start": 122,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "The shared identical property returns true only when every diff_* attribute is empty, so any erroneously populated TableDataDiff difference propagates to an identical value of false."
+    },
+    {
+      "id": "F16",
+      "line_end": 652,
+      "line_start": 649,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "When table data is non-identical, HDUDiff reports 'Data contains differences' and delegates the detailed output to TableDataDiff, which emits the column name and row for each stored difference."
+    },
+    {
+      "id": "F17",
+      "line_end": 1554,
+      "line_start": 1530,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "TableDataDiff's report formats each stored row difference as 'Column ... data differs in row ...' and reports the total and ratio of differing table elements."
+    }
+  ],
+  "scope_summary": "Inspected only the supplied repository at base commit c0a24c1dc957a3b565294213f435fefb2ec99714. The issue-material path is FITSDiff → HDUDiff → TableDataDiff, whose VLA-specific comparison recognizes P-format columns but not Q-format columns.",
+  "unknowns": []
+}

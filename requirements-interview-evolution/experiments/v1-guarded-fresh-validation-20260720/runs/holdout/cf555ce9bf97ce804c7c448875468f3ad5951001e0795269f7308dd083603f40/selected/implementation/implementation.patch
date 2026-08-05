@@ -1,0 +1,36 @@
+diff --git a/src/_pytest/python.py b/src/_pytest/python.py
+index 306e5f2..68a2a50 100644
+--- a/src/_pytest/python.py
++++ b/src/_pytest/python.py
+@@ -177,9 +177,7 @@ def pytest_collect_file(path, parent):
+     ext = path.ext
+     if ext == ".py":
+         if not parent.session.isinitpath(path):
+-            if not path_matches_patterns(
+-                path, parent.config.getini("python_files") + ["__init__.py"]
+-            ):
++            if not path_matches_patterns(path, parent.config.getini("python_files")):
+                 return
+         ihook = parent.session.gethookproxy(path)
+         return ihook.pytest_pycollect_makemodule(path=path, parent=parent)
+diff --git a/testing/test_collection.py b/testing/test_collection.py
+index dee07d5..3b10708 100644
+--- a/testing/test_collection.py
++++ b/testing/test_collection.py
+@@ -1004,6 +1004,16 @@ def test_collect_init_tests(testdir):
+     assert "test_foo" not in result.stdout.str()
+ 
+ 
++def test_does_not_collect_unmatched_init(testdir):
++    testdir.makepyfile(test_foo="def test_foo(): pass")
++    package = testdir.mkpydir("package")
++    package.join("__init__.py").write("raise AssertionError('must not be imported')")
++
++    result = testdir.runpytest()
++
++    result.assert_outcomes(passed=1)
++
++
+ def test_collect_invalid_signature_message(testdir):
+     """Check that we issue a proper message when we can't determine the signature of a test
+     function (#4026).

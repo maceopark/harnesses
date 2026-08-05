@@ -1,0 +1,77 @@
+2026-07-19 14:26:57,478 - INFO - Environment image sweb.env.py.x86_64.cd77d16b76895ef2ebb041:latest found for astropy__astropy-7671
+Building instance image sweb.eval.x86_64.astropy__astropy-7671:latest for astropy__astropy-7671
+2026-07-19 14:30:23,129 - INFO - Creating container for astropy__astropy-7671...
+2026-07-19 14:30:23,150 - INFO - Container for astropy__astropy-7671 created: 135f96f8b986f7479a11dbd42198d9ae19eb891ad47034c7b4d86f66499b99ec
+2026-07-19 14:30:23,212 - INFO - Container for astropy__astropy-7671 started: 135f96f8b986f7479a11dbd42198d9ae19eb891ad47034c7b4d86f66499b99ec
+2026-07-19 14:30:23,213 - INFO - Intermediate patch for astropy__astropy-7671 written to logs/run_evaluation/interview-astropy__astropy-7671-gold/gold/astropy__astropy-7671/patch.diff, now applying to container...
+2026-07-19 14:30:23,321 - INFO - >>>>> Applied Patch:
+Checking patch astropy/utils/introspection.py...
+Applied patch astropy/utils/introspection.py cleanly.
+
+2026-07-19 14:30:23,633 - INFO - Git diff before:
+diff --git a/astropy/utils/introspection.py b/astropy/utils/introspection.py
+index 3e784f9fc..e437b40c8 100644
+--- a/astropy/utils/introspection.py
++++ b/astropy/utils/introspection.py
+@@ -4,6 +4,7 @@
+ 
+ 
+ import inspect
++import re
+ import types
+ import importlib
+ from distutils.version import LooseVersion
+@@ -139,6 +140,14 @@ def minversion(module, version, inclusive=True, version_path='__version__'):
+     else:
+         have_version = resolve_name(module.__name__, version_path)
+ 
++    # LooseVersion raises a TypeError when strings like dev, rc1 are part
++    # of the version number. Match the dotted numbers only. Regex taken
++    # from PEP440, https://www.python.org/dev/peps/pep-0440/, Appendix B
++    expr = '^([1-9]\\d*!)?(0|[1-9]\\d*)(\\.(0|[1-9]\\d*))*'
++    m = re.match(expr, version)
++    if m:
++        version = m.group(0)
++
+     if inclusive:
+         return LooseVersion(have_version) >= LooseVersion(version)
+     else:
+2026-07-19 14:30:23,634 - INFO - Eval script for astropy__astropy-7671 written to logs/run_evaluation/interview-astropy__astropy-7671-gold/gold/astropy__astropy-7671/eval.sh; copying to container...
+2026-07-19 14:30:28,477 - INFO - Test runtime: 4.79 seconds
+2026-07-19 14:30:28,477 - INFO - Test output for astropy__astropy-7671 written to logs/run_evaluation/interview-astropy__astropy-7671-gold/gold/astropy__astropy-7671/test_output.txt
+2026-07-19 14:30:28,587 - INFO - Git diff after:
+diff --git a/astropy/utils/introspection.py b/astropy/utils/introspection.py
+index 3e784f9fc..e437b40c8 100644
+--- a/astropy/utils/introspection.py
++++ b/astropy/utils/introspection.py
+@@ -4,6 +4,7 @@
+ 
+ 
+ import inspect
++import re
+ import types
+ import importlib
+ from distutils.version import LooseVersion
+@@ -139,6 +140,14 @@ def minversion(module, version, inclusive=True, version_path='__version__'):
+     else:
+         have_version = resolve_name(module.__name__, version_path)
+ 
++    # LooseVersion raises a TypeError when strings like dev, rc1 are part
++    # of the version number. Match the dotted numbers only. Regex taken
++    # from PEP440, https://www.python.org/dev/peps/pep-0440/, Appendix B
++    expr = '^([1-9]\\d*!)?(0|[1-9]\\d*)(\\.(0|[1-9]\\d*))*'
++    m = re.match(expr, version)
++    if m:
++        version = m.group(0)
++
+     if inclusive:
+         return LooseVersion(have_version) >= LooseVersion(version)
+     else:
+2026-07-19 14:30:28,587 - INFO - Grading answer for astropy__astropy-7671...
+2026-07-19 14:30:28,587 - INFO - report: {'astropy__astropy-7671': {'patch_is_None': False, 'patch_exists': True, 'patch_successfully_applied': True, 'resolved': True, 'tests_status': {'FAIL_TO_PASS': {'success': ['astropy/utils/tests/test_introspection.py::test_minversion'], 'failure': []}, 'PASS_TO_PASS': {'success': ['astropy/utils/tests/test_introspection.py::test_pkg_finder', 'astropy/utils/tests/test_introspection.py::test_find_current_mod', 'astropy/utils/tests/test_introspection.py::test_find_mod_objs'], 'failure': []}, 'FAIL_TO_FAIL': {'success': [], 'failure': []}, 'PASS_TO_FAIL': {'success': [], 'failure': []}}}}
+Result for astropy__astropy-7671: resolved: True
+2026-07-19 14:30:28,587 - INFO - Attempting to stop container sweb.eval.astropy__astropy-7671.interview-astropy__astropy-7671-gold...
+2026-07-19 14:30:43,750 - INFO - Attempting to remove container sweb.eval.astropy__astropy-7671.interview-astropy__astropy-7671-gold...
+2026-07-19 14:30:43,762 - INFO - Container sweb.eval.astropy__astropy-7671.interview-astropy__astropy-7671-gold removed.
+2026-07-19 14:30:43,763 - INFO - Attempting to remove image sweb.eval.x86_64.astropy__astropy-7671:latest...
+2026-07-19 14:30:43,848 - INFO - Image sweb.eval.x86_64.astropy__astropy-7671:latest removed.

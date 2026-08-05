@@ -1,0 +1,55 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/5",
+          "quoted_value": "Behavior for invalid or non-PEP-440 version strings is outside the requested guarantee."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/unknowns/0",
+          "quoted_value": "The repository does not record an intended replacement version-comparison implementation or a maintainer choice for handling development-version syntax."
+        }
+      ],
+      "description": "The repository exposes a general-purpose version comparator currently backed by LooseVersion, but the contract does not decide what happens for version strings rejected by a PEP 440 parser. An implementation could raise, return a Boolean, warn, or preserve prior handling and still satisfy the contract. That unresolved choice can materially affect existing callers, so implementation readiness is overstated.",
+      "failure_class": "omission",
+      "general_cause": "A compatibility-sensitive input class was excluded without resolving its observable behavior.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "The contract declares invalid or non-PEP-440 versions outside the guarantee while simultaneously claiming implementation readiness and no open material decisions."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/0",
+          "quoted_value": "Version comparisons are governed consistently by PEP 440 ordering for valid release, development, and pre-release version strings."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/1",
+          "quoted_value": "The guarantee is general rather than limited to the reported example or only to longer numeric releases compared with `dev` requirements."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/1",
+          "quoted_value": "Representative valid release, development, and pre-release comparisons produce Booleans consistent with PEP 440 precedence."
+        }
+      ],
+      "description": "The general PEP 440 guarantee covers release, development, and pre-release versions, but the corresponding acceptance check leaves the test matrix unspecified. Different implementations can select materially different examples and all claim compliance, including examples that do not exercise ordering boundaries between these categories.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "A broad behavioral guarantee is tested through an undefined representative sample.",
+      "id": "FINDING-2",
+      "material": true,
+      "observable_signal": "The acceptance check requires “representative” comparisons without naming inputs or expected Boolean results."
+    }
+  ],
+  "summary": "The contract is not materially implementation-ready: behavior for non-PEP-440 inputs remains unresolved, and the acceptance coverage for the promised general ordering is not concrete enough to verify."
+}

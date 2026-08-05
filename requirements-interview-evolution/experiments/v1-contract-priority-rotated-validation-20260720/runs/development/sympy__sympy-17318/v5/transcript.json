@@ -1,0 +1,77 @@
+[
+  {
+    "answer": "Guard split_surds",
+    "open_material_decisions": [
+      "Whether to make split_surds handle an empty surd list for all callers or contain the fallback within sqrtdenest."
+    ],
+    "question": {
+      "header": "Fix boundary",
+      "options": [
+        {
+          "description": "Make split_surds return a valid no-surd partition, preventing this IndexError for sqrtdenest and any other callers; add focused coverage for the helper and reported regression.",
+          "label": "Guard split_surds",
+          "recommended": true
+        },
+        {
+          "description": "Handle the failure only along sqrtdenest's matching path so other split_surds behavior remains unchanged; add the reported regression test.",
+          "label": "Contain in sqrtdenest",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should the empty-surd case be handled?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Owner approval of the complete implementation contract."
+    ],
+    "question": {
+      "header": "Approve contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with the stated behavior, tests, compatibility boundary, and verification gap.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a materially different behavior, scope, or acceptance requirement.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: update split_surds so an empty collected-surd list returns a valid no-surd partition representing the input unchanged (neutral extracted factor, zero surd component, original expression as the remainder), without calling _split_gcd; add focused helper coverage for this empty-surd behavior; add a sqrtdenest regression using the reported complex expression and assert it returns unchanged without IndexError; preserve existing split_surds and sqrtdenest behavior for inputs containing recognized surds. Acceptance requires the focused tests and existing relevant test modules to pass. Because mpmath is currently unavailable, runtime verification may remain an explicitly reported environment gap if the dependency cannot be restored without expanding scope."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "The reported expression sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) completes without IndexError and equals the unchanged expression.",
+          "A focused split_surds test verifies the empty-surd return partition: neutral extracted factor, zero surd component, and original input as remainder.",
+          "Existing relevant split_surds/radsimp and sqrtdenest tests pass, demonstrating compatibility for recognized-surd inputs and established unchanged-result behavior.",
+          "If tests cannot run because mpmath remains unavailable and restoring it would expand scope, report that environment limitation explicitly; this is an acknowledged verification gap, not permission to omit the tests or implementation."
+        ],
+        "confirmed_decisions": [
+          "Handle the empty-surd case in split_surds for all callers, rather than containing the fallback within sqrtdenest.",
+          "For an empty collected-surd list, return the no-surd partition with a neutral extracted factor, zero surd component, and the original expression as the remainder.",
+          "Do not call _split_gcd when the collected-surd list is empty.",
+          "Add focused helper coverage for split_surds empty-surd behavior.",
+          "Add a sqrtdenest regression for the reported complex expression and require an unchanged result without IndexError.",
+          "Preserve existing behavior for split_surds and sqrtdenest inputs containing recognized surds.",
+          "The owner explicitly approved this implementation contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update split_surds so that when it collects no recognized surds, it returns a valid no-surd partition representing the input unchanged: a neutral extracted factor, a zero surd component, and the original expression as the remainder. It must not call _split_gcd with an empty argument list. Add focused helper coverage for this behavior and a sqrtdenest regression using (3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2, asserting that it is returned unchanged without IndexError. Preserve existing split_surds and sqrtdenest behavior for inputs containing recognized surds."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the complete contract, resolving the only material implementation-boundary decision. The contract is executable and contains a bounded verification contingency for the unavailable dependency."
+    },
+    "turn": 3
+  }
+]

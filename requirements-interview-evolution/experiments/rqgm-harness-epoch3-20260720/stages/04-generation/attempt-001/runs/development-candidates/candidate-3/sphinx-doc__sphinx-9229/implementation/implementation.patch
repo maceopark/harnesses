@@ -1,0 +1,204 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..a163dca 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1724,10 +1724,14 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+     def add_content(self, more_content: Optional[StringList], no_docstring: bool = False
+                     ) -> None:
+         if self.doc_as_attr:
+-            try:
+-                more_content = StringList([_('alias of %s') % restify(self.object)], source='')
+-            except AttributeError:
+-                pass  # Invalid class object is passed.
++            key = ('.'.join(self.objpath[:-1]), self.objpath[-1])
++            attr_docs = self.analyzer.find_attr_docs() if self.analyzer else {}
++            has_doc_comment = any(line.strip() for line in attr_docs.get(key, []))
++            if not has_doc_comment:
++                try:
++                    more_content = StringList([_('alias of %s') % restify(self.object)], source='')
++                except AttributeError:
++                    pass  # Invalid class object is passed.
+ 
+         super().add_content(more_content)
+ 
+@@ -1785,6 +1789,13 @@ class DataDocumenterMixinBase:
+         """Update docstring for the NewType object."""
+         pass
+ 
++    def has_doc_comment(self) -> bool:
++        """Check whether the object has nonempty source documentation."""
++        if self.analyzer and self.objpath:
++            key = ('.'.join(self.objpath[:-1]), self.objpath[-1])
++            return any(line.strip() for line in self.analyzer.find_attr_docs().get(key, []))
++        return False
++
+ 
+ class GenericAliasMixin(DataDocumenterMixinBase):
+     """
+@@ -1797,7 +1808,7 @@ class GenericAliasMixin(DataDocumenterMixinBase):
+                 super().should_suppress_directive_header())
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if inspect.isgenericalias(self.object):
++        if inspect.isgenericalias(self.object) and not self.has_doc_comment():
+             more_content.append(_('alias of %s') % restify(self.object), '')
+             more_content.append('', '')
+ 
+@@ -1815,7 +1826,7 @@ class NewTypeMixin(DataDocumenterMixinBase):
+                 super().should_suppress_directive_header())
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if inspect.isNewType(self.object):
++        if inspect.isNewType(self.object) and not self.has_doc_comment():
+             supertype = restify(self.object.__supertype__)
+             more_content.append(_('alias of %s') % supertype, '')
+             more_content.append('', '')
+@@ -1848,7 +1859,7 @@ class TypeVarMixin(DataDocumenterMixinBase):
+             return super().get_doc()  # type: ignore
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if isinstance(self.object, TypeVar):
++        if isinstance(self.object, TypeVar) and not self.has_doc_comment():
+             attrs = [repr(self.object.__name__)]
+             for constraint in self.object.__constraints__:
+                 attrs.append(stringify_typehint(constraint))
+@@ -2006,6 +2017,10 @@ class DataDocumenter(GenericAliasMixin, NewTypeMixin, TypeVarMixin,
+         else:
+             return super().get_doc(ignore)
+ 
++    def has_doc_comment(self) -> bool:
++        comment = self.get_module_comment(self.objpath[-1])
++        return bool(comment and any(line.strip() for line in comment))
++
+     def add_content(self, more_content: Optional[StringList], no_docstring: bool = False
+                     ) -> None:
+         # Disable analyzing variable comment on Documenter.add_content() to control it on
+diff --git a/tests/roots/test-ext-autodoc/target/classes.py b/tests/roots/test-ext-autodoc/target/classes.py
+index a3b4c64..a1e5048 100644
+--- a/tests/roots/test-ext-autodoc/target/classes.py
++++ b/tests/roots/test-ext-autodoc/target/classes.py
+@@ -30,3 +30,6 @@ class Quux(List[Union[int, float]]):
+ 
+ 
+ Alias = Foo
++"""A documented class alias."""
++
++AliasUndocumented = Foo
+diff --git a/tests/roots/test-ext-autodoc/target/genericalias.py b/tests/roots/test-ext-autodoc/target/genericalias.py
+index 9909efc..18b4584 100644
+--- a/tests/roots/test-ext-autodoc/target/genericalias.py
++++ b/tests/roots/test-ext-autodoc/target/genericalias.py
+@@ -5,6 +5,12 @@ T = List[int]
+ 
+ C = Callable[[int], None]  # a generic alias not having a doccomment
+ 
++D = List[int]
++"""A documented list of int.
++
++With a second paragraph.
++"""
++
+ 
+ class Class:
+     #: A list of int
+diff --git a/tests/roots/test-ext-autodoc/target/typevar.py b/tests/roots/test-ext-autodoc/target/typevar.py
+index c330e2d..a3f70d7 100644
+--- a/tests/roots/test-ext-autodoc/target/typevar.py
++++ b/tests/roots/test-ext-autodoc/target/typevar.py
+@@ -20,6 +20,12 @@ T6 = NewType("T6", int)
+ #: T7
+ T7 = TypeVar("T7", bound=int)
+ 
++T8 = TypeVar("T8")
++"""A documented TypeVar."""
++
++T9 = NewType("T9", int)
++"""A documented NewType."""
++
+ 
+ class Class:
+     #: T1
+diff --git a/tests/test_ext_autodoc_autoclass.py b/tests/test_ext_autodoc_autoclass.py
+index 096dc93..63f7127 100644
+--- a/tests/test_ext_autodoc_autoclass.py
++++ b/tests/test_ext_autodoc_autoclass.py
+@@ -312,18 +312,15 @@ def test_class_doc_from_both(app):
+ 
+ 
+ def test_class_alias(app):
+-    def autodoc_process_docstring(*args):
+-        """A handler always raises an error.
+-        This confirms this handler is never called for class aliases.
+-        """
+-        raise
+-
+-    app.connect('autodoc-process-docstring', autodoc_process_docstring)
+     actual = do_autodoc(app, 'class', 'target.classes.Alias')
+     assert list(actual) == [
+         '',
+         '.. py:attribute:: Alias',
+         '   :module: target.classes',
+         '',
+-        '   alias of :class:`target.classes.Foo`',
++        '   A documented class alias.',
++        '',
+     ]
++
++    actual = do_autodoc(app, 'class', 'target.classes.AliasUndocumented')
++    assert '   alias of :class:`target.classes.Foo`' in actual
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..ca436f8 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -96,10 +96,16 @@ def test_autodata_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
++        actual = do_autodoc(app, 'data', 'target.genericalias.C')
++        assert any('alias of' in line for line in actual)
++
++        actual = do_autodoc(app, 'data', 'target.genericalias.D')
++        assert '   A documented list of int.' in actual
++        assert '   With a second paragraph.' in actual
++        assert not any('alias of' in line for line in actual)
++
+ 
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_NewType(app):
+@@ -111,10 +117,12 @@ def test_autodata_NewType(app):
+         '',
+         '   T6',
+         '',
+-        '   alias of :class:`int`',
+-        '',
+     ]
+ 
++    actual = do_autodoc(app, 'data', 'target.typevar.T9')
++    assert '   A documented NewType.' in actual
++    assert not any('alias of' in line for line in actual)
++
+ 
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_TypeVar(app):
+@@ -126,10 +134,15 @@ def test_autodata_TypeVar(app):
+         '',
+         '   T1',
+         '',
+-        "   alias of TypeVar('T1')",
+-        '',
+     ]
+ 
++    actual = do_autodoc(app, 'data', 'target.typevar.T2')
++    assert any('alias of' in line for line in actual)
++
++    actual = do_autodoc(app, 'data', 'target.typevar.T8')
++    assert '   A documented TypeVar.' in actual
++    assert not any('alias of' in line for line in actual)
++
+ 
+ @pytest.mark.skipif(sys.version_info < (3, 6), reason='python 3.6+ is required.')
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')

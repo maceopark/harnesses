@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "Add an optimizer regression test using the representative four-operation interleaved sequence and assert that it optimizes to the two final-value operations in unique-then-index order.",
+    "Verify the regression test exercises operations with the same model name and final together values equivalent to the public example.",
+    "Add or retain a negative optimizer assertion showing that foo-together operations do not gain traversal across an unrelated same-model ModelOptionOperation merely because of this change.",
+    "Retain the existing tests proving adjacent same-type AlterUniqueTogether and AlterIndexTogether operations collapse to the second operation.",
+    "Retain the autodetector ordering test that emits the four-operation sequence before optimization.",
+    "Run the targeted migration optimizer and autodetector test modules and confirm they pass.",
+    "Confirm repeated optimization is stable and the optimized list is no longer than the input list."
+  ],
+  "confirmed_decisions": [
+    "Reduction scope is limited to the foo-together siblings: AlterUniqueTogether and AlterIndexTogether.",
+    "An AlterUniqueTogether operation and an AlterIndexTogether operation targeting the same model may pass each other during optimization.",
+    "Existing same-type reduction behavior remains authoritative: multiple AlterUniqueTogether operations collapse to the last AlterUniqueTogether, and multiple AlterIndexTogether operations collapse to the last AlterIndexTogether.",
+    "The representative sequence of empty unique, empty index, final unique, and final index operations must optimize to final unique followed by final index.",
+    "Traversal is not generalized to all ModelOptionOperation subclasses or unrelated operations on the same model.",
+    "The autodetector's two-phase constraint-removal and constraint-addition generation remains unchanged; the migration optimizer is responsible for removing redundant operations when safe.",
+    "Operation order in the optimized representative result remains AlterUniqueTogether followed by AlterIndexTogether."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Optimize interleaved AlterUniqueTogether and AlterIndexTogether operations for the same model by allowing these two sibling operation types to optimize through each other. This enables the existing optimizer to reach later same-type operations and collapse each pair to its final operation, reducing the demonstrated four-operation sequence to two operations without broadening traversal to unrelated model-option operations."
+}

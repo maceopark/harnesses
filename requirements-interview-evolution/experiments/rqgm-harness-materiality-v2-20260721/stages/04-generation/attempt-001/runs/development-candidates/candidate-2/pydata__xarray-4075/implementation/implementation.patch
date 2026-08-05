@@ -1,0 +1,58 @@
+diff --git a/xarray/core/weighted.py b/xarray/core/weighted.py
+index 996d2e4..ebd92f7 100644
+--- a/xarray/core/weighted.py
++++ b/xarray/core/weighted.py
+@@ -142,7 +142,14 @@ class Weighted:
+         # we need to mask data values that are nan; else the weights are wrong
+         mask = da.notnull()
+ 
+-        sum_of_weights = self._reduce(mask, self.weights, dim=dim, skipna=False)
++        # `dot` returns boolean results when both operands are boolean, so cast
++        # boolean weights to integers to ensure that they are summed as 0 and 1.
++        weights = (
++            self.weights.astype(int)
++            if self.weights.dtype.kind == "b"
++            else self.weights
++        )
++        sum_of_weights = self._reduce(mask, weights, dim=dim, skipna=False)
+ 
+         # 0-weights are not valid
+         valid_weights = sum_of_weights != 0.0
+diff --git a/xarray/tests/test_weighted.py b/xarray/tests/test_weighted.py
+index 2453121..87041fa 100644
+--- a/xarray/tests/test_weighted.py
++++ b/xarray/tests/test_weighted.py
+@@ -139,6 +139,33 @@ def test_weighted_mean_no_nan(weights, expected):
+     assert_equal(expected, result)
+ 
+ 
++@pytest.mark.parametrize("as_dataset", (True, False))
++@pytest.mark.parametrize(
++    ("weights", "expected_sum_of_weights", "expected_mean"),
++    (([True, True, False], 2, 1.0), ([False, False, False], np.nan, np.nan)),
++)
++def test_weighted_mean_boolean_weights(
++    as_dataset, weights, expected_sum_of_weights, expected_mean
++):
++    data = DataArray([1.0, 1.0, 1.0])
++    weights = DataArray(weights)
++
++    if as_dataset:
++        data = data.to_dataset(name="data")
++        expected_sum_of_weights = DataArray(expected_sum_of_weights).to_dataset(
++            name="data"
++        )
++        expected_mean = DataArray(expected_mean).to_dataset(name="data")
++    else:
++        expected_sum_of_weights = DataArray(expected_sum_of_weights)
++        expected_mean = DataArray(expected_mean)
++
++    result = data.weighted(weights)
++
++    assert_equal(expected_sum_of_weights, result.sum_of_weights())
++    assert_equal(expected_mean, result.mean())
++
++
+ @pytest.mark.parametrize(
+     ("weights", "expected"), (([4, 6], 2.0), ([1, 0], np.nan), ([0, 0], np.nan))
+ )

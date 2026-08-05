@@ -1,0 +1,56 @@
+[
+  {
+    "answer": "Constructor only",
+    "open_material_decisions": [
+      "Whether `app.register_blueprint(bp, name=\"\")` must also raise `ValueError`, in addition to `Blueprint(\"\", import_name)`."
+    ],
+    "question": {
+      "header": "Empty names",
+      "options": [
+        {
+          "description": "Reject `Blueprint(\"\", import_name)` and leave registration-time name overrides unchanged.",
+          "label": "Constructor only",
+          "recommended": true
+        },
+        {
+          "description": "Also reject an explicit empty `name=\"\"` passed when registering a blueprint.",
+          "label": "Constructor and override",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which empty-name inputs must the change reject?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "`Blueprint(\"\", __name__)` raises `ValueError`.",
+          "A focused test in `tests/test_blueprints.py` covers the empty constructor-name case.",
+          "Existing dotted-name rejection continues to pass.",
+          "Existing valid Blueprint construction and registration tests continue to pass.",
+          "Registration-time name override behavior is unchanged, including the currently permitted explicit empty override.",
+          "No unrelated Blueprint naming, endpoint construction, nesting, CLI grouping, or duplicate-registration behavior is changed."
+        ],
+        "confirmed_decisions": [
+          "Reject `Blueprint(\"\", import_name)` at construction time with `ValueError`.",
+          "Validate before the supplied name is assigned to `self.name`.",
+          "Keep the existing prohibition and `ValueError` behavior for names containing a dot.",
+          "Do not add validation for an explicit empty registration override such as `app.register_blueprint(bp, name=\"\")`.",
+          "Treat only the empty string as empty; whitespace-only strings are not newly rejected.",
+          "Add a regression test for the empty constructor name.",
+          "Do not require tests to match an exact `ValueError` message."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Require every Blueprint constructed through `Blueprint(name, import_name, ...)` to have a non-empty constructor name. In `src/flask/blueprints.py`, add constructor validation that raises `ValueError` when `name == \"\"`, alongside the existing dotted-name validation and before assigning `self.name`. Do not change registration-time name override behavior: `app.register_blueprint(bp, name=\"\")` remains outside this change. Add a focused regression test in `tests/test_blueprints.py` proving that constructing a Blueprint with an empty string name raises `ValueError`. The exact exception message is not contractually fixed; it should clearly identify that the blueprint name cannot be empty. Do not broaden validation to whitespace-only names or otherwise change valid-name behavior."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The only material scope ambiguity was resolved: validation applies to the Blueprint constructor only. The remaining message wording is an implementation detail and does not prevent an implementable contract."
+    },
+    "turn": 2
+  }
+]

@@ -1,0 +1,102 @@
+[
+  {
+    "answer": "Documentation only",
+    "open_material_decisions": [
+      "Rendering precedence when a type alias has next-line string documentation."
+    ],
+    "question": {
+      "header": "Alias output",
+      "options": [
+        {
+          "description": "Render the explicit documentation and suppress the generated “alias of …” text for that alias.",
+          "label": "Documentation only",
+          "recommended": true
+        },
+        {
+          "description": "Render the explicit documentation first, followed by the generated “alias of …” text.",
+          "label": "Documentation and alias",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has explicit next-line string documentation, what should autodoc render?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Module aliases only",
+    "open_material_decisions": [
+      "Whether documentation-only precedence applies only to module-level type aliases handled by DataDocumenter or also to class-level aliases and other autodoc documenters."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Apply the fix to module-level aliases documented by autodata, matching the reported reproduction and smallest safe change.",
+          "label": "Module aliases only",
+          "recommended": true
+        },
+        {
+          "description": "Apply the same precedence to module-level and class-level aliases wherever autodoc finds explicit source documentation.",
+          "label": "All documented aliases",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should explicit source documentation suppress the generated “alias of …” text?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Include Python 3.6",
+    "open_material_decisions": [
+      "Whether the fix must make all three reproduced module-level aliases use their next-line documentation on Python 3.6, or only correct behavior on Python 3.7 and newer."
+    ],
+    "question": {
+      "header": "Python scope",
+      "options": [
+        {
+          "description": "All three aliases must render only their explicit next-line documentation on Python 3.6 as well as newer supported versions.",
+          "label": "Include Python 3.6",
+          "recommended": true
+        },
+        {
+          "description": "Guarantee documentation-only rendering only where Sphinx recognizes GenericAlias objects on Python 3.7 and newer.",
+          "label": "Python 3.7+ only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which Python-version behavior must the regression fix guarantee for the reproduced Dict, Union, and Callable module aliases?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Add a regression fixture containing the reproduced module-level Dict, Union, and Callable aliases, each followed immediately by a multiline string documentation expression.",
+          "Through module member discovery equivalent to the reported automodule/apidoc flow, verify that each of the three aliases is documented and its complete explicit multiline text is present.",
+          "Verify that none of the three explicitly documented aliases emits an “alias of …” line.",
+          "Verify the same documentation-only behavior on the Python 3.6 compatibility branch and on Python 3.7-or-newer branches supported by the repository.",
+          "Add or retain an undocumented module-level generic alias and verify that its existing generated/default alias representation is preserved.",
+          "Verify that existing class-level generic-alias expectations are unchanged.",
+          "Run the targeted parser and autodoc test suites, including next-line multiline variable-documentation tests and generic-alias/autodata tests."
+        ],
+        "confirmed_decisions": [
+          "Explicit next-line string documentation takes precedence over the generated “alias of …” message; both must not be rendered together for an affected alias.",
+          "The change is limited to module-level aliases handled as data by autodoc; it does not change class-level alias rendering or other documenters.",
+          "The fix must cover Python 3.6 as well as Python 3.7 and newer supported versions.",
+          "All three reproduced forms—Dict[str, Any], Union[str, None], and Callable[...]—must behave consistently.",
+          "Undocumented module-level aliases must retain existing default rendering, including “alias of …” where currently applicable.",
+          "Existing source-comment documentation syntax and ordinary non-alias data documentation behavior must remain unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix autodoc so that an explicitly documented module-level type alias uses its next-line string documentation as the complete rendered body. For the reproduced Dict, Union, and Callable aliases, suppress the generated “alias of …” text when explicit source documentation exists. Apply this behavior on Python 3.6 and newer supported versions, while leaving class-level aliases and undocumented aliases unchanged."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested outcome, scope, version support, preservation behavior, and regression surface are sufficiently defined for implementation."
+    },
+    "turn": 4
+  }
+]

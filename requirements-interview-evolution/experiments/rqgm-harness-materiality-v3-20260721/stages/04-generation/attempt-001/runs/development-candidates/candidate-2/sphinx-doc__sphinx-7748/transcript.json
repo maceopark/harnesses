@@ -1,0 +1,91 @@
+[
+  {
+    "answer": "Contiguous block",
+    "open_material_decisions": [
+      "Define the boundary of the leading overloaded-signature block."
+    ],
+    "question": {
+      "header": "Stop boundary",
+      "options": [
+        {
+          "description": "Consume consecutive leading lines that parse as valid signatures for the documented object, stopping permanently at the first other line.",
+          "label": "Contiguous block",
+          "recommended": true
+        },
+        {
+          "description": "Examine lines until the first blank line, extracting valid signatures within that initial block even if prose appears between them.",
+          "label": "Blank-delimited block",
+          "recommended": false
+        },
+        {
+          "description": "Extract every valid matching signature anywhere in the docstring and retain all non-signature lines as content.",
+          "label": "All docstring lines",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc determine where the overloaded signatures at the start of a docstring end?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Methods only",
+    "open_material_decisions": [
+      "Define which autodoc object types should support multiple leading docstring signatures."
+    ],
+    "question": {
+      "header": "Object scope",
+      "options": [
+        {
+          "description": "Apply the behavior only to normal, static, and class methods, matching the reported SWIG overloaded-method use case.",
+          "label": "Methods only",
+          "recommended": true
+        },
+        {
+          "description": "Apply it to functions and all method kinds, matching the documented configuration’s current stated scope.",
+          "label": "Functions and methods",
+          "recommended": false
+        },
+        {
+          "description": "Apply it to every documenter using the shared docstring-signature behavior, including classes.",
+          "label": "All current users",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which documented object types should accept a contiguous block of leading signatures?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "With the option enabled, a method docstring beginning with two or more consecutive matching signatures renders every signature in the directive header in the original order and renders none of those lines as content.",
+          "If prose, a blank line, a malformed signature, or a signature for another object follows one or more accepted leading signatures, recognition stops there and that line plus the remainder is preserved as content.",
+          "Normal, static, and class methods exhibit the same multiple-signature behavior.",
+          "Functions and classes do not gain multiple-leading-signature behavior.",
+          "Existing enabled and disabled single-signature behavior remains unchanged.",
+          "Explicitly supplied method signatures remain authoritative."
+        ],
+        "confirmed_decisions": [
+          "Multiple-signature recognition applies only to normal, static, and class methods; functions and other documenter types retain their existing behavior.",
+          "The overload block consists only of consecutive leading docstring lines that parse as signatures and have a valid name for the documented method.",
+          "Recognition stops permanently at the first line that is not a valid matching signature; that line and all subsequent lines remain docstring content.",
+          "Each recognized overload is displayed as a separate signature for the same generated method directive, in docstring order, including its own return annotation when present.",
+          "All recognized leading signature lines are excluded from rendered docstring content.",
+          "A method with exactly one valid leading signature retains the existing output behavior.",
+          "A method whose first docstring line is not a valid matching signature retains its existing introspected signature and complete docstring content.",
+          "When autodoc_docstring_signature is disabled, no docstring signature lines are extracted or removed.",
+          "An explicitly supplied signature continues to take precedence and prevents docstring-signature discovery."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "When autodoc_docstring_signature is enabled for a normal, static, or class method, autodoc recognizes every consecutive valid signature for that method at the beginning of its docstring, displays all recognized overload signatures, and removes those signature lines from the rendered documentation content."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The two material product decisions are resolved: overloaded signatures form one contiguous leading block, and the enhancement is limited to methods. The repository evidence establishes the remaining observable behavior and backward-compatibility expectations, so the contract is implementation-ready."
+    },
+    "turn": 3
+  }
+]

@@ -1,0 +1,118 @@
+[
+  {
+    "answer": "Stop collecting signatures and preserve that first non-matching line, along with everything after it, as ordinary docstring content.",
+    "open_material_decisions": [
+      "Confirm the final executable contract after the remaining decisions are resolved.",
+      "Define how per-overload return annotations are retained when signatures differ.",
+      "Define the termination and preservation rule for consecutive leading overload signatures."
+    ],
+    "question": {
+      "header": "Block boundary",
+      "options": [
+        {
+          "description": "Extract only the consecutive valid same-name leading signatures, then preserve that line and everything after it as docstring content.",
+          "label": "Stop and preserve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Continue searching later lines for more signatures, leaving intervening non-signature or mismatched-name lines in the content.",
+          "label": "Skip malformed lines",
+          "recommended": false
+        },
+        {
+          "description": "Treat the leading region broadly and remove signature-looking lines even when malformed or named for another object.",
+          "label": "Remove signature-like lines",
+          "recommended": false
+        }
+      ],
+      "prompt": "After one or more valid leading signatures for the documented function or method, what should autodoc do when it encounters the first line that is not another valid same-name signature?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Keep per signature",
+    "open_material_decisions": [
+      "Confirm owner approval of the final executable contract after all material decisions are resolved.",
+      "Define how each overload's return annotation is retained and rendered."
+    ],
+    "question": {
+      "header": "Return types",
+      "options": [
+        {
+          "description": "Render every overload with its own arguments and return annotation exactly as parsed from that line.",
+          "label": "Keep per signature",
+          "recommended": true
+        },
+        {
+          "description": "Apply the first overload's return annotation to all displayed overload signatures.",
+          "label": "Use first return",
+          "recommended": false
+        },
+        {
+          "description": "Render all overload argument lists but omit their return annotations.",
+          "label": "Omit returns",
+          "recommended": false
+        }
+      ],
+      "prompt": "When consecutive overload signatures have different return annotations, how should autodoc render them?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Owner approval of the final executable contract."
+    ],
+    "question": {
+      "header": "Approve contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready without adding broader behavior.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Do not seal it; specify the requirement that needs changing.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this executable contract: when `autodoc_docstring_signature` is enabled and no explicit signature is supplied, function and method documenters must extract every consecutive leading docstring line that matches the signature grammar and has an accepted name for the documented object; each extracted overload must retain and render its own argument list and return annotation, in source order, as aligned newline-separated directive signatures; extraction stops at the first non-matching or mismatched-name line, which and all following lines remain ordinary docstring content; all extracted signature lines are removed from that content. Existing single-signature behavior, explicit-signature precedence, disabled-configuration behavior, accepted-name rules (including existing class-documenter exceptions), and ordinary docstrings must remain unchanged. Acceptance requires regression coverage for multiple consecutive overloads with distinct return annotations, preservation from the first invalid or mismatched line onward, the existing single-signature enabled case, and the disabled case. Implementation may choose the internal representation and formatting mechanics provided these observable requirements hold. Residual risk: unusual docstrings that intentionally begin with multiple valid same-name signature-looking prose lines will now have all such consecutive lines treated as signatures. Is this contract approved for implementation?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "With `autodoc_docstring_signature=True` and no explicit signature, multiple consecutive valid same-name leading signatures are all emitted in source order as aligned method or function directive signatures.",
+          "Each emitted overload preserves the arguments and return annotation parsed from its own source line, including differing return annotations.",
+          "The first non-signature or mismatched-name line after an extracted overload block, and every following line, remains in ordinary docstring content.",
+          "All successfully extracted leading overload-signature lines are absent from ordinary docstring content.",
+          "The existing enabled single-signature test continues to pass unchanged in observable behavior.",
+          "With `autodoc_docstring_signature=False`, introspected signature behavior remains unchanged and all signature-looking docstring lines remain content.",
+          "An explicitly supplied signature continues to take precedence and prevents docstring-signature extraction.",
+          "Existing accepted-name behavior, including class-documenter name exceptions, remains unchanged."
+        ],
+        "confirmed_decisions": [
+          "Extract all consecutive valid same-name signatures from the beginning of the applicable docstring block.",
+          "Stop extraction at the first non-matching or mismatched-name line and preserve that line and everything after it as ordinary docstring content.",
+          "Remove every successfully extracted leading signature line from rendered docstring content.",
+          "Keep and render each overload's own return annotation rather than sharing or omitting return annotations.",
+          "Preserve source order and emit overloads as aligned newline-separated directive signatures.",
+          "Preserve existing single-signature behavior, explicit-signature precedence, disabled-configuration behavior, accepted-name rules, and ordinary-docstring behavior.",
+          "Require regression coverage for consecutive overloads with distinct return annotations, preservation from the first invalid or mismatched line onward, the existing enabled single-signature case, and the disabled case.",
+          "The owner approved this contract without broader behavior."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "When `autodoc_docstring_signature` is enabled and no explicit signature is supplied, function and method documenters must extract every consecutive leading docstring line that matches the existing signature grammar and has an accepted name for the documented object. Each extracted overload must retain its own argument list and return annotation and render in source order as aligned, newline-separated directive signatures. Extraction stops at the first non-matching or mismatched-name line; that line and everything following it remain ordinary docstring content, while all extracted signature lines are removed from the content. Existing single-signature behavior, explicit-signature precedence, disabled-configuration behavior, accepted-name rules—including existing class-documenter exceptions—and ordinary docstrings remain unchanged. Implementation may choose its internal representation and formatting mechanics provided these observable requirements hold. Acknowledged residual risk: docstrings intentionally beginning with multiple valid same-name signature-looking prose lines will now treat all such consecutive lines as signatures."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the final executable contract, and no material decisions remain unresolved."
+    },
+    "turn": 4
+  }
+]

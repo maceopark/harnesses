@@ -1,0 +1,63 @@
+{
+  "audit_summary": "All eight facts are directly supported by the cited repository files and line ranges.",
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 110,
+      "line_start": 79,
+      "path": "xarray/core/weighted.py",
+      "statement": "Weighted reductions require weights to be a DataArray and reject weights containing missing values, but impose no dtype restriction that excludes boolean weights."
+    },
+    {
+      "id": "F2",
+      "line_end": 135,
+      "line_start": 112,
+      "path": "xarray/core/weighted.py",
+      "statement": "The common weighted reduction helper delegates directly to xarray.dot after optional missing-data filling; it performs no dtype conversion of either operand."
+    },
+    {
+      "id": "F3",
+      "line_end": 150,
+      "line_start": 137,
+      "path": "xarray/core/weighted.py",
+      "statement": "The sum-of-weights calculation creates a boolean mask with da.notnull() and passes that mask together with the original weights directly to the dot-based reduction."
+    },
+    {
+      "id": "F4",
+      "line_end": 174,
+      "line_start": 162,
+      "path": "xarray/core/weighted.py",
+      "statement": "The weighted mean is calculated as weighted_sum divided by sum_of_weights, so an incorrectly boolean-valued denominator directly changes the mean result."
+    },
+    {
+      "id": "F5",
+      "line_end": 1215,
+      "line_start": 1191,
+      "path": "xarray/core/computation.py",
+      "statement": "xarray.dot ultimately constructs an einsum operation over the supplied arrays without an intervening dtype coercion in this path."
+    },
+    {
+      "id": "F6",
+      "line_end": 180,
+      "line_start": 161,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "The reference calculation used by weighted-operation tests computes masked weights with weights.where(da.notnull()) and then calls sum, which differs from the production sum-of-weights dot-product path."
+    },
+    {
+      "id": "F7",
+      "line_end": 59,
+      "line_start": 32,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "Existing direct sum-of-weights tests cover integer weights, including positive, zero, and negative values, but the listed cases contain no boolean weights."
+    },
+    {
+      "id": "F8",
+      "line_end": 158,
+      "line_start": 128,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "Existing direct weighted-mean tests likewise use numeric integer weights and contain no boolean-weight case."
+    }
+  ],
+  "scope_summary": "Base commit 19b088636eb7d3f65ab7a1046ac672e0689371d8 implements weighted means by dividing a dot-product weighted sum by a separately computed sum of weights. The latter uses a boolean validity mask directly in another dot product, exposing the boolean-weight behavior described by the issue.",
+  "unknowns": []
+}

@@ -1,0 +1,81 @@
+diff --git a/pylint/lint/pylinter.py b/pylint/lint/pylinter.py
+index e2bbf06..ad0b114 100644
+--- a/pylint/lint/pylinter.py
++++ b/pylint/lint/pylinter.py
+@@ -587,6 +587,17 @@ class PyLinter(
+ 
+         Returns iterator of paths to discovered modules and packages.
+         """
++        def _is_ignored(path: str) -> bool:
++            return any(
++                _is_ignored_file(
++                    candidate,
++                    self.config.ignore,
++                    self.config.ignore_patterns,
++                    self.config.ignore_paths,
++                )
++                for candidate in (path, os.path.relpath(path))
++            )
++
+         for something in files_or_modules:
+             if os.path.isdir(something) and not os.path.isfile(
+                 os.path.join(something, "__init__.py")
+@@ -597,12 +608,7 @@ class PyLinter(
+                         # Skip subtree of already discovered package.
+                         continue
+ 
+-                    if _is_ignored_file(
+-                        root,
+-                        self.config.ignore,
+-                        self.config.ignore_patterns,
+-                        self.config.ignore_paths,
+-                    ):
++                    if _is_ignored(root):
+                         skip_subtrees.append(root)
+                         continue
+ 
+@@ -614,6 +620,7 @@ class PyLinter(
+                             os.path.join(root, file)
+                             for file in files
+                             if file.endswith(".py")
++                            and not _is_ignored(os.path.join(root, file))
+                         )
+             else:
+                 yield something
+diff --git a/tests/lint/unittest_lint.py b/tests/lint/unittest_lint.py
+index 3dbde39..b70ee12 100644
+--- a/tests/lint/unittest_lint.py
++++ b/tests/lint/unittest_lint.py
+@@ -912,6 +912,32 @@ def test_recursive_ignore(ignore_parameter, ignore_parameter_value) -> None:
+     assert module in linted_file_paths
+ 
+ 
++@pytest.mark.parametrize("absolute_target", [False, True])
++def test_recursive_ignore_paths_from_pyproject(
++    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, absolute_target: bool
++) -> None:
++    """CWD-relative ignore-paths apply during recursive discovery."""
++    src = tmp_path / "src"
++    generated = src / "gen"
++    generated.mkdir(parents=True)
++    (src / "included.py").write_text('"""Included module."""\n', encoding="utf-8")
++    (generated / "ignored.py").write_text(
++        '"""Ignored module."""\n', encoding="utf-8"
++    )
++    (tmp_path / "pyproject.toml").write_text(
++        '[tool.pylint.MASTER]\nignore-paths = ["^src/gen/.*$"]\n',
++        encoding="utf-8",
++    )
++    monkeypatch.chdir(tmp_path)
++    target = str(src) if absolute_target else "src"
++
++    run = lint.Run(["--recursive=y", "--disable=all", target], exit=False)
++
++    linted_modules = set(run.linter.stats.by_module)
++    assert "included" in linted_modules
++    assert "ignored" not in linted_modules
++
++
+ def test_import_sibling_module_from_namespace(initialized_linter: PyLinter) -> None:
+     """If the parent directory above `namespace` is on sys.path, ensure that
+     modules under `namespace` can import each other without raising `import-error`."""

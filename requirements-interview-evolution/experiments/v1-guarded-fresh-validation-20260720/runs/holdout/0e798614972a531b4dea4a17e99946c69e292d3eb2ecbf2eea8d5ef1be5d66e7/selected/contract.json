@@ -1,0 +1,20 @@
+{
+  "acceptance_checks": [
+    "Add an end-to-end regression test that loads `ignore-paths = [\"^src/gen/.*$\"]` from project configuration and runs recursive linting on `src/`.",
+    "Verify the regression test proves files under `src/gen/` are absent from the linted paths.",
+    "Verify the regression test proves at least one non-ignored file under `src/` remains linted.",
+    "Cover the approved behavior for both POSIX and Windows path forms.",
+    "Run and preserve all existing recursive-ignore tests.",
+    "Verify `ignore`, `ignore-patterns`, configuration precedence, and non-recursive behavior remain unchanged."
+  ],
+  "confirmed_decisions": [
+    "Recursive ignore-path matching uses paths relative to the invocation/config project directory, not paths relative to each recursive target or raw absolute walked paths.",
+    "Recursive discovery uses the same initialization-time captured ignore-path configuration as normal module expansion.",
+    "The implementation may choose the internal path-normalization or refactoring approach.",
+    "Do not change `ignore`, `ignore-patterns`, configuration precedence, or non-recursive semantics.",
+    "The intentional compatibility change is limited to previously unspecified recursive behavior for anchored ignore-path expressions, which will use the approved project-relative basis."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Fix recursive ignore-path handling so recursive discovery uses the initialization-time captured ignore-path patterns and evaluates them against project-relative paths in both POSIX and Windows forms. With project configuration `ignore-paths = [\"^src/gen/.*$\"]`, running `pylint --recursive=y src/` must exclude `src/gen/` and its Python files. Scope is limited to recursive ignore-path handling and regression coverage."
+}

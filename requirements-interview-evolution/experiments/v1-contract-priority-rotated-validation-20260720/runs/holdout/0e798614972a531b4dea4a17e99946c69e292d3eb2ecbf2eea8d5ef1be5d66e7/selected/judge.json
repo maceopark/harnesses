@@ -1,0 +1,32 @@
+{
+  "compatibility_regressions": [
+    "The sealed contract would reject the gold implementation because normalizing in `_is_ignored_file` changes a shared matching boundary rather than only recursive candidates.",
+    "A recursive-only dual-form implementation could diverge from the repository's existing shared ignore semantics and from the focused normalization behavior validated by the hindsight regression.",
+    "Requiring both raw and working-directory-relative matches may broaden exclusions for patterns that previously matched only one candidate spelling."
+  ],
+  "implementation_ready": false,
+  "invented_requirements": [
+    "Require matching both the existing raw candidate path and a new working-directory-relative form; neither the issue nor audited repository facts establish that dual-form model.",
+    "Restrict the additional behavior to recursively discovered directory and Python-file candidates, although the hindsight fix normalizes inside the shared ignore predicate.",
+    "Preserve shared explicit, non-recursive, and package-expansion matching semantics unchanged, which rules out the actual shared-helper fix without issue-time evidence that those boundaries must remain untouched.",
+    "Define invocation working directory as the project-relative base; this was selected despite the audit explicitly leaving the runtime candidate spelling unresolved.",
+    "Exclude new guarantees for absolute targets and relative forms containing `..`; these compatibility boundaries were not requested or supported by audited facts.",
+    "Require descendant-file matching without parent-directory inference and prescribe directory-pruning semantics beyond what was necessary to resolve the reported defect.",
+    "Require equivalent command-line and TOML integration behavior, a nonignored-file oracle, raw-path preservation coverage, and explicit Windows/POSIX coverage beyond the focused regression demonstrated by the hindsight evidence."
+  ],
+  "material_blockers": [
+    "The audit explicitly could not establish the exact candidate path spelling produced for the reported Windows invocation, yet the contract sealed a working-directory-relative dual-match design without resolving that fact.",
+    "The approved recursive-only compatibility boundary conflicts with the hindsight implementation's normalization inside the shared `_is_ignored_file` helper, so an implementer following the contract would have to reject or avoid the known focused fix and return to the owner.",
+    "The contract's central model does not cover the hindsight regression's recursive target `.` case cleanly: the observed fix is candidate normalization, not adding a separately computed project-relative candidate form."
+  ],
+  "owner_recall": 1.0,
+  "redundant_questions": [
+    "The TOML-versus-command-line distinction did not need an owner decision after audited facts established that TOML is flattened into ordinary option arguments and command-line precedence is already defined.",
+    "The absolute-target guarantee question introduced an unrequested behavior branch unrelated to the reported relative invocation.",
+    "The target-relative versus working-directory-relative choice was premature because the exact runtime path spelling remained an audited unknown.",
+    "The raw-form preservation question converted an implementation hypothesis into product policy without evidence of a reported compatibility need.",
+    "The descendant-prefix pruning question addressed behavior not requested by the issue and not implicated by the focused hindsight fix."
+  ],
+  "repository_fidelity": 0.42,
+  "summary": "The interview retained every owner answer, but it over-specified an unverified path-reference architecture and sealed compatibility constraints that conflict with the observed focused fix. Hindsight shows normalization of the candidate spelling in the shared ignore predicate was sufficient; that is diagnostic only, but it exposes that the issue-time contract was not implementation-ready. The contract should instead have required normalized path matching for the reported recursive case, preserved existing documented regex behavior, and delegated the precise matching boundary pending a focused regression."
+}

@@ -1,0 +1,54 @@
+[
+  {
+    "answer": "Mean and weight sum",
+    "open_material_decisions": [
+      "Whether boolean-weight correctness is required only for weighted mean or for both weighted mean and the public sum_of_weights result."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Require weighted mean and sum_of_weights to treat boolean weights as numeric 1/0 values, including masking missing data.",
+          "label": "Mean and weight sum",
+          "recommended": true
+        },
+        {
+          "description": "Require only weighted mean to return the correct result; direct sum_of_weights behavior remains outside the contract.",
+          "label": "Mean only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which public outcomes should the contract require for boolean weights?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A DataArray containing [1.0, 1.0, 1.0] weighted by boolean [true, true, false] has weighted mean equal to 1.0.",
+          "The same DataArray and weights have sum_of_weights equal to numeric 2.",
+          "Boolean-weight sum_of_weights excludes weights at missing data positions.",
+          "Boolean-weight weighted mean uses the effective numeric sum of weights after missing-data masking.",
+          "Existing weighted reduction tests for integer and floating-point weights continue to pass."
+        ],
+        "confirmed_decisions": [
+          "Boolean weights represent numeric weights: true contributes 1 and false contributes 0.",
+          "The required public outcomes cover both weighted mean and sum_of_weights.",
+          "For the reported example, weighted mean returns 1.0 rather than 2.0.",
+          "For the reported example, sum_of_weights returns the numeric count 2 rather than boolean true.",
+          "When data values are missing, boolean weights associated with those missing values do not contribute to sum_of_weights.",
+          "Existing behavior for non-boolean weights remains unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Correct DataArray weighted reductions so boolean weights are counted numerically when calculating the effective sum of weights. For data [1.0, 1.0, 1.0] with boolean weights [true, true, false], weighted mean must return 1.0 and sum_of_weights must return 2. Missing data must continue to exclude its corresponding weight from the effective weight sum."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The reported failure and the interview answer fully determine the authorized observable behavior: boolean weights must act as numeric 1/0 values for both weighted mean and the public sum-of-weights result. Implementation details remain reversible and need not be prescribed."
+    },
+    "turn": 2
+  }
+]

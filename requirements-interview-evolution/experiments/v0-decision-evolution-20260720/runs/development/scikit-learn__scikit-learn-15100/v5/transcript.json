@@ -1,0 +1,61 @@
+[
+  {
+    "answer": "Helper + vectorizer",
+    "open_material_decisions": [
+      "Whether success requires only a direct helper regression test or also an end-to-end vectorizer analyzer regression test."
+    ],
+    "question": {
+      "header": "Test scope",
+      "options": [
+        {
+          "description": "Test both strip_accents_unicode directly and CountVectorizer preprocessing to cover the public integration path.",
+          "label": "Helper + vectorizer",
+          "recommended": true
+        },
+        {
+          "description": "Add only a focused unit regression test for strip_accents_unicode.",
+          "label": "Helper only",
+          "recommended": false
+        },
+        {
+          "description": "Test the helper plus word, char, and char_wb analyzer paths, providing broader but more repetitive coverage.",
+          "label": "All analyzers",
+          "recommended": false
+        }
+      ],
+      "prompt": "What regression coverage should define success for already-NFKD input containing combining accents?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "strip_accents_unicode('\\u00f1') returns 'n'.",
+          "strip_accents_unicode('n\\u0303') returns 'n'.",
+          "The composed and already-NFKD forms normalize to identical unaccented output.",
+          "CountVectorizer configured with strip_accents='unicode' produces the same unaccented token for composed and decomposed forms.",
+          "Existing feature-extraction text tests continue to pass.",
+          "The implementation changes only the Unicode accent-removal behavior needed to eliminate the already-NFKD early-return bug."
+        ],
+        "confirmed_decisions": [
+          "Remove the equality-based early return from strip_accents_unicode, or otherwise ensure it cannot bypass combining-character removal.",
+          "Continue using unicodedata.normalize('NFKD', s) as the normalization step.",
+          "Filter combining characters from the normalized string on every call, including when the original input is already NFKD-normalized.",
+          "Do not change strip_accents_ascii or the vectorizer preprocessing/analyzer routing.",
+          "Add a direct helper regression test using equivalent composed and decomposed accented text, including the reported decomposed n plus combining tilde case.",
+          "Add an end-to-end CountVectorizer regression test with strip_accents='unicode' showing that already-NFKD input yields unaccented tokens.",
+          "Retain the existing composed Latin, Arabic, mixed-text, and French analyzer expectations."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix Unicode accent stripping for input that is already NFKD-normalized. In strip_accents_unicode, normalize the input with NFKD and remove every code point for which unicodedata.combining returns nonzero regardless of whether normalization changed the string. Preserve the existing behavior for composed accented input and unaccented input. Add regression coverage proving that canonically equivalent composed and decomposed forms both produce the same unaccented result, directly through strip_accents_unicode and through CountVectorizer with strip_accents='unicode'."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested behavior and success criteria are sufficiently clear from the issue, repository evidence, and the confirmed regression-test scope. The prior answer is summarized as: success requires coverage of both the direct helper and the public CountVectorizer integration path. No material implementation decision remains open."
+    },
+    "turn": 2
+  }
+]

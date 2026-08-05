@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "strip_accents_unicode(\"ñ\") returns \"n\".",
+    "strip_accents_unicode(\"n\\u0303\") returns \"n\" rather than returning the decomposed input unchanged.",
+    "Equivalent precomposed and NFKD-decomposed accented text produces identical output from strip_accents_unicode.",
+    "A CountVectorizer analyzer configured with strip_accents=\"unicode\" produces the same accent-free tokens for equivalent precomposed and decomposed input.",
+    "A TfidfVectorizer configured with strip_accents=\"unicode\" applies the same corrected preprocessing behavior.",
+    "Previously supported precomposed accented Latin, Arabic, and mixed-text cases continue to produce their established accent-free outputs.",
+    "strip_accents_ascii retains its established behavior."
+  ],
+  "confirmed_decisions": [
+    "strip_accents_unicode removes combining characters even when its input is already in NFKD form.",
+    "Canonically equivalent precomposed and decomposed accented inputs yield the same accent-free string.",
+    "CountVectorizer and TfidfVectorizer configured with strip_accents=\"unicode\" inherit the corrected behavior through their existing shared preprocessing path.",
+    "Existing Unicode accent-removal behavior for precomposed Latin, Arabic, and mixed text remains compatible.",
+    "strip_accents=\"ascii\" behavior is outside the defect and remains unchanged."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Correct Unicode accent stripping so canonically equivalent precomposed and already-NFKD text produce the same accent-free output. In particular, strip_accents_unicode(\"ñ\") and strip_accents_unicode(\"n\\u0303\") must both return \"n\". Vectorizers configured with strip_accents=\"unicode\", including CountVectorizer and TfidfVectorizer, must expose the corrected behavior through their existing preprocessing and analyzer paths. Existing behavior for precomposed accented text and for strip_accents=\"ascii\" remains unchanged."
+}

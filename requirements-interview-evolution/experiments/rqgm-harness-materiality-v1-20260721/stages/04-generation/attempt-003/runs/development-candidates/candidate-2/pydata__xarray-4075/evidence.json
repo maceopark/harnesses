@@ -1,0 +1,77 @@
+{
+  "audit_summary": "All ten facts are directly supported by the cited repository code and tests.",
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 110,
+      "line_start": 87,
+      "path": "xarray/core/weighted.py",
+      "statement": "Weighted accepts any DataArray dtype; construction validates only that weights is a DataArray and contains no missing values, then stores it unchanged."
+    },
+    {
+      "id": "F2",
+      "line_end": 150,
+      "line_start": 137,
+      "path": "xarray/core/weighted.py",
+      "statement": "The sum-of-weights calculation creates a boolean validity mask with da.notnull() and passes that mask and the original weights directly into _reduce without dtype conversion."
+    },
+    {
+      "id": "F3",
+      "line_end": 135,
+      "line_start": 124,
+      "path": "xarray/core/weighted.py",
+      "statement": "_reduce delegates the reduction to dot(da, weights); with skipna=False, its conditional fill operation is not applied."
+    },
+    {
+      "id": "F4",
+      "line_end": 1214,
+      "line_start": 1191,
+      "path": "xarray/core/computation.py",
+      "statement": "The dot implementation constructs einsum subscripts and executes duck_array_ops.einsum through apply_ufunc, so operand dtype behavior is inherited from the selected einsum implementation."
+    },
+    {
+      "id": "F5",
+      "line_end": 174,
+      "line_start": 162,
+      "path": "xarray/core/weighted.py",
+      "statement": "Weighted mean computes the numerator through _weighted_sum, computes the denominator through _sum_of_weights, and returns their quotient."
+    },
+    {
+      "id": "F6",
+      "line_end": 210,
+      "line_start": 201,
+      "path": "xarray/core/weighted.py",
+      "statement": "The public mean method routes through the shared _weighted_mean implementation."
+    },
+    {
+      "id": "F7",
+      "line_end": 238,
+      "line_start": 220,
+      "path": "xarray/core/weighted.py",
+      "statement": "Both DataArrayWeighted and DatasetWeighted consume the shared Weighted reduction functions; DataArrayWeighted applies the function directly, while DatasetWeighted maps it over dataset variables."
+    },
+    {
+      "id": "F8",
+      "line_end": 183,
+      "line_start": 161,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "The test-side reference implementation computes masked weights with weights.where(da.notnull()), sums them with skipna=True, and divides the weighted sum by that numeric sum for mean."
+    },
+    {
+      "id": "F9",
+      "line_end": 158,
+      "line_start": 128,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "Existing focused weighted-mean parameterizations exercise integer-valued weights, including zero weights, but do not include boolean-typed weights."
+    },
+    {
+      "id": "F10",
+      "line_end": 59,
+      "line_start": 32,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "Existing focused sum-of-weights parameterizations likewise use integer-valued weights and verify zero-sum and cancelling-weight behavior."
+    }
+  ],
+  "scope_summary": "Inspected only the supplied repository at base commit 19b088636eb7d3f65ab7a1046ac672e0689371d8. The issue is localized to the shared weighted-reduction denominator path and its use of dot/einsum with an uncast boolean mask and boolean weights.",
+  "unknowns": []
+}

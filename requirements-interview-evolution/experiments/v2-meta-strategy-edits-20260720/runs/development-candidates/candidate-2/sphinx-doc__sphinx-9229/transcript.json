@@ -1,0 +1,150 @@
+[
+  {
+    "answer": "Documentation only",
+    "open_material_decisions": [
+      "Whether a documented type alias should render its source documentation together with, or instead of, the generated “alias of …” message."
+    ],
+    "question": {
+      "header": "Alias output",
+      "options": [
+        {
+          "description": "Render the complete source documentation and omit the generated “alias of …” message, matching the issue’s stated expected behavior.",
+          "label": "Documentation only",
+          "recommended": true
+        },
+        {
+          "description": "Render the complete source documentation followed by “alias of …”, matching the repository’s Python 3.7+ generic-alias precedent.",
+          "label": "Documentation plus alias",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has next-line source documentation, what should autodoc render?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Keep alias message",
+    "open_material_decisions": [
+      "Whether undocumented type aliases must retain the existing generated “alias of …” output while documented aliases suppress it."
+    ],
+    "question": {
+      "header": "No source doc",
+      "options": [
+        {
+          "description": "Preserve the existing “alias of …” output for undocumented aliases; suppress it only when source documentation is available.",
+          "label": "Keep alias message",
+          "recommended": true
+        },
+        {
+          "description": "Remove the generated “alias of …” output from type aliases even when they have no source documentation.",
+          "label": "Suppress for all",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc render a type alias when no next-line source documentation exists?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "All supported routes",
+    "open_material_decisions": [
+      "Whether the fix must apply consistently across all supported Python versions and automatic type-alias documenter routes, or only to the reported Python 3.6 behavior."
+    ],
+    "question": {
+      "header": "Compatibility",
+      "options": [
+        {
+          "description": "Require consistent behavior on every supported Python version and automatic type-alias documenter route, with undocumented aliases retaining the alias message.",
+          "label": "All supported routes",
+          "recommended": true
+        },
+        {
+          "description": "Limit the requirement to the reported Python 3.6 automatic-documentation path and preserve other version-specific behavior.",
+          "label": "Python 3.6 only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Across which compatibility boundary must documented type aliases render source documentation without the generated alias message?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Module and class",
+    "open_material_decisions": [
+      "Whether the documentation-only rule applies only to module-level type aliases (the reported case) or also to documented type aliases assigned as class attributes."
+    ],
+    "question": {
+      "header": "Member scope",
+      "options": [
+        {
+          "description": "Apply consistently to documented type aliases at module level and as class attributes; undocumented aliases still show “alias of …”.",
+          "label": "Module and class",
+          "recommended": true
+        },
+        {
+          "description": "Fix the reported module-level aliases while preserving existing class-attribute behavior.",
+          "label": "Module level only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which documented type-alias members must use the documentation-only behavior?"
+    },
+    "turn": 4
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the complete implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with no remaining material decisions.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Do not seal it; provide the specific requirement or boundary that must change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: update autodoc so every supported automatic documenter route, on every supported Python version, renders the complete analyzer-provided next-line documentation for type aliases at both module and class scope; when that source documentation exists, omit the generated “alias of …” message; when it does not exist, preserve the existing alias message. Add regression coverage for documented and undocumented aliases at module and class scope, including the routing case where a typing alias is claimed by ClassDocumenter. Preserve behavior for non-alias classes/data and explicit documentation content outside this rule. Implementation may choose the smallest repository-consistent routing/content-handling change, but may not broaden alias detection or compatibility guarantees beyond supported runtimes. Acceptance requires the relevant autodoc tests to pass and outputs to match these rules. Residual risk: runtime typing objects differ by Python version, so tests may use version-appropriate aliases while asserting identical observable behavior. Is this contract approved for implementation?"
+    },
+    "turn": 5
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Relevant autodoc tests pass.",
+          "A documented module-level type alias renders its complete analyzer-provided next-line documentation and no generated “alias of …” message.",
+          "A documented class-level type alias renders its complete analyzer-provided next-line documentation and no generated “alias of …” message.",
+          "An undocumented module-level type alias retains the generated “alias of …” message.",
+          "An undocumented class-level type alias retains the generated “alias of …” message.",
+          "The routing case in which ClassDocumenter claims a typing alias preserves analyzer-provided source documentation according to the documented-alias rule.",
+          "Existing behavior remains unchanged for non-alias classes/data and explicit documentation content outside this rule.",
+          "Coverage exercises supported version-dependent routing with version-appropriate runtime aliases while asserting identical observable behavior."
+        ],
+        "confirmed_decisions": [
+          "Documented type aliases render source documentation only, without the generated “alias of …” message.",
+          "Undocumented type aliases retain the existing generated “alias of …” message.",
+          "The behavior applies across all supported Python versions and automatic type-alias documenter routes.",
+          "The behavior applies to type aliases at both module and class scope.",
+          "Regression coverage must include documented and undocumented aliases at module and class scope, including a typing alias claimed by ClassDocumenter.",
+          "Runtime-version-specific alias fixtures are permitted when they assert the same required observable behavior.",
+          "The owner approved the complete implementation contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update autodoc so that, across every supported Python version and automatic documenter route, a type alias with analyzer-provided next-line source documentation renders that documentation at both module and class scope and omits the generated “alias of …” message. A type alias without such source documentation retains the existing “alias of …” output. Preserve behavior for non-alias classes/data and explicit documentation content outside this rule. Implement using the smallest repository-consistent routing or content-handling change; do not broaden alias detection or compatibility guarantees beyond supported runtimes."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the complete contract, resolving all material behavior, scope, compatibility, acceptance, delegation, and residual-risk decisions."
+    },
+    "turn": 6
+  }
+]

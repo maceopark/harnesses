@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "Add targeted regression coverage showing that default recursive collection does not import a failing `__init__.py` that does not match `python_files`.",
+    "Verify that configuring `python_files` to match `__init__.py` still collects initializer tests.",
+    "Verify that existing explicit-initializer-path cases retain their current behavior.",
+    "Run relevant existing collection tests, including package collection and `pytest_ignore_collect` coverage.",
+    "All new targeted regression tests and relevant existing collection tests pass."
+  ],
+  "confirmed_decisions": [
+    "Unmatched `__init__.py` files encountered through recursive directory collection must not create `Package` collectors or be imported solely due to package initialization.",
+    "Configured `python_files` matching continues to enable package collection and tests defined in `__init__.py`.",
+    "Explicitly supplied `__init__.py` paths remain exempt from `python_files` filtering.",
+    "Existing `pytest_ignore_collect` behavior remains effective.",
+    "The change is limited to initializer eligibility during Python collection; broader traversal, import-mode, and pattern semantics are unchanged.",
+    "Implementation details are delegated to the implementer subject to the approved behavioral and compatibility boundaries.",
+    "The owner explicitly approved this contract."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Limit the regression fix to Python package-initializer eligibility during collection. During recursive directory collection, an encountered `__init__.py` that does not match the configured `python_files` patterns must not produce a `Package` collector and therefore must not be imported merely because it initializes a package. A matching initializer must retain existing package collection and initializer-test behavior. An explicitly supplied `__init__.py` remains exempt from pattern filtering, preserving current direct-argument behavior. Existing `pytest_ignore_collect` behavior must remain effective. Implement the smallest compatible collection change; broader traversal, import-mode, and filename-pattern semantic changes are out of scope. The implementer may choose implementation details within these constraints. Bounded residual risk: not creating package collectors for unmatched initializers may affect internal package-root bookkeeping, so relevant package-collection regressions must be run, but no broader observable compatibility guarantee is required without evidence."
+}

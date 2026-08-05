@@ -1,0 +1,221 @@
+{
+  "alias": "matplotlib__matplotlib-26466",
+  "evidence": [
+    {
+      "cache_required": true,
+      "excerpt": "Updating an array passed as the xy parameter to annotate updates the anottation\n### Bug report\n\n**Bug summary**\nWhen an array is used as the _xy_ kwarg for an annotation that includes arrows, changing the array after calling the function changes the arrow position. It is very likely that the same array is kept instead of a copy.\n\n**Code for reproduction**\n\n\n```python\nfig = plt.figure(\"test\")\n\nax = fig.add_axes([0.13, 0.15, .8, .8])\nax.set_xlim(-5, 5)\nax.set_ylim(-3, 3)\n\nxy_0 =np.array((-4, 1))\nxy_f =np.array((-1, 1))\n# this annotation is messed by later changing the array passed as xy kwarg\nax.annotate(s='', xy=xy_0, xytext=xy_f, arrowprops=dict(arrowstyle='<->'))",
+      "excerpt_digest": "beda952c6d93e0e4ca3d96f40c44b97e1d991f93e413adc4dd56ab9bd90bf9b3",
+      "id": "issue",
+      "knowledge_timing": "issue_time_author_knowable",
+      "locator": "sha256:75451baef8d992a85b82c5b525b6563cd4ad037336bbac3f555901c7cbe163de",
+      "source": "issue",
+      "source_digest": "75451baef8d992a85b82c5b525b6563cd4ad037336bbac3f555901c7cbe163de"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "diff --git a/lib/matplotlib/text.py b/lib/matplotlib/text.py\n--- a/lib/matplotlib/text.py\n+++ b/lib/matplotlib/text.py\n@@ -1389,7 +1389,8 @@ def __init__(self, artist, ref_coord, unit=\"points\"):\n             The screen units to use (pixels or points) for the offset input.\n         \"\"\"\n         self._artist = artist\n-        self._ref_coord = ref_coord\n+        x, y = ref_coord  # Make copy when ref_coord is an array (and check the shape).\n+        self._ref_coord = x, y\n         self.set_unit(unit)\n \n     def set_unit(self, unit):\n@@ -1407,13 +1408,6 @@ def get_unit(self):\n         \"\"\"Return the unit for input to the transform used by ``__call__``.\"\"\"\n         return self._unit\n \n-    def _get_scale(self, renderer):\n-        unit = self.get_unit()\n-        if unit == \"pixels\":",
+      "excerpt_digest": "b740c6253b6e72839de930aa0cfd8cfc4dd10a4b8d324d489344ce02f4a8dbf0",
+      "id": "gold-patch",
+      "knowledge_timing": "hindsight_only",
+      "locator": "sha256:68c08bc0c00a0c47b63c8392a8c940903ff7461e84479dd4706aba7fe383435f",
+      "source": "patch",
+      "source_digest": "68c08bc0c00a0c47b63c8392a8c940903ff7461e84479dd4706aba7fe383435f"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "diff --git a/lib/matplotlib/tests/test_text.py b/lib/matplotlib/tests/test_text.py\n--- a/lib/matplotlib/tests/test_text.py\n+++ b/lib/matplotlib/tests/test_text.py\n@@ -16,7 +16,7 @@\n import matplotlib.transforms as mtransforms\n from matplotlib.testing.decorators import check_figures_equal, image_comparison\n from matplotlib.testing._markers import needs_usetex\n-from matplotlib.text import Text, Annotation\n+from matplotlib.text import Text, Annotation, OffsetFrom\n \n pyparsing_version = parse_version(pyparsing.__version__)\n \n@@ -988,3 +988,19 @@ def test_text_math_antialiased_off_default_vs_manual(fig_test, fig_ref):\n \n     mpl.rcParams['text.antialiased'] = False\n     fig_ref.text(0.5, 0.5, r\"OutsideMath $I\\'m \\sqrt{2}$\")\n+\n+\n+@check_figures_equal(extensions=[\"png\"])\n+def test_annotate_and_offsetfrom_copy_input(fig_test, fig_ref):",
+      "excerpt_digest": "53db12b7ec4dd93c345d1e04337ade92ecd07d68434bc8b35ee56d46553989b4",
+      "id": "test-patch",
+      "knowledge_timing": "hindsight_only",
+      "locator": "sha256:c847fc26deeffea2f11d4d5315d91e5b3d1ae023b115ab9d7763b4252dec6dfc",
+      "source": "test",
+      "source_digest": "c847fc26deeffea2f11d4d5315d91e5b3d1ae023b115ab9d7763b4252dec6dfc"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "[\"lib/matplotlib/tests/test_text.py::test_annotate_and_offsetfrom_copy_input[png]\"]",
+      "excerpt_digest": "7b6e51ce0ed0140840caf2e431b567a5bffe6253f2688bae5f1894717cff96c7",
+      "id": "fail-to-pass",
+      "knowledge_timing": "hindsight_only",
+      "locator": "sha256:7b6e51ce0ed0140840caf2e431b567a5bffe6253f2688bae5f1894717cff96c7",
+      "source": "test",
+      "source_digest": "7b6e51ce0ed0140840caf2e431b567a5bffe6253f2688bae5f1894717cff96c7"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "[\"lib/matplotlib/tests/test_text.py::test_font_styles[png]\",\"lib/matplotlib/tests/test_text.py::test_font_styles[pdf]\",\"lib/matplotlib/tests/test_text.py::test_multiline[png]\",\"lib/matplotlib/tests/test_text.py::test_multiline[pdf]\",\"lib/matplotlib/tests/test_text.py::test_multiline2[png]\",\"lib/matplotlib/tests/test_text.py::test_multiline2[pdf]\",\"lib/matplotlib/tests/test_text.py::test_antialiasing[png]\",\"lib/matplotlib/tests/test_text.py::test_afm_kerning\",\"lib/matplotlib/tests/test_text.py::test_contains[png]\",\"lib/matplotlib/tests/test_text.py::test_annotation_contains\",\"lib/matplotlib/tests/test_text.py::test_annotate_errors[TypeError-print-xycoords\",\"lib/matplotlib/tests/test_text.py::test_annotate_errors[TypeError-xycoords1-'xycoords'\",\"lib/matplotlib/tests/test_text.py::test_annotate_errors[ValueError-foo-'foo'\",\"lib/matplotlib/tests/test_text.py::test_annotate_errors[ValueError-foo\",\"lib/matplotlib/tests/test_text.py::test_annotate_errors[ValueError-offset\",\"lib/matplotlib/tests/test_text.py::test_annotate_errors[ValueError-axes\",\"lib/matplotlib/tests/test_text.py::test_titles[png]\",\"lib/matplotlib/tests/test_text.py::test_titles[pdf]\",\"lib/matplotlib/tests/test_text.py::test_alignment[png]\",\"lib/matplotlib/tests/test_text.py::test_alignment[pdf]\",\"lib/matplotlib/tests/test_text.py::test_axes_titles[png]\",\"lib/matplotlib/tests/test_text.py::test_set_position\",\"lib/matplotlib/tests/test_text.py::test_char_index_at\",\"lib/matplotlib/tests/test_text.py::test_non_default_dpi[empty]\",\"lib/matplotlib/tests/test_text.py::test_non_default_dpi[non-empty]\",\"lib/matplotlib/tests/test_text.py::test_get_rotation_string\",\"lib/matplotlib/tests/test_text.py::test_get_rotation_float\",\"lib/matplotlib/tests/test_text.py::test_get_rotation_int\",\"lib/matplotlib/tests/test_text.py::test_get_rotation_raises\",\"lib/matplotlib/tests/test_text.py::test_get_rotation_none\",\"lib/matplotlib/tests/test_text.py::test_get_rotation_mod360\",\"lib/matplotlib/tests/test_text.py::test_null_rotation_with_rotation_mode[center-center]\",\"lib/matplo",
+      "excerpt_digest": "c52742f24861f9487c5c87d46a89081a970f299876e64ca04b993632d4e984ea",
+      "id": "pass-to-pass",
+      "knowledge_timing": "hindsight_only",
+      "locator": "sha256:3a1adb213bb4b9cc5d59296c97a6b964657a652e3577bbb386fa72e3c5bddca1",
+      "source": "test",
+      "source_digest": "3a1adb213bb4b9cc5d59296c97a6b964657a652e3577bbb386fa72e3c5bddca1"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "    def annotate(self, text, xy, xytext=None, xycoords='data', textcoords=None,\n                 arrowprops=None, annotation_clip=None, **kwargs):\n        # Signature must match Annotation. This is verified in\n        # test_annotate_signature().\n        a = mtext.Annotation(text, xy, xytext=xytext, xycoords=xycoords,\n                             textcoords=textcoords, arrowprops=arrowprops,\n                             annotation_clip=annotation_clip, **kwargs)",
+      "excerpt_digest": "79b3347394894f761aec2a0ac7f7d8bec24b91d065599031e33fa3a148afdda7",
+      "id": "repository:F1",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "lib/matplotlib/axes/_axes.py:L704-L710",
+      "source": "repository",
+      "source_digest": "5d69644db696be9ac2c02a3ade04a5f6427ba3d65b2eab72a6782b8cbe22a2c4"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "        _AnnotationBase.__init__(self,\n                                 xy,\n                                 xycoords=xycoords,\n                                 annotation_clip=annotation_clip)",
+      "excerpt_digest": "243a8790d557b14d0d233b384298072fb791f409083095d4749b1f066250f1e8",
+      "id": "repository:F2",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "lib/matplotlib/text.py:L1813-L1816",
+      "source": "repository",
+      "source_digest": "9d751e0ffee07cd1bdd1ee7f687c58ea54729578d6332446092f49ad4494f473"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "class _AnnotationBase:\n    def __init__(self,\n                 xy,\n                 xycoords='data',\n                 annotation_clip=None):\n\n        self.xy = xy\n        self.xycoords = xycoords\n        self.set_annotation_clip(annotation_clip)",
+      "excerpt_digest": "49d331cab072e1c0c8e4bdfd0ec6c44ca0b0bf7a8d99191f47a2769481243084",
+      "id": "repository:F3",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "lib/matplotlib/text.py:L1453-L1461",
+      "source": "repository",
+      "source_digest": "9d751e0ffee07cd1bdd1ee7f687c58ea54729578d6332446092f49ad4494f473"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "    def _get_position_xy(self, renderer):\n        \"\"\"Return the pixel position of the annotated point.\"\"\"\n        return self._get_xy(renderer, self.xy, self.xycoords)",
+      "excerpt_digest": "be1a3fdfbd68928e7ffb3d536d5326ebf7b26abd33d4f86752f68917aa63bdd9",
+      "id": "repository:F4",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "lib/matplotlib/text.py:L1571-L1573",
+      "source": "repository",
+      "source_digest": "9d751e0ffee07cd1bdd1ee7f687c58ea54729578d6332446092f49ad4494f473"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "    def update_positions(self, renderer):\n        \"\"\"\n        Update the pixel positions of the annotation text and the arrow patch.\n        \"\"\"\n        # generate transformation\n        self.set_transform(self._get_xy_transform(renderer, self.anncoords))\n\n        arrowprops = self.arrowprops\n        if arrowprops is None:\n            return\n\n        bbox = Text.get_window_extent(self, renderer)\n\n        arrow_end = x1, y1 = self._get_position_xy(renderer)  # Annotated pos.\n\n        ms = arrowprops.get(\"mutation_scale\", self.get_size())\n        self.arrow_patch.set_mutation_scale(ms)",
+      "excerpt_digest": "84eed0abb5ea790218428fe4e425e4774f2316f777687a0a5ece54ef82e173d3",
+      "id": "repository:F5",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "lib/matplotlib/text.py:L1917-L1933",
+      "source": "repository",
+      "source_digest": "9d751e0ffee07cd1bdd1ee7f687c58ea54729578d6332446092f49ad4494f473"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "        # Update text positions before `Text.draw` would, so that the\n        # FancyArrowPatch is correctly positioned.\n        self.update_positions(renderer)\n        self.update_bbox_position_size(renderer)\n        if self.arrow_patch is not None:  # FancyArrowPatch\n            if self.arrow_patch.figure is None and self.figure is not None:\n                self.arrow_patch.figure = self.figure\n            self.arrow_patch.draw(renderer)\n        # Draw text, including FancyBboxPatch, after FancyArrowPatch.\n        # Otherwise, a wedge arrowstyle can land partly on top of the Bbox.\n        Text.draw(self, renderer)",
+      "excerpt_digest": "2c1ff64db23226f2a85117aded44a1ec1b83b6d2f1c95ee78bef8ab985ebe995",
+      "id": "repository:F6",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "lib/matplotlib/text.py:L1989-L1999",
+      "source": "repository",
+      "source_digest": "9d751e0ffee07cd1bdd1ee7f687c58ea54729578d6332446092f49ad4494f473"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "        # cleanup xytext defaults\n        if xytext is None:\n            xytext = self.xy\n        x, y = xytext\n\n        self.arrowprops = arrowprops\n        if arrowprops is not None:\n            arrowprops = arrowprops.copy()",
+      "excerpt_digest": "9b6fbf15d66d4a2c78a5a1cb0f935e183ed4b4152f55bd6667165f6fbba8d266",
+      "id": "repository:F7",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "lib/matplotlib/text.py:L1830-L1837",
+      "source": "repository",
+      "source_digest": "9d751e0ffee07cd1bdd1ee7f687c58ea54729578d6332446092f49ad4494f473"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "        self.arrowprops = arrowprops\n        if arrowprops is not None:\n            arrowprops = arrowprops.copy()\n            if \"arrowstyle\" in arrowprops:\n                self._arrow_relpos = arrowprops.pop(\"relpos\", (0.5, 0.5))\n            else:\n                # modified YAArrow API to be used with FancyArrowPatch\n                for key in ['width', 'headwidth', 'headlength', 'shrink']:\n                    arrowprops.pop(key, None)\n                if 'frac' in arrowprops:\n                    _api.warn_deprecated(\n                        \"3.8\", name=\"the (unused) 'frac' key in 'arrowprops'\")\n                    arrowprops.pop(\"frac\")\n            self.arrow_patch = FancyArrowPatch((0, 0), (1, 1), **arrowprops)",
+      "excerpt_digest": "b4b2a395260a3774ed3b70d173312b6fffd995b0e55b15b86bdc1ec9b0357e94",
+      "id": "repository:F8",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "lib/matplotlib/text.py:L1835-L1848",
+      "source": "repository",
+      "source_digest": "9d751e0ffee07cd1bdd1ee7f687c58ea54729578d6332446092f49ad4494f473"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "        arrowprops : dict, optional\n            The properties used to draw a `.FancyArrowPatch` arrow between the\n            positions *xy* and *xytext*.  Defaults to None, i.e. no arrow is\n            drawn.\n\n            For historical reasons there are two different ways to specify\n            arrows, \"simple\" and \"fancy\":",
+      "excerpt_digest": "1858ceabb2027898b0bf6a6439bcea08eee1626406b35781186a307016edff28",
+      "id": "repository:F9",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "lib/matplotlib/text.py:L1737-L1743",
+      "source": "repository",
+      "source_digest": "9d751e0ffee07cd1bdd1ee7f687c58ea54729578d6332446092f49ad4494f473"
+    }
+  ],
+  "hindsight_observations": [
+    {
+      "description": "The added regression test broadened coverage beyond the reported Annotation.xy mutation to the analogous OffsetFrom.ref_coord mutation case; that broader scope is hindsight evidence, not an issue-time owner requirement.",
+      "evidence_ids": [
+        "test-patch",
+        "fail-to-pass"
+      ],
+      "id": "H1"
+    },
+    {
+      "description": "The hindsight test demonstrates the intended snapshot semantics by mutating each source NumPy array after object construction and requiring rendering to remain equivalent to the original coordinates.",
+      "evidence_ids": [
+        "test-patch",
+        "fail-to-pass"
+      ],
+      "id": "H2"
+    },
+    {
+      "description": "The selected text test suite continued to pass after the change, providing hindsight-only non-regression evidence.",
+      "evidence_ids": [
+        "pass-to-pass"
+      ],
+      "id": "H3"
+    }
+  ],
+  "implementation_incidentals": [
+    {
+      "description": "The gold implementation snapshots two-coordinate inputs by unpacking and storing a tuple. This is one valid mechanism and also performs immediate arity validation, but neither the exact representation nor this validation mechanism is uniquely required by the issue.",
+      "evidence_ids": [
+        "gold-patch"
+      ],
+      "id": "I1"
+    },
+    {
+      "description": "The gold patch removes OffsetFrom._get_scale and inlines its scale calculation into __call__; this refactor is unrelated to the reported mutation behavior.",
+      "evidence_ids": [
+        "gold-patch"
+      ],
+      "id": "I2"
+    },
+    {
+      "description": "The regression was implemented as a PNG figure-equivalence test combining Annotation and OffsetFrom scenarios; the particular test structure and rendering backend are incidental.",
+      "evidence_ids": [
+        "test-patch"
+      ],
+      "id": "I3"
+    }
+  ],
+  "inputs": {
+    "fail_to_pass": {
+      "cache_key": "sha256:7b6e51ce0ed0140840caf2e431b567a5bffe6253f2688bae5f1894717cff96c7",
+      "digest": "7b6e51ce0ed0140840caf2e431b567a5bffe6253f2688bae5f1894717cff96c7"
+    },
+    "gold_patch": {
+      "cache_key": "sha256:68c08bc0c00a0c47b63c8392a8c940903ff7461e84479dd4706aba7fe383435f",
+      "digest": "68c08bc0c00a0c47b63c8392a8c940903ff7461e84479dd4706aba7fe383435f"
+    },
+    "issue": {
+      "cache_key": "sha256:75451baef8d992a85b82c5b525b6563cd4ad037336bbac3f555901c7cbe163de",
+      "digest": "75451baef8d992a85b82c5b525b6563cd4ad037336bbac3f555901c7cbe163de"
+    },
+    "pass_to_pass": {
+      "cache_key": "sha256:3a1adb213bb4b9cc5d59296c97a6b964657a652e3577bbb386fa72e3c5bddca1",
+      "digest": "3a1adb213bb4b9cc5d59296c97a6b964657a652e3577bbb386fa72e3c5bddca1"
+    },
+    "test_patch": {
+      "cache_key": "sha256:c847fc26deeffea2f11d4d5315d91e5b3d1ae023b115ab9d7763b4252dec6dfc",
+      "digest": "c847fc26deeffea2f11d4d5315d91e5b3d1ae023b115ab9d7763b4252dec6dfc"
+    }
+  },
+  "material_decisions": [],
+  "review_state": {
+    "dispositions_complete": true,
+    "status": "approved"
+  },
+  "schema": "SealedSWEbenchSource.v1"
+}

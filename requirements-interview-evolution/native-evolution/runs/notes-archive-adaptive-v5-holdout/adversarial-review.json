@@ -1,0 +1,121 @@
+{
+  "findings": [
+    {
+      "id": "selection-mix-rule-lost",
+      "lens_id": "selection-scope-mismatch",
+      "blocker_type": "synthesis-loss",
+      "description": "The contract loses the transcript’s decisive rule that explicit IDs are constrained by every supplied filter type. Its shorter wording can also be read as unioning IDs independently while intersecting only tag and collection filters.",
+      "why_material": "Those interpretations export different note sets for the same mixed-selector invocation, creating either silent omissions or unintended disclosure. The acceptance check refers back to rules that the contract does not state unambiguously.",
+      "citations": [
+        {
+          "artifact": "transcript",
+          "pointer": "/11/answer",
+          "quoted_text": "IDs within filters. Explicit note IDs are unioned with repeated `--id` values, filters of the same type are unioned, and the resulting ID set must also satisfy every supplied filter type. Each matching note is included once."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/3",
+          "quoted_text": "Selection supports repeatable `--id`, `--tag`, and `--collection`; repeated IDs and same-type filters are unioned, different filter types are intersected, and each matching note is included once."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/1",
+          "quoted_text": "Mixed selectors follow the confirmed union/intersection rules and never duplicate a note."
+        }
+      ]
+    },
+    {
+      "id": "offline-verification-cannot-prove-selection-completeness",
+      "lens_id": "verification-without-completeness-evidence",
+      "blocker_type": "unverifiable-acceptance",
+      "description": "The verifier is required to work without the live notes database, but its specified evidence consists only of archive-controlled inventory and declared omissions. No independent snapshot selection record or other completeness witness is required, so an exporter that silently omits a selected note from both manifest and report can still produce an internally consistent archive.",
+      "why_material": "This prevents the requested verifier from establishing that the archive is complete relative to the selected group—the central archival guarantee—and allows silent note loss to pass exit 0.",
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/15",
+          "quoted_text": "Offline verification checks ZIP readability, supported schemas, report-to-manifest integrity, exact expected-entry membership, byte lengths, SHA-256 digests, note-to-attachment references, outcome counts, and declared selection omissions without accessing the live notes database."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/16",
+          "quoted_text": "Verification exits 0 only for a complete internally consistent archive, 1 for a consistent archive declaring partial, skipped, or failed outcomes, and 2 for corruption, malformed data, checksum failure, inventory or reference inconsistency, or undeclared omission. It lists every detected problem."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/0",
+          "quoted_text": "A successful complete export creates the requested ZIP from one logical snapshot, exits 0, and passes offline verification with exit 0."
+        },
+        {
+          "artifact": "transcript",
+          "pointer": "/15/answer",
+          "quoted_text": "{\"selection\":\"Three outcomes\",\"details\":\"Verify ZIP readability, supported schema versions, report-to-manifest integrity, exact expected-entry membership, byte lengths, SHA-256 digests, note-to-attachment references, outcome counts, and declared selection omissions without accessing the live notes database. Exit 0 only for a complete and internally consistent archive, 1 for an internally consistent archive that explicitly declares partial, skipped, or failed outcomes, and 2 for corruption, malformed data, checksum failures, inventory or reference inconsistencies, or undeclared omissions. List every detected problem.\"}"
+        }
+      ]
+    },
+    {
+      "id": "manifest-and-report-schema-undefined",
+      "lens_id": "archive-representation-ambiguity",
+      "blocker_type": "handoff-decision-gap",
+      "description": "The contract requires exact structured metadata, required-field validation, report-to-manifest integrity, outcome counts, inventory closure, and forward-compatible optional fields, but never defines the required fields, JSON shapes, entry inventory representation, digest records, reference rules, or which fields are optional.",
+      "why_material": "Independent exporters and verifiers cannot implement a mutually compatible archive format or determine whether a field is required, optional, malformed, or consistently referenced. Consequently, several acceptance checks have no executable oracle despite `implementation_ready` being true.",
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_text": "true"
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/6",
+          "quoted_text": "Each note body is UTF-8 CommonMark at `notes/<note-id>.md`; exact structured metadata and attachment references live in `manifest.json`."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/14",
+          "quoted_text": "`manifest.json` and `report.json` use major/minor schema versions. Verification accepts supported majors and unknown optional fields, but exits 2 for unsupported majors or missing required fields."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/15",
+          "quoted_text": "Offline verification checks ZIP readability, supported schemas, report-to-manifest integrity, exact expected-entry membership, byte lengths, SHA-256 digests, note-to-attachment references, outcome counts, and declared selection omissions without accessing the live notes database."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/9",
+          "quoted_text": "Supported schema minors and unknown optional fields verify successfully; unsupported majors and missing required fields exit 2."
+        }
+      ]
+    },
+    {
+      "id": "note-id-derived-path-safety-unspecified",
+      "lens_id": "archive-representation-ambiguity",
+      "blocker_type": "handoff-decision-gap",
+      "description": "Archive paths interpolate the note ID directly in both note and attachment paths, while sanitization and collision rules are specified only for attachment filenames. The contract neither constrains note IDs to ZIP-safe path segments nor defines encoding, sanitization, and collision handling for note-ID path components.",
+      "why_material": "An ID containing separators, traversal syntax, absolute-path syntax, normalization variants, or a value colliding after encoding can violate the archive-safety acceptance check or cause two records to share an entry path. Implementers cannot derive one required externally visible layout.",
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/6",
+          "quoted_text": "Each note body is UTF-8 CommonMark at `notes/<note-id>.md`; exact structured metadata and attachment references live in `manifest.json`."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/8",
+          "quoted_text": "Attachments are stored under `attachments/<note-id>/` using deterministic sanitized collision-safe names. Original filenames and final paths are preserved in the manifest; sanitization collisions receive stable suffixes."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/4",
+          "quoted_text": "Unsafe filenames cannot create absolute, traversal, ambiguous, or colliding ZIP paths; original names and resolved archive paths remain auditable."
+        },
+        {
+          "artifact": "transcript",
+          "pointer": "/14/answer",
+          "quoted_text": "Skip unavailable or unreadable attachments and mark the affected note `partial`. Store available attachments under deterministic, sanitized, collision-safe names within `attachments/<note-id>/`; append stable suffixes when sanitization creates a collision. Preserve each original filename and its final archive path in `manifest.json`. Record every omitted attachment with a stable reason code and human-readable message so verification can distinguish declared omissions from archive corruption."
+        }
+      ]
+    }
+  ],
+  "review_summary": "Four material blockers remain: one confirmed mixed-selection rule was weakened during synthesis; offline verification lacks independent evidence of selection completeness; the manifest/report schemas needed for interoperability and validation are undefined; and safety rules do not cover note IDs used as ZIP path components."
+}

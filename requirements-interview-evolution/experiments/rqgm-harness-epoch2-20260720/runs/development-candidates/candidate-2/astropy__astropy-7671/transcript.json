@@ -1,0 +1,63 @@
+[
+  {
+    "answer": "Standard version ordering",
+    "open_material_decisions": [
+      "Required comparison semantics for development and prerelease version strings beyond the reported case."
+    ],
+    "question": {
+      "header": "Version semantics",
+      "options": [
+        {
+          "description": "Use conventional package-version ordering for valid version strings, so releases compare above their corresponding development and prerelease versions while preserving inclusive and exclusive modes.",
+          "label": "Standard version ordering",
+          "recommended": true
+        },
+        {
+          "description": "Require the existing cases plus `1.14.3 >= 1.14dev` to return `True` without error, leaving other development or prerelease combinations unspecified.",
+          "label": "Reported case only",
+          "recommended": false
+        },
+        {
+          "description": "Require all version-string comparisons to return a boolean, including malformed or nonstandard strings, with fallback ordering behavior defined by the implementation.",
+          "label": "Never raise",
+          "recommended": false
+        }
+      ],
+      "prompt": "What compatibility scope should `minversion` guarantee for development and prerelease version strings?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "With a synthetic module whose version is `1.14.3`, `minversion(module, '1.14dev')` returns `True` and does not raise an exception.",
+          "Valid development and prerelease versions follow standard package-version ordering relative to their corresponding final releases.",
+          "Both inclusive and exclusive comparisons are covered, including equality where inclusive returns `True` and exclusive returns `False`.",
+          "The existing `test_minversion` expectations for installed version `0.12.2` continue to pass.",
+          "Module-name import failure, imported-module input, unsupported input type, and configured version-path behavior remain unchanged.",
+          "The relevant introspection test suite passes without regressions."
+        ],
+        "confirmed_decisions": [
+          "For valid version strings, releases compare newer than corresponding development and prerelease versions.",
+          "`minversion` returns `True` for an installed version of `1.14.3` when the requested minimum is `1.14dev`, rather than raising `TypeError`.",
+          "Inclusive mode continues to accept an installed version equal to the requested minimum; exclusive mode continues to require it to be newer.",
+          "Existing accepted comparisons remain accepted: installed `0.12.2` satisfies minimums `0.12`, `0.12.1`, and `0.12.0.dev`.",
+          "Existing rejected comparisons remain rejected: installed `0.12.2` does not satisfy minimums `1` or `1.2rc1`.",
+          "The function continues to accept either an imported module or a module-name string, return `False` when a named module cannot be imported, and reject unsupported module argument types as before.",
+          "The installed version continues to be obtained through `version_path`, including direct and dotted attribute paths.",
+          "`minversion` remains publicly available from both `astropy.utils.introspection` and `astropy.utils`.",
+          "Behavior for malformed or nonstandard version strings is outside this change's guaranteed contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update `astropy.utils.minversion` so valid package version strings use standard version ordering without the `LooseVersion` mixed-type comparison failure. Preserve the existing public API, module resolution, version lookup, and inclusive/exclusive behavior."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The selected standard package-version ordering resolves the only material behavioral ambiguity. The replacement parser or comparison mechanism is an implementation choice and need not be prescribed for an implementable contract."
+    },
+    "turn": 2
+  }
+]

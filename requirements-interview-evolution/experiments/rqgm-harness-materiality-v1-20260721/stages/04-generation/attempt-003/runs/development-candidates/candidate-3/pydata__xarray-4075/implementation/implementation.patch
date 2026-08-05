@@ -1,0 +1,39 @@
+diff --git a/xarray/core/weighted.py b/xarray/core/weighted.py
+index 996d2e4..9b12118 100644
+--- a/xarray/core/weighted.py
++++ b/xarray/core/weighted.py
+@@ -142,6 +142,9 @@ class Weighted:
+         # we need to mask data values that are nan; else the weights are wrong
+         mask = da.notnull()
+ 
++        if self.weights.dtype == bool:
++            mask = mask.astype(int)
++
+         sum_of_weights = self._reduce(mask, self.weights, dim=dim, skipna=False)
+ 
+         # 0-weights are not valid
+diff --git a/xarray/tests/test_weighted.py b/xarray/tests/test_weighted.py
+index 2453121..c35364e 100644
+--- a/xarray/tests/test_weighted.py
++++ b/xarray/tests/test_weighted.py
+@@ -158,6 +158,20 @@ def test_weighted_mean_nan(weights, expected, skipna):
+     assert_equal(expected, result)
+ 
+ 
++@pytest.mark.parametrize("data", ([1.0, 1.0, 1.0], [np.nan, 1.0, 1.0]))
++def test_weighted_mean_bool(data):
++
++    da = DataArray(data)
++    bool_weights = DataArray([True, True, False])
++    numeric_weights = bool_weights.astype(int)
++
++    result = da.weighted(bool_weights).mean()
++    expected = da.weighted(numeric_weights).mean()
++
++    assert_equal(expected, result)
++    assert_equal(DataArray(1.0), result)
++
++
+ def expected_weighted(da, weights, dim, skipna, operation):
+     """
+     Generate expected result using ``*`` and ``sum``. This is checked against

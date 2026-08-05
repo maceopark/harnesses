@@ -1,0 +1,35 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/0",
+          "quoted_value": "Use setuptools’ pkg_resources.parse_version as the version comparator."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/7",
+          "quoted_value": "Do not add a dependency because setup.py already uses setuptools."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/10/statement",
+          "quoted_value": "The project setup script already imports setup from setuptools."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/9/statement",
+          "quoted_value": "Astropy's NumPy requirement check imports minversion and uses it to decide whether to raise ImportError for an insufficient NumPy version."
+        }
+      ],
+      "description": "The contract is not implementation-ready until runtime availability of pkg_resources is established or dependency handling is specified. Otherwise importing Astropy may regress in environments where setuptools was available for building but is absent at runtime.",
+      "failure_class": "compatibility-regression",
+      "general_cause": "The contract treats setuptools being used by the build script as sufficient proof that pkg_resources is available at package runtime.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "The selected comparator introduces a runtime import from setuptools, but the cited repository evidence establishes only that setup.py imports setuptools; it does not establish a runtime dependency or availability guarantee. This is especially material because minversion participates in Astropy's startup NumPy requirement check."
+    }
+  ],
+  "summary": "One material readiness failure: build-script use of setuptools does not verify runtime availability of pkg_resources, so the proposed comparator can introduce an unspecified import-time compatibility regression."
+}

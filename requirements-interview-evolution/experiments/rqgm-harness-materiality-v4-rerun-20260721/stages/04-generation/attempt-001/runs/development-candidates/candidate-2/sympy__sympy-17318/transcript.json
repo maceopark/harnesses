@@ -1,0 +1,51 @@
+[
+  {
+    "answer": "sqrtdenest only",
+    "open_material_decisions": [
+      "Whether the behavioral change is confined to sqrtdenest or extends to direct and other internal callers of split_surds when no surd factors are present."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Make sqrtdenest treat this case as an unsuccessful denesting match and return the affected expression unchanged, without defining new behavior for split_surds callers.",
+          "label": "sqrtdenest only",
+          "recommended": true
+        },
+        {
+          "description": "Define a non-error result for split_surds when no surd factors exist, affecting every caller of that helper.",
+          "label": "Harden split_surds",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should the empty-surds case be handled?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Calling sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) completes without IndexError and returns 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.",
+          "Existing sqrtdenest cases that can be denested continue to produce their established denested results.",
+          "Existing sqrtdenest cases that cannot or should not be denested continue to return unchanged results.",
+          "Behavior of split_surds outside calls made through sqrtdenest is unchanged."
+        ],
+        "confirmed_decisions": [
+          "For the reported expression, sqrtdenest returns an expression equal to its unchanged, expanded input: 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.",
+          "sqrtdenest does not raise IndexError when its denesting analysis encounters an additive radicand with no qualifying surd factors.",
+          "The behavioral change is confined to sqrtdenest; no new public or internal behavior is prescribed for direct or other callers of split_surds.",
+          "Existing successful denesting results and existing unchanged-expression outcomes remain compatible."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Ensure sqrtdenest treats the reported non-denestable expression as an unsuccessful denesting case and returns it unchanged instead of raising IndexError."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested behavior and change boundary are fully resolved: the reported input must no longer raise IndexError, and the fix is confined to sqrtdenest behavior without defining new behavior for split_surds or its other callers."
+    },
+    "turn": 2
+  }
+]

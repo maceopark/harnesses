@@ -1,0 +1,76 @@
+[
+  {
+    "answer": "Docs plus alias",
+    "open_material_decisions": [
+      "Whether a documented type alias should retain or suppress the generated “alias of …” text."
+    ],
+    "question": {
+      "header": "Alias output",
+      "options": [
+        {
+          "description": "Render the complete source documentation and then the generated “alias of …” text, consistently for all alias runtime shapes.",
+          "label": "Docs plus alias",
+          "recommended": true
+        },
+        {
+          "description": "Render the complete source documentation and suppress the generated “alias of …” text.",
+          "label": "Docs only",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has next-line variable documentation, what should autodoc render?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Module and class aliases",
+    "open_material_decisions": [
+      "Whether consistent source-documentation handling applies only to module-level type aliases from the report or also to type aliases declared as class attributes."
+    ],
+    "question": {
+      "header": "Alias scope",
+      "options": [
+        {
+          "description": "Apply the behavior to documented type aliases at module scope and as class attributes, regardless of runtime alias shape.",
+          "label": "Module and class aliases",
+          "recommended": true
+        },
+        {
+          "description": "Limit the fix to module-level aliases like ScaffoldOpts, FileContents, and FileOp in the report.",
+          "label": "Module aliases only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should autodoc consistently preserve next-line documentation and then render the generated “alias of …” text?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Automatic module-member documentation of documented Dict, Union, and Callable aliases preserves each alias’s complete multiline next-line documentation and then renders its generated “alias of …” text.",
+          "Automatic class-member documentation of a documented type alias preserves its complete multiline next-line documentation and then renders its generated “alias of …” text.",
+          "Blank lines, indentation, literal blocks, directives, and other multiline structure in next-line alias documentation are preserved in the rendered documentation.",
+          "Aliases receive the same documented-alias output regardless of whether their runtime object matches ClassDocumenter, Sphinx’s recognized generic-alias types, or only DataDocumenter.",
+          "An undocumented type alias continues to render its existing generated alias information without fabricated source documentation.",
+          "Ordinary non-alias classes and data attributes retain their existing autodoc output."
+        ],
+        "confirmed_decisions": [
+          "A type alias with next-line variable documentation renders the complete source documentation followed by the generated “alias of …” text.",
+          "The behavior applies to both module-level aliases and type aliases declared as class attributes.",
+          "The result is consistent across type-alias runtime shapes, including aliases that would otherwise be selected by different autodoc documenters.",
+          "Existing behavior for aliases without next-line variable documentation remains unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Make autodoc render next-line variable documentation consistently for documented type aliases, regardless of their runtime alias shape or which automatic documenter would otherwise classify them. This applies to aliases declared at module scope and as class attributes. The complete source documentation is rendered first, followed by the generated “alias of …” text. Undocumented aliases retain their existing generated alias output."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The prior answers resolve the material output and scope decisions. Repository evidence establishes the affected classification paths and existing source-documentation behavior, so the contract is implementation-ready without further owner input."
+    },
+    "turn": 3
+  }
+]

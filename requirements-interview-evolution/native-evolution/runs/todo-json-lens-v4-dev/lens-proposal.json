@@ -1,0 +1,44 @@
+{
+  "lenses": [
+    {
+      "id": "hidden-output-contract",
+      "stage": "discovery",
+      "failure_description": "Existing human-readable behavior or undocumented output conventions are missed, so the change alters default command behavior despite the preservation requirement.",
+      "observable_signal": "Running the command without --json produces different text, ordering, spacing, exit status, or side effects than before.",
+      "why_material": "The explicit compatibility requirement is violated and existing users or scripts may break.",
+      "minimal_test_shape": "Capture representative pre-change default invocations, then compare their stdout, stderr, exit status, ordering, and side effects against the changed command without --json."
+    },
+    {
+      "id": "ambiguous-record-schema",
+      "stage": "interaction",
+      "failure_description": "Material questions about which task fields, value types, nullability, identifiers, and ordering belong in each JSON record remain unresolved.",
+      "observable_signal": "Different implementers produce incompatible JSON shapes from the same task data, or consumers must guess how to interpret missing and optional values.",
+      "why_material": "Automation cannot reliably parse or depend on an unspecified data contract.",
+      "minimal_test_shape": "Present records containing complete, missing, optional, and unusual field values and check whether one unambiguous expected JSON representation can be stated for each."
+    },
+    {
+      "id": "mixed-machine-output",
+      "stage": "synthesis",
+      "failure_description": "The handoff does not clearly distinguish JSON payload output from diagnostics, warnings, progress text, or empty-result behavior.",
+      "observable_signal": "A successful --json invocation emits non-JSON text on stdout, or empty and error cases cannot be parsed consistently.",
+      "why_material": "Any extra or undefined stdout content can make the command unusable in automated pipelines.",
+      "minimal_test_shape": "Exercise successful, empty, warning-producing, and failing invocations with --json and verify whether stdout is consistently parseable according to a single stated contract."
+    },
+    {
+      "id": "flag-semantics-divergence",
+      "stage": "implementation",
+      "failure_description": "The --json path applies different filtering, sorting, selection, or task retrieval semantics from the existing list command.",
+      "observable_signal": "For identical arguments and underlying tasks, the JSON result represents a different record set or order than the default listing.",
+      "why_material": "The flag would change command meaning rather than only provide an automation-consumable representation.",
+      "minimal_test_shape": "Run matched default and --json invocations across filters, sort options, empty data, and multiple tasks, then compare represented task identities and ordering."
+    },
+    {
+      "id": "compatibility-coverage-gap",
+      "stage": "verification",
+      "failure_description": "Verification demonstrates valid JSON in a happy path but does not establish preservation of existing behavior or correctness across edge and failure cases.",
+      "observable_signal": "Tests pass while regressions remain in default output, option combinations, special characters, empty lists, or error exit statuses.",
+      "why_material": "The handoff can appear complete without proving either half of the goal: compatibility and dependable machine consumption.",
+      "minimal_test_shape": "Use a compact matrix covering flag absent versus present, zero versus multiple records, escaped text, option combinations, and command failures; assert output channel, parseability, record equivalence, and exit status."
+    }
+  ]
+}

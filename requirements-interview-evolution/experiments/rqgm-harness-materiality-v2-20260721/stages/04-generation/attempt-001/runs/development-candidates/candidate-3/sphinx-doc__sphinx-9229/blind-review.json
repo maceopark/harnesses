@@ -1,0 +1,55 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/1",
+          "quoted_value": "The generated “alias of …” paragraph is suppressed for such a documented alias."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/4",
+          "quoted_value": "Existing assignment-following documentation behavior for ordinary variables and attributes remains unchanged."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/8/statement",
+          "quoted_value": "The autodata generic-alias test expects both the custom “A list of int” documentation and the generated “alias of typing.List[int]” paragraph on supported Python versions."
+        }
+      ],
+      "description": "Suppressing “alias of …” is intentionally limited to assignment-following documentation, but no acceptance check ensures that generic aliases documented through the existing preceding `#:` comment form continue to include the alias paragraph. This leaves a material compatibility regression unguarded.",
+      "failure_class": "omission",
+      "general_cause": "The contract does not preserve the existing documented-generic-alias behavior for documentation supplied through the established preceding-comment syntax.",
+      "id": "F-1",
+      "material": true,
+      "observable_signal": "The only compatibility check covers ordinary variables and attributes, while repository tests specifically expect documented generic aliases to retain both custom documentation and the generated alias paragraph."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/3",
+          "quoted_value": "The three aliases exhibit the same documented-alias behavior rather than differing according to their runtime typing representation."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/unknowns/1",
+          "quoted_value": "The repository evidence alone does not establish which Python-version-specific typing alias representation caused the originally reported three-alias inconsistency."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/6/statement",
+          "quoted_value": "The generic-alias predicate recognizes typing._GenericAlias, types.GenericAlias, and typing._SpecialGenericAlias instances when those runtime types exist."
+        }
+      ],
+      "description": "The contract can pass on one supported interpreter without demonstrating that the reported Python 3.6.9 inconsistency is fixed. Because alias recognition and documenter selection vary with runtime typing representations, an explicit version-bound acceptance check is required to verify the public case.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The acceptance contract does not specify a Python-version matrix or explicitly cover the reported Python 3.6 environment despite runtime-version-dependent typing representations.",
+      "id": "F-2",
+      "material": true,
+      "observable_signal": "The consistency check refers generically to runtime typing representations, while audited evidence says the causative version-specific representation is unknown."
+    }
+  ],
+  "summary": "The contract resolves the desired output but is not materially implementation-ready: it lacks a regression guard for existing preceding-comment generic-alias behavior and does not make the reported version-dependent failure verifiable."
+}

@@ -1,0 +1,26 @@
+{
+  "acceptance_checks": [
+    "The focused astropy.utils introspection tests pass.",
+    "minversion with installed version 1.14.3 and requested version 1.14dev returns True for inclusive=True without raising TypeError.",
+    "minversion with installed version 1.14.3 and requested version 1.14dev returns True for inclusive=False without raising TypeError.",
+    "Equal installed and requested versions return True for inclusive=True and False for inclusive=False.",
+    "All pre-existing minversion assertions remain passing.",
+    "The implementation no longer constructs LooseVersion objects in minversion and instead compares values returned by pkg_resources.parse_version.",
+    "No files outside the comparator implementation and its focused tests require behavioral changes."
+  ],
+  "confirmed_decisions": [
+    "Use setuptools’ pkg_resources.parse_version as the version comparator.",
+    "Preserve inclusive=True as >= and inclusive=False as >.",
+    "Require regression coverage for both inclusive and exclusive branches.",
+    "Cover 1.14.3 versus 1.14dev in both branches.",
+    "Cover equality and prove it passes only for inclusive comparison.",
+    "Retain all existing minversion cases.",
+    "Preserve the existing minversion public API, input handling, version lookup, and error/False behavior.",
+    "Do not add a dependency because setup.py already uses setuptools.",
+    "Keep scope limited to comparator import/use and focused tests.",
+    "Accept bounded ordering differences for version strings outside the reported and existing tested cases without requiring a broader compatibility matrix."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Replace distutils.version.LooseVersion in astropy.utils.minversion with setuptools’ pkg_resources.parse_version. Preserve the public signature and existing behavior for module objects and module-name strings, version_path lookup, failed named imports returning False, invalid module arguments raising ValueError, and comparison semantics: inclusive=True uses >= while inclusive=False uses >. Add focused regression tests proving that installed version 1.14.3 satisfies requested version 1.14dev in both comparison branches, and that equality succeeds only in the inclusive branch. Retain the existing minversion test cases. Limit implementation to the comparator import/use and associated tests; setuptools is already used by setup.py, so no new dependency is required. Acceptance requires the focused introspection tests to pass without TypeError. Acknowledged residual risk: parse_version may order version strings differently from LooseVersion outside the reported case and existing tests; no broader compatibility matrix is required."
+}

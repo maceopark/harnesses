@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "With default python_files, running pytest from a directory containing foobar/__init__.py with an import-time failure and an unrelated matching test must not import foobar/__init__.py; the matching test runs successfully.",
+    "The same non-import behavior holds for pytest foobar when foobar/__init__.py does not match python_files.",
+    "A matching test file below a directory whose __init__.py does not match python_files is still recursively discovered and collected.",
+    "A regression test distinguishes eager discovery from indirect imports by using a package tree with no matching nested test that would normally import the package initializer.",
+    "Directly passing a package __init__.py preserves the existing default behavior of collecting no tests unless configured patterns allow them, without regressing existing direct-path tests.",
+    "With python_files = *.py or another pattern matching __init__.py, directory collection still imports/collects the initializer and runs tests defined there as covered by existing tests.",
+    "Existing collect_ignore behavior remains intact: ignored package trees do not have their initializers or child collection files imported.",
+    "The targeted collection test suite passes, including existing tests for initializer collection, direct initializer arguments, package traversal, pyargs/testpaths, and collect_ignore."
+  ],
+  "confirmed_decisions": [
+    "Non-initial __init__.py files discovered during directory traversal are gated by the configured python_files patterns instead of being unconditionally treated as Package collectors.",
+    "The same pattern-gating applies when the containing package directory is explicitly passed to pytest.",
+    "Excluding a package initializer from eager collection does not exclude its directory tree; matching nested test files are still discovered recursively.",
+    "The fix prevents pytest's eager Package import only; it does not promise to suppress initializer execution caused by normal Python imports of nested test modules.",
+    "An explicitly passed __init__.py remains eligible for collection under existing initial-path semantics.",
+    "When python_files is broadened to match __init__.py, existing package-initializer collection and tests defined in __init__.py remain supported."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Restore pattern-gated package discovery. During recursive collection—including the default current directory and explicitly supplied directories—pytest must not eagerly create/import a Package collector for an __init__.py that does not match python_files. It must continue recursively discovering matching test files beneath that directory. This guarantee covers only pytest's eager package discovery; importing a matching nested test may still execute the initializer through normal Python import semantics. Explicitly passed __init__.py files remain collectible, and configurations whose python_files patterns include __init__.py or *.py retain initializer/package collection behavior."
+}

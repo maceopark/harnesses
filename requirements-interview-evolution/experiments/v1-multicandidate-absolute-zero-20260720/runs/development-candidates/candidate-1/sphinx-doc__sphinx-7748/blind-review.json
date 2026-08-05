@@ -1,0 +1,35 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/1/statement",
+          "quoted_value": "_find_signature examines only doclines[0] of each returned docstring, so subsequent leading signature lines are not considered."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/3/statement",
+          "quoted_value": "After finding a signature, the implementation removes exactly the first docstring line, stores one args/return-annotation pair, and immediately stops searching."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/2",
+          "quoted_value": "Stop at the first blank, non-signature, or invalid-name line and preserve the remainder as content."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/6",
+          "quoted_value": "A docstring whose first line is not a valid accepted-name signature remains unchanged by extraction."
+        }
+      ],
+      "description": "The audited implementation examines the first line of each returned candidate docstring and stops only after finding an accepted signature. The contract's stopping rule can be read as terminating extraction at the first invalid leading line, while its compatibility checks cover invalid first lines only as a single-docstring case. An implementer could therefore stop the entire search on an invalid earlier candidate and regress existing multi-candidate behavior while satisfying every stated acceptance check.",
+      "failure_class": "compatibility-regression",
+      "general_cause": "The contract specifies extraction within a docstring but does not preserve the existing search behavior across multiple candidate docstrings returned by get_doc().",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "No confirmed decision or acceptance check requires empty, non-signature, or invalid-name earlier candidate docstrings to be skipped so that a valid signature in a later candidate can still be extracted."
+    }
+  ],
+  "summary": "The contract is otherwise well-grounded, but it leaves one material compatibility boundary unspecified: existing search behavior across multiple candidate docstrings."
+}

@@ -1,0 +1,87 @@
+[
+  {
+    "answer": "Restore parse_version",
+    "open_material_decisions": [
+      "Which version parser/comparison policy should replace direct LooseVersion comparison, including the required compatibility scope for nonstandard version strings."
+    ],
+    "question": {
+      "header": "Version policy",
+      "options": [
+        {
+          "description": "Use `pkg_resources.parse_version` so `1.14.3 >= 1.14dev` returns true while retaining broad legacy-version handling.",
+          "label": "Restore parse_version",
+          "recommended": true
+        },
+        {
+          "description": "Keep `LooseVersion` and normalize or special-case development-version inputs only enough to prevent the reported mixed int/string failure.",
+          "label": "Targeted LooseVersion fix",
+          "recommended": false
+        },
+        {
+          "description": "Adopt a PEP 440-oriented parser and define unsupported legacy version strings as outside the compatibility contract.",
+          "label": "Standards-based parser",
+          "recommended": false
+        }
+      ],
+      "prompt": "What comparison behavior should the fix implement for `minversion`?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Both modes (Recommended)",
+    "open_material_decisions": [
+      "Which regression cases must be locked in to demonstrate that restoring `pkg_resources.parse_version` fixes the reported failure without changing `minversion` semantics."
+    ],
+    "question": {
+      "header": "Regression scope",
+      "options": [
+        {
+          "description": "Cover `1.14.3` versus `1.14dev` in inclusive and exclusive modes, while retaining all existing pass/fail cases.",
+          "label": "Both modes (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Add only the exact reported default inclusive case and retain the existing tests.",
+          "label": "Inclusive only",
+          "recommended": false
+        },
+        {
+          "description": "Add broader development, release-candidate, and unequal-length numeric version combinations for both modes.",
+          "label": "Version matrix",
+          "recommended": false
+        }
+      ],
+      "prompt": "What test coverage should define success for the restored `parse_version` comparison?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "`minversion` no longer imports or constructs `distutils.version.LooseVersion`; it parses both the installed and requested versions with `pkg_resources.parse_version`.",
+          "For a synthetic module whose `__version__` is `1.14.3`, `minversion(module, '1.14dev')` returns `True` and does not raise `TypeError`.",
+          "For the same module, `minversion(module, '1.14dev', inclusive=False)` returns `True` and does not raise `TypeError`.",
+          "Existing expectations for installed version `0.12.2` remain unchanged: `0.12`, `0.12.1`, and `0.12.0.dev` pass; `1` and `1.2rc1` fail.",
+          "String-based import failure still returns `False`, unsupported module argument types still raise `ValueError`, and custom `version_path` resolution remains unchanged.",
+          "The targeted introspection test suite passes."
+        ],
+        "confirmed_decisions": [
+          "Use `pkg_resources.parse_version` as the parser and comparator, restoring the behavior removed by PR #7647.",
+          "Apply parsed-version comparison in both branches: `>=` when `inclusive=True` and `>` when `inclusive=False`.",
+          "Add regression tests for installed version `1.14.3` compared with requested version `1.14dev` in both inclusive and exclusive modes.",
+          "Retain all existing `test_minversion` pass/fail cases and preserve behavior unrelated to version parsing.",
+          "Do not introduce normalization or special-case handling for individual development-version strings."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Replace `LooseVersion` comparisons in `astropy.utils.introspection.minversion` with `pkg_resources.parse_version`. Preserve the existing module resolution, `version_path`, missing-module, validation, and inclusive/exclusive semantics. Add regression coverage proving that an installed version of `1.14.3` satisfies a requested minimum of `1.14dev` without raising `TypeError` in both comparison modes, while retaining the existing version cases."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The material behavior and regression scope are resolved: restore `pkg_resources.parse_version` and cover the reported development-version comparison in both inclusive and exclusive modes. The contract is implementable from the audited repository evidence without further owner input."
+    },
+    "turn": 3
+  }
+]

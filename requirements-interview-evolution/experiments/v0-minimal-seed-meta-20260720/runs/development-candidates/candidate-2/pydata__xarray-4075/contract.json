@@ -1,0 +1,27 @@
+{
+  "acceptance_checks": [
+    "The reported eager DataArray example returns scalar `1.0`.",
+    "A direct `sum_of_weights` test with multiple `True` boolean weights returns their numeric count rather than boolean `True`.",
+    "A boolean-weight test with missing data excludes the corresponding weight from the denominator and produces the reference result computed by masked weights followed by numeric summation.",
+    "A dimension-specific boolean-weighted mean reduces only the requested dimension and matches the existing multiplication-and-sum reference semantics.",
+    "A Dataset using boolean weights produces correct per-variable weighted means through the shared denominator implementation.",
+    "A representative dask-backed DataArray weighted mean with boolean weights remains lazy until computed and yields the same correct result as the eager equivalent.",
+    "All-zero boolean weights continue to yield a missing sum of weights and weighted mean according to existing behavior.",
+    "Existing numeric-weight weighted tests continue to pass without changed results.",
+    "The targeted weighted test module passes with the new regressions, including dask-dependent coverage when dask is available."
+  ],
+  "confirmed_decisions": [
+    "Modify `Weighted._sum_of_weights` in `xarray/core/weighted.py` so the boolean result of `da.notnull()` is cast to an integer mask before calling `_reduce`.",
+    "Do not cast or mutate `self.weights`; boolean weights retain their public representation and continue to mean numeric 0/1 contributions during weighted operations.",
+    "Keep the existing `_reduce` and dot/einsum implementation rather than replacing the denominator with multiplication followed by summation.",
+    "Keep existing behavior that converts a zero sum of weights to a missing result.",
+    "The reported `DataArray([1., 1., 1.])` with boolean weights `[True, True, False]` must produce a weighted mean of `1.0`, not `2.0`.",
+    "Regression coverage must exercise the shared denominator behavior for both DataArrayWeighted and DatasetWeighted.",
+    "Regression coverage must include representative dimension-specific reduction, missing-data masking, and direct `sum_of_weights` behavior with boolean weights.",
+    "Regression coverage must include a representative dask-backed weighted mean with boolean weights, while retaining eager-array coverage.",
+    "No new dtype restriction, validation error, public API change, dependency, or unrelated weighted-reduction refactor is authorized."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Fix boolean-weighted means by converting the `da.notnull()` validity mask to an integer dtype before `_sum_of_weights` passes it with `self.weights` to the existing shared dot/einsum reduction. Preserve the current weighted API, original weights dtype, zero-total handling, numerator calculation, and reduction architecture. Add regression tests establishing correct boolean-weight behavior across the shared DataArray and Dataset paths, including dimension-specific reduction, missing data, direct `sum_of_weights`, and a representative dask-backed weighted mean."
+}

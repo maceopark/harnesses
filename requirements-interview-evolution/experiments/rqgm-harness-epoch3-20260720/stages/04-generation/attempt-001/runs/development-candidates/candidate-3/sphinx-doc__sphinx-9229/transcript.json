@@ -1,0 +1,102 @@
+[
+  {
+    "answer": "Custom docs only",
+    "open_material_decisions": [
+      "Whether source documentation replaces or accompanies generated “alias of …” content."
+    ],
+    "question": {
+      "header": "Alias output",
+      "options": [
+        {
+          "description": "Render the source documentation and suppress the generated “alias of …” paragraph for that alias.",
+          "label": "Custom docs only",
+          "recommended": true
+        },
+        {
+          "description": "Preserve the source documentation and also render the generated “alias of …” paragraph, matching existing GenericAlias behavior on Python 3.7+.",
+          "label": "Custom docs plus alias",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has next-line source documentation, what should autodoc render?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "All alias categories",
+    "open_material_decisions": [
+      "Whether source documentation suppresses generated alias text only for generic typing aliases or consistently for every autodoc alias category that generates such text."
+    ],
+    "question": {
+      "header": "Alias scope",
+      "options": [
+        {
+          "description": "Apply the rule consistently to generic aliases, NewType objects, and TypeVars whenever source documentation exists.",
+          "label": "All alias categories",
+          "recommended": true
+        },
+        {
+          "description": "Limit the change to aliases composed from typing generics, matching the reported examples.",
+          "label": "Generic aliases only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which alias categories should use custom source documentation instead of generated “alias of …” text?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Include legacy path",
+    "open_material_decisions": [
+      "Whether the custom-documentation precedence rule must also cover legacy Python typing aliases handled as class aliases (`doc_as_attr`)."
+    ],
+    "question": {
+      "header": "Legacy aliases",
+      "options": [
+        {
+          "description": "Covers the reported Python 3.6 behavior as well as GenericAlias, NewType, and TypeVar aliases.",
+          "label": "Include legacy path",
+          "recommended": true
+        },
+        {
+          "description": "Limits the contract to GenericAlias, NewType, and TypeVar handling and does not require fixing Python 3.6 class-alias behavior.",
+          "label": "Modern categories only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should aliases handled through the legacy class-alias path also show custom source documentation instead of generated “alias of …” text?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A documented generic typing alias renders its complete next-line source documentation and does not render a generated “alias of …” paragraph.",
+          "A documented NewType alias renders its source documentation and does not render a generated “alias of …” paragraph.",
+          "A documented TypeVar renders its source documentation and does not render a generated “alias of TypeVar(…)” paragraph.",
+          "A documented alias handled through the legacy class-alias path renders its source documentation and does not replace it with generated alias text.",
+          "An alias without source documentation continues to render its existing generated “alias of …” description.",
+          "The reported ScaffoldOpts, FileContents, and FileOp aliases each render their full custom multiline documentation without generated alias text.",
+          "Multiline documentation containing blank lines, literal blocks, lists, roles, and directives remains present and structurally valid in the generated output.",
+          "Existing non-alias data documentation behavior remains unchanged."
+        ],
+        "confirmed_decisions": [
+          "Nonempty next-line source documentation replaces, rather than accompanies, generated “alias of …” content.",
+          "The custom-documentation precedence rule applies to generic aliases, NewType objects, and TypeVars.",
+          "The same rule applies to aliases handled through the legacy class-alias path, including the reported Python 3.6 behavior.",
+          "Aliases without custom source documentation preserve their existing generated “alias of …” output.",
+          "Multiline source documentation preserves its content and reStructuredText structure in rendered documentation."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "When an alias has nonempty next-line source documentation, autodoc must render that custom documentation and omit its generated “alias of …” paragraph. This precedence applies consistently to generic typing aliases, NewType objects, TypeVars, and aliases handled through the legacy class-alias path. Aliases without source documentation retain their existing generated alias output."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "All material product decisions are resolved, and the repository evidence supports an implementation-ready behavioral contract."
+    },
+    "turn": 4
+  }
+]

@@ -1,0 +1,79 @@
+[
+  {
+    "answer": "Constructor only",
+    "open_material_decisions": [
+      "Whether the non-empty constraint applies only to Blueprint constructor names or also to registration-time name overrides."
+    ],
+    "question": {
+      "header": "Validation scope",
+      "options": [
+        {
+          "description": "Raise ValueError when Blueprint is constructed with an empty name, preserve registration override behavior, and add a regression test alongside dotted-name validation.",
+          "label": "Constructor only",
+          "recommended": true
+        },
+        {
+          "description": "Also reject an empty name passed as the registration-time name override, with tests for both entry points.",
+          "label": "Constructor and override",
+          "recommended": false
+        }
+      ],
+      "prompt": "What should the non-empty-name rule cover, and what should count as success?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Empty string only",
+    "open_material_decisions": [
+      "Whether whitespace-only constructor names remain valid."
+    ],
+    "question": {
+      "header": "Empty meaning",
+      "options": [
+        {
+          "description": "Reject only \"\" with ValueError; preserve existing behavior for whitespace-only names and registration-time overrides.",
+          "label": "Empty string only",
+          "recommended": true
+        },
+        {
+          "description": "Reject \"\" and names containing only whitespace, which broadens the request beyond literal emptiness.",
+          "label": "Empty or whitespace",
+          "recommended": false
+        }
+      ],
+      "prompt": "For Blueprint constructor names, which values should the new validation reject?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "flask.Blueprint(\"\", __name__) raises ValueError.",
+          "A normal non-empty Blueprint name remains accepted.",
+          "A whitespace-only Blueprint constructor name remains accepted by this change.",
+          "A dotted Blueprint constructor name such as \"app.ui\" continues to raise ValueError.",
+          "An empty registration-time name override retains its existing behavior and is not rejected by the new constructor validation.",
+          "The targeted Blueprint test suite passes."
+        ],
+        "confirmed_decisions": [
+          "Validate the name passed to Blueprint.__init__ only.",
+          "Reject only the literal empty string \"\".",
+          "Do not reject whitespace-only names.",
+          "Do not add validation for the registration-time name override.",
+          "Raise ValueError during Blueprint construction, before assigning self.name.",
+          "Preserve the existing ValueError behavior for names containing a dot.",
+          "Add a regression test alongside the existing dotted-name validation test in tests/test_blueprints.py."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Require Blueprint constructor names to be non-empty. Constructing Blueprint(\"\", import_name) must raise ValueError immediately. Preserve existing dotted-name validation, whitespace-only constructor names, and all registration-time name-override behavior."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The user clarified both material boundaries: validation applies only to the Blueprint constructor, and only the literal empty string is invalid. The repository evidence identifies the precise validation and regression-test locations, so the change is implementation-ready."
+    },
+    "turn": 3
+  }
+]

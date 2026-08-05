@@ -1,0 +1,90 @@
+[
+  {
+    "answer": "Stop and preserve (Recommended)",
+    "open_material_decisions": [
+      "How signature collection should behave when a line after one or more valid overload signatures is signature-shaped but does not qualify for the documented object."
+    ],
+    "question": {
+      "header": "Stop rule",
+      "options": [
+        {
+          "description": "Stop collecting at the first non-qualifying line and keep that line plus everything after it as ordinary docstring content.",
+          "label": "Stop and preserve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Stop collecting but remove the non-qualifying signature-like line from the rendered docstring content.",
+          "label": "Stop and remove",
+          "recommended": false
+        },
+        {
+          "description": "Keep scanning later lines for more valid signatures while preserving the non-qualifying line as content.",
+          "label": "Skip and continue",
+          "recommended": false
+        }
+      ],
+      "prompt": "After collecting at least one valid leading signature, what should autodoc do when the next line is malformed or names a different object?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Functions and methods",
+    "open_material_decisions": [
+      "Whether consecutive leading signatures should be collected for both functions and methods, or only methods."
+    ],
+    "question": {
+      "header": "Feature scope",
+      "options": [
+        {
+          "description": "Extend the existing generic behavior consistently to both function and method docstrings, including SWIG-wrapped methods.",
+          "label": "Functions and methods",
+          "recommended": true
+        },
+        {
+          "description": "Limit overload-signature collection to method docstrings; functions retain the current single-signature behavior.",
+          "label": "Methods only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should multiple leading docstring signatures be recognized for every documenter that currently supports autodoc_docstring_signature, or only for methods?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A function docstring beginning with two qualifying signatures emits both signatures in order and omits both lines from rendered content.",
+          "A method docstring beginning with two qualifying signatures emits both signatures as aligned method directive lines and omits both lines from rendered content.",
+          "After one or more qualifying signatures, a prose line stops collection and remains in the rendered content with everything following it.",
+          "After one or more qualifying signatures, a malformed or differently named signature-like line stops collection and remains in the rendered content with everything following it.",
+          "A docstring whose first line does not qualify retains that line and uses the existing fallback signature behavior.",
+          "The existing single-leading-signature behavior remains unchanged.",
+          "Disabling autodoc_docstring_signature retains all signature-looking docstring lines as content and uses the existing introspected or fallback signature.",
+          "An explicitly supplied signature prevents docstring overload signatures from replacing it.",
+          "Documentation states that consecutive qualifying signatures at the start of function and method docstrings are recognized and removed from content."
+        ],
+        "confirmed_decisions": [
+          "The behavior applies to both functions and methods that already support autodoc_docstring_signature, including SWIG-wrapped methods.",
+          "When autodoc_docstring_signature is enabled and no explicit signature was supplied, autodoc collects consecutive leading lines that are valid Python-style signatures for the documented object under the existing accepted-name rules.",
+          "Each collected leading signature is displayed as a separate, aligned directive signature in its original order.",
+          "All collected signature lines are removed from the rendered docstring content.",
+          "Collection stops at the first line that is malformed, is not signature-shaped, or names an object that does not qualify under the existing accepted-name rules.",
+          "The first non-qualifying line and all subsequent lines remain ordinary docstring content.",
+          "If the first line does not qualify as a signature, existing behavior is preserved: no docstring signature is used or removed.",
+          "An explicitly supplied signature continues to take precedence over docstring-signature discovery.",
+          "When autodoc_docstring_signature is disabled, no leading signature lines are extracted or removed.",
+          "The user documentation describes support for one or more consecutive leading function or method signatures."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend autodoc_docstring_signature so function and method docstrings may supply multiple overload signatures as consecutive qualifying lines at the beginning of a docstring. Every collected signature is rendered as a directive signature, and collected lines are removed from the rendered docstring content."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The repository evidence and two interview answers resolve the material behavior: collect consecutive qualifying signatures for both functions and methods, then stop at the first non-qualifying line and preserve the remaining content. No material blocker remains."
+    },
+    "turn": 3
+  }
+]

@@ -1,0 +1,141 @@
+[
+  {
+    "answer": "CLI-relative path",
+    "open_material_decisions": [
+      "Choose the path representation against which ignore-paths regexes must be evaluated during recursive discovery."
+    ],
+    "question": {
+      "header": "Match target",
+      "options": [
+        {
+          "description": "Match normalized paths preserving the command-line root spelling, so discovered files appear as `src/gen/about.py`; accept both slash styles through the existing regex transformation.",
+          "label": "CLI-relative path",
+          "recommended": true
+        },
+        {
+          "description": "Match every discovered path relative to the current working directory, even when the supplied target is absolute or uses a different spelling.",
+          "label": "Working-directory relative",
+          "recommended": false
+        },
+        {
+          "description": "Match canonical absolute paths, requiring anchored patterns to include the full filesystem prefix.",
+          "label": "Absolute path",
+          "recommended": false
+        }
+      ],
+      "prompt": "For `pylint --recursive=y src/` with `ignore-paths = [\"^src/gen/.*$\"]`, which path representation should `ignore-paths` match?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "All ignore checks",
+    "open_material_decisions": [
+      "Choose whether path normalization is limited to recursive discovery or centralized across all ignore-path matching."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Centralize normalization in the shared ignore-path predicate so recursive discovery, top-level expansion, and package submodule checks behave consistently.",
+          "label": "All ignore checks",
+          "recommended": true
+        },
+        {
+          "description": "Normalize only paths produced by `_discover_files`, leaving other ignore-path matching behavior unchanged.",
+          "label": "Recursive only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should CLI-relative separator normalization be applied before evaluating `ignore-paths`?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "No, preserve target (Recommended)",
+    "open_material_decisions": [
+      "Define how anchored project-relative ignore-path patterns behave when the recursive command-line target is absolute."
+    ],
+    "question": {
+      "header": "Absolute root",
+      "options": [
+        {
+          "description": "Normalize separators but preserve whether the command-line target was relative or absolute; anchored project-relative patterns require a relative target.",
+          "label": "No, preserve target (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Convert discovered absolute paths to project-relative paths so the same anchored pattern matches regardless of target spelling.",
+          "label": "Yes, project-relative",
+          "recommended": false
+        },
+        {
+          "description": "Evaluate both the normalized command-line-derived path and a project-relative form, broadening matching behavior.",
+          "label": "Match both forms",
+          "recommended": false
+        }
+      ],
+      "prompt": "If the user runs recursive linting with an absolute target such as `C:\\project\\src`, should `^src/gen/.*$` still ignore `C:\\project\\src\\gen\\about.py`?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Separators only",
+    "open_material_decisions": [
+      "Define whether normalization changes only path separators or also canonicalizes lexical path components such as `.` and `..`."
+    ],
+    "question": {
+      "header": "Normalization",
+      "options": [
+        {
+          "description": "Convert backslashes to forward slashes while preserving relativeness, target spelling, dot segments, symlinks, and case.",
+          "label": "Separators only",
+          "recommended": true
+        },
+        {
+          "description": "Also collapse redundant separators and `.` or `..` components without resolving symlinks.",
+          "label": "Lexical cleanup",
+          "recommended": false
+        },
+        {
+          "description": "Resolve candidates to canonical filesystem paths, potentially changing symlinks, case, and relative spelling.",
+          "label": "Canonical path",
+          "recommended": false
+        }
+      ],
+      "prompt": "Before applying `ignore-paths`, how much should candidate paths be normalized?"
+    },
+    "turn": 4
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Add a regression test for recursive discovery from a relative target spelled with a trailing separator and `ignore-paths = ^src/gen/.*$`; verify generated Python files are absent while a nonignored file remains.",
+          "Cover Windows-style discovered candidates and verify they match the anchored Posix-style pattern after separator-only normalization.",
+          "Verify the equivalent anchored Windows-form configuration remains supported through the existing path-regex transformation.",
+          "Verify an anchored project-relative pattern does not match when recursive discovery is invoked with an absolute target.",
+          "Verify separator normalization is exercised consistently in recursive directory checks, top-level `expand_modules` filtering, and package/namespace submodule filtering.",
+          "Verify basename-based `ignore` and `ignore-patterns` behavior is unchanged.",
+          "Run the targeted lint/config/module-expansion tests and the relevant recursive self-test suite."
+        ],
+        "confirmed_decisions": [
+          "`ignore-paths` evaluates the path representation derived from the command-line target, so a relative target such as `src/` produces match candidates such as `src/gen/about.py`.",
+          "Candidate path normalization converts backslashes to forward slashes only.",
+          "Normalization preserves relative versus absolute form, including the user's target spelling; absolute targets are not converted to project-relative paths.",
+          "No lexical cleanup or canonicalization is performed: dot segments, redundant components, symlinks, and case remain unchanged.",
+          "The normalization applies to every ignore-path check, including recursive discovery, top-level expansion, and package or namespace submodule checks.",
+          "`ignore` and `ignore-patterns` continue matching basenames under their existing behavior.",
+          "Existing support for configuring ignore-path regexes in Posix or Windows form must remain compatible."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix `ignore-paths` matching by normalizing only candidate path separators to `/` immediately before every ignore-path regex evaluation. Preserve the candidate's command-line-derived spelling and whether it is relative or absolute; do not resolve, absolutize, relativize, case-fold, collapse dot segments, or resolve symlinks. Apply this consistently to recursive directory discovery, top-level module expansion, and package/namespace submodule filtering. Thus `pylint --recursive=y src/` with `^src/gen/.*$` excludes files such as `src\\gen\\about.py` on Windows, while the same pattern does not match files discovered from an absolute target such as `C:\\project\\src`. Existing basename-based `ignore` and `ignore-patterns` semantics remain unchanged."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested behavior and success criteria are sufficiently clarified. The implementation must make ignore-path matching separator-independent while preserving the command-line-derived path spelling and relative/absolute form."
+    },
+    "turn": 5
+  }
+]

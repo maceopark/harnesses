@@ -1,0 +1,77 @@
+[
+  {
+    "answer": "All affected operations",
+    "open_material_decisions": [
+      "Whether the fix is scoped only to weighted mean or must make boolean-weight handling correct across every affected weighted operation."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Boolean weights must behave as numeric 0/1 weights for weighted mean and every other public weighted operation affected by the same denominator calculation.",
+          "label": "All affected operations",
+          "recommended": true
+        },
+        {
+          "description": "Require only weighted mean to return the same result as equivalent numeric 0/1 weights; other weighted operations remain outside scope.",
+          "label": "Weighted mean only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which observable behavior should the contract require for boolean weights?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "DataArray and Dataset",
+    "open_material_decisions": [
+      "Whether boolean weights must behave as numeric 0/1 weights for both DataArrayWeighted and DatasetWeighted operations, or only for the DataArray path demonstrated by the report."
+    ],
+    "question": {
+      "header": "Object scope",
+      "options": [
+        {
+          "description": "Require consistent boolean-weight behavior for both public weighted object types wherever the affected operations apply.",
+          "label": "DataArray and Dataset",
+          "recommended": true
+        },
+        {
+          "description": "Limit the contract to the object type demonstrated by the reported failure.",
+          "label": "DataArray only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which weighted object types must satisfy the boolean-as-0/1 behavior?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "For a DataArray containing [1.0, 1.0, 1.0], weighting with [true, true, false] and taking the mean produces 1.0.",
+          "For each affected public weighted operation, replacing boolean weights with numerically equivalent 0/1 weights produces the same result for a DataArray.",
+          "For each affected public weighted operation, replacing boolean weights with numerically equivalent 0/1 weights produces the same per-variable results for a Dataset.",
+          "The sum of weights for valid data counts applicable true weights rather than reducing boolean operands to a boolean result.",
+          "When no applicable weight is true, results retain the same zero-total-weight behavior as equivalent all-zero numeric weights.",
+          "Existing weighted-operation tests using integer or floating-point weights continue to pass unchanged."
+        ],
+        "confirmed_decisions": [
+          "Boolean weights remain valid inputs and are interpreted as numeric 0/1 weights.",
+          "The fix covers every public weighted operation whose result is affected by boolean-weight handling, not only weighted mean.",
+          "The required behavior applies to both DataArrayWeighted and DatasetWeighted operations.",
+          "The reported DataArray example with values [1.0, 1.0, 1.0] and boolean weights [true, true, false] must produce a weighted mean of 1.0.",
+          "Existing behavior for non-boolean numeric weights must remain unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Boolean DataArray weights must behave equivalently to numeric 0/1 weights in all affected public weighted operations for both DataArray and Dataset objects. In particular, weighted denominators must represent the sum of applicable true weights, so the reported weighted mean returns 1.0 rather than 2.0."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The reported defect, audited repository evidence, and two explicit interview answers resolve all material scope decisions. The contract can require boolean weights to be accepted and treated observably as numeric 0/1 weights across both weighted object types and every affected public weighted operation."
+    },
+    "turn": 3
+  }
+]

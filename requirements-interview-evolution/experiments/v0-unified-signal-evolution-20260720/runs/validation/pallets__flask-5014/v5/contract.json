@@ -1,0 +1,20 @@
+{
+  "acceptance_checks": [
+    "Blueprint('', __name__) raises ValueError with the exact message \"'name' may not be empty.\"",
+    "Blueprint('valid', __name__) continues to construct successfully and retains 'valid' as its name.",
+    "Blueprint('app.ui', __name__) continues to raise the existing dotted-name ValueError.",
+    "The existing blueprint test suite passes without changes to registration, nested-blueprint, endpoint-prefixing, or duplicate-name behavior."
+  ],
+  "confirmed_decisions": [
+    "An empty string passed as Blueprint.name is invalid.",
+    "Blueprint('', import_name) raises ValueError.",
+    "The exact error message is \"'name' may not be empty.\"",
+    "Validation belongs in Blueprint.__init__ alongside the existing dotted-name validation and occurs before self.name is assigned.",
+    "Only the empty string is newly rejected; non-empty names, including whitespace-only strings, are not expanded into scope by this request.",
+    "Existing dotted-name validation and duplicate-registration behavior remain unchanged.",
+    "Add a focused regression test in tests/test_blueprints.py that constructs a Blueprint with an empty name and asserts the ValueError and exact message."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Require every Blueprint constructor name to be non-empty. In Blueprint.__init__, Blueprint('', import_name) must raise ValueError with the exact message \"'name' may not be empty.\" before assigning self.name. Preserve the existing prohibition and error behavior for names containing a dot. This requirement applies to the constructor name only; registration-time name overrides are outside this change."
+}

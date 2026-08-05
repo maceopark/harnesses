@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "split_surds checks whether its derived surds list is empty before invoking _split_gcd.",
+    "For an Add containing no Pow-based surds, split_surds returns (S.One, S.Zero, expr) and raises no exception.",
+    "The reported sqrtdenest expression returns 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2 without IndexError.",
+    "The new direct split_surds regression passes and locks the no-op tuple contract.",
+    "Existing tests in sympy/simplify/tests/test_sqrtdenest.py continue to pass, including unchanged-result cases.",
+    "Relevant radsimp tests continue to pass, demonstrating no regression for ordinary non-empty surd splitting."
+  ],
+  "confirmed_decisions": [
+    "Fix the empty-surds condition at its source in split_surds, covering sqrtdenest and other callers.",
+    "Do not alter _split_gcd's non-empty-input contract; prevent split_surds from calling it without arguments.",
+    "When split_surds has no Pow-based surds, return (S.One, S.Zero, expr).",
+    "Add a public regression test for sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2), asserting that it does not raise and equals 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.",
+    "Add a direct split_surds regression using an Add with no Pow-based surds, asserting the no-op tuple.",
+    "Preserve all existing denesting behavior, including returning expressions unchanged when no acceptable denesting exists."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update split_surds in sympy/simplify/radsimp.py to handle an empty Pow-based surds list before calling _split_gcd. Return the no-op tuple (S.One, S.Zero, expr), preserving the complete input as the unmatched remainder. This makes the reported sqrtdenest call return its unchanged expanded expression instead of raising IndexError. Add regression coverage at both the public sqrtdenest level and the direct split_surds level."
+}

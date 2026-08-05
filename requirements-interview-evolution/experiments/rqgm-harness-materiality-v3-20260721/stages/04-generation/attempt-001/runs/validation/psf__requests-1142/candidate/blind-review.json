@@ -1,0 +1,35 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/3",
+          "quoted_value": "A caller-supplied Content-Length header on a GET request is preserved rather than removed or replaced merely because the method is GET."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/2",
+          "quoted_value": "Preparing a bodyless GET request with an explicit Content-Length preserves the caller-provided value."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/3/statement",
+          "quoted_value": "Request preparation installs caller-provided headers before preparing the body, so Content-Length handling occurs after the supplied headers have been installed."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/5/statement",
+          "quoted_value": "prepare_content_length unconditionally writes Content-Length: 0 first. It replaces that value with the file position for seekable bodies or len(body) for other non-None bodies; a None body retains Content-Length: 0."
+        }
+      ],
+      "description": "Add an acceptance check for a GET with a non-empty body and an explicit Content-Length. This is material because the audited implementation currently recomputes Content-Length for every non-stream body and therefore overwrites an installed caller header.",
+      "failure_class": "omission",
+      "general_cause": "The acceptance checks cover explicit Content-Length preservation only for a bodyless GET, while the confirmed decision applies to caller-supplied Content-Length on GET requests generally.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "An implementation could preserve an explicit Content-Length for a bodyless GET but overwrite it when the GET has a non-empty body, satisfy every listed acceptance check, and still violate the confirmed contract behavior."
+    }
+  ],
+  "summary": "The contract is nearly implementation-ready, but its acceptance checks omit the body-bearing GET case for the confirmed requirement that caller-supplied Content-Length be preserved."
+}

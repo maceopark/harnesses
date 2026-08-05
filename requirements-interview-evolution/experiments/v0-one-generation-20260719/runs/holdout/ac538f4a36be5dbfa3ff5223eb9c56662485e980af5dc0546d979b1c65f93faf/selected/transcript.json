@@ -1,0 +1,56 @@
+[
+  {
+    "answer": "{\"selection\":\"Safe repr for all\"}",
+    "open_material_decisions": [
+      "Whether setup display should use repr-style formatting for every raw parameter or only for values such as bytes that cannot safely be interpolated via str under -bb."
+    ],
+    "question": {
+      "header": "Formatting",
+      "options": [
+        {
+          "description": "Render every raw parameter with saferepr, so strings become ['foo'] and bytes become [b'Hello World']; explicit and callable IDs remain unchanged.",
+          "label": "Safe repr for all",
+          "recommended": true
+        },
+        {
+          "description": "Keep strings displayed as [foo], but use saferepr for bytes and other non-string raw values; explicit and callable IDs remain unchanged.",
+          "label": "Preserve string output",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should raw fixture parameters be rendered by --setup-show, --setup-only, and --setup-plan?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A regression test using a raw bytes fixture parameter passes when pytest is launched under Python with -bb and does not emit or raise BytesWarning.",
+          "For each of --setup-show, --setup-only, and --setup-plan, raw bytes output includes [b'Hello World'] where the parameter is displayed.",
+          "Existing raw-parameter coverage is updated to expect repr-style strings such as ['foo'] and ['bar'] in both setup and teardown output.",
+          "Explicit string IDs such as spam and ham remain displayed without added repr quotes.",
+          "Callable-generated string IDs such as FOO and BAR remain displayed without added repr quotes.",
+          "Targeted setup-display tests pass."
+        ],
+        "confirmed_decisions": [
+          "Use repr-style safe formatting for all raw fixture parameters, not only bytes or values that trigger warnings.",
+          "Raw string parameters therefore change from output such as [foo] to ['foo'].",
+          "Raw bytes parameters render with their bytes representation, such as [b'Hello World'].",
+          "Apply the same rendering in setup and teardown because both use the shared setup-action renderer and cached parameter.",
+          "Preserve existing display behavior for explicit IDs and callable-generated IDs.",
+          "Cover all three existing setup-display modes: --setup-show, --setup-only, and --setup-plan.",
+          "Use the repository's existing _pytest._io.saferepr.saferepr helper; add no new dependency or abstraction."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update setup-display rendering so every raw fixture parameter is converted with pytest's saferepr helper before being enclosed in brackets. This applies consistently to --setup-show, --setup-only, and --setup-plan, including both setup and teardown output. Explicit list IDs and callable-generated IDs retain their existing formatting behavior. The bytes example must run successfully under python -bb without raising BytesWarning."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested behavior and success criteria are fully determined by the repository evidence and the confirmed formatting decision. No material blocker remains."
+    },
+    "turn": 2
+  }
+]

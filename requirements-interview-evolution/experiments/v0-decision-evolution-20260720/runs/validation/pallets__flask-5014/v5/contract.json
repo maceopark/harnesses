@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "Blueprint(\"\", __name__) raises ValueError with \"'name' may not be empty.\".",
+    "Registering a valid Blueprint with name=\"\" raises ValueError with \"'name' may not be empty.\".",
+    "A failed empty-name registration does not add an empty-string key to app.blueprints.",
+    "A valid Blueprint name continues to prefix its endpoints normally.",
+    "A non-empty registration name override continues to work normally.",
+    "The existing dotted-name test continues to pass with its current behavior and message.",
+    "The targeted blueprint test suite passes."
+  ],
+  "confirmed_decisions": [
+    "Add constructor-time validation in Blueprint.__init__ so an empty string name raises ValueError before assignment to self.name.",
+    "Add registration-time validation for the effective name override so register_blueprint(..., name=\"\") raises ValueError rather than registering the blueprint under an empty key or collapsing endpoint namespaces.",
+    "Use the exact ValueError message \"'name' may not be empty.\" for both constructor and registration-override failures.",
+    "Validate only the empty string; whitespace-only names are outside the requested restriction and remain unchanged.",
+    "Preserve the existing dotted-name rejection and its existing error message.",
+    "Add regression tests covering the empty constructor name and empty registration override, asserting ValueError and the exact agreed message.",
+    "Retain existing behavior for non-empty constructor names, non-empty registration overrides, nested blueprint prefixes, endpoint namespacing, and duplicate-name detection."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Require Blueprint names to be non-empty. Blueprint(\"\", import_name) and app.register_blueprint(blueprint, name=\"\") must each raise ValueError with the exact message \"'name' may not be empty.\" Existing valid names and dotted-name validation must remain unchanged."
+}

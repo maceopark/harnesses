@@ -1,0 +1,27 @@
+{
+  "compatibility_regressions": [
+    "Evaluating both canonical separator forms centrally can newly ignore paths outside the reported recursive Windows case.",
+    "Applying the change to package and namespace submodule comparisons broadens behavior beyond the audited gold fix's shared-helper coverage.",
+    "The contract excludes basename normalization, while the hindsight implementation normalizes before basename extraction and therefore can change ignore and ignore-patterns behavior for mixed-separator inputs."
+  ],
+  "implementation_ready": false,
+  "invented_requirements": [
+    "Evaluate every ignore-paths regex against three candidates: the original raw path plus fully Posix and fully Windows forms.",
+    "Apply canonical comparison behavior to direct inputs, recursive roots and files, package submodules, and namespace submodules.",
+    "Preserve matches for patterns intentionally written against raw mixed-separator paths.",
+    "Add mixed-separator normalization/matching unit tests in addition to the reported recursive regression.",
+    "Require explicit verification that relative paths remain relative and absolute paths remain absolute."
+  ],
+  "material_blockers": [
+    "The sealed decisions require broader three-candidate matching while the audited hindsight implementation uses a single os.path.normpath candidate; an implementer cannot follow both as the intended compatibility contract.",
+    "The contract requires ignore and ignore-patterns basename behavior to remain unchanged, but the demonstrated shared-helper fix normalizes before basename extraction, so the expected boundary is unresolved against the strongest implementation evidence."
+  ],
+  "owner_recall": 0.38,
+  "redundant_questions": [
+    "The fix-scope question broadened the task from the reported recursive failure to all full-path comparisons without issue-time evidence that the owner required that guarantee.",
+    "The canonical-forms question imposed cross-platform dual-form matching even though the reported behavior and hindsight fix only required host normalization.",
+    "The raw-path compatibility question introduced a backward-compatibility guarantee unsupported by the issue, audited repository facts, or hindsight tests."
+  ],
+  "repository_fidelity": 0.72,
+  "summary": "The interview correctly identified mixed separators as the likely cause and preserved regex match semantics, but it converted a narrow recursive Windows bug into a substantially broader cross-platform matching contract. Several closed decisions are unsupported by issue-time evidence and conflict with the demonstrated fix boundary, so the contract is not safely implementation-ready despite having no formally open decisions."
+}

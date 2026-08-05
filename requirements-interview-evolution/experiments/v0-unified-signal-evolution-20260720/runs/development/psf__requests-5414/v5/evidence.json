@@ -1,0 +1,73 @@
+{
+  "audit_summary": "Accepted nine facts with direct repository support. Rejected F3 because it incorrectly characterizes the missing-scheme exception.",
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 75,
+      "line_start": 64,
+      "path": "requests/api.py",
+      "statement": "The public requests.get function delegates to request('get', url, ...), so URL validation occurs downstream in request preparation."
+    },
+    {
+      "id": "F2",
+      "line_end": 386,
+      "line_start": 382,
+      "path": "requests/models.py",
+      "statement": "PreparedRequest.prepare_url parses HTTP URLs with urllib3.util.parse_url and translates only LocationParseError from that call into InvalidURL."
+    },
+    {
+      "id": "F4",
+      "line_end": 407,
+      "line_start": 397,
+      "path": "requests/models.py",
+      "statement": "Hostname label validation is conditional: non-ASCII hosts are IDNA-encoded and UnicodeError becomes InvalidURL('URL has an invalid label.'), while ASCII hosts are rejected only when they start with '*'."
+    },
+    {
+      "id": "F5",
+      "line_end": 358,
+      "line_start": 350,
+      "path": "requests/models.py",
+      "statement": "The IDNA helper catches idna.IDNAError and raises UnicodeError, which is the error type consumed by the non-ASCII hostname branch in prepare_url."
+    },
+    {
+      "id": "F6",
+      "line_end": 91,
+      "line_start": 90,
+      "path": "requests/exceptions.py",
+      "statement": "InvalidURL is a Requests RequestException and ValueError subclass intended for invalid URLs."
+    },
+    {
+      "id": "F7",
+      "line_end": 2497,
+      "line_start": 2484,
+      "path": "tests/test_requests.py",
+      "statement": "Existing bad-URL preparation tests require InvalidURL for ASCII wildcard hosts and one non-ASCII hostname, but this parameter set does not include an empty hostname label such as http://.example.com."
+    },
+    {
+      "id": "F8",
+      "line_end": 87,
+      "line_start": 77,
+      "path": "tests/test_requests.py",
+      "statement": "The general invalid-URL test includes http:// with an expected InvalidURL, but does not include http://.example.com."
+    },
+    {
+      "id": "F9",
+      "line_end": 49,
+      "line_start": 43,
+      "path": "setup.py",
+      "statement": "The package declares urllib3 versions from 1.21.1 through versions below 1.27 and IDNA versions from 2.5 through versions below 4 on Python 3."
+    },
+    {
+      "id": "F10",
+      "line_end": 415,
+      "line_start": 412,
+      "path": "requests/adapters.py",
+      "statement": "At the adapter boundary, LocationValueError raised while obtaining a connection is translated into InvalidURL with the prepared request attached."
+    }
+  ],
+  "scope_summary": "Base commit 39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e routes requests.get URLs through request preparation. The malformed ASCII hostname case is not explicitly rejected by the hostname-validation branch, while existing invalid-label handling covers IDNA failures for non-ASCII hosts and ASCII wildcard hosts.",
+  "unknowns": [
+    "The repository does not contain urllib3's parse_url implementation, so the exact internal operation that emits UnicodeError for http://.example.com is not established by repository-local source.",
+    "No repository test at this base commit specifies the expected exception message or behavior for an empty hostname label specifically."
+  ]
+}

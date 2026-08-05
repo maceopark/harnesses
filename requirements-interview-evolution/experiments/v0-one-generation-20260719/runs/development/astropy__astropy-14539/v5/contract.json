@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "A FITS file containing Column('a', format='QD', array=[[0], [0, 0]]) compares identical to itself through FITSDiff when supplied as two pathname arguments.",
+    "Two independently loaded tables containing equal Q-format VLA data produce an identical TableDataDiff with diff_total equal to zero and no diff_values.",
+    "Equal Q-VLA rows of differing lengths from other rows do not generate false comparison indices or false reports.",
+    "A genuine Q-VLA element difference makes the comparison non-identical, increments diff_total once for the affected row, and records or reports that row through the existing mechanisms.",
+    "For floating-point Q-VLA elements, differences within configured rtol and atol compare equal, while differences outside those tolerances compare unequal.",
+    "Existing P-format VLA comparison behavior and existing non-VLA table comparison tests remain passing.",
+    "The targeted FITS diff test module passes after the change."
+  ],
+  "confirmed_decisions": [
+    "Generalize the existing P-format VLA comparison behavior to Q-format VLAs rather than special-casing identical pathnames or same-file comparisons.",
+    "Compare Q-VLA values row by row with numpy.allclose using TableDataDiff's configured rtol and atol, matching current P-VLA semantics.",
+    "Continue counting and reporting genuine Q-VLA differences by row through the existing diff_total and diff_values mechanisms.",
+    "Add a file-level FITSDiff regression based on a QD column with unequal row lengths, proving that comparing independently opened instances of the same file yields identical=True and no reported data differences.",
+    "Add regression coverage proving that an exact Q-VLA value difference is detected and attributed to the correct row.",
+    "Add regression coverage proving that Q-VLA floating-point differences inside tolerance are ignored and differences outside tolerance are detected, consistently with P-format VLAs.",
+    "Keep the change localized to FITS diff behavior and its tests; do not alter Q-format parsing, heap loading, FITS_rec conversion, or general file-opening behavior."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update FITS table-data comparison so supported Q-format variable-length-array columns are handled with the same row-by-row, tolerance-aware semantics already used for P-format VLAs. This must eliminate false differences when independently opened copies of the same Q-VLA file are compared while preserving detection and reporting of genuine Q-VLA row differences. Add file-level and focused comparison regressions covering identical, exact-difference, and tolerance-sensitive Q-VLA data."
+}

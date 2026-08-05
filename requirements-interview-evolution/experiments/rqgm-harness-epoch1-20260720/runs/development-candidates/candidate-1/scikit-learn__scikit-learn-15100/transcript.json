@@ -1,0 +1,32 @@
+[
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A direct regression test verifies that `strip_accents_unicode(\"n\\u0303\") == \"n\"`.",
+          "A direct regression test verifies equivalence between canonically related inputs: `strip_accents_unicode(\"\\u00f1\") == strip_accents_unicode(\"n\\u0303\") == \"n\"`.",
+          "A vectorizer/analyzer regression test using `strip_accents='unicode'` verifies that already-NFKD accented input yields the same unaccented token output as its precomposed equivalent.",
+          "The existing `test_strip_accents` cases continue to pass.",
+          "The existing Unicode word-analyzer unigram/bigram test continues to pass.",
+          "The targeted feature-extraction text test module passes after the change."
+        ],
+        "confirmed_decisions": [
+          "`strip_accents_unicode` must normalize every input with NFKD and filter combining characters regardless of whether normalization changes the string.",
+          "The already-NFKD sequence `\"n\\u0303\"` must produce `\"n\"`, matching the result for precomposed `\"\\u00f1\"`.",
+          "The fix applies to direct calls to `strip_accents_unicode` and, through the existing shared preprocessing route, to `CountVectorizer`, `TfidfVectorizer`, and supported word/character analyzer modes using `strip_accents='unicode'`.",
+          "Existing behavior for precomposed accented Latin characters, the covered Arabic character, mixed accented text, and existing vectorizer accent stripping must remain unchanged.",
+          "No public API, parameter, or documentation contract change is required; this is a correction of behavior already promised by the accent-removal documentation.",
+          "Add regression coverage in the existing text feature-extraction tests, without introducing new dependencies."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix `strip_accents_unicode` so it removes Unicode combining characters after NFKD normalization even when the input was already in NFKD form. Preserve existing behavior for composed accented text and ensure vectorizers configured with `strip_accents='unicode'` receive the corrected behavior through the existing preprocessing path."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The request, expected result, and audited repository evidence fully determine the required behavior. No material product or implementation decision remains ambiguous."
+    },
+    "turn": 1
+  }
+]

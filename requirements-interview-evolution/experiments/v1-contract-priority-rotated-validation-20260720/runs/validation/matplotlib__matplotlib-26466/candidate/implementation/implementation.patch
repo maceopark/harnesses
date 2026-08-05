@@ -1,0 +1,44 @@
+diff --git a/lib/matplotlib/tests/test_text.py b/lib/matplotlib/tests/test_text.py
+index 47121b7..3f8a476 100644
+--- a/lib/matplotlib/tests/test_text.py
++++ b/lib/matplotlib/tests/test_text.py
+@@ -251,6 +251,25 @@ def test_annotation_contains():
+     assert ann.contains(event) == (False, {})
+ 
+ 
++def test_annotation_xy_is_snapshotted():
++    fig, ax = plt.subplots()
++    xy = np.array([.4, .4])
++    ann = ax.annotate(
++        "hello", xy=xy, xytext=(.6, .6), arrowprops={"arrowstyle": "->"})
++
++    xy[:] = .8
++    fig.canvas.draw()
++
++    assert ann.xy == (.4, .4)
++    assert_almost_equal(ann.arrow_patch._posA_posB[1],
++                        ax.transData.transform((.4, .4)))
++
++
++def test_annotation_xy_accepts_iterator():
++    ann = Annotation("hello", iter((.4, .5)))
++    assert ann.xy == (.4, .5)
++
++
+ @pytest.mark.parametrize('err, xycoords, match', (
+     (TypeError, print, "xycoords callable must return a BboxBase or Transform, not a"),
+     (TypeError, [0, 0], r"'xycoords' must be an instance of str, tuple"),
+diff --git a/lib/matplotlib/text.py b/lib/matplotlib/text.py
+index d4922fc..020e24d 100644
+--- a/lib/matplotlib/text.py
++++ b/lib/matplotlib/text.py
+@@ -1456,7 +1456,8 @@ class _AnnotationBase:
+                  xycoords='data',
+                  annotation_clip=None):
+ 
+-        self.xy = xy
++        x, y = xy
++        self.xy = x, y
+         self.xycoords = xycoords
+         self.set_annotation_clip(annotation_clip)
+ 

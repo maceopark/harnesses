@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "`flask.Blueprint(\"\", __name__)` raises `ValueError`.",
+    "The exception message is exactly `\"'name' may not be empty.\"`.",
+    "The empty name is rejected before assignment to `self.name`.",
+    "Existing dotted constructor names continue to raise `ValueError` under the existing contract.",
+    "Registration-time `name=\"\"` override behavior is not changed.",
+    "The focused new regression test and the existing blueprint test suite pass."
+  ],
+  "confirmed_decisions": [
+    "Validation applies only to the `Blueprint` constructor.",
+    "Only the exactly empty string is newly rejected; broader whitespace or truthiness validation is not required.",
+    "The required error is `ValueError(\"'name' may not be empty.\")`.",
+    "Registration-time `name=\"\"` override behavior remains unchanged.",
+    "Existing dotted-name validation must remain intact.",
+    "No documentation or changelog update is required.",
+    "Implementation may choose the ordering of the empty-name and dotted-name checks."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "At base commit 7ee9ceb71e868944a46e1ff00b506772a53a4f1d, update `Blueprint.__init__` to reject an exactly empty constructor name (`name == \"\"`) before storing it by raising `ValueError(\"'name' may not be empty.\")`. Preserve the existing dotted-name validation and all registration-time `name` override behavior, including acceptance of `name=\"\"`. Add a focused regression test for the exact exception type and message. No documentation or changelog change is required. The local ordering of empty-name and dotted-name checks is delegated to implementation, provided both validation contracts hold. Registration-time empty overrides may retain the reported downstream problem; that is an acknowledged residual risk intentionally outside scope."
+}

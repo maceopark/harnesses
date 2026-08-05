@@ -1,0 +1,262 @@
+{
+  "scope_summary": "The repository is a single-module, standard-library Python todo CLI. The requested change is localized primarily to list-command argument parsing, task filtering, documentation, and regression tests. No existing --overdue option or overdue-domain definition is present.",
+  "facts": [
+    {
+      "id": "F1",
+      "claim": "Tasks already contain a boolean completion state and an optional due date stored as an ISO-date string.",
+      "authority": "code",
+      "evidence": [
+        {
+          "path": "todo_cli.py",
+          "line_start": 51,
+          "line_end": 57,
+          "quoted_text": "@dataclass(frozen=True)\nclass Task:\n    id: int\n    title: str\n    done: bool = False\n    due: str | None = None\n    priority: str = DEFAULT_PRIORITY",
+          "quoted_text_sha256": "3b4328d6b90f465c4821151ad3c35c043ded1e74a4fe50ad2cb59b1340ba9ac0"
+        }
+      ]
+    },
+    {
+      "id": "F2",
+      "claim": "Due dates are validated as exact YYYY-MM-DD calendar dates using date.fromisoformat and an ISO round trip; invalid or datetime-like values are rejected.",
+      "authority": "code",
+      "evidence": [
+        {
+          "path": "todo_cli.py",
+          "line_start": 66,
+          "line_end": 83,
+          "quoted_text": "def parse_due(value: str | None) -> str | None:\n    \"\"\"Validate an exact ISO ``YYYY-MM-DD`` date, or ``None``.\n\n    Rejects datetime-like strings and invalid calendar dates by requiring a\n    round-trip through :func:`datetime.date.fromisoformat` /\n    :meth:`datetime.date.isoformat`.\n    \"\"\"\n    if value is None:\n        return None\n    if not isinstance(value, str):\n        raise ValueError(f\"invalid date: {value!r}\")\n    try:\n        parsed = date.fromisoformat(value)\n    except ValueError as exc:\n        raise ValueError(f\"invalid date: {value!r}\") from exc\n    if parsed.isoformat() != value:\n        raise ValueError(f\"invalid date: {value!r}\")\n    return value",
+          "quoted_text_sha256": "ac20b48fc0179ef88c51c2247789aad5528f2e8ee7ca2b6c784d3f4bfe062b26"
+        }
+      ]
+    },
+    {
+      "id": "F3",
+      "claim": "The persisted task schema permits exactly id, title, done, due, and priority fields, so overdue is not currently stored as task state.",
+      "authority": "code",
+      "evidence": [
+        {
+          "path": "todo_cli.py",
+          "line_start": 96,
+          "line_end": 127,
+          "quoted_text": "def task_from_dict(raw: object) -> Task:\n    if not isinstance(raw, dict):\n        raise StoreError(\"task entry must be an object\")\n\n    allowed = {\"id\", \"title\", \"done\", \"due\", \"priority\"}\n    extra = set(raw.keys()) - allowed\n    if extra:\n        raise StoreError(f\"unexpected task fields: {sorted(extra)}\")\n\n    task_id = raw.get(\"id\")\n    if not isinstance(task_id, int) or isinstance(task_id, bool) or task_id <= 0:\n        raise StoreError(f\"invalid task id: {task_id!r}\")\n\n    title = raw.get(\"title\")\n    if not isinstance(title, str) or title.strip() == \"\":\n        raise StoreError(f\"invalid task title: {title!r}\")\n\n    done = raw.get(\"done\", False)\n    if not isinstance(done, bool):\n        raise StoreError(f\"invalid task done flag: {done!r}\")\n\n    due_raw = raw.get(\"due\", None)\n    if due_raw is not None and not isinstance(due_raw, str):\n        raise StoreError(f\"invalid task due: {due_raw!r}\")\n    try:\n        due = parse_due(due_raw)\n    except ValueError as exc:\n        raise StoreError(str(exc)) from exc\n\n    priority = validate_priority(raw.get(\"priority\", DEFAULT_PRIORITY))\n\n    return Task(id=task_id, title=title, done=done, due=due, priority=priority)",
+          "quoted_text_sha256": "c38f1dc3a4ba203331a85b3663b57938c464b0fc843341057089aceec2d138b5"
+        }
+      ]
+    },
+    {
+      "id": "F4",
+      "claim": "The existing pure filter_tasks operation accepts only optional priority and due filters. Both are exact-match filters and, when combined, are applied conjunctively. It does not currently consider completion state or the current date.",
+      "authority": "code",
+      "evidence": [
+        {
+          "path": "todo_cli.py",
+          "line_start": 268,
+          "line_end": 276,
+          "quoted_text": "def filter_tasks(\n    tasks: list[Task], priority: str | None = None, due: str | None = None\n) -> list[Task]:\n    result = list(tasks)\n    if priority is not None:\n        result = [t for t in result if t.priority == priority]\n    if due is not None:\n        result = [t for t in result if t.due == due]\n    return result",
+          "quoted_text_sha256": "62622254c1d7000e5d65017d72aa2d8a34c250ef3a7a5bfcd73263a04052799a"
+        }
+      ]
+    },
+    {
+      "id": "F5",
+      "claim": "The list parser currently exposes only --priority and --due options; --overdue is not recognized.",
+      "authority": "code",
+      "evidence": [
+        {
+          "path": "todo_cli.py",
+          "line_start": 309,
+          "line_end": 335,
+          "quoted_text": "def build_parser() -> argparse.ArgumentParser:\n    parser = argparse.ArgumentParser(prog=\"todo\", description=\"Simple todo CLI.\")\n    subparsers = parser.add_subparsers(dest=\"command\", required=True)\n\n    add_p = subparsers.add_parser(\"add\", help=\"add a task\")\n    add_p.add_argument(\"title\", help=\"task title\")\n    add_p.add_argument(\"--due\", type=parse_due_arg, default=None, help=\"YYYY-MM-DD\")\n    add_p.add_argument(\n        \"--priority\",\n        choices=tuple(PRIORITIES.keys()),\n        default=DEFAULT_PRIORITY,\n        help=\"task priority\",\n    )\n\n    list_p = subparsers.add_parser(\"list\", help=\"list tasks\")\n    list_p.add_argument(\n        \"--priority\", choices=tuple(PRIORITIES.keys()), default=None\n    )\n    list_p.add_argument(\"--due\", type=parse_due_arg, default=None, help=\"YYYY-MM-DD\")\n\n    done_p = subparsers.add_parser(\"done\", help=\"mark a task done\")\n    done_p.add_argument(\"id\", type=positive_int_arg, help=\"task id\")\n\n    rm_p = subparsers.add_parser(\"rm\", help=\"remove a task\")\n    rm_p.add_argument(\"id\", type=positive_int_arg, help=\"task id\")\n\n    return parser",
+          "quoted_text_sha256": "ef553e72f86a8c3ed66807280dbc0a2cbd1d245089fcce39b949f79938316e0a"
+        }
+      ]
+    },
+    {
+      "id": "F6",
+      "claim": "The list command loads the store, filters tasks, applies the established sort, prints each formatted row, and returns exit code 0 without saving the store.",
+      "authority": "code",
+      "evidence": [
+        {
+          "path": "todo_cli.py",
+          "line_start": 338,
+          "line_end": 359,
+          "quoted_text": "def _format_row(task: Task) -> str:\n    status = \"[x]\" if task.done else \"[ ]\"\n    due = task.due if task.due is not None else \"-\"\n    return f\"{task.id}\\t{status}\\t{task.priority}\\t{due}\\t{task.title}\"\n\n\ndef _cmd_add(args: argparse.Namespace) -> int:\n    path = get_store_path()\n    store = load_store(path)\n    new_store, task = add_task(store, args.title, args.due, args.priority)\n    save_store(new_store, path)\n    print(f\"added {task.id}\")\n    return EXIT_OK\n\n\ndef _cmd_list(args: argparse.Namespace) -> int:\n    path = get_store_path()\n    store = load_store(path)\n    tasks = filter_tasks(store.tasks, priority=args.priority, due=args.due)\n    for task in sort_tasks(tasks):\n        print(_format_row(task))\n    return EXIT_OK",
+          "quoted_text_sha256": "5c7b96f9898da112b426e08581dd1c94beae0011b146009ee1a5c979821e9a5e"
+        }
+      ]
+    },
+    {
+      "id": "F7",
+      "claim": "Existing list output includes both incomplete and completed tasks, displaying [ ] or [x], and preserves the row format id, status, priority, due-or-dash, and title.",
+      "authority": "code",
+      "evidence": [
+        {
+          "path": "todo_cli.py",
+          "line_start": 338,
+          "line_end": 341,
+          "quoted_text": "def _format_row(task: Task) -> str:\n    status = \"[x]\" if task.done else \"[ ]\"\n    due = task.due if task.due is not None else \"-\"\n    return f\"{task.id}\\t{status}\\t{task.priority}\\t{due}\\t{task.title}\"",
+          "quoted_text_sha256": "6c6c4a9adf3f01e0bf99c733302e2f1aeab83ddeb2aa40d5b77700c8ff2d8bdf"
+        }
+      ]
+    },
+    {
+      "id": "F8",
+      "claim": "The established list sort order is completion state first, then descending priority, ascending due date with undated tasks last, and ascending id.",
+      "authority": "code",
+      "evidence": [
+        {
+          "path": "todo_cli.py",
+          "line_start": 279,
+          "line_end": 284,
+          "quoted_text": "def sort_tasks(tasks: list[Task]) -> list[Task]:\n    def key(task: Task) -> tuple[bool, int, date, int]:\n        due_date = date.fromisoformat(task.due) if task.due is not None else date.max\n        return (task.done, -PRIORITIES[task.priority], due_date, task.id)\n\n    return sorted(tasks, key=key)",
+          "quoted_text_sha256": "f17bb60b5d9036693cd4b0ec48f7f794bc86400de03fcb8f2ece24ee37131627"
+        }
+      ]
+    },
+    {
+      "id": "F9",
+      "claim": "Regression tests lock the precise default list order: incomplete tasks before done tasks, higher priority first, earlier due dates first within equal status and priority, and deterministic id ordering.",
+      "authority": "test",
+      "evidence": [
+        {
+          "path": "tests/test_todo.py",
+          "line_start": 123,
+          "line_end": 143,
+          "quoted_text": "def test_list_default_sort_incomplete_priority_due_id(todo_file, capsys):\n    # id1 done high; id2 incomplete low; id3 incomplete high due early;\n    # id4 incomplete high due later; id5 incomplete medium\n    todo_cli.main([\"add\", \"t1\", \"--priority\", \"high\"])\n    todo_cli.main([\"add\", \"t2\", \"--priority\", \"low\"])\n    todo_cli.main([\"add\", \"t3\", \"--priority\", \"high\", \"--due\", \"2026-07-01\"])\n    todo_cli.main([\"add\", \"t4\", \"--priority\", \"high\", \"--due\", \"2026-08-01\"])\n    todo_cli.main([\"add\", \"t5\", \"--priority\", \"medium\"])\n    todo_cli.main([\"done\", \"1\"])\n    capsys.readouterr()\n\n    assert todo_cli.main([\"list\"]) == 0\n    ids = _list_ids(capsys)\n    # incomplete first, higher priority first, nearer due first, id tiebreak,\n    # done (id1) last.\n    assert ids == [3, 4, 2, 5, 1] or ids == [3, 4, 5, 2, 1]\n    # Precise expected order:\n    # incomplete high: id3 (due 07-01) < id4 (due 08-01)\n    # then remaining incomplete by priority: id5 medium before id2 low\n    # then done last: id1\n    assert ids == [3, 4, 5, 2, 1]",
+          "quoted_text_sha256": "70ffed7648caeec51a487bc81e6cb55106e7457084a7c763a793eb04ec148628"
+        },
+        {
+          "path": "tests/test_todo.py",
+          "line_start": 146,
+          "line_end": 153,
+          "quoted_text": "def test_none_due_sorts_after_dated_within_same_done_priority(todo_file, capsys):\n    todo_cli.main([\"add\", \"dated_early\", \"--priority\", \"medium\", \"--due\", \"2026-07-01\"])\n    todo_cli.main([\"add\", \"no_due\", \"--priority\", \"medium\"])\n    todo_cli.main([\"add\", \"dated_late\", \"--priority\", \"medium\", \"--due\", \"2026-08-01\"])\n    capsys.readouterr()\n    assert todo_cli.main([\"list\"]) == 0\n    ids = _list_ids(capsys)\n    assert ids == [1, 3, 2]  # early, late, then None-due last",
+          "quoted_text_sha256": "4e973b814aaa37ab17ce00e77b22bdacc89804ddac82b9d491583432ea2ed570"
+        }
+      ]
+    },
+    {
+      "id": "F10",
+      "claim": "Tests lock exact-match priority and due filtering and their conjunctive combination.",
+      "authority": "test",
+      "evidence": [
+        {
+          "path": "tests/test_todo.py",
+          "line_start": 156,
+          "line_end": 181,
+          "quoted_text": "# --------------------------------------------------------------------------\n# AC4 filters\n# --------------------------------------------------------------------------\ndef test_list_filter_priority(todo_file, capsys):\n    todo_cli.main([\"add\", \"h\", \"--priority\", \"high\"])\n    todo_cli.main([\"add\", \"l\", \"--priority\", \"low\"])\n    capsys.readouterr()\n    assert todo_cli.main([\"list\", \"--priority\", \"high\"]) == 0\n    assert _list_ids(capsys) == [1]\n\n\ndef test_list_filter_due(todo_file, capsys):\n    todo_cli.main([\"add\", \"a\", \"--due\", \"2026-07-10\"])\n    todo_cli.main([\"add\", \"b\", \"--due\", \"2026-07-11\"])\n    capsys.readouterr()\n    assert todo_cli.main([\"list\", \"--due\", \"2026-07-10\"]) == 0\n    assert _list_ids(capsys) == [1]\n\n\ndef test_list_filter_priority_and_due_combined(todo_file, capsys):\n    todo_cli.main([\"add\", \"a\", \"--priority\", \"high\", \"--due\", \"2026-07-10\"])\n    todo_cli.main([\"add\", \"b\", \"--priority\", \"high\", \"--due\", \"2026-07-11\"])\n    todo_cli.main([\"add\", \"c\", \"--priority\", \"low\", \"--due\", \"2026-07-10\"])\n    capsys.readouterr()\n    assert todo_cli.main([\"list\", \"--priority\", \"high\", \"--due\", \"2026-07-10\"]) == 0\n    assert _list_ids(capsys) == [1]",
+          "quoted_text_sha256": "be44c1de437028a9a656e56f9835128ce8e4a8fe331bb5767ed7eb0ff40e870a"
+        }
+      ]
+    },
+    {
+      "id": "F11",
+      "claim": "Listing a missing store produces no stdout or stderr, returns 0, and does not create the store file.",
+      "authority": "test",
+      "evidence": [
+        {
+          "path": "tests/test_todo.py",
+          "line_start": 43,
+          "line_end": 48,
+          "quoted_text": "def test_missing_file_list_empty_exit0_no_create(todo_file, capsys):\n    assert todo_cli.main([\"list\"]) == 0\n    out = capsys.readouterr()\n    assert out.out == \"\"\n    assert out.err == \"\"\n    assert not todo_file.exists()",
+          "quoted_text_sha256": "c9dd732f8a6cf6f305d02cf78febe18195d11f003c09fadfd8c61ed001fb9bf7"
+        }
+      ]
+    },
+    {
+      "id": "F12",
+      "claim": "The documented list contract currently advertises only --priority and --due, says filters can be combined, requires empty results to print nothing and exit 0, and documents the existing post-filter sort order.",
+      "authority": "documentation",
+      "evidence": [
+        {
+          "path": "README.md",
+          "line_start": 59,
+          "line_end": 81,
+          "quoted_text": "### list\n\n```bash\ntodo list [--priority {low,medium,high}] [--due YYYY-MM-DD]\n```\n\n- Prints one row per task:\n\n  ```\n  {id}\\t{[ ]|[x]}\\t{priority}\\t{due|-}\\t{title}\n  ```\n\n  where the status is `[ ]` for incomplete and `[x]` for done, and the due\n  column shows `-` when there is no due date.\n- Filters (`--priority`, `--due`) are exact matches and can be combined.\n- An empty list prints nothing and exits 0.\n\n**Default sort order** (applied after filtering):\n\n1. incomplete tasks before done tasks,\n2. higher priority first (`high` > `medium` > `low`),\n3. nearer due date first (tasks with no due date sort *after* any dated task),\n4. lower id first as a deterministic tiebreaker.",
+          "quoted_text_sha256": "a85e551dfd4e002b6df9bab97ed98eaaa99fcc010dc7aadf0c4ab20993288bc5"
+        }
+      ]
+    },
+    {
+      "id": "F13",
+      "claim": "Invalid list due-date input is expected to return usage exit code 2 rather than propagating SystemExit.",
+      "authority": "test",
+      "evidence": [
+        {
+          "path": "tests/test_todo.py",
+          "line_start": 215,
+          "line_end": 223,
+          "quoted_text": "def test_add_invalid_due_returns_2_no_systemexit_no_write(todo_file, capsys):\n    assert todo_cli.main([\"add\", \"x\", \"--due\", \"2026-02-30\"]) == 2\n    err = capsys.readouterr().err\n    assert \"invalid date\" in err.lower() or \"2026-02-30\" in err\n    assert not todo_file.exists()\n\n\ndef test_list_invalid_due_returns_2_no_systemexit(todo_file):\n    assert todo_cli.main([\"list\", \"--due\", \"2026-02-30\"]) == 2",
+          "quoted_text_sha256": "57a35ae68aa7b4a003143ec648f08311f6b87131842a841f634a2fa6f687de87"
+        }
+      ]
+    },
+    {
+      "id": "F14",
+      "claim": "The CLI converts argparse SystemExit into return codes and maps storage and domain failures to exit codes 3 and 1 with stderr messages.",
+      "authority": "code",
+      "evidence": [
+        {
+          "path": "todo_cli.py",
+          "line_start": 391,
+          "line_end": 410,
+          "quoted_text": "def main(argv: list[str] | None = None) -> int:\n    parser = build_parser()\n    try:\n        args = parser.parse_args(argv)\n    except SystemExit as exc:\n        if isinstance(exc.code, int):\n            return exc.code\n        if exc.code is None:\n            return EXIT_OK\n        return EXIT_USAGE\n\n    handler = _HANDLERS[args.command]\n    try:\n        return handler(args)\n    except StoreError as exc:\n        print(f\"error: {exc}\", file=sys.stderr)\n        return EXIT_STORAGE\n    except TodoError as exc:\n        print(f\"error: {exc}\", file=sys.stderr)\n        return EXIT_DOMAIN",
+          "quoted_text_sha256": "e1f5bec1061465f588f6961cbd64f92154e2dc8613daef79f212d7ae81d69555"
+        }
+      ]
+    },
+    {
+      "id": "F15",
+      "claim": "The project has no runtime dependencies and requires Python 3.10 or newer.",
+      "authority": "configuration",
+      "evidence": [
+        {
+          "path": "pyproject.toml",
+          "line_start": 5,
+          "line_end": 13,
+          "quoted_text": "[project]\nname = \"todo-cli-deep-interview\"\nversion = \"0.1.0\"\ndescription = \"A 4-command (add/list/done/rm) standard-library-only todo CLI.\"\nrequires-python = \">=3.10\"\ndependencies = []\n\n[project.optional-dependencies]\ntest = [\"pytest\"]",
+          "quoted_text_sha256": "5b87550b7b1eedd1ed6a15d09b13d2456d4ae4c38ac023adb52ecc750021cc6f"
+        }
+      ]
+    },
+    {
+      "id": "F16",
+      "claim": "The checked-in test report records 145 passing tests for the combined primary and red-team suites, with zero failures; this is a historical artifact rather than a fresh execution for the requested change.",
+      "authority": "runtime-artifact",
+      "evidence": [
+        {
+          "path": "artifacts/redteam-report.json",
+          "line_start": 5,
+          "line_end": 7,
+          "quoted_text": "  \"invocation\": \"python -m pytest tests/test_todo.py tests/test_redteam.py\",\n  \"totalPassed\": 145,\n  \"totalFailed\": 0,",
+          "quoted_text_sha256": "0456eed07b63971ca6fbd121c6be7bf6cd7a217501f11d96e89b2facba21cc3b"
+        },
+        {
+          "path": "artifacts/redteam-report.json",
+          "line_start": 47,
+          "line_end": 47,
+          "quoted_text": "  \"rawSummaryLine\": \"145 passed in 0.29s\"",
+          "quoted_text_sha256": "6ac4df4127263d10b2e572ebd54e08ce72355f4673bd9ed093094b8a536ed6ea"
+        }
+      ]
+    }
+  ],
+  "conflicts": [],
+  "unknowns": [
+    "The repository does not define whether a task due today is overdue or only dates strictly before today are overdue.",
+    "The repository does not define whether completed tasks with past due dates should be included by --overdue.",
+    "The repository does not specify whether --overdue may be combined with --due and, if so, what that combination means; combination with --priority is likewise undocumented for the new filter.",
+    "The repository does not define the clock or timezone used to determine the current date, nor a date-injection mechanism for deterministic tests.",
+    "The public request names --overdue but does not explicitly state whether it is a boolean flag or accepts a value."
+  ],
+  "repository_snapshot": {
+    "git_head": "2753f9dc12efb3cadfea9aa9751289fd397d749e",
+    "git_status_sha256": "108363946fc2de95ffa696432807881ca6089c5b705c5bdefa1a8aabfe156add",
+    "cited_file_sha256": {
+      "todo_cli.py": "aab51fc04d2c069ef749a7c8667212c18419144559a21285af5da497b8901567",
+      "tests/test_todo.py": "6a388c86d1f961c8b6e6e814d2815b20d10225aa252998c71930a18abad92375",
+      "README.md": "fa0dc77f0025340f0a8109bcc27aab2185a1bb225feaccb4b998dd4c88f78307",
+      "pyproject.toml": "75cbfd0b6b9b8d3c42429bc9f4784dea7c008e6991578a1788ea091119d1f92d",
+      "artifacts/redteam-report.json": "a78f8b9c69231b82c34e3301ba2df5be6a6d11e79254975afa02c66e792b3899"
+    }
+  }
+}

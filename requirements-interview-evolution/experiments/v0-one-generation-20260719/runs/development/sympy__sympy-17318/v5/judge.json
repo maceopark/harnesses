@@ -1,0 +1,23 @@
+{
+  "compatibility_regressions": [
+    "Changing split_surds to accept unsupported empty-surds inputs broadens its behavior for every caller, whereas the accepted implementation rejects non-positive-rational matching earlier in _sqrt_match.",
+    "The sealed exact-output check would reject the accepted result I for the reported 3*I expression and incorrectly encode 'no crash' as 'entire enclosing expression remains unchanged'.",
+    "The no-op tuple could cause other split_surds callers to treat unsupported complex inputs as valid partitions rather than non-matches."
+  ],
+  "implementation_ready": true,
+  "invented_requirements": [
+    "Handle the failure specifically inside split_surds for all callers; the audited facts establish the crash path but do not establish this as the required fix boundary.",
+    "Define the empty-surds result as (S.One, S.Zero, expr); this tuple contract was selected during the interview rather than derived from public or repository evidence.",
+    "Add a direct split_surds regression test; the public request requires the sqrtdenest regression, not private helper coverage.",
+    "Require the reported expression to remain as 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2; hindsight tests show the accepted behavior instead simplifies that case to I.",
+    "Require relevant radsimp tests as a distinct acceptance condition without issue-time evidence identifying that suite as necessary."
+  ],
+  "material_blockers": [
+    "The contract seals an exact expected result that conflicts with the audited hindsight regression: the reported expression evaluates to I after other valid recursive denesting.",
+    "The chosen source-level split_surds tuple semantics are not supported by audited public facts and differ materially from the accepted positive-rational guard strategy."
+  ],
+  "owner_recall": 1,
+  "redundant_questions": [],
+  "repository_fidelity": 0.48,
+  "summary": "The interview fully recalled and sealed every owner choice, and the contract is mechanically executable with no open fields. Its fidelity is limited because it converted an observed empty-list mechanism into a new public-like split_surds contract and assumed the whole reported expression must remain unchanged. Hindsight should remain diagnostic, but it exposes a material acceptance mismatch: unsupported inner matching can coexist with valid recursive denesting of the enclosing expression to I."
+}

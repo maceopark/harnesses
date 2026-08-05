@@ -1,0 +1,104 @@
+[
+  {
+    "answer": "Doc plus alias",
+    "open_material_decisions": [
+      "Whether documented type aliases should retain or suppress the generated “alias of …” paragraph once their source documentation is recovered."
+    ],
+    "question": {
+      "header": "Alias text",
+      "options": [
+        {
+          "description": "Preserve the tested Python 3.7+ behavior: render the source documentation followed by “alias of …”; apply that behavior consistently to the affected aliases and Python 3.6 path.",
+          "label": "Doc plus alias",
+          "recommended": true
+        },
+        {
+          "description": "Follow the issue’s literal expected wording: render the source documentation and suppress “alias of …”, intentionally changing the existing Python 3.7+ tested behavior.",
+          "label": "Documentation only",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has next-line source documentation, what rendered content should the fix require?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Typing aliases only",
+    "open_material_decisions": [
+      "Whether the fix may change automatic documenter selection only for typing aliases, or for every module-level value that has next-line source documentation and is currently selected as a class alias."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Fix Dict, Union, Callable, and equivalent typing aliases while preserving selection behavior for unrelated class-like values.",
+          "label": "Typing aliases only",
+          "recommended": true
+        },
+        {
+          "description": "Prefer data documentation for every module-level value with source documentation, even if currently selected as a class alias.",
+          "label": "All documented values",
+          "recommended": false
+        }
+      ],
+      "prompt": "How narrowly should automatic autodoc member selection be changed when a module-level value has next-line source documentation?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the complete implementation contract."
+    ],
+    "question": {
+      "header": "Seal contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with no remaining material decisions.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Do not seal it; provide a specific boundary or acceptance change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: narrowly fix automatic autodoc handling for module-level typing aliases—including Dict, Union, Callable, and equivalent typing aliases—when ModuleAnalyzer finds next-line source documentation; render that documentation followed by the generated “alias of …” paragraph; preserve alias-only output for undocumented typing aliases; preserve documenter selection and rendering for unrelated class-like values; cover the reported multiline aliases with a regression fixture exercising automatic module/member documentation, including the Python 3.6 compatibility path represented by the repository’s version-conditional tests; allow the implementer to choose the smallest detection/selection mechanism consistent with those boundaries and existing conventions; accept bounded residual risk for uncited typing implementations outside the supported/testable version branches, without expanding platform guarantees. Acceptance requires all three reported aliases to retain their complete multiline source documentation plus alias text, existing generic-alias expectations to remain compatible, and targeted autodoc tests to pass."
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "All three reported aliases retain their complete multiline source documentation in generated autodoc output.",
+          "Each documented typing alias is followed by its generated “alias of …” paragraph.",
+          "An undocumented typing alias continues to render alias-only output.",
+          "Automatic module/member documentation selects or processes the affected typing aliases consistently with the approved behavior.",
+          "Existing generic-alias expectations remain compatible, including documented List[int] behavior.",
+          "Unrelated class-like values preserve existing documenter selection and rendering.",
+          "Targeted autodoc regression tests pass on supported test branches, including the repository’s represented Python 3.6 compatibility branch."
+        ],
+        "confirmed_decisions": [
+          "Documented typing aliases render source documentation followed by the generated “alias of …” paragraph.",
+          "The fix is limited to typing aliases; unrelated class-like values retain current automatic documenter selection and rendering.",
+          "Undocumented typing aliases retain alias-only output.",
+          "The complete multiline next-line documentation must be preserved for the reported Dict[str, Any], Union[str, None], and Callable[[...], ...] aliases.",
+          "Regression coverage must exercise automatic module/member documentation, not only direct DataDocumenter invocation.",
+          "Compatibility coverage includes the Python 3.6 path represented by existing version-conditional tests without creating broader uncited platform guarantees.",
+          "Implementation mechanism is delegated to the implementer, constrained to the smallest change consistent with current conventions and the approved observable behavior.",
+          "Residual risk is accepted for uncited typing implementations outside supported and testable version branches."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Narrowly fix automatic autodoc handling for module-level typing aliases—including Dict, Union, Callable, and equivalent typing aliases—when ModuleAnalyzer finds next-line source documentation. Render the complete source documentation followed by the generated “alias of …” paragraph. Preserve alias-only output for undocumented typing aliases and preserve existing documenter selection and rendering for unrelated class-like values. Add a regression fixture covering the reported multiline aliases through automatic module/member documentation, including the Python 3.6 compatibility path represented by the repository’s version-conditional tests. The implementer may choose the smallest detection or selection mechanism consistent with these boundaries and existing conventions. Typing implementations outside supported and testable version branches remain a bounded residual risk and do not expand platform guarantees."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner approved the complete contract, and all material behavior, scope, compatibility, acceptance, delegation, and residual-risk decisions are resolved."
+    },
+    "turn": 4
+  }
+]

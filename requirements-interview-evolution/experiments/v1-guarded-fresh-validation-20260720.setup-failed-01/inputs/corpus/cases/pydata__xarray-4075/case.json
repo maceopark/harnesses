@@ -1,0 +1,153 @@
+{
+  "alias": "pydata__xarray-4075",
+  "metadata": {
+    "context_mode": "repository",
+    "partition": "development",
+    "repository_family": "pydata/xarray"
+  },
+  "public_request": {
+    "cache_key": "sha256:d1cc08eec285573fc56f2a58a623e0b7adf33e6f75fd16b4214dd1db4b3e46a6",
+    "digest": "d1cc08eec285573fc56f2a58a623e0b7adf33e6f75fd16b4214dd1db4b3e46a6"
+  },
+  "repository_facts": [
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "        ``weights`` must be a ``DataArray`` and cannot contain missing values.\n        Missing values can be replaced by ``weights.fillna(0)``.\n        \"\"\"\n\n        from .dataarray import DataArray\n\n        if not isinstance(weights, DataArray):\n            raise ValueError(\"`weights` must be a DataArray\")\n\n        if weights.isnull().any():\n            raise ValueError(\n                \"`weights` cannot contain missing values. \"\n                \"Missing values can be replaced by `weights.fillna(0)`.\"\n            )\n\n        self.obj = obj\n        self.weights = weights",
+          "excerpt_digest": "5126cb7ac3104cd71ecc1aafc0c0ee776252c0f5be7c67f385d384a1008b2e31",
+          "id": "repository:F1",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "xarray/core/weighted.py:L94-L110",
+          "source": "repository",
+          "source_digest": "24a8f70e2ad99ab791b157f4bea8f76ee75c02253531fe3f05eed9d57f332985"
+        }
+      ],
+      "id": "F1",
+      "statement": "Weighted objects accept weights only when they are a DataArray and contain no missing values; this constructor performs no numeric-dtype or boolean-dtype validation or conversion."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "        # need to infer dims as we use `dot`\n        if dim is None:\n            dim = ...\n\n        # need to mask invalid values in da, as `dot` does not implement skipna\n        if skipna or (skipna is None and da.dtype.kind in \"cfO\"):\n            da = da.fillna(0.0)\n\n        # `dot` does not broadcast arrays, so this avoids creating a large\n        # DataArray (if `weights` has additional dimensions)\n        # maybe add fasttrack (`(da * weights).sum(dims=dim, skipna=skipna)`)\n        return dot(da, weights, dims=dim)",
+          "excerpt_digest": "a76c3e415fca573e8409ef4a1b695bc01e02c6505250d00d1770045ee6f2d572",
+          "id": "repository:F2",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "xarray/core/weighted.py:L124-L135",
+          "source": "repository",
+          "source_digest": "24a8f70e2ad99ab791b157f4bea8f76ee75c02253531fe3f05eed9d57f332985"
+        }
+      ],
+      "id": "F2",
+      "statement": "The internal weighted reduction optionally fills missing data values, then passes the data and weights directly to dot without coercing either operand's dtype."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "    def _sum_of_weights(\n        self, da: \"DataArray\", dim: Optional[Union[Hashable, Iterable[Hashable]]] = None\n    ) -> \"DataArray\":\n        \"\"\" Calculate the sum of weights, accounting for missing values \"\"\"\n\n        # we need to mask data values that are nan; else the weights are wrong\n        mask = da.notnull()\n\n        sum_of_weights = self._reduce(mask, self.weights, dim=dim, skipna=False)\n\n        # 0-weights are not valid\n        valid_weights = sum_of_weights != 0.0\n\n        return sum_of_weights.where(valid_weights)",
+          "excerpt_digest": "b1ec281a6f8af59d194ce7cc6ab5c931e78647be3cb2489ccf212257e93f8a21",
+          "id": "repository:F3",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "xarray/core/weighted.py:L137-L150",
+          "source": "repository",
+          "source_digest": "24a8f70e2ad99ab791b157f4bea8f76ee75c02253531fe3f05eed9d57f332985"
+        }
+      ],
+      "id": "F3",
+      "statement": "The sum of weights is computed by creating da.notnull() as a mask and reducing that mask directly with self.weights; zero results are subsequently replaced with missing values."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "    def _weighted_mean(\n        self,\n        da: \"DataArray\",\n        dim: Optional[Union[Hashable, Iterable[Hashable]]] = None,\n        skipna: Optional[bool] = None,\n    ) -> \"DataArray\":\n        \"\"\"Reduce a DataArray by a weighted ``mean`` along some dimension(s).\"\"\"\n\n        weighted_sum = self._weighted_sum(da, dim=dim, skipna=skipna)\n\n        sum_of_weights = self._sum_of_weights(da, dim=dim)\n\n        return weighted_sum / sum_of_weights",
+          "excerpt_digest": "787baba3c8a57b6cabfe8f248c44e582a72722fdc3a8a065e54376e55af9145a",
+          "id": "repository:F4",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "xarray/core/weighted.py:L162-L174",
+          "source": "repository",
+          "source_digest": "24a8f70e2ad99ab791b157f4bea8f76ee75c02253531fe3f05eed9d57f332985"
+        }
+      ],
+      "id": "F4",
+      "statement": "Weighted mean computes the weighted sum and sum of weights separately, then returns weighted_sum divided by sum_of_weights."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "    # construct einsum subscripts, such as '...abc,...ab->...c'\n    # Note: input_core_dims are always moved to the last position\n    subscripts_list = [\n        \"...\" + \"\".join(dim_map[d] for d in ds) for ds in input_core_dims\n    ]\n    subscripts = \",\".join(subscripts_list)\n    subscripts += \"->...\" + \"\".join(dim_map[d] for d in output_core_dims[0])\n\n    join = OPTIONS[\"arithmetic_join\"]\n    # using \"inner\" emulates `(a * b).sum()` for all joins (except \"exact\")\n    if join != \"exact\":\n        join = \"inner\"\n\n    # subscripts should be passed to np.einsum as arg, not as kwargs. We need\n    # to construct a partial function for apply_ufunc to work.\n    func = functools.partial(duck_array_ops.einsum, subscripts, **kwargs)\n    result = apply_ufunc(\n        func,\n        *arrays,\n        input_core_dims=input_core_dims,",
+          "excerpt_digest": "3902807a31072ff7c01715ae40eeaee2e69a970758e15e2fbe16d7bbe87fa675",
+          "id": "repository:F5",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "xarray/core/computation.py:L1191-L1210",
+          "source": "repository",
+          "source_digest": "a8ad257809c9873c79f4b1e2c49b8f28833f482999ad45c5b855619ecc829428"
+        }
+      ],
+      "id": "F5",
+      "statement": "The dot operation constructs einsum subscripts and delegates the calculation to duck_array_ops.einsum through apply_ufunc, with no dtype conversion in this path."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "def expected_weighted(da, weights, dim, skipna, operation):\n    \"\"\"\n    Generate expected result using ``*`` and ``sum``. This is checked against\n    the result of da.weighted which uses ``dot``\n    \"\"\"\n\n    weighted_sum = (da * weights).sum(dim=dim, skipna=skipna)\n\n    if operation == \"sum\":\n        return weighted_sum\n\n    masked_weights = weights.where(da.notnull())\n    sum_of_weights = masked_weights.sum(dim=dim, skipna=True)\n    valid_weights = sum_of_weights != 0\n    sum_of_weights = sum_of_weights.where(valid_weights)\n\n    if operation == \"sum_of_weights\":\n        return sum_of_weights\n\n    weighted_mean = weighted_sum / sum_of_weights",
+          "excerpt_digest": "5da101aae45ad98e5e945a3a53069f0c4e02bcc5f0565bb262f1066dca6327d1",
+          "id": "repository:F6",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "xarray/tests/test_weighted.py:L161-L180",
+          "source": "repository",
+          "source_digest": "a15bd3c2a3b50c99833b40684e890d530c6a2e2fff3cbd6bb374ca1606d6424a"
+        }
+      ],
+      "id": "F6",
+      "statement": "The weighted-test reference implementation computes the numerator with multiplication followed by sum, and computes the denominator by masking weights and calling sum rather than dot."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "@pytest.mark.parametrize(\n    (\"weights\", \"expected\"), (([4, 6], 1.6), ([1, 0], 1.0), ([0, 0], np.nan))\n)\ndef test_weighted_mean_no_nan(weights, expected):\n\n    da = DataArray([1, 2])\n    weights = DataArray(weights)\n    expected = DataArray(expected)\n\n    result = da.weighted(weights).mean()\n\n    assert_equal(expected, result)",
+          "excerpt_digest": "c9c7da46ca5702727b2eea1b7afc735b6132fe31935bd002d40c613f51748029",
+          "id": "repository:F7",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "xarray/tests/test_weighted.py:L128-L139",
+          "source": "repository",
+          "source_digest": "a15bd3c2a3b50c99833b40684e890d530c6a2e2fff3cbd6bb374ca1606d6424a"
+        }
+      ],
+      "id": "F7",
+      "statement": "The existing no-missing-value weighted-mean test covers integer weight lists [4, 6], [1, 0], and [0, 0], but does not parameterize boolean weights."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "    def weighted(self, weights):\n        \"\"\"\n        Weighted operations.\n\n        Parameters\n        ----------\n        weights : DataArray\n            An array of weights associated with the values in this Dataset.\n            Each value in the data contributes to the reduction operation\n            according to its associated weight.\n\n        Notes\n        -----\n        ``weights`` must be a DataArray and cannot contain missing values.\n        Missing values can be replaced by ``weights.fillna(0)``.\n        \"\"\"\n\n        return self._weighted_cls(self, weights)",
+          "excerpt_digest": "a5ce99ca3311fae87fa92e77c318937aa21d1b670e2f324e91b862c74984b8af",
+          "id": "repository:F8",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "xarray/core/common.py:L766-L783",
+          "source": "repository",
+          "source_digest": "1f9209b645ac9fe82ae1ff57fb66e626be76749f8e13afaa074ae89eb0ce7eb5"
+        }
+      ],
+      "id": "F8",
+      "statement": "The public weighted API documents weights as a DataArray that cannot contain missing values and returns the configured weighted class directly."
+    }
+  ],
+  "schema": "InterviewerSafeCase.v1",
+  "sealed_source_digest": "6be5fa02bd224a221cd9d1cd1a24ab233aee74df1cef3b021ef635e3e692042c",
+  "upstream": {
+    "base_commit": "19b088636eb7d3f65ab7a1046ac672e0689371d8",
+    "dataset": "princeton-nlp/SWE-bench_Verified",
+    "instance_id_digest": "c6f71ce533602696afd72cff57032f3832311a591e7e02da134a6524bac8ac6a",
+    "issue_cache_key": "sha256:d1cc08eec285573fc56f2a58a623e0b7adf33e6f75fd16b4214dd1db4b3e46a6",
+    "issue_digest": "d1cc08eec285573fc56f2a58a623e0b7adf33e6f75fd16b4214dd1db4b3e46a6",
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "source_url": "https://github.com/pydata/xarray/pull/4075"
+  }
+}

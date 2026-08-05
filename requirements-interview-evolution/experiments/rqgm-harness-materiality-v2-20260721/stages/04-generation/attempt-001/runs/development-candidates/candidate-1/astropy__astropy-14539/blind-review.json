@@ -1,0 +1,35 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/2",
+          "quoted_value": "Two corresponding Q-format VLA rows with unequal contents compare as non-identical and the differing row is reported."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/2",
+          "quoted_value": "Q-format VLA columns must be treated as variable-length arrays for comparison, consistent with the observable behavior of P-format VLA columns."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/4",
+          "quoted_value": "Existing comparison behavior for P-format VLAs and non-VLA columns must remain compatible."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/3/statement",
+          "quoted_value": "TableDataDiff applies row-by-row numpy.allclose only when the column format contains the literal character P; otherwise, a non-floating column is compared with numpy.where(arra != arrb)."
+        }
+      ],
+      "description": "The contract requires Q-format VLA handling to remain consistent with P-format behavior and preserve compatibility, but acceptance check 2 says any unequal contents must compare as non-identical. Repository evidence establishes that P-format VLA comparisons honor rtol and atol, so unequal floating-point values may legitimately compare as equal. The acceptance check must distinguish differences outside tolerance from tolerated numeric differences before the contract is implementation-ready.",
+      "failure_class": "compatibility-regression",
+      "general_cause": "The acceptance criteria state unconditional inequality semantics for Q-format VLAs without preserving FITSDiff tolerance behavior.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "A Q-format VLA row with numerically unequal values inside the configured rtol/atol could be required to compare as non-identical, while the existing P-format VLA path uses numpy.allclose with those tolerances."
+    }
+  ],
+  "summary": "The contract has one material readiness failure: its unequal-Q-VLA acceptance check omits FITSDiff's configured numeric tolerances and therefore conflicts with the required P-format compatibility semantics."
+}

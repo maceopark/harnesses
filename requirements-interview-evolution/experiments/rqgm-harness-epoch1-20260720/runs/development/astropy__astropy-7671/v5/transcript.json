@@ -1,0 +1,106 @@
+[
+  {
+    "answer": "Restore parse_version",
+    "open_material_decisions": [
+      "Choose whether minversion should restore setuptools/pkg_resources.parse_version or remain independent of pkg_resources with a local normalization/comparison workaround."
+    ],
+    "question": {
+      "header": "Version parser",
+      "options": [
+        {
+          "description": "Use pkg_resources.parse_version for both installed and required versions, matching the demonstrated correct behavior and avoiding LooseVersion's mixed-type failure.",
+          "label": "Restore parse_version",
+          "recommended": true
+        },
+        {
+          "description": "Keep LooseVersion or custom logic and normalize problematic suffixes locally, avoiding a runtime reliance on pkg_resources but requiring explicitly defined edge-case semantics.",
+          "label": "Local workaround",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which implementation strategy should the contract require for version comparisons?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Keep fallback",
+    "open_material_decisions": [
+      "Define whether minversion must retain a no-pkg_resources fallback or may require pkg_resources unconditionally at runtime."
+    ],
+    "question": {
+      "header": "Parser fallback",
+      "options": [
+        {
+          "description": "Use pkg_resources.parse_version when available and preserve a LooseVersion-based compatibility fallback when it is absent.",
+          "label": "Keep fallback",
+          "recommended": true
+        },
+        {
+          "description": "Import pkg_resources.parse_version unconditionally and treat setuptools as a runtime requirement.",
+          "label": "Require parser",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should minversion behave when pkg_resources cannot be imported?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Normalize and pass",
+    "open_material_decisions": [
+      "Define the compatibility fallback’s semantics for development/prerelease suffixes when pkg_resources is unavailable."
+    ],
+    "question": {
+      "header": "Fallback behavior",
+      "options": [
+        {
+          "description": "Avoid the TypeError by applying the prior compatibility behavior to non-numeric suffixes, so 1.14.3 satisfies 1.14dev.",
+          "label": "Normalize and pass",
+          "recommended": true
+        },
+        {
+          "description": "Require a boolean result without prescribing whether this comparison passes, leaving fallback ordering implementation-defined.",
+          "label": "Only avoid crash",
+          "recommended": false
+        },
+        {
+          "description": "Require the fallback to reproduce pkg_resources.parse_version ordering for development, prerelease, and release versions.",
+          "label": "Match parser fully",
+          "recommended": false
+        }
+      ],
+      "prompt": "When pkg_resources is unavailable, what result must the fallback produce for an installed release such as 1.14.3 against a minimum of 1.14dev?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "With a synthetic or imported module whose installed version is `1.14.3`, `minversion(module, '1.14dev')` returns `True` and does not raise `TypeError` when `pkg_resources.parse_version` is available.",
+          "When the `pkg_resources` import is made unavailable in a controlled test, the same `1.14.3` versus `1.14dev` comparison uses the fallback, returns `True`, and does not raise `TypeError`.",
+          "Tests exercise both `inclusive=True` and `inclusive=False` through the selected parser path and confirm that `>=` and `>` semantics remain distinct at equal versions.",
+          "The existing expectations for installed `0.12.2` remain valid: minimum versions `0.12`, `0.12.1`, and `0.12.0.dev` pass, while `1` and `1.2rc1` fail.",
+          "A missing module-name string still returns `False`; passing an unsupported module argument type still raises `ValueError`.",
+          "Direct `__version__` lookup and custom direct or dotted `version_path` lookup continue to supply the installed version for comparison.",
+          "The targeted introspection test suite passes with both the preferred parser and explicitly simulated fallback paths."
+        ],
+        "confirmed_decisions": [
+          "Use `pkg_resources.parse_version` as the preferred version parser, replacing direct `LooseVersion` comparison when the parser is available.",
+          "Do not make `pkg_resources` an unconditional runtime requirement; retain a compatibility fallback for environments where it cannot be imported.",
+          "In the fallback, normalize non-numeric suffixes using the prior compatibility behavior so `minversion` returns a boolean instead of raising `TypeError`, and specifically treats installed `1.14.3` as satisfying required `1.14dev`.",
+          "Apply the selected parsing behavior to both inclusive and exclusive comparison branches without changing their operators.",
+          "Keep the existing public API and behavior for module objects, module-name strings, failed imports, invalid module arguments, and direct or dotted `version_path` lookup."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update `astropy.utils.introspection.minversion` to restore `pkg_resources.parse_version` as the preferred comparator while retaining compatibility when `pkg_resources` is unavailable. When available, parse both the installed version obtained through the existing `version_path` behavior and the requested minimum version with `parse_version`, then preserve the current `inclusive=True` (`>=`) and `inclusive=False` (`>`) semantics. When `pkg_resources` cannot be imported, retain a `LooseVersion`-based fallback that normalizes non-numeric version suffixes according to the repository's prior compatibility behavior, avoids mixed integer/string comparison failures, and makes an installed release such as `1.14.3` satisfy a minimum of `1.14dev`. Preserve all existing module resolution, missing-import, invalid-argument, and version-path behavior. Add regression tests for the reported release-versus-development-version case and for the no-`pkg_resources` fallback."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The repository evidence and three answered material decisions fully determine the required behavior, dependency strategy, fallback semantics, and regression coverage. No material blocker remains."
+    },
+    "turn": 4
+  }
+]

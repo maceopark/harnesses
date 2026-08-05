@@ -1,0 +1,86 @@
+[
+  {
+    "answer": "Consecutive valid lines",
+    "open_material_decisions": [
+      "Define where autodoc stops collecting leading overload signatures and how it treats the first non-matching line."
+    ],
+    "question": {
+      "header": "Block boundary",
+      "options": [
+        {
+          "description": "Collect consecutive leading lines that parse as signatures for the documented function or method, then retain the first non-matching line and everything after it as docstring content.",
+          "label": "Consecutive valid lines",
+          "recommended": true
+        },
+        {
+          "description": "Collect consecutive leading signature-like lines even when their parsed names do not match the documented object, then retain the rest as content.",
+          "label": "Signature-looking lines",
+          "recommended": false
+        },
+        {
+          "description": "Treat every leading line up to the first blank line as part of the signature block, requiring all of those lines to be handled as signatures.",
+          "label": "Until blank line",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc determine the end of a leading overloaded-signature block?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Functions and methods",
+    "open_material_decisions": [
+      "Whether multiple leading signatures should be supported only for methods or for both functions and methods covered by autodoc_docstring_signature."
+    ],
+    "question": {
+      "header": "Object scope",
+      "options": [
+        {
+          "description": "Extend the existing shared autodoc_docstring_signature behavior consistently for both functions and methods.",
+          "label": "Functions and methods",
+          "recommended": true
+        },
+        {
+          "description": "Support overload blocks only for methods, leaving functions limited to one docstring-derived signature.",
+          "label": "Methods only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which documented objects should support multiple consecutive leading docstring signatures?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A method docstring beginning with two or more valid signatures for that method produces one aligned py:method signature line per recognized signature, in source order, and none of those signature lines appear in the rendered body.",
+          "A function docstring beginning with two or more valid signatures for that function produces one directive signature line per recognized signature, in source order.",
+          "A non-matching, malformed, blank, or ordinary prose line ends collection; it and all following lines remain in the rendered docstring body.",
+          "A signature-like line whose parsed name does not identify the documented object ends collection and remains in the body with subsequent content.",
+          "A single leading valid signature continues to produce the existing single-signature output and is removed from the body.",
+          "With autodoc_docstring_signature disabled, leading signature-like lines remain docstring content and do not supply displayed overload signatures.",
+          "An explicitly supplied signature continues to take precedence over docstring-derived signatures.",
+          "Existing tests for single docstring signatures, non-signature first lines, disabled configuration, and multiline directive-header output continue to pass, with new coverage for overloaded function and method docstrings."
+        ],
+        "confirmed_decisions": [
+          "When autodoc_docstring_signature is enabled and no explicit signature was supplied, autodoc recognizes every consecutive leading docstring line that parses as a signature for the documented function or method.",
+          "The recognized signatures are displayed as separate directive signature lines in their original docstring order, including each signature's return annotation when present.",
+          "All recognized leading signature lines are removed from the rendered docstring content.",
+          "Collection stops at the first line that is not a valid signature for the documented object; that line and everything after it remain as docstring content.",
+          "The multiple-signature behavior applies to both functions and methods through their shared docstring-signature behavior.",
+          "Existing behavior remains unchanged when only one valid leading signature is present, when the first line is not a valid signature for the documented object, when an explicit signature is supplied, or when autodoc_docstring_signature is disabled.",
+          "The autodoc documentation describes support for a consecutive leading block of function or method signatures rather than only the first docstring line."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend autodoc_docstring_signature so functions and methods can derive multiple displayed signatures from a consecutive block of valid signature lines at the start of a docstring."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The repository evidence and two explicit interview answers resolve the material scope and block-boundary decisions. The requested behavior can now be implemented without inventing additional product behavior."
+    },
+    "turn": 3
+  }
+]

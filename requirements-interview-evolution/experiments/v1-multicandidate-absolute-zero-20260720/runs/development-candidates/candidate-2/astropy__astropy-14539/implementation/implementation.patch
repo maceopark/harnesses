@@ -1,0 +1,69 @@
+diff --git a/astropy/io/fits/diff.py b/astropy/io/fits/diff.py
+index 100cdf1..bc7d761 100644
+--- a/astropy/io/fits/diff.py
++++ b/astropy/io/fits/diff.py
+@@ -1449,7 +1449,7 @@ class TableDataDiff(_BaseDiff):
+                 arrb.dtype, np.floating
+             ):
+                 diffs = where_not_allclose(arra, arrb, rtol=self.rtol, atol=self.atol)
+-            elif "P" in col.format:
++            elif col.format.p_format is not None:
+                 diffs = (
+                     [
+                         idx
+diff --git a/astropy/io/fits/tests/test_diff.py b/astropy/io/fits/tests/test_diff.py
+index adfebe6..c067616 100644
+--- a/astropy/io/fits/tests/test_diff.py
++++ b/astropy/io/fits/tests/test_diff.py
+@@ -624,6 +624,51 @@ class TestDiff(FitsTestCase):
+         report = diff.report()
+         assert "No differences found." in report
+ 
++    def test_identical_q_vla_file(self):
++        """Regression test for comparing a Q VLA file with itself."""
++        filename = self.temp("q-vla.fits")
++        column = Column("a", format="QD", array=[[0], [0, 0]])
++        BinTableHDU.from_columns([column]).writeto(filename)
++
++        diff = FITSDiff(filename, filename)
++
++        assert diff.identical
++        assert diff.diff_hdus == []
++
++    @pytest.mark.parametrize("descriptor", ["P", "Q"])
++    def test_vla_comparison(self, descriptor):
++        format = f"{descriptor}D"
++        left = BinTableHDU.from_columns(
++            [Column("a", format=format, array=[[1.0], [2.0, 3.0]])]
++        )
++        equal = BinTableHDU.from_columns(
++            [Column("a", format=format, array=[[1.0], [2.0, 3.0]])]
++        )
++        different = BinTableHDU.from_columns(
++            [Column("a", format=format, array=[[1.0], [2.0, 4.0]])]
++        )
++
++        assert TableDataDiff(left.data, equal.data).identical
++
++        diff = TableDataDiff(left.data, different.data)
++        assert not diff.identical
++        assert diff.diff_total == 1
++        assert diff.diff_values[0][0] == ("a", 1)
++
++    @pytest.mark.parametrize("descriptor", ["P", "Q"])
++    def test_floating_point_vla_tolerance(self, descriptor):
++        format = f"{descriptor}D"
++        left = BinTableHDU.from_columns(
++            [Column("a", format=format, array=[[1.0], [2.0, 3.0]])]
++        )
++        close = BinTableHDU.from_columns(
++            [Column("a", format=format, array=[[1.0001], [2.0, 3.0001]])]
++        )
++
++        assert not TableDataDiff(left.data, close.data).identical
++        assert TableDataDiff(left.data, close.data, rtol=0.0001).identical
++        assert TableDataDiff(left.data, close.data, atol=0.00011).identical
++
+     def test_partially_identical_files1(self):
+         """
+         Test files that have some identical HDUs but a different extension

@@ -1,0 +1,80 @@
+[
+  {
+    "answer": "Documentation plus alias",
+    "open_material_decisions": [
+      "Whether documented type aliases should retain the generated “alias of …” line or replace it with the next-line string documentation."
+    ],
+    "question": {
+      "header": "Alias output",
+      "options": [
+        {
+          "description": "Preserve the established GenericAlias behavior: render the custom documentation followed by the generated “alias of …” line.",
+          "label": "Documentation plus alias",
+          "recommended": true
+        },
+        {
+          "description": "Suppress the generated “alias of …” line whenever custom next-line documentation exists.",
+          "label": "Documentation only",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has next-line string documentation, what should autodoc render?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Include Python 3.6",
+    "open_material_decisions": [
+      "Whether the fix must restore next-line documentation for typing aliases on Python 3.6, or only cover Python 3.7+ GenericAlias handling."
+    ],
+    "question": {
+      "header": "Python scope",
+      "options": [
+        {
+          "description": "Fix the reported Python 3.6.9 behavior and add regression coverage for the legacy typing-alias classification path.",
+          "label": "Include Python 3.6",
+          "recommended": true
+        },
+        {
+          "description": "Limit the fix to runtimes where Sphinx explicitly recognizes GenericAlias objects, leaving Python 3.6 behavior unchanged.",
+          "label": "Python 3.7+ only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which Python-version scope should the fix cover?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Add a regression fixture containing module-level Dict, Union, and Callable aliases, each followed immediately by multiline string documentation.",
+          "On the Python 3.6 compatibility branch, autodoc output for each documented alias contains its complete analyzer-derived documentation.",
+          "For each documented alias, the custom documentation appears before the generated “alias of …” line.",
+          "The fix covers automodule-generated output used by the sphinx-apidoc reproduction, not merely direct autodata invocation.",
+          "An alias without next-line documentation continues to render its existing alias/default content without unrelated documentation.",
+          "Existing GenericAlias tests for Python 3.7+ continue to pass unchanged.",
+          "Existing parser tests continue to demonstrate that multiline next-line strings are captured and dedented; add parser coverage only if the new fixture exposes an untested parsing failure.",
+          "Run the targeted pycode parser, autodata, autoattribute, and general autodoc GenericAlias test suites on supported available runtimes, including Python 3.6 where the project’s test environment permits it."
+        ],
+        "confirmed_decisions": [
+          "A type alias with next-line string documentation must render both the custom documentation and the generated “alias of …” line, in that order.",
+          "The fix must include the reported Python 3.6 legacy typing-alias path, not only Python 3.7+ GenericAlias objects.",
+          "The parser’s established next-line string syntax remains the source of the custom documentation; no new documentation syntax is introduced.",
+          "The change applies to module-level Dict, Union, and Callable aliases represented by the reproduction.",
+          "Undocumented aliases must retain their existing generated alias/default output rather than gaining synthetic documentation.",
+          "Existing Python 3.7+ behavior that already combines analyzer documentation with generated alias content must remain unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix autodoc on Python 3.6 so module-level typing aliases documented with an immediately following multiline string retain that analyzer-derived documentation. For documented Dict, Union, and Callable aliases, render the custom documentation followed by the existing generated “alias of …” content. Preserve existing behavior for aliases without source documentation and for Python 3.7+ GenericAlias handling."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The repository evidence and two confirmed product decisions resolve the material behavior and compatibility scope. No further question would materially change the implementation contract."
+    },
+    "turn": 3
+  }
+]

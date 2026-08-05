@@ -1,0 +1,128 @@
+[
+  {
+    "answer": "Consecutive valid signatures",
+    "open_material_decisions": [
+      "Define the recognition and stopping boundary for consecutive docstring-derived overload signatures."
+    ],
+    "question": {
+      "header": "Overload block",
+      "options": [
+        {
+          "description": "Consume every consecutive leading line that parses as a signature and has an already-accepted object name; stop at the first other line, which remains content.",
+          "label": "Consecutive valid signatures",
+          "recommended": true
+        },
+        {
+          "description": "Consume consecutive leading signature-looking lines regardless of their parsed base names, then stop at the first non-signature line.",
+          "label": "Any parsed signatures",
+          "recommended": false
+        },
+        {
+          "description": "Let the implementer choose the stopping and name-validation rules, constrained to preserve existing single-signature behavior.",
+          "label": "Delegate exact boundary",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which leading docstring lines should autodoc consume and display as overload signatures?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Functions and methods",
+    "open_material_decisions": [
+      "Decide whether consecutive docstring-derived overload signatures apply to methods only or to both methods and functions."
+    ],
+    "question": {
+      "header": "Feature scope",
+      "options": [
+        {
+          "description": "Extend the existing shared autodoc_docstring_signature behavior consistently for both documenter types; existing single-signature behavior remains unchanged.",
+          "label": "Functions and methods",
+          "recommended": true
+        },
+        {
+          "description": "Limit the new multi-signature behavior to MethodDocumenter even though functions currently share the same extraction path.",
+          "label": "Methods only",
+          "recommended": false
+        },
+        {
+          "description": "Let the implementer choose, constrained to support overloaded methods and preserve all existing single-signature behavior.",
+          "label": "Delegate scope",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should consecutive leading docstring signatures be recognized for both functions and methods, or only for methods?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve or revise the complete implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this as the implementation-ready contract.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Continue the interview to change required behavior or compatibility boundaries.",
+          "label": "Revise behavior",
+          "recommended": false
+        },
+        {
+          "description": "Continue the interview to change acceptance coverage or documentation requirements.",
+          "label": "Revise tests",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: when autodoc_docstring_signature is enabled and no explicit signature was supplied, FunctionDocumenter and MethodDocumenter must recognize every consecutive leading docstring line that parses as a signature and whose base name passes the existing object-name validation; emit those signatures as newline-separated directive signatures in source order; remove exactly those consumed lines from content; and stop at the first blank, non-signature, or invalid-name line, preserving that line and everything after it as content. Preserve existing behavior for one signature, disabled configuration, explicit signatures, accepted class names, and docstrings without a valid first-line signature. Update the configuration documentation and add regression coverage proving at least two overload signatures render as aligned directive lines and are removed from content, while the first stopping-boundary line remains content. Implementation details may be chosen within existing autodoc patterns without new dependencies. Residual risk: uncited SWIG formatting variants outside consecutive valid leading lines are not guaranteed."
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "With `autodoc_docstring_signature` enabled and no explicit signature, a function or method docstring containing at least two consecutive valid leading signatures renders both as aligned directive signature lines in source order.",
+          "All consumed leading signature lines are absent from rendered docstring content.",
+          "The first blank, non-signature, or invalid-name line stops extraction and remains in content together with every following line.",
+          "A single valid leading signature produces the existing output and content behavior.",
+          "When the configuration is disabled, introspected signature behavior remains unchanged and signature-looking docstring lines remain content.",
+          "An explicit signature prevents docstring-derived signature extraction as before.",
+          "A docstring whose first line is not a valid accepted-name signature remains unchanged by extraction.",
+          "Existing accepted-name behavior remains intact.",
+          "Relevant existing autodoc tests and the new overload regression tests pass.",
+          "The configuration documentation states that consecutive valid leading signatures are recognized and removed from content."
+        ],
+        "confirmed_decisions": [
+          "Recognize only consecutive valid leading signatures.",
+          "Each consumed signature must pass the existing parsed base-name validation.",
+          "Stop at the first blank, non-signature, or invalid-name line and preserve the remainder as content.",
+          "Apply multi-signature behavior to both functions and methods through their shared docstring-signature path.",
+          "Emit signatures in source order using the existing newline-separated multi-signature directive mechanism.",
+          "Remove exactly the consumed signature lines from rendered content.",
+          "Preserve existing single-signature behavior.",
+          "Preserve behavior when `autodoc_docstring_signature` is disabled.",
+          "Explicitly supplied signatures continue to take precedence.",
+          "Preserve existing accepted-name rules, including applicable class, `__init__`, and MRO names.",
+          "Preserve behavior when the first docstring line is not a valid signature.",
+          "Update user documentation to describe consecutive leading signature recognition.",
+          "Add regression tests without introducing dependencies.",
+          "The owner approved the contract as stated."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend `autodoc_docstring_signature` for both `FunctionDocumenter` and `MethodDocumenter`. When enabled and no explicit signature was supplied, consume every consecutive leading docstring line that parses as a signature and whose base name passes the existing object-name validation. Emit the consumed signatures in source order as newline-separated directive signatures, and remove exactly those lines from rendered docstring content. Stop at the first blank, non-signature, or invalid-name line; preserve that line and everything after it as content. Preserve existing behavior for a single signature, disabled configuration, explicit signatures, accepted class names, and docstrings without a valid first-line signature. Update the configuration documentation and add regression coverage. Implementation details are delegated to the implementer within existing autodoc patterns, with no new dependencies. Residual risk: SWIG formatting variants other than consecutive valid leading signature lines are outside the guaranteed scope."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the complete contract after resolving the recognition boundary and feature scope. No material decision remains open."
+    },
+    "turn": 4
+  }
+]

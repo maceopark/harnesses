@@ -1,0 +1,101 @@
+{
+  "audit_summary": "Accepted 13 facts as directly supported by the reopened files. Rejected F3 because its exclusivity claim conflicts with the separate package-subtree skipping behavior in the same function.",
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 352,
+      "line_start": 346,
+      "path": "pylint/lint/base_options.py",
+      "statement": "The `recursive` option enables discovery of Python modules and packages in a filesystem subtree and defaults to false."
+    },
+    {
+      "id": "F2",
+      "line_end": 635,
+      "line_start": 634,
+      "path": "pylint/lint/pylinter.py",
+      "statement": "When recursive mode is enabled, `check` replaces the original arguments with the paths yielded by `_discover_files`."
+    },
+    {
+      "id": "F4",
+      "line_end": 617,
+      "line_start": 609,
+      "path": "pylint/lint/pylinter.py",
+      "statement": "For walked directories without `__init__.py`, `_discover_files` yields every `.py` file by joining the walked root and filename; it does not apply ignore predicates to each file at this point."
+    },
+    {
+      "id": "F5",
+      "line_end": 60,
+      "line_start": 49,
+      "path": "pylint/lint/expand_modules.py",
+      "statement": "The shared ignore predicate matches `ignore` and `ignore-patterns` against the basename, but matches `ignore-paths` against the complete path string passed to it."
+    },
+    {
+      "id": "F6",
+      "line_end": 779,
+      "line_start": 772,
+      "path": "pylint/lint/pylinter.py",
+      "statement": "After recursive discovery, file expansion invokes `expand_modules` with the configured ignore names, ignore patterns, and the linter's cached ignore-path patterns."
+    },
+    {
+      "id": "F7",
+      "line_end": 82,
+      "line_start": 76,
+      "path": "pylint/lint/expand_modules.py",
+      "statement": "`expand_modules` applies the complete ignore predicate to every input path before resolving or adding it, so recursively yielded files have a second opportunity to be excluded."
+    },
+    {
+      "id": "F8",
+      "line_end": 72,
+      "line_start": 65,
+      "path": "pylint/lint/base_options.py",
+      "statement": "The `ignore-paths` option is documented as matching regex patterns against paths in either Posix or Windows format."
+    },
+    {
+      "id": "F9",
+      "line_end": 121,
+      "line_start": 110,
+      "path": "pylint/config/argument.py",
+      "statement": "Each configured ignore-path expression is compiled as an alternation of a Windows-normalized representation and a Posix-normalized representation; no third representation for a path containing mixed `/` and `\\` separators is generated."
+    },
+    {
+      "id": "F10",
+      "line_end": 98,
+      "line_start": 81,
+      "path": "pylint/config/config_file_parser.py",
+      "statement": "TOML configuration supports nested sections such as `[tool.pylint.MASTER]`: dictionary entries are converted into command-line-style option/value arguments, so an `ignore-paths` value under that section is parsed as a linter option."
+    },
+    {
+      "id": "F11",
+      "line_end": 73,
+      "line_start": 54,
+      "path": "pylint/config/config_initialization.py",
+      "statement": "Configuration-file options are parsed before command-line options, and command-line options can override them."
+    },
+    {
+      "id": "F12",
+      "line_end": 1315,
+      "line_start": 1293,
+      "path": "tests/test_self.py",
+      "statement": "The end-to-end recursive ignore-path test supplies `--ignore-paths=.*ignored.*` and `--ignore-paths=.*failing.*`; these patterns are unanchored with respect to the beginning and end of the reported relative path form."
+    },
+    {
+      "id": "F13",
+      "line_end": 903,
+      "line_start": 872,
+      "path": "tests/lint/unittest_lint.py",
+      "statement": "The lower-level parametrized recursive-ignore test covers ignore-path values `.*directory/ignored.*` and `.*ignored.*/failing.*`, then constructs the lint target using the platform-aware `join` helper."
+    },
+    {
+      "id": "F14",
+      "line_end": 81,
+      "line_start": 73,
+      "path": "tests/config/unittest_config.py",
+      "statement": "The ignore-path normalization unit test verifies fully Posix and fully Windows path strings, but does not include a mixed-separator path string."
+    }
+  ],
+  "scope_summary": "Base commit 3c5eca2ded3dd2b59ebaf23eb289453b5d2930f0 defines recursive discovery and ignore-path filtering, but recursive file paths can retain mixed separators when the supplied directory ends with the non-native separator; configured ignore-path regexes are normalized only into all-Windows and all-Posix alternatives. Existing recursive ignore-path tests use broad unanchored patterns and repository-generated paths, so they do not cover the reported anchored relative-path case.",
+  "unknowns": [
+    "The supplied repository cannot directly establish the exact runtime path string produced on the reporter's Windows/Python environment; it only establishes the path construction and regex-normalization behavior that can produce a mismatch.",
+    "The repository contains no test using the reported anchored pattern `^src/gen/.*$` together with a recursive target spelled `src/` on Windows."
+  ]
+}

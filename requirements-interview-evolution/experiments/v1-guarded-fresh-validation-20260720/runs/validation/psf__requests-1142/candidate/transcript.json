@@ -1,0 +1,115 @@
+[
+  {
+    "answer": "GET only (Recommended)",
+    "open_material_decisions": [
+      "Whether an explicitly caller-supplied Content-Length header must be preserved.",
+      "Which bodyless requests should stop receiving an automatically generated Content-Length: 0 header?"
+    ],
+    "question": {
+      "header": "Method scope",
+      "options": [
+        {
+          "description": "Fixes the reported case with the smallest observable compatibility change; other bodyless methods retain current behavior.",
+          "label": "GET only (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Suppresses the automatic header for both retrieval-oriented methods while preserving it for other bodyless methods.",
+          "label": "GET and HEAD",
+          "recommended": false
+        },
+        {
+          "description": "Suppresses the automatically generated zero-length header for every bodyless request, creating the broadest behavior change.",
+          "label": "All methods",
+          "recommended": false
+        }
+      ],
+      "prompt": "For requests with no body, which methods should stop receiving an automatically generated `Content-Length: 0` header?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Preserve it (Recommended)",
+    "open_material_decisions": [
+      "Whether an explicitly caller-supplied Content-Length header on a bodyless GET must be preserved."
+    ],
+    "question": {
+      "header": "Caller header",
+      "options": [
+        {
+          "description": "Suppress only Requests' automatically generated header while leaving an explicit caller choice unchanged.",
+          "label": "Preserve it (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Remove an explicitly supplied `Content-Length: 0` but preserve explicit nonzero values.",
+          "label": "Remove zero only",
+          "recommended": false
+        },
+        {
+          "description": "Strip every caller-supplied Content-Length from bodyless GET requests.",
+          "label": "Remove all",
+          "recommended": false
+        }
+      ],
+      "prompt": "For a bodyless GET where the caller explicitly supplies `Content-Length`, what behavior should the fix require?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Owner approval of the consolidated implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with no remaining material decisions.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a materially different behavior or acceptance boundary.",
+          "label": "Revise scope",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: for GET requests whose final prepared body is `None`, Requests must not automatically add `Content-Length: 0`; an explicitly caller-supplied `Content-Length` must be preserved unchanged, including through authentication preparation; GET requests with a non-`None` body and all non-GET methods retain existing content-length behavior. Add regression coverage proving omission for an ordinary bodyless GET and preservation of an explicit header on a bodyless GET. Implementation may choose the smallest repository-consistent mechanism. The Amazon 503 claim is context only and need not be externally verified or tested; residual risk is limited to integrations that depended on the automatically generated zero-length header for bodyless GETs."
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Preparing an ordinary GET with final body None results in no automatically generated `Content-Length` header.",
+          "Preparing a bodyless GET with an explicitly supplied `Content-Length` preserves that exact header value.",
+          "Authentication preparation does not introduce an automatic `Content-Length: 0` on a bodyless GET and preserves an explicit caller-supplied value.",
+          "A GET with a non-None body continues to use the repository's existing content-length behavior.",
+          "Non-GET methods continue to use the repository's existing content-length behavior.",
+          "The repository's regression tests covering ordinary bodyless GET omission and explicit-header preservation pass."
+        ],
+        "confirmed_decisions": [
+          "Automatic `Content-Length: 0` suppression is limited to bodyless GET requests.",
+          "An explicitly caller-supplied `Content-Length` on a bodyless GET is preserved unchanged.",
+          "Authentication preparation must not replace or remove an explicitly supplied `Content-Length` on a bodyless GET.",
+          "GET requests with a non-None body retain existing content-length behavior.",
+          "All non-GET methods retain existing content-length behavior.",
+          "Regression coverage must prove omission for an ordinary bodyless GET.",
+          "Regression coverage must prove preservation of an explicit `Content-Length` on a bodyless GET.",
+          "The implementation route is delegated to the implementer, constrained to the smallest repository-consistent mechanism satisfying this contract.",
+          "The Amazon 503 claim is context only and is outside required verification and acceptance."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "For GET requests whose final prepared body is None, Requests must not automatically add `Content-Length: 0`. An explicitly caller-supplied `Content-Length` must be preserved unchanged, including through authentication preparation. GET requests with a non-None body and all non-GET methods retain existing content-length behavior. Implement using the smallest repository-consistent mechanism. The Amazon 503 claim is contextual and requires neither external verification nor a test."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the consolidated contract, resolving all material behavioral and acceptance decisions."
+    },
+    "turn": 4
+  }
+]

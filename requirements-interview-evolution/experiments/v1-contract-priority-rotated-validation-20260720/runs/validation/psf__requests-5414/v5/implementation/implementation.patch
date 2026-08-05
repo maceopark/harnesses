@@ -1,0 +1,31 @@
+diff --git a/requests/models.py b/requests/models.py
+index e7d292d..d863881 100644
+--- a/requests/models.py
++++ b/requests/models.py
+@@ -403,7 +403,7 @@ class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):
+                 host = self._get_idna_encoded_host(host)
+             except UnicodeError:
+                 raise InvalidURL('URL has an invalid label.')
+-        elif host.startswith(u'*'):
++        elif host.startswith((u'*', u'.')):
+             raise InvalidURL('URL has an invalid label.')
+ 
+         # Carefully reconstruct the network location
+diff --git a/tests/test_requests.py b/tests/test_requests.py
+index 463e8bf..c6039d0 100644
+--- a/tests/test_requests.py
++++ b/tests/test_requests.py
+@@ -2496,6 +2496,13 @@ class TestPreparingURLs(object):
+         with pytest.raises(requests.exceptions.InvalidURL):
+             r.prepare()
+ 
++    def test_preparing_url_with_leading_dot_hostname(self):
++        r = requests.Request('GET', url='http://.example.com')
++        with pytest.raises(requests.exceptions.InvalidURL) as exc_info:
++            r.prepare()
++
++        assert str(exc_info.value) == 'URL has an invalid label.'
++
+     @pytest.mark.parametrize(
+         'url, exception',
+         (

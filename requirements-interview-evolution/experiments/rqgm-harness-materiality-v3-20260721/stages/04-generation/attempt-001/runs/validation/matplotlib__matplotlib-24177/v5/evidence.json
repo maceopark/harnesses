@@ -1,0 +1,112 @@
+{
+  "audit_summary": "All 15 facts are directly supported by the cited repository files and, where applicable, straightforward arithmetic from the reported 100-bin case.",
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 6752,
+      "line_start": 6739,
+      "path": "lib/matplotlib/axes/_axes.py",
+      "statement": "Axes.hist forwards density=True to numpy.histogram for every non-stacked histogram, collects the returned bin values in tops, and converts them to float before selecting a rendering path."
+    },
+    {
+      "id": "F2",
+      "line_end": 6526,
+      "line_start": 6520,
+      "path": "lib/matplotlib/axes/_axes.py",
+      "statement": "The documented density calculation divides each bin count by both the total count and bin width, making the integral over the bins equal to one."
+    },
+    {
+      "id": "F3",
+      "line_end": 6812,
+      "line_start": 6795,
+      "path": "lib/matplotlib/axes/_axes.py",
+      "statement": "Bar histograms render each tops array through Axes.bar or Axes.barh, producing individual bar artists rather than one combined step polygon."
+    },
+    {
+      "id": "F4",
+      "line_end": 6835,
+      "line_start": 6823,
+      "path": "lib/matplotlib/axes/_axes.py",
+      "statement": "Step histograms allocate coordinate arrays of length 4 * len(bins) - 3 and encode the bin edges into a single polygon perimeter."
+    },
+    {
+      "id": "F5",
+      "line_end": 6885,
+      "line_start": 6852,
+      "path": "lib/matplotlib/axes/_axes.py",
+      "statement": "For each step dataset, the bin heights are copied into the polygon's top coordinates; an unfilled step passes the first 2 * len(bins) coordinates to Axes.fill, whereas stepfilled passes all but the final coordinate."
+    },
+    {
+      "id": "F6",
+      "line_end": 6885,
+      "line_start": 6873,
+      "path": "lib/matplotlib/axes/_axes.py",
+      "statement": "With the reported 100 bins, the unfilled step path supplied to Axes.fill contains 202 coordinates, exceeding Path's 128-vertex simplification threshold."
+    },
+    {
+      "id": "F7",
+      "line_end": 209,
+      "line_start": 202,
+      "path": "lib/matplotlib/path.py",
+      "statement": "Path marks a path eligible for simplification when simplification is enabled, its threshold is positive, it has at least 128 vertices, and its codes are absent or contain only line-like codes."
+    },
+    {
+      "id": "F8",
+      "line_end": 657,
+      "line_start": 649,
+      "path": "lib/matplotlib/mpl-data/matplotlibrc",
+      "statement": "The repository's default configuration enables path simplification with a positive threshold of 0.111111111111."
+    },
+    {
+      "id": "F9",
+      "line_end": 5184,
+      "line_start": 5177,
+      "path": "lib/matplotlib/axes/_axes.py",
+      "statement": "Axes.fill adds each generated Polygon through add_patch and requests autoscaling."
+    },
+    {
+      "id": "F10",
+      "line_end": 2418,
+      "line_start": 2407,
+      "path": "lib/matplotlib/axes/_base.py",
+      "statement": "Adding a patch invokes _update_patch_limits before storing the patch on the Axes."
+    },
+    {
+      "id": "F11",
+      "line_end": 2458,
+      "line_start": 2420,
+      "path": "lib/matplotlib/axes/_base.py",
+      "statement": "_update_patch_limits derives extrema by iterating over patch.get_path().iter_bezier(), then transforms those derived vertices and updates the Axes data limits."
+    },
+    {
+      "id": "F12",
+      "line_end": 445,
+      "line_start": 354,
+      "path": "lib/matplotlib/path.py",
+      "statement": "Path.iter_bezier forwards its arguments to iter_segments; when simplify is left as None, iter_segments uses the path's should_simplify attribute. Thus the long step path is eligible for simplification during data-limit calculation."
+    },
+    {
+      "id": "F13",
+      "line_end": 2075,
+      "line_start": 2070,
+      "path": "lib/matplotlib/tests/test_axes.py",
+      "statement": "The existing density image test calls hist with density=True but uses the default bar histtype, so it does not exercise the step rendering/autoscaling path."
+    },
+    {
+      "id": "F14",
+      "line_end": 4001,
+      "line_start": 3994,
+      "path": "lib/matplotlib/tests/test_axes.py",
+      "statement": "The existing unfilled-step image test explicitly fixes both y and x limits after plotting, so it does not validate automatic limits."
+    },
+    {
+      "id": "F15",
+      "line_end": 4211,
+      "line_start": 4204,
+      "path": "lib/matplotlib/tests/test_axes.py",
+      "statement": "The existing unfilled-step geometry test uses only three bins and asserts polygon coordinates, not automatically selected axis limits."
+    }
+  ],
+  "scope_summary": "Base commit 493d608e39d32a67173c23a7bbc47d6bfedcef61. The issue-relevant implementation difference is that step histograms use one long Polygon path whose vertices may be simplified while patch data limits are calculated; bar histograms use separate bar artists.",
+  "unknowns": []
+}

@@ -1,0 +1,79 @@
+[
+  {
+    "answer": "Local sqrtdenest guard",
+    "open_material_decisions": [
+      "Choose whether the empty-surds condition is handled locally in sqrtdenest or globally in split_surds."
+    ],
+    "question": {
+      "header": "Repair scope",
+      "options": [
+        {
+          "description": "Recommended: make _sqrt_match report no match when split_surds has no eligible Pow surds, so sqrtdenest returns the affected expression unchanged without changing other split_surds callers.",
+          "label": "Local sqrtdenest guard",
+          "recommended": true
+        },
+        {
+          "description": "Define empty-input behavior inside split_surds, intentionally changing behavior for every current or future caller that supplies an Add with no eligible Pow surds.",
+          "label": "Global split_surds guard",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which repair boundary should the implementation contract require?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this scope and acceptance criteria as implementation-ready.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a material change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: add a local sqrtdenest-side guard so the empty eligible-Pow-surds case is treated as no match; the reported expression must return unchanged without raising IndexError; preserve split_surds and _split_gcd behavior for other callers; add a regression test for the exact reported expression; and require the relevant existing sqrtdenest tests to pass. The bounded residual risk is limited to other malformed inputs reaching split_surds directly, which are outside this fix."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Calling sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) completes without IndexError.",
+          "The call returns an expression equal to (3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2.",
+          "A regression test for the exact reported expression passes.",
+          "Relevant existing tests in sympy/simplify/tests/test_sqrtdenest.py pass.",
+          "No modifications are made to the observable empty-input behavior of split_surds or _split_gcd for other callers.",
+          "Bounded residual risk acknowledged: malformed or unsupported inputs that reach split_surds directly remain outside this fix."
+        ],
+        "confirmed_decisions": [
+          "The repair boundary is local to sqrtdenest, not a global change to split_surds or _split_gcd.",
+          "The exact reported expression (3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2 must be returned unchanged and must not raise IndexError.",
+          "The empty eligible-Pow-surds condition is treated as a failed denesting match, using the existing unchanged-result behavior.",
+          "Behavior of split_surds and _split_gcd for other direct or indirect callers must remain unchanged.",
+          "Regression coverage must include the exact reported expression.",
+          "Relevant existing sqrtdenest tests must continue to pass.",
+          "Owner explicitly approved this contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Implement a local sqrtdenest-side repair for the empty eligible-Pow-surds path. When _sqrt_match encounters an additive radicand that otherwise qualifies for split_surds but contains no eligible Pow surds, it must report no match so the existing sqrtdenest flow returns the affected expression unchanged instead of raising IndexError. Do not change split_surds or _split_gcd behavior. Add a regression test using the exact reported expression."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "All material decisions are resolved from repository evidence and explicit owner approval. The contract is implementable without further clarification."
+    },
+    "turn": 3
+  }
+]

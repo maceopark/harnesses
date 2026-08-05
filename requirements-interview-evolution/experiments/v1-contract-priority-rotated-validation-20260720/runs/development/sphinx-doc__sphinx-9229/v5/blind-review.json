@@ -1,0 +1,75 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/0",
+          "quoted_value": "On Python 3.6 and later, autodoc recognizes and retains next-line source documentation for ScaffoldOpts = Dict[str, Any], FileContents = Union[str, None], and FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/1",
+          "quoted_value": "Each documented alias renders its source documentation before the existing “alias of …” message."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/13/statement",
+          "quoted_value": "A direct autodata GenericAlias test likewise expects Python 3.7 and later to include both the source documentation and “alias of …”; below 3.7 it expects the documentation plus a value header instead."
+        }
+      ],
+      "description": "This contract is not implementation-ready because satisfying its universal output rule would overwrite an established Python 3.6 autodata behavior that the contract neither acknowledges nor explicitly approves changing. The required output must be scoped by documenter path or the Python 3.6 autodata compatibility decision must be resolved.",
+      "failure_class": "compatibility-regression",
+      "general_cause": "The contract generalizes alias-only output across documenter paths despite audited evidence that the existing Python 3.6 direct autodata path uses a value header instead of an alias message.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "The acceptance checks require every documented alias to be followed by the “existing” alias message on Python 3.6+, while the audited direct-autodata regression expectation below Python 3.7 is documentation plus a value header."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/2",
+          "quoted_value": "The fix applies generally to supported typing aliases, not only Dict, Union, and Callable."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/8",
+          "quoted_value": "Internal detection and routing details are delegated to implementation, constrained to typing alias objects and focused autodoc test proof."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/unknowns/2",
+          "quoted_value": "Repository evidence shows version-dependent expected behavior for List aliases, but does not by itself establish which runtime typing objects from the public example are instances of type on Python 3.6.9."
+        }
+      ],
+      "description": "Tests for the three reported aliases cannot verify the broader requirement that the fix applies generally to supported typing aliases. Without an observable definition or enumerated boundary for that category, implementations can choose different scopes and still claim compliance.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The contract requires general support for an undefined set of “supported typing aliases,” although the audited evidence cannot establish how the relevant typing objects are classified on Python 3.6.",
+      "id": "FINDING-2",
+      "material": true,
+      "observable_signal": "The generalized scope has no scalar criterion identifying which typing objects qualify, and repository evidence explicitly leaves their Python 3.6 runtime types unknown."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/6",
+          "quoted_value": "Tests demonstrate that unrelated class/data documentation and non-typing objects retain existing behavior."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/7",
+          "quoted_value": "Unrelated class/data documentation and non-typing objects must not change."
+        }
+      ],
+      "description": "The final acceptance check cannot be conclusively satisfied by focused tests. It should name representative existing regressions or narrow the invariant to the documenter-selection and content paths affected by the implementation.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "A universal non-regression requirement is expressed as a test obligation without a bounded population or representative cases.",
+      "id": "FINDING-3",
+      "material": true,
+      "observable_signal": "The contract requires tests to demonstrate unchanged behavior for all unrelated class/data documentation and non-typing objects, but identifies no finite cases or observable boundary for “unrelated.”"
+    }
+  ],
+  "summary": "The contract has three material readiness failures: it conflicts with established Python 3.6 direct-autodata output, leaves the generalized typing-alias boundary unverifiable, and imposes an unbounded non-regression test requirement."
+}

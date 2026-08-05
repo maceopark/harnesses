@@ -1,0 +1,88 @@
+[
+  {
+    "answer": "Denominator only",
+    "open_material_decisions": [
+      "Whether boolean-weight coercion should be limited to sum_of_weights or applied across all weighted reductions."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Cast boolean weights only when calculating sum_of_weights, fixing weighted mean and direct sum_of_weights while preserving all other reduction paths.",
+          "label": "Denominator only",
+          "recommended": true
+        },
+        {
+          "description": "Normalize boolean weights before every weighted reduction so sum, mean, and sum_of_weights consistently use numeric operands.",
+          "label": "All reductions",
+          "recommended": false
+        },
+        {
+          "description": "Treat boolean weights as unsupported and raise a clear validation error instead of accepting them.",
+          "label": "Reject booleans",
+          "recommended": false
+        }
+      ],
+      "prompt": "How broadly should boolean weights be normalized to numeric weights?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Integer weights",
+    "open_material_decisions": [
+      "Which numeric dtype boolean weights should use while calculating sum_of_weights."
+    ],
+    "question": {
+      "header": "Cast dtype",
+      "options": [
+        {
+          "description": "Cast boolean weights to integer values so True counts as 1 and False as 0, matching the issue's proposed behavior without forcing floating-point arithmetic.",
+          "label": "Integer weights",
+          "recommended": true
+        },
+        {
+          "description": "Cast boolean weights to floating point, ensuring numeric einsum behavior but potentially changing denominator dtype more broadly.",
+          "label": "Float weights",
+          "recommended": false
+        },
+        {
+          "description": "Cast the data validity mask to integer while leaving the original boolean weights unchanged, fixing bool-bool dot through the other operand.",
+          "label": "Mask to integer",
+          "recommended": false
+        }
+      ],
+      "prompt": "When calculating sum_of_weights, what numeric dtype should boolean weights be converted to?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A direct sum_of_weights regression test with boolean weights [True, True, False] returns numeric 2 rather than boolean True.",
+          "A weighted-mean regression test for data [1.0, 1.0, 1.0] and boolean weights [True, True, False] returns 1.0.",
+          "Boolean weights continue to respect missing-data masking: weights corresponding to null data values do not contribute to sum_of_weights.",
+          "All-False boolean weights retain existing semantics and produce a missing sum_of_weights and weighted mean.",
+          "Existing integer- and floating-point-weight tests continue to pass unchanged.",
+          "Existing weighted sum behavior is unchanged, confirming that coercion is confined to the denominator path."
+        ],
+        "confirmed_decisions": [
+          "Boolean weights remain supported by the public weighted API.",
+          "Normalization is limited to the sum_of_weights denominator calculation; weighted sum and other reduction paths are unchanged.",
+          "When sum_of_weights receives boolean weights, convert those weights to integer values, with True equal to 1 and False equal to 0.",
+          "Do not coerce or replace the weights retained by the Weighted object.",
+          "Preserve existing zero-total behavior: a zero sum of weights is converted to a missing result.",
+          "The reported example with data [1.0, 1.0, 1.0] and boolean weights [True, True, False] must return a weighted mean of 1.0 rather than 2.0."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix boolean-weighted means by converting boolean weights to integer values only while calculating sum_of_weights. Preserve the supplied weights and the behavior of other weighted reductions. Add regression coverage proving that True contributes 1, False contributes 0, and the denominator remains correctly masked by data validity."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested behavior and success criteria are sufficiently specified: boolean weights remain accepted, and only the denominator path converts them to integer weights so boolean einsum cannot collapse the count to a boolean result."
+    },
+    "turn": 3
+  }
+]

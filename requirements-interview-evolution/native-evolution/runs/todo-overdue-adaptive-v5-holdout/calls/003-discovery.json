@@ -1,0 +1,224 @@
+{
+  "role": "discovery",
+  "prompt": "You are the read-only Repository Discovery Agent. Inspect the repository for facts material to the public request. Every fact must cite repository-relative file paths and exact inclusive line bounds. Put only actual contradictions in conflicts; use an empty array when sources agree. Report unknowns separately. Do not invent desired future behavior or owner choices.\nReturn only the JSON object required by the supplied output schema.\nINPUT:\n{\"public_request\":\"Preserve all existing behavior while adding an optional --overdue filter to the todo list command.\",\"repository_root\":\"/Users/jpark/gitrepos/harnesses/benchmark/todo-cli-deep-interview\"}",
+  "prompt_sha256": "9cbbeb5b3ab5b5fcdf9ae3af836c57c7013289282b1ec17027ef44bf92b46434",
+  "input": {
+    "public_request": "Preserve all existing behavior while adding an optional --overdue filter to the todo list command.",
+    "repository_root": "/Users/jpark/gitrepos/harnesses/benchmark/todo-cli-deep-interview"
+  },
+  "output": {
+    "scope_summary": "The repository is a single-module, standard-library Python todo CLI. The requested change is localized primarily to list-command argument parsing, task filtering, documentation, and regression tests. No existing --overdue option or overdue-domain definition is present.",
+    "facts": [
+      {
+        "id": "F1",
+        "claim": "Tasks already contain a boolean completion state and an optional due date stored as an ISO-date string.",
+        "authority": "code",
+        "evidence": [
+          {
+            "path": "todo_cli.py",
+            "line_start": 51,
+            "line_end": 57
+          }
+        ]
+      },
+      {
+        "id": "F2",
+        "claim": "Due dates are validated as exact YYYY-MM-DD calendar dates using date.fromisoformat and an ISO round trip; invalid or datetime-like values are rejected.",
+        "authority": "code",
+        "evidence": [
+          {
+            "path": "todo_cli.py",
+            "line_start": 66,
+            "line_end": 83
+          }
+        ]
+      },
+      {
+        "id": "F3",
+        "claim": "The persisted task schema permits exactly id, title, done, due, and priority fields, so overdue is not currently stored as task state.",
+        "authority": "code",
+        "evidence": [
+          {
+            "path": "todo_cli.py",
+            "line_start": 96,
+            "line_end": 127
+          }
+        ]
+      },
+      {
+        "id": "F4",
+        "claim": "The existing pure filter_tasks operation accepts only optional priority and due filters. Both are exact-match filters and, when combined, are applied conjunctively. It does not currently consider completion state or the current date.",
+        "authority": "code",
+        "evidence": [
+          {
+            "path": "todo_cli.py",
+            "line_start": 268,
+            "line_end": 276
+          }
+        ]
+      },
+      {
+        "id": "F5",
+        "claim": "The list parser currently exposes only --priority and --due options; --overdue is not recognized.",
+        "authority": "code",
+        "evidence": [
+          {
+            "path": "todo_cli.py",
+            "line_start": 309,
+            "line_end": 335
+          }
+        ]
+      },
+      {
+        "id": "F6",
+        "claim": "The list command loads the store, filters tasks, applies the established sort, prints each formatted row, and returns exit code 0 without saving the store.",
+        "authority": "code",
+        "evidence": [
+          {
+            "path": "todo_cli.py",
+            "line_start": 338,
+            "line_end": 359
+          }
+        ]
+      },
+      {
+        "id": "F7",
+        "claim": "Existing list output includes both incomplete and completed tasks, displaying [ ] or [x], and preserves the row format id, status, priority, due-or-dash, and title.",
+        "authority": "code",
+        "evidence": [
+          {
+            "path": "todo_cli.py",
+            "line_start": 338,
+            "line_end": 341
+          }
+        ]
+      },
+      {
+        "id": "F8",
+        "claim": "The established list sort order is completion state first, then descending priority, ascending due date with undated tasks last, and ascending id.",
+        "authority": "code",
+        "evidence": [
+          {
+            "path": "todo_cli.py",
+            "line_start": 279,
+            "line_end": 284
+          }
+        ]
+      },
+      {
+        "id": "F9",
+        "claim": "Regression tests lock the precise default list order: incomplete tasks before done tasks, higher priority first, earlier due dates first within equal status and priority, and deterministic id ordering.",
+        "authority": "test",
+        "evidence": [
+          {
+            "path": "tests/test_todo.py",
+            "line_start": 123,
+            "line_end": 143
+          },
+          {
+            "path": "tests/test_todo.py",
+            "line_start": 146,
+            "line_end": 153
+          }
+        ]
+      },
+      {
+        "id": "F10",
+        "claim": "Tests lock exact-match priority and due filtering and their conjunctive combination.",
+        "authority": "test",
+        "evidence": [
+          {
+            "path": "tests/test_todo.py",
+            "line_start": 156,
+            "line_end": 181
+          }
+        ]
+      },
+      {
+        "id": "F11",
+        "claim": "Listing a missing store produces no stdout or stderr, returns 0, and does not create the store file.",
+        "authority": "test",
+        "evidence": [
+          {
+            "path": "tests/test_todo.py",
+            "line_start": 43,
+            "line_end": 48
+          }
+        ]
+      },
+      {
+        "id": "F12",
+        "claim": "The documented list contract currently advertises only --priority and --due, says filters can be combined, requires empty results to print nothing and exit 0, and documents the existing post-filter sort order.",
+        "authority": "documentation",
+        "evidence": [
+          {
+            "path": "README.md",
+            "line_start": 59,
+            "line_end": 81
+          }
+        ]
+      },
+      {
+        "id": "F13",
+        "claim": "Invalid list due-date input is expected to return usage exit code 2 rather than propagating SystemExit.",
+        "authority": "test",
+        "evidence": [
+          {
+            "path": "tests/test_todo.py",
+            "line_start": 215,
+            "line_end": 223
+          }
+        ]
+      },
+      {
+        "id": "F14",
+        "claim": "The CLI converts argparse SystemExit into return codes and maps storage and domain failures to exit codes 3 and 1 with stderr messages.",
+        "authority": "code",
+        "evidence": [
+          {
+            "path": "todo_cli.py",
+            "line_start": 391,
+            "line_end": 410
+          }
+        ]
+      },
+      {
+        "id": "F15",
+        "claim": "The project has no runtime dependencies and requires Python 3.10 or newer.",
+        "authority": "configuration",
+        "evidence": [
+          {
+            "path": "pyproject.toml",
+            "line_start": 5,
+            "line_end": 13
+          }
+        ]
+      },
+      {
+        "id": "F16",
+        "claim": "The checked-in test report records 145 passing tests for the combined primary and red-team suites, with zero failures; this is a historical artifact rather than a fresh execution for the requested change.",
+        "authority": "runtime-artifact",
+        "evidence": [
+          {
+            "path": "artifacts/redteam-report.json",
+            "line_start": 5,
+            "line_end": 7
+          },
+          {
+            "path": "artifacts/redteam-report.json",
+            "line_start": 47,
+            "line_end": 47
+          }
+        ]
+      }
+    ],
+    "conflicts": [],
+    "unknowns": [
+      "The repository does not define whether a task due today is overdue or only dates strictly before today are overdue.",
+      "The repository does not define whether completed tasks with past due dates should be included by --overdue.",
+      "The repository does not specify whether --overdue may be combined with --due and, if so, what that combination means; combination with --priority is likewise undocumented for the new filter.",
+      "The repository does not define the clock or timezone used to determine the current date, nor a date-injection mechanism for deterministic tests.",
+      "The public request names --overdue but does not explicitly state whether it is a boolean flag or accepts a value."
+    ]
+  }
+}

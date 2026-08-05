@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "A long simplifiable patch whose true extremum could be removed by simplification updates `Axes.dataLim` from its unsimplified geometry.",
+    "A deterministic vertical `histtype='step', density=True` histogram with more than 128 polygon vertices automatically selects a y-range containing the maximum returned density and including or sticking to zero.",
+    "Equivalent horizontal step-histogram coverage automatically selects an x-range containing the maximum returned density and including or sticking to zero, if parameterization can cover orientation without brittle assertions.",
+    "The regression fails on base commit `493d608e39d32a67173c23a7bbc47d6bfedcef61` for the demonstrated autoscaling defect and passes with the fix.",
+    "Existing step geometry, density normalization, log-scale histogram, and patch/autoscaling tests continue to pass.",
+    "Rendering-time path simplification configuration and `Path.should_simplify` behavior remain unchanged."
+  ],
+  "confirmed_decisions": [
+    "Apply a general fix in patch autoscaling rather than a histogram-specific workaround.",
+    "Limit the behavioral change to data-limit calculation; do not disable or otherwise alter path simplification during rendering.",
+    "Update `lib/matplotlib/axes/_base.py` so `_update_patch_limits` calls the path iteration used for extrema discovery with `simplify=False`.",
+    "Add a deterministic regression test in `lib/matplotlib/tests/test_axes.py` using a step density histogram with at least 64 bins, preferably the reported 100-bin shape, so its unfilled polygon exceeds Path's 128-vertex simplification threshold.",
+    "Assert automatic dependent-axis limits contain the complete histogram heights and retain the expected zero baseline, without manually setting axis limits.",
+    "Add or extend direct patch-autoscaling coverage if needed to demonstrate the general invariant independently of histogram construction.",
+    "Keep returned histogram densities and polygon geometry unchanged; the fix concerns only automatic data/view limits."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Change patch data-limit calculation so it always derives extrema from the patch's complete, unsimplified path geometry. In `Axes._update_patch_limits`, iterate the patch path with simplification explicitly disabled rather than inheriting `Path.should_simplify`. Preserve normal path simplification for rendering. Add regression coverage proving that long simplifiable patch paths contribute their true extrema to automatic limits, including the reported `histtype='step', density=True` case with enough bins to cross the 128-vertex threshold and both histogram orientations where practical."
+}

@@ -1,0 +1,51 @@
+[
+  {
+    "answer": "Both orientations",
+    "open_material_decisions": [
+      "Whether density autoscaling for histtype='step' must cover only the reproduced vertical orientation or both supported orientations."
+    ],
+    "question": {
+      "header": "Orientation",
+      "options": [
+        {
+          "description": "Vertical step histograms must fit density heights on the y-axis, and horizontal step histograms must fit them on the x-axis.",
+          "label": "Both orientations",
+          "recommended": true
+        },
+        {
+          "description": "Scope the contract to the reported default vertical orientation and leave horizontal behavior unspecified.",
+          "label": "Vertical only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should the corrected density-axis autoscaling for histtype='step' apply to both histogram orientations?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A deterministic vertical density step histogram is fully visible under automatic axis limits, with its maximum returned density height contained within the y-axis view interval.",
+          "The equivalent horizontal density step histogram is fully visible under automatic axis limits, with its maximum returned density height contained within the x-axis view interval.",
+          "The returned bin heights for the density step histogram agree with the corresponding normalized histogram values.",
+          "Existing step-histogram geometry and relevant histogram tests continue to pass."
+        ],
+        "confirmed_decisions": [
+          "For a vertical histogram created with density=True and histtype='step', the automatically selected y-axis limits include the complete step histogram, including its highest density value.",
+          "For a horizontal histogram created with density=True and histtype='step', the automatically selected x-axis limits include the complete step histogram, including its highest density value.",
+          "Axes.hist continues to return density heights with the documented normalization semantics; correcting the view limits does not alter the computed histogram values.",
+          "Existing count-histogram step geometry and the behavior of other histogram types remain unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Correct Axes.hist autoscaling for histtype='step' with density=True so the dependent axis automatically includes the entire rendered density histogram in both orientations, while preserving histogram values and established behavior."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The repository evidence identifies the faulty observable behavior, and the only material scope ambiguity was resolved: corrected density-axis autoscaling must cover both vertical and horizontal step histograms."
+    },
+    "turn": 2
+  }
+]

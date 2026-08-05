@@ -1,0 +1,58 @@
+diff --git a/requests/models.py b/requests/models.py
+index 9926045..4b388a5 100644
+--- a/requests/models.py
++++ b/requests/models.py
+@@ -386,7 +386,11 @@ class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):
+         self.body = body
+ 
+     def prepare_content_length(self, body):
+-        self.headers['Content-Length'] = '0'
++        if body is None:
++            if self.method != 'GET':
++                self.headers['Content-Length'] = '0'
++            return
++
+         if hasattr(body, 'seek') and hasattr(body, 'tell'):
+             body.seek(0, 2)
+             self.headers['Content-Length'] = str(body.tell())
+diff --git a/test_requests.py b/test_requests.py
+index c974e98..d85fd96 100644
+--- a/test_requests.py
++++ b/test_requests.py
+@@ -57,6 +57,36 @@ class RequestsTestCase(unittest.TestCase):
+         assert pr.url == req.url
+         assert pr.body == 'life=42'
+ 
++    def test_content_length_for_bodyless_get(self):
++        request = requests.Request('GET', 'http://example.com/').prepare()
++        self.assertNotIn('Content-Length', request.headers)
++
++        request = requests.Request('GET', 'http://example.com/', data={}).prepare()
++        self.assertNotIn('Content-Length', request.headers)
++
++        request = requests.Request('GET', 'http://example.com/',
++            headers={'Content-Length': '42'}).prepare()
++        self.assertEqual(request.headers['Content-Length'], '42')
++
++    def test_content_length_for_get_with_body(self):
++        request = requests.Request('GET', 'http://example.com/',
++            data='payload').prepare()
++        self.assertEqual(request.headers['Content-Length'], '7')
++
++    def test_content_length_for_bodyless_get_with_auth(self):
++        request = requests.Request('GET', 'http://example.com/',
++            auth=('user', 'pass')).prepare()
++        self.assertNotIn('Content-Length', request.headers)
++
++        request = requests.Request('GET', 'http://example.com/',
++            headers={'Content-Length': '42'}, auth=('user', 'pass')).prepare()
++        self.assertEqual(request.headers['Content-Length'], '42')
++
++    def test_content_length_for_other_bodyless_methods(self):
++        for method in ('HEAD', 'POST', 'PUT'):
++            request = requests.Request(method, 'http://example.com/').prepare()
++            self.assertEqual(request.headers['Content-Length'], '0')
++
+ 
+     def test_path_is_not_double_encoded(self):
+         request = requests.Request('GET', "http://0.0.0.0/get/test case").prepare()

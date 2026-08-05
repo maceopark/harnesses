@@ -1,0 +1,71 @@
+[
+  {
+    "answer": "Contiguous valid block",
+    "open_material_decisions": [
+      "Define termination behavior for consecutive leading docstring signatures, including invalid or mismatched signature-looking lines."
+    ],
+    "question": {
+      "header": "Overload block",
+      "options": [
+        {
+          "description": "Collect and remove matching signature lines until the first non-matching or invalid line, then preserve that line and everything after it as docstring content.",
+          "label": "Contiguous valid block",
+          "recommended": true
+        },
+        {
+          "description": "Continue scanning leading lines past invalid or mismatched entries, collecting valid signatures and preserving skipped lines as content.",
+          "label": "Skip invalid lines",
+          "recommended": false
+        },
+        {
+          "description": "Use multiple signatures only if every line before the first prose line is a valid matching signature; otherwise retain the entire block as content.",
+          "label": "All-or-nothing block",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc process consecutive lines at the start of a docstring when collecting overloaded signatures?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A fixture with two or more consecutive valid matching method signatures produces equally many aligned py:method directive signature lines in original order, including each line's return annotation.",
+          "All collected signature lines are absent from the rendered docstring body, while the following prose remains unchanged.",
+          "A valid leading signature followed by a non-signature prose line collects only the signature and preserves the prose onward.",
+          "A valid leading signature followed by a malformed or mismatched-name signature-looking line stops collection and preserves the terminating line and everything after it.",
+          "A malformed or mismatched first line results in no docstring-derived signature and leaves the complete docstring content intact.",
+          "The existing single-signature enabled test continues to pass unchanged.",
+          "The existing disabled-configuration test continues to use the introspected signature and retain signature-looking docstring lines.",
+          "An explicit directive signature continues to override docstring-derived signatures.",
+          "Multiple-signature output uses the existing newline-separated directive-header path and does not regress singledispatch or singledispatchmethod signature rendering.",
+          "Relevant autodoc configuration and extension tests pass."
+        ],
+        "confirmed_decisions": [
+          "Treat overload declarations as a contiguous valid block starting at the first docstring line.",
+          "Each collected line must match the existing Python signature regular expression and pass the existing documented-object base-name validation.",
+          "Stop collection at the first non-signature, malformed, or mismatched-name line; preserve that line and all subsequent lines as docstring content.",
+          "Do not scan past an invalid or mismatched line for later signatures.",
+          "Preserve each collected signature's argument list and return annotation independently and in source order.",
+          "Emit one directive signature line per collected overload using newline-separated formatter output.",
+          "Remove every successfully collected leading signature line from rendered docstring content.",
+          "Retain existing behavior when exactly one valid leading signature is present.",
+          "Retain existing behavior when the first line is not a valid matching signature: use normal introspection and leave the docstring unchanged.",
+          "Retain the autodoc_docstring_signature=False behavior: do not extract any docstring signatures and leave all signature-looking lines in the content.",
+          "Retain explicit-signature precedence: when directive arguments already supply a signature, docstring-signature extraction does not run.",
+          "Apply the shared behavior to documenters using DocstringSignatureMixin, including functions and normal, static, and class methods.",
+          "Update the configuration documentation from describing only the first line/singular signature to describing a consecutive leading block and multiple signatures."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend autodoc_docstring_signature so functions and methods can derive multiple displayed signatures from consecutive valid signature lines at the beginning of a docstring. Collect matching lines only until the first non-matching or invalid line; remove the collected lines from rendered docstring content and preserve that terminating line and everything after it. Format collected overloads as newline-separated signatures, using the directive-header mechanism that already supports multiple signatures."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The sole material ambiguity was resolved: overloaded docstring signatures form a contiguous leading block of valid, object-name-matching signatures. Repository evidence establishes the remaining behavior and implementation path, so the contract is implementation-ready."
+    },
+    "turn": 2
+  }
+]

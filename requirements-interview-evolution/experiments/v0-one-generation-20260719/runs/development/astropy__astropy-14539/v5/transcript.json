@@ -1,0 +1,90 @@
+[
+  {
+    "answer": "Match P semantics",
+    "open_material_decisions": [
+      "Whether the fix should generalize the existing P-format comparison semantics to all supported VLA formats, including Q, or only special-case the reported self-comparison failure."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Treat Q-format VLAs exactly like P-format VLAs: compare each row with the configured tolerances, report genuine row differences, and consider identical data identical.",
+          "label": "Match P semantics",
+          "recommended": true
+        },
+        {
+          "description": "Guarantee only that comparing the same Q-VLA file to itself is identical, without defining broader Q-VLA comparison behavior.",
+          "label": "Self-compare only",
+          "recommended": false
+        },
+        {
+          "description": "Compare Q-format VLAs row by row but require exact equality instead of applying FITSDiff's configured tolerances.",
+          "label": "Exact Q equality",
+          "recommended": false
+        }
+      ],
+      "prompt": "What result should the Q-format VLA fix guarantee?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Full Q regression",
+    "open_material_decisions": [
+      "Which regression coverage is required to establish success for the Q-format VLA fix."
+    ],
+    "question": {
+      "header": "Test coverage",
+      "options": [
+        {
+          "description": "Add coverage showing identical Q-VLA files compare identical and genuine exact or tolerance-sensitive Q-VLA differences behave like P-VLA differences.",
+          "label": "Full Q regression",
+          "recommended": true
+        },
+        {
+          "description": "Add only the reported same-file QD reproducer and assert FITSDiff reports it as identical.",
+          "label": "Reproducer only",
+          "recommended": false
+        },
+        {
+          "description": "Test Q-VLA behavior directly through TableDataDiff without a file-level FITSDiff regression.",
+          "label": "Table unit only",
+          "recommended": false
+        }
+      ],
+      "prompt": "What regression coverage should define success for this fix?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A FITS file containing Column('a', format='QD', array=[[0], [0, 0]]) compares identical to itself through FITSDiff when supplied as two pathname arguments.",
+          "Two independently loaded tables containing equal Q-format VLA data produce an identical TableDataDiff with diff_total equal to zero and no diff_values.",
+          "Equal Q-VLA rows of differing lengths from other rows do not generate false comparison indices or false reports.",
+          "A genuine Q-VLA element difference makes the comparison non-identical, increments diff_total once for the affected row, and records or reports that row through the existing mechanisms.",
+          "For floating-point Q-VLA elements, differences within configured rtol and atol compare equal, while differences outside those tolerances compare unequal.",
+          "Existing P-format VLA comparison behavior and existing non-VLA table comparison tests remain passing.",
+          "The targeted FITS diff test module passes after the change."
+        ],
+        "confirmed_decisions": [
+          "Generalize the existing P-format VLA comparison behavior to Q-format VLAs rather than special-casing identical pathnames or same-file comparisons.",
+          "Compare Q-VLA values row by row with numpy.allclose using TableDataDiff's configured rtol and atol, matching current P-VLA semantics.",
+          "Continue counting and reporting genuine Q-VLA differences by row through the existing diff_total and diff_values mechanisms.",
+          "Add a file-level FITSDiff regression based on a QD column with unequal row lengths, proving that comparing independently opened instances of the same file yields identical=True and no reported data differences.",
+          "Add regression coverage proving that an exact Q-VLA value difference is detected and attributed to the correct row.",
+          "Add regression coverage proving that Q-VLA floating-point differences inside tolerance are ignored and differences outside tolerance are detected, consistently with P-format VLAs.",
+          "Keep the change localized to FITS diff behavior and its tests; do not alter Q-format parsing, heap loading, FITS_rec conversion, or general file-opening behavior."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update FITS table-data comparison so supported Q-format variable-length-array columns are handled with the same row-by-row, tolerance-aware semantics already used for P-format VLAs. This must eliminate false differences when independently opened copies of the same Q-VLA file are compared while preserving detection and reporting of genuine Q-VLA row differences. Add file-level and focused comparison regressions covering identical, exact-difference, and tolerance-sensitive Q-VLA data."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested behavior and success criteria are fully specified: Q-format variable-length arrays must follow the existing P-format comparison semantics, with full regression coverage for identical and genuinely different data. No material product decision remains open."
+    },
+    "turn": 3
+  }
+]

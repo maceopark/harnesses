@@ -1,0 +1,60 @@
+[
+  {
+    "answer": "{\"selection\":\"Bodyless automatic only\"}",
+    "open_material_decisions": [
+      "Whether Content-Length should be omitted only for bodyless GET requests or for every GET request.",
+      "Whether an explicitly caller-supplied Content-Length header on a GET must be preserved."
+    ],
+    "question": {
+      "header": "GET behavior",
+      "options": [
+        {
+          "description": "Do not automatically add Content-Length when a GET has no body; preserve explicit caller headers and compute a length when a body is present.",
+          "label": "Bodyless automatic only",
+          "recommended": true
+        },
+        {
+          "description": "Never automatically add Content-Length to any GET, including a GET with a body, while preserving an explicit caller header.",
+          "label": "All GET automatic",
+          "recommended": false
+        },
+        {
+          "description": "Ensure no GET sends Content-Length, even when the caller explicitly provides it or the GET has a body.",
+          "label": "Strip from all GETs",
+          "recommended": false
+        }
+      ],
+      "prompt": "What Content-Length behavior should the contract require for GET requests?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Preparing a GET request with no data and no explicit Content-Length produces a request whose headers do not contain Content-Length.",
+          "Preparing a GET request with a non-empty body and no explicit Content-Length produces the correct Content-Length for that body.",
+          "Preparing a bodyless GET request with an explicit Content-Length preserves the caller-provided value.",
+          "Preparing an authenticated bodyless GET request without an explicit Content-Length still produces no Content-Length header.",
+          "Existing Content-Length behavior for non-GET requests remains unchanged."
+        ],
+        "confirmed_decisions": [
+          "Ordinary bodyless GET requests do not include an automatically generated Content-Length header.",
+          "The change is limited to automatic Content-Length generation for bodyless GET requests; it does not prohibit GET request bodies.",
+          "A GET request with a body continues to receive an automatically computed Content-Length when its length is known.",
+          "A caller-supplied Content-Length header on a GET request is preserved rather than removed or replaced merely because the method is GET.",
+          "Authentication processing must not cause an automatic Content-Length header to reappear on a bodyless GET request.",
+          "Behavior for HTTP methods other than GET remains unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "A prepared GET request with no body must not gain an automatically generated Content-Length header. A GET request with a body must continue to receive the applicable computed Content-Length, and an explicit Content-Length supplied by the caller must be preserved. These outcomes must also hold when authentication participates in request preparation."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The prior structured answer resolves the only material ambiguity: automatic Content-Length is omitted only for bodyless GET requests, while GET requests with bodies retain computed length behavior and caller-supplied headers are preserved. The repository evidence is sufficient to define observable outcomes without further questions."
+    },
+    "turn": 2
+  }
+]

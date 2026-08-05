@@ -1,0 +1,78 @@
+[
+  {
+    "answer": "Guard _sqrt_match",
+    "open_material_decisions": [
+      "Choose whether to contain the empty-surds case within sqrtdenest/_sqrt_match or define general empty-surds behavior in split_surds."
+    ],
+    "question": {
+      "header": "Fix boundary",
+      "options": [
+        {
+          "description": "Return no match before calling split_surds, preserving split_surds behavior for every other caller and making the reported expression remain unchanged.",
+          "label": "Guard _sqrt_match",
+          "recommended": true
+        },
+        {
+          "description": "Define a valid result for an empty surds list, fixing this path for all callers but broadening observable behavior beyond sqrtdenest.",
+          "label": "Harden split_surds",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should the empty-surds condition be handled?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve or revise the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Contract approval",
+      "options": [
+        {
+          "description": "Seal this scope and make it ready for implementation.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open and specify the required change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: add a guard in `_sqrt_match` so an Add with no Pow-form surd terms produces no match instead of calling `split_surds`; preserve `split_surds` and `_split_gcd` behavior; add a regression test asserting the reported expression completes without `IndexError` and equals its current expanded unchanged form; run the targeted sqrtdenest tests. Compatibility is bounded to sqrtdenest’s documented unchanged-on-no-denest behavior, with no broader guarantee for direct `split_surds` calls."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Calling `sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2)` completes without raising `IndexError`.",
+          "The call returns `3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2`.",
+          "A regression test for the exact reported expression is present in the sqrtdenest tests.",
+          "The targeted `sympy/simplify/tests/test_sqrtdenest.py` tests pass.",
+          "No changes are made to the behavior or contract of `split_surds` or `_split_gcd`."
+        ],
+        "confirmed_decisions": [
+          "Handle the empty-surds condition in `_sqrt_match`, not in `split_surds` or `_split_gcd`.",
+          "An Add with no Pow-form surd terms must produce no match, allowing `_sqrtdenest1` to preserve the square-root expression.",
+          "The exact reported expression must not raise `IndexError` and must equal `3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2`.",
+          "Add a regression test covering the exact reported expression.",
+          "Preserve existing `split_surds` and `_split_gcd` behavior for all callers.",
+          "Compatibility is bounded to sqrtdenest’s documented unchanged-on-no-denest behavior; no new guarantee is made for direct empty-input use of `split_surds` or `_split_gcd`.",
+          "Verification requires the targeted sqrtdenest tests to pass."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix the reported sqrtdenest IndexError at the sqrtdenest-specific boundary. In `_sqrt_match`, when an eligible Add contains no Pow-form surd terms, return no match without calling `split_surds`. This must cause the reported expression to complete successfully and be returned in sqrtdenest’s current expanded unchanged form. Do not change the behavior or public contract of `split_surds` or `_split_gcd`. Add a regression test for the exact reported expression and run the targeted sqrtdenest test suite."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the proposed contract, resolving the only material implementation-boundary decision. The contract is implementation-ready with no remaining material blockers."
+    },
+    "turn": 3
+  }
+]

@@ -1,0 +1,57 @@
+[
+  {
+    "answer": "Standard prerelease ordering",
+    "open_material_decisions": [
+      "Required ordering semantics for non-final version suffixes such as dev and rc."
+    ],
+    "question": {
+      "header": "Suffix ordering",
+      "options": [
+        {
+          "description": "Treat dev/rc versions as earlier than the corresponding final release, so 1.14dev < 1.14 < 1.14.3 and comparisons return booleans instead of raising.",
+          "label": "Standard prerelease ordering",
+          "recommended": true
+        },
+        {
+          "description": "Ignore non-numeric suffixes during comparison, preserving the historical fallback behavior but treating prereleases like their numeric release prefix.",
+          "label": "Strip suffix text",
+          "recommended": false
+        },
+        {
+          "description": "Guarantee the 1.14.3 versus 1.14dev case returns True without defining broader dev/rc ordering.",
+          "label": "Only fix reported shape",
+          "recommended": false
+        }
+      ],
+      "prompt": "What observable ordering should minversion use for development and release-candidate versions?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "With an installed version of 1.14.3, minversion against 1.14dev returns True without raising an exception.",
+          "Development and release-candidate versions compare earlier than their corresponding final release.",
+          "Inclusive comparison returns True for equal versions, while exclusive comparison returns False for equal versions.",
+          "Existing passing and failing minversion cases continue to produce their established boolean results.",
+          "NumPy compatibility and startup version checks that call minversion continue to evaluate successfully without prerelease-related comparison exceptions."
+        ],
+        "confirmed_decisions": [
+          "minversion treats development and release-candidate versions as earlier than the corresponding final release.",
+          "A final patch release is newer than a development version of its release series; for example, an installed version of 1.14.3 satisfies an inclusive minimum requirement of 1.14dev.",
+          "The corrected ordering applies to both inclusive and exclusive minversion comparisons.",
+          "Existing minversion behavior outside prerelease comparison ordering remains compatible, including accepted module inputs, missing-module results, invalid module-argument errors, and version_path lookup behavior."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update astropy.utils.minversion so version comparisons involving development and release-candidate suffixes use standard prerelease ordering and return a boolean instead of failing when numeric and textual components align at the same comparison position."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The reported failure boundary and the required prerelease ordering are resolved, and the repository evidence identifies the affected public comparison behavior and integration points. No material product decision remains."
+    },
+    "turn": 2
+  }
+]

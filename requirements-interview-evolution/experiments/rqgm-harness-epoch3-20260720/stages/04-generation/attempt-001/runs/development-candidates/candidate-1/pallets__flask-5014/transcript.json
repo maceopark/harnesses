@@ -1,0 +1,51 @@
+[
+  {
+    "answer": "Constructor only",
+    "open_material_decisions": [
+      "Whether `Flask.register_blueprint(..., name=\"\")` must also raise `ValueError`, in addition to `Blueprint(\"\", ...)`."
+    ],
+    "question": {
+      "header": "Validation scope",
+      "options": [
+        {
+          "description": "Matches the request literally: constructing a Blueprint with an empty name raises `ValueError`; registration override behavior remains unchanged.",
+          "label": "Constructor only (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Also rejects an empty effective name supplied when registering a Blueprint, expanding validation beyond construction.",
+          "label": "Constructor and override",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should the non-empty-name requirement apply only to the name passed to `Blueprint(...)`, or also to a registration-time `name=\"\"` override?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Constructing a Blueprint with `name=\"\"` raises `ValueError`.",
+          "Constructing a Blueprint with a valid non-empty name succeeds.",
+          "Constructing a Blueprint with a dotted name continues to raise `ValueError`.",
+          "Registration-time empty name overrides are not newly rejected by this change."
+        ],
+        "confirmed_decisions": [
+          "`Blueprint(\"\", import_name, ...)` raises `ValueError` during construction.",
+          "Validation applies only to the constructor name.",
+          "`Flask.register_blueprint(..., name=\"\")` behavior remains unchanged.",
+          "Non-empty constructor names continue to be accepted unless rejected by an existing rule, including the existing prohibition on dots."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Require the name passed to `Blueprint(...)` to be non-empty. Constructing a Blueprint with an empty-string name raises `ValueError`; existing behavior for valid names and names containing dots remains intact. Registration-time `name` overrides are outside this change."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The only material scope ambiguity was resolved: the requirement applies to the Blueprint constructor only. The request and repository evidence otherwise define an implementable change without further questions."
+    },
+    "turn": 2
+  }
+]

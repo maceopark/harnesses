@@ -1,0 +1,58 @@
+[
+  {
+    "answer": "Standard versions",
+    "open_material_decisions": [
+      "Scope of version-string compatibility beyond the reported `1.14.3` versus `1.14dev` case."
+    ],
+    "question": {
+      "header": "Version scope",
+      "options": [
+        {
+          "description": "Compare ordinary release and common pre-release/development version strings consistently, including the reported case, without raising type-comparison errors.",
+          "label": "Standard versions (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Guarantee only that multi-component releases compare correctly with a shorter `dev` requirement such as `1.14.3` versus `1.14dev`.",
+          "label": "Reported case only",
+          "recommended": false
+        },
+        {
+          "description": "Preserve permissive comparison behavior for arbitrary nonstandard version strings as well as standard release and pre-release forms.",
+          "label": "All loose strings",
+          "recommended": false
+        }
+      ],
+      "prompt": "What observable compatibility scope should `minversion` guarantee for version comparisons?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Comparing installed version `1.14.3` with requirement `1.14dev` returns `True` and does not raise a mixed-type comparison exception.",
+          "Standard release, pre-release, and development version comparisons produce Boolean results consistent with version precedence.",
+          "Inclusive and exclusive comparisons retain their distinct boundary behavior.",
+          "The existing observable behavior for module resolution, version-path lookup, and currently covered version comparisons is preserved."
+        ],
+        "confirmed_decisions": [
+          "`minversion` supports ordinary release and common pre-release/development version strings, not merely the single reported example.",
+          "For an installed version of `1.14.3` and a required version of `1.14dev`, `minversion` returns `True` instead of raising `TypeError`.",
+          "Inclusive mode continues to report whether the installed version is greater than or equal to the requirement; exclusive mode continues to require it to be strictly greater.",
+          "Existing module inputs, module-name string inputs, configurable version paths, missing-module behavior, and invalid module-argument behavior remain unchanged.",
+          "Existing outcomes covered by `test_minversion` remain unchanged, including release, development, and release-candidate comparisons.",
+          "The helper remains publicly available as `astropy.utils.minversion`."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Make `astropy.utils.minversion` compare standard release, pre-release, and development version strings consistently without leaking mixed-type comparison errors, while preserving its public API and established comparison modes."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The repository evidence and the answered version-scope decision resolve all material ambiguity. The requested fix can be implemented without choosing additional product behavior."
+    },
+    "turn": 2
+  }
+]

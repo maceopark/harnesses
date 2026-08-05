@@ -1,0 +1,92 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..a0f5b36 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1725,7 +1725,9 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+                     ) -> None:
+         if self.doc_as_attr:
+             try:
+-                more_content = StringList([_('alias of %s') % restify(self.object)], source='')
++                if more_content is None:
++                    more_content = StringList()
++                more_content.append(_('alias of %s') % restify(self.object), '')
+             except AttributeError:
+                 pass  # Invalid class object is passed.
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/type_aliases.py b/tests/roots/test-ext-autodoc/target/type_aliases.py
+new file mode 100644
+index 0000000..c501018
+--- /dev/null
++++ b/tests/roots/test-ext-autodoc/target/type_aliases.py
+@@ -0,0 +1,23 @@
++from pathlib import Path
++from typing import Any, Callable, Dict, Union
++
++
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary with options.
++Should be treated as immutable.
++"""
++
++FileContents = Union[str, None]
++"""When the file content is ``None``, the file should not be written to
++disk.
++"""
++
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of functions considered file operations.
++
++File operations may have side effects.
++"""
++
++DocumentedClassAlias = int
++"""Documentation for a class alias.
++"""
+diff --git a/tests/test_ext_autodoc_autoclass.py b/tests/test_ext_autodoc_autoclass.py
+index 096dc93..f9a7629 100644
+--- a/tests/test_ext_autodoc_autoclass.py
++++ b/tests/test_ext_autodoc_autoclass.py
+@@ -327,3 +327,17 @@ def test_class_alias(app):
+         '',
+         '   alias of :class:`target.classes.Foo`',
+     ]
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_documented_class_alias(app):
++    actual = do_autodoc(app, 'class', 'target.type_aliases.DocumentedClassAlias')
++    assert list(actual) == [
++        '',
++        '.. py:attribute:: DocumentedClassAlias',
++        '   :module: target.type_aliases',
++        '',
++        '   Documentation for a class alias.',
++        '',
++        '   alias of :class:`int`',
++    ]
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..271a943 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -101,6 +101,21 @@ def test_autodata_GenericAlias(app):
+         ]
+ 
+ 
++@pytest.mark.parametrize(('name', 'documentation'), [
++    ('ScaffoldOpts', ['Dictionary with options.', 'Should be treated as immutable.']),
++    ('FileContents', ['When the file content is ``None``, the file should not be written to',
++                      'disk.']),
++    ('FileOp', ['Signature of functions considered file operations.',
++                'File operations may have side effects.']),
++])
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_documented_type_aliases(app, name, documentation):
++    actual = list(do_autodoc(app, 'data', 'target.type_aliases.' + name))
++    for line in documentation:
++        assert '   ' + line in actual
++    assert any(line.startswith('   alias of ') for line in actual)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_NewType(app):
+     actual = do_autodoc(app, 'data', 'target.typevar.T6')

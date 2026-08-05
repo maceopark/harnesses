@@ -1,0 +1,59 @@
+diff --git a/xarray/core/weighted.py b/xarray/core/weighted.py
+index 996d2e4..551e9c5 100644
+--- a/xarray/core/weighted.py
++++ b/xarray/core/weighted.py
+@@ -142,6 +142,9 @@ class Weighted:
+         # we need to mask data values that are nan; else the weights are wrong
+         mask = da.notnull()
+ 
++        if self.weights.dtype.kind == "b":
++            mask = mask.astype(int)
++
+         sum_of_weights = self._reduce(mask, self.weights, dim=dim, skipna=False)
+ 
+         # 0-weights are not valid
+diff --git a/xarray/tests/test_weighted.py b/xarray/tests/test_weighted.py
+index 2453121..8f0d5bd 100644
+--- a/xarray/tests/test_weighted.py
++++ b/xarray/tests/test_weighted.py
+@@ -158,6 +158,40 @@ def test_weighted_mean_nan(weights, expected, skipna):
+     assert_equal(expected, result)
+ 
+ 
++@pytest.mark.parametrize("as_dataset", (True, False))
++@pytest.mark.parametrize(
++    ("data", "weights", "expected_sum_of_weights", "expected_mean"),
++    (
++        ([1.0, 1.0, 1.0], [True, True, False], 2, 1.0),
++        ([np.nan, 1.0, 2.0], [True, True, False], 1, 1.0),
++        ([1.0, 2.0, 3.0], [False, False, False], np.nan, np.nan),
++    ),
++)
++def test_weighted_mean_boolean_weights(
++    as_dataset, data, weights, expected_sum_of_weights, expected_mean
++):
++    data = DataArray(data)
++    if as_dataset:
++        data = data.to_dataset(name="data")
++
++    boolean_weights = DataArray(weights)
++    integer_weights = boolean_weights.astype(int)
++
++    boolean_weighted = data.weighted(boolean_weights)
++    integer_weighted = data.weighted(integer_weights)
++
++    expected_sum_of_weights = DataArray(expected_sum_of_weights)
++    expected_mean = DataArray(expected_mean)
++    if as_dataset:
++        expected_sum_of_weights = expected_sum_of_weights.to_dataset(name="data")
++        expected_mean = expected_mean.to_dataset(name="data")
++
++    assert_equal(expected_sum_of_weights, boolean_weighted.sum_of_weights())
++    assert_equal(expected_mean, boolean_weighted.mean())
++    assert_equal(integer_weighted.sum_of_weights(), boolean_weighted.sum_of_weights())
++    assert_equal(integer_weighted.mean(), boolean_weighted.mean())
++
++
+ def expected_weighted(da, weights, dim, skipna, operation):
+     """
+     Generate expected result using ``*`` and ``sum``. This is checked against

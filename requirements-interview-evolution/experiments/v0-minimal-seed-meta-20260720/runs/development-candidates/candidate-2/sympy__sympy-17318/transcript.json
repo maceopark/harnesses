@@ -1,0 +1,54 @@
+[
+  {
+    "answer": "Guard _sqrt_match",
+    "open_material_decisions": [
+      "Choose whether the empty-surd case is handled locally in _sqrt_match or globally in split_surds."
+    ],
+    "question": {
+      "header": "Fix boundary",
+      "options": [
+        {
+          "description": "Keep the change scoped to sqrtdenest: detect that the Add has no qualifying surd factors, produce no match, and let _sqrtdenest1 return the square root unchanged.",
+          "label": "Guard _sqrt_match",
+          "recommended": true
+        },
+        {
+          "description": "Define a general empty-surd return contract in radsimp.split_surds, affecting all current and future callers.",
+          "label": "Harden split_surds",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should the empty-surd case be handled?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) completes without raising IndexError.",
+          "The result equals (3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2, allowing SymPy's canonical structural formatting such as 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.",
+          "Existing sqrtdenest tests for expressions that denest successfully continue to pass.",
+          "Existing sqrtdenest tests for expressions returned unchanged continue to pass.",
+          "The implementation changes _sqrt_match and its regression tests only; split_surds and _split_gcd retain their existing behavior."
+        ],
+        "confirmed_decisions": [
+          "Handle the empty-surd case locally in sympy/simplify/sqrtdenest.py::_sqrt_match, not by changing the general contract of sympy/simplify/radsimp.py::split_surds or _split_gcd.",
+          "Preserve existing successful denesting behavior: continue calling split_surds when at least one qualifying surd factor exists.",
+          "Represent the empty-surd condition as no _sqrt_match result so the existing _sqrtdenest1 unchanged-return path handles it.",
+          "Add the regression to sympy/simplify/tests/test_sqrtdenest.py using the exact reported expression (3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2.",
+          "The regression must assert that sqrtdenest returns the same mathematical expression and does not raise IndexError.",
+          "Do not introduce new dependencies or broaden the change to unrelated radsimp callers."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix the sqrtdenest-specific empty-surd failure by guarding _sqrt_match before it calls split_surds. When an Add satisfies the rational-square predicate but contains no factors that split_surds can treat as surds, _sqrt_match must report no match. This allows _sqrtdenest1 to preserve the square-root subexpression and sqrtdenest to return the reported compound expression unchanged instead of raising IndexError. Add an exact regression test for the reported expression."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The fix boundary was explicitly selected, and repository evidence resolves the remaining behavior and regression-test requirements without inventing broader radsimp behavior."
+    },
+    "turn": 2
+  }
+]

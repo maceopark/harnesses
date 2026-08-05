@@ -1,0 +1,65 @@
+[
+  {
+    "answer": "Replace on all versions",
+    "open_material_decisions": [
+      "Whether custom source documentation should replace the generated alias paragraph on every supported Python version or only repair the Python 3.6 inconsistency."
+    ],
+    "question": {
+      "header": "Alias policy",
+      "options": [
+        {
+          "description": "Show the custom documentation without “alias of …” on every supported Python version; undocumented aliases retain the generated message.",
+          "label": "Replace on all versions",
+          "recommended": true
+        },
+        {
+          "description": "Make Python 3.6 retain custom documentation, while Python 3.7+ continues showing both custom documentation and “alias of …”.",
+          "label": "Fix Python 3.6 only",
+          "recommended": false
+        },
+        {
+          "description": "Preserve custom documentation and append “alias of …” consistently on every supported Python version.",
+          "label": "Show both everywhere",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has next-line source documentation, which behavior should the implementation enforce?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Run the targeted pycode parser tests and confirm next-line multiline variable documentation still parses and dedents correctly.",
+          "Run the GenericAlias autodoc and autodata regression tests on the available interpreter.",
+          "Confirm documented aliases render their complete source documentation exactly once and omit every generated “alias of …” paragraph.",
+          "Confirm an undocumented generic alias still renders “alias of …”.",
+          "Confirm the Dict, Union, and Callable reproduction aliases behave identically with respect to custom-documentation precedence.",
+          "Run the broader autodoc test module or nearest repository-supported autodoc test suite to detect documenter-selection and content-ordering regressions.",
+          "Run the repository’s applicable formatting, lint, or static checks for the modified Python and test files."
+        ],
+        "confirmed_decisions": [
+          "Custom next-line source documentation replaces the generated “alias of …” paragraph on every supported Python version.",
+          "Undocumented type aliases continue to render the generated “alias of …” paragraph.",
+          "Multiline documentation must retain normal ModuleAnalyzer parsing and dedenting behavior, including blank lines, literal blocks, roles, and directives.",
+          "The fix must cover aliases that autodoc handles through DataDocumenter/GenericAliasMixin and aliases selected through ClassDocumenter’s doc_as_attr path, preventing either path from overwriting or appending to discovered source documentation.",
+          "Documenter selection, directive headers, and rendered alias values remain unchanged except where necessary to preserve the custom documentation and suppress the generated alias paragraph.",
+          "Add regression fixtures for the reported Dict[str, Any], Union[str, None], and Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]] aliases using next-line multiline string documentation.",
+          "Regression assertions must verify that all three documented aliases contain their custom text and none contains “alias of …”.",
+          "Add or retain an undocumented alias case asserting that “alias of …” is still emitted.",
+          "Update existing GenericAlias expectations that currently require both custom text and “alias of …” so documented aliases expect custom text only, while preserving version-appropriate directive selection and unrelated output.",
+          "Keep the change localized to autodoc content handling and tests; do not change pycode parser semantics or add dependencies."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update Sphinx autodoc so that a type alias with analyzer-discovered source documentation— including a multiline string expression immediately following its assignment—renders that documentation and does not append or substitute the generated “alias of …” paragraph. Apply this consistently across all supported Python versions and relevant autodoc member-selection paths. Preserve the existing generated “alias of …” output for aliases without source documentation."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner resolved the only material product decision: source documentation replaces generated alias text on all supported Python versions. The audited repository evidence is sufficient to define the implementation and regression coverage without inventing further behavior."
+    },
+    "turn": 2
+  }
+]

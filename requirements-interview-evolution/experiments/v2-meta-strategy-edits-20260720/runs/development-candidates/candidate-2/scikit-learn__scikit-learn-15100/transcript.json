@@ -1,0 +1,59 @@
+[
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Owner approval of the proposed contract, including the bounded behavior change for all NFKD inputs containing combining characters."
+    ],
+    "question": {
+      "header": "Contract approval",
+      "options": [
+        {
+          "description": "Seal this scope and make it ready for implementation.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Adjust the required behavior or compatibility boundary before sealing.",
+          "label": "Revise boundary",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: change strip_accents_unicode so it always returns the NFKD-normalized input with every Unicode combining character removed, including when the input was already NFKD; preserve existing behavior for precomposed accents and strings without combining characters; cover the reported decomposed n + combining tilde case with a direct regression test and verify CountVectorizer strip_accents='unicode' produces the same unaccented result through its existing preprocessing path; make no API or documentation changes because the documented behavior already promises accent removal and NFKD normalization. Acceptance requires the new regression test and relevant existing text feature-extraction tests to pass. The acknowledged compatibility effect is that callers previously relying on already-NFKD combining marks being preserved will now lose those marks, which is the intended correction. Implementation may choose the smallest equivalent code/test structure consistent with repository conventions but may not broaden behavior beyond NFKD normalization plus combining-character removal. Is this contract approved?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A direct test proves `strip_accents_unicode('n\\u0303') == 'n'`.",
+          "Regression coverage proves canonically equivalent precomposed and decomposed accented inputs produce the same unaccented output.",
+          "A CountVectorizer analyzer configured with `strip_accents='unicode'` removes the combining mark from already-NFKD input through the existing preprocessing path.",
+          "Existing direct tests for accented Latin text, Arabic text, and mixed text continue to pass.",
+          "Relevant existing text feature-extraction and vectorizer tests pass.",
+          "The implementation performs only NFKD normalization and removal of Unicode combining characters, with no public API or documentation changes."
+        ],
+        "confirmed_decisions": [
+          "Remove the equality-based behavior that returns already-NFKD input before filtering combining characters.",
+          "Required output for both precomposed `ñ` and decomposed `n` plus combining tilde is `n`.",
+          "The corrected behavior applies generally to NFKD-normalized inputs containing Unicode combining characters, not only the reported tilde example.",
+          "Preserve the existing preprocessing integration used by CountVectorizer, TfidfVectorizer, and supported analyzer modes.",
+          "Preserve existing behavior for precomposed accents and strings without combining characters.",
+          "Add a direct regression test covering the reported decomposed input.",
+          "Verify CountVectorizer with `strip_accents='unicode'` produces the same unaccented result through its existing preprocessing path.",
+          "Make no API or documentation changes.",
+          "Implementation may use the smallest equivalent code and test structure consistent with repository conventions, but must not broaden behavior beyond NFKD normalization followed by combining-character removal.",
+          "Acknowledged compatibility effect: callers that relied on combining marks being preserved when input was already NFKD-normalized will now lose those marks; this is the intended bug fix."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Change `strip_accents_unicode` so it always NFKD-normalizes its input and removes every Unicode combining character from the normalized result, including when the original input is already in NFKD form. Preserve existing results for precomposed accented text and text without combining characters. Add a direct regression test for decomposed `n` plus combining tilde and verify the behavior through `CountVectorizer(strip_accents='unicode')`. No public API or documentation changes are required because the documented contract already promises Unicode accent removal using NFKD normalization."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the evidence-grounded implementation contract, and no material decisions remain unresolved."
+    },
+    "turn": 2
+  }
+]

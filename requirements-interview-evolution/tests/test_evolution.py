@@ -58,10 +58,12 @@ class EvolutionTests(unittest.TestCase):
         self.assertEqual(result["mean_score"], 100.0)
         self.assertEqual(result["total_invented"], 0)
 
-    def test_packaged_skill_is_frozen_v4(self) -> None:
+    def test_packaged_skill_is_validated_v5_and_preserves_v4(self) -> None:
         current = (ROOT / "clarify-requirements" / "SKILL.md").read_bytes()
-        frozen = (ROOT / "evolution" / "v4" / "SKILL.md").read_bytes()
-        self.assertEqual(current, frozen)
+        v4 = (ROOT / "evolution" / "v4" / "SKILL.md").read_bytes()
+        v5 = (ROOT / "evolution" / "v5" / "SKILL.md").read_bytes()
+        self.assertNotEqual(current, v4)
+        self.assertEqual(current, v5)
 
     def test_v4_contains_runtime_and_handoff_guards(self) -> None:
         skill = (ROOT / "clarify-requirements" / "SKILL.md").read_text(encoding="utf-8")
@@ -73,6 +75,9 @@ class EvolutionTests(unittest.TestCase):
             "decision.jsonl",
             "implementation-start prompt",
             "do not ask the user to approve whether the specification is sufficient",
+            "Use an adaptive interview budget",
+            "Seal the contract only when the material-blocker set is empty",
+            "runtime safety ceiling is an emergency runaway guard",
         ):
             self.assertIn(required, skill)
 

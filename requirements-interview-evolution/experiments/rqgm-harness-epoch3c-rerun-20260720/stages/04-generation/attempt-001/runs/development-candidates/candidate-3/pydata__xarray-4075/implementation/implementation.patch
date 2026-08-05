@@ -1,0 +1,66 @@
+diff --git a/xarray/core/weighted.py b/xarray/core/weighted.py
+index 996d2e4..b2c037a 100644
+--- a/xarray/core/weighted.py
++++ b/xarray/core/weighted.py
+@@ -140,7 +140,9 @@ class Weighted:
+         """ Calculate the sum of weights, accounting for missing values """
+ 
+         # we need to mask data values that are nan; else the weights are wrong
+-        mask = da.notnull()
++        # `dot` between two boolean arrays returns a boolean, so convert the
++        # mask to an integer to ensure boolean weights are summed arithmetically.
++        mask = da.notnull().astype(int)
+ 
+         sum_of_weights = self._reduce(mask, self.weights, dim=dim, skipna=False)
+ 
+diff --git a/xarray/tests/test_weighted.py b/xarray/tests/test_weighted.py
+index 2453121..864716f 100644
+--- a/xarray/tests/test_weighted.py
++++ b/xarray/tests/test_weighted.py
+@@ -158,6 +158,46 @@ def test_weighted_mean_nan(weights, expected, skipna):
+     assert_equal(expected, result)
+ 
+ 
++@pytest.mark.parametrize("as_dataset", (True, False))
++@pytest.mark.parametrize("dim", ("a", "b", None))
++@pytest.mark.parametrize("add_nan", (True, False))
++def test_weighted_boolean_weights(as_dataset, dim, add_nan):
++    data = np.array([[1.0, 1.0, 1.0], [2.0, 3.0, 4.0]])
++    if add_nan:
++        data[0, 1] = np.nan
++
++    data = DataArray(data, dims=("a", "b"))
++    weights = DataArray(
++        [[True, True, False], [False, True, True]], dims=("a", "b")
++    )
++
++    if as_dataset:
++        data = data.to_dataset(name="data")
++
++    boolean_weighted = data.weighted(weights)
++    numeric_weighted = data.weighted(weights.astype(int))
++
++    assert_equal(
++        boolean_weighted.sum_of_weights(dim), numeric_weighted.sum_of_weights(dim)
++    )
++    assert_equal(boolean_weighted.sum(dim), numeric_weighted.sum(dim))
++    assert_equal(boolean_weighted.mean(dim), numeric_weighted.mean(dim))
++
++
++@pytest.mark.parametrize("as_dataset", (True, False))
++def test_weighted_boolean_weights_zero(as_dataset):
++    data = DataArray([1.0, 1.0, 1.0])
++    weights = DataArray([False, False, False])
++    expected = DataArray(np.nan)
++
++    if as_dataset:
++        data = data.to_dataset(name="data")
++        expected = expected.to_dataset(name="data")
++
++    assert_equal(data.weighted(weights).sum_of_weights(), expected)
++    assert_equal(data.weighted(weights).mean(), expected)
++
++
+ def expected_weighted(da, weights, dim, skipna, operation):
+     """
+     Generate expected result using ``*`` and ``sum``. This is checked against

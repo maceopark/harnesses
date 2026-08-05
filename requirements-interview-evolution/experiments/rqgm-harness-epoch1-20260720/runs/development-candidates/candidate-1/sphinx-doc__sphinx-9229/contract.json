@@ -1,0 +1,24 @@
+{
+  "acceptance_checks": [
+    "Add a regression fixture containing the reported module-level ScaffoldOpts, FileContents, and FileOp aliases, each documented by a multiline next-line string literal.",
+    "Verify autodoc output contains the complete custom documentation for all three reported aliases, including multiline paragraphs and reStructuredText constructs.",
+    "Verify none of those three documented aliases emits an “alias of …” line.",
+    "Verify a separate undocumented generic/type alias still emits “alias of …”.",
+    "Cover the documenter path responsible for aliases treated as doc_as_attr so supplied analyzer documentation is not overwritten by generated alias content.",
+    "Update existing GenericAlias expectations that currently require both custom text and “alias of …” so documented aliases expect only the custom text, while undocumented-alias expectations retain the fallback.",
+    "Retain coverage for both module-level data aliases and class attributes where supported by the existing test suite.",
+    "Run the targeted autodoc tests, including tests/test_ext_autodoc_autodata.py, tests/test_ext_autodoc_autoattribute.py, and the relevant generic-alias tests in tests/test_ext_autodoc.py; all must pass."
+  ],
+  "confirmed_decisions": [
+    "A next-line string expression immediately following an assignment or annotated assignment is eligible source-level documentation for that variable, including multiline strings.",
+    "For every documented type alias, non-empty source-level variable documentation replaces rather than accompanies the generated “alias of …” text.",
+    "The precedence rule must apply consistently regardless of which autodoc documenter path handles the alias, including DataDocumenter and aliases routed through ClassDocumenter with doc_as_attr.",
+    "An undocumented type alias continues to render the generated “alias of …” fallback.",
+    "Empty source-level documentation does not suppress the fallback.",
+    "The change must not cause a type alias to inherit or display the runtime docstring of its underlying typing object or class.",
+    "Existing non-alias documentation behavior and directive selection remain unchanged unless necessary to enforce the documented-alias precedence rule."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Make autodoc consistently prefer non-empty source-level variable documentation for type aliases, including aliases that are routed through ClassDocumenter as attribute aliases. When custom documentation exists, render it and suppress the generated “alias of …” message. When custom documentation is absent, retain “alias of …” as the fallback. Preserve existing behavior for ordinary classes, data, attributes, and aliases without custom documentation."
+}

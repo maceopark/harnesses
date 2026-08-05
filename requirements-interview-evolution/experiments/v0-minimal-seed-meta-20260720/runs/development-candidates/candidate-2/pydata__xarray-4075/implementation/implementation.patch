@@ -1,0 +1,77 @@
+diff --git a/xarray/core/weighted.py b/xarray/core/weighted.py
+index 996d2e4..a9b2ec4 100644
+--- a/xarray/core/weighted.py
++++ b/xarray/core/weighted.py
+@@ -140,7 +140,7 @@ class Weighted:
+         """ Calculate the sum of weights, accounting for missing values """
+ 
+         # we need to mask data values that are nan; else the weights are wrong
+-        mask = da.notnull()
++        mask = da.notnull().astype(int)
+ 
+         sum_of_weights = self._reduce(mask, self.weights, dim=dim, skipna=False)
+ 
+diff --git a/xarray/tests/test_weighted.py b/xarray/tests/test_weighted.py
+index 2453121..084361f 100644
+--- a/xarray/tests/test_weighted.py
++++ b/xarray/tests/test_weighted.py
+@@ -158,6 +158,59 @@ def test_weighted_mean_nan(weights, expected, skipna):
+     assert_equal(expected, result)
+ 
+ 
++def test_weighted_mean_boolean_weights():
++    da = DataArray([1.0, 1.0, 1.0])
++    weights = DataArray([True, True, False])
++
++    assert_equal(DataArray(2), da.weighted(weights).sum_of_weights())
++    assert_equal(DataArray(1.0), da.weighted(weights).mean())
++
++
++def test_weighted_mean_boolean_weights_nan():
++    da = DataArray([1.0, np.nan, 3.0])
++    weights = DataArray([True, True, False])
++
++    expected = weights.where(da.notnull()).sum(skipna=True)
++    assert_equal(expected, da.weighted(weights).sum_of_weights())
++    assert_equal(DataArray(1.0), da.weighted(weights).mean())
++
++
++def test_weighted_mean_boolean_weights_dim():
++    da = DataArray([[1.0, 2.0], [3.0, 4.0]], dims=("x", "y"))
++    weights = DataArray([True, False], dims="x")
++
++    expected = (da * weights).sum("x") / weights.sum("x")
++    assert_equal(expected, da.weighted(weights).mean("x"))
++
++
++def test_weighted_mean_boolean_weights_dataset():
++    ds = DataArray([1.0, 2.0, 3.0], dims="x").to_dataset(name="a")
++    ds["b"] = ds["a"] * 2
++    weights = DataArray([True, True, False], dims="x")
++
++    expected = xr.Dataset({"a": DataArray(1.5), "b": DataArray(3.0)})
++    assert_equal(expected, ds.weighted(weights).mean())
++
++
++def test_weighted_mean_boolean_weights_zero():
++    da = DataArray([1.0, 2.0])
++    weights = DataArray([False, False])
++
++    assert_equal(DataArray(np.nan), da.weighted(weights).sum_of_weights())
++    assert_equal(DataArray(np.nan), da.weighted(weights).mean())
++
++
++def test_weighted_mean_boolean_weights_dask():
++    dask_array = pytest.importorskip("dask.array")
++    da = DataArray(dask_array.from_array([1.0, 1.0, 1.0], chunks=2))
++    weights = DataArray(dask_array.from_array([True, True, False], chunks=2))
++
++    result = da.weighted(weights).mean()
++
++    assert hasattr(result.data, "__dask_graph__")
++    assert_equal(DataArray(1.0), result.compute())
++
++
+ def expected_weighted(da, weights, dim, skipna, operation):
+     """
+     Generate expected result using ``*`` and ``sum``. This is checked against

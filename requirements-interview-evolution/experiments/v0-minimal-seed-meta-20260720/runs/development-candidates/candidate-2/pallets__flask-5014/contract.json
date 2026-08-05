@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "flask.Blueprint(\"\", __name__) raises ValueError.",
+    "The empty-name error is raised during Blueprint construction, not deferred until application registration or route setup.",
+    "flask.Blueprint(\"app.ui\", __name__) continues to raise ValueError.",
+    "A Blueprint with a representative non-empty, dot-free name can still be constructed and registered normally.",
+    "The new regression test and existing blueprint test suite pass."
+  ],
+  "confirmed_decisions": [
+    "Validate the name in Blueprint.__init__, where constructor-name constraints are already enforced.",
+    "Reject the empty string with ValueError.",
+    "Do not treat whitespace-only strings as empty; no normalization or additional naming policy is authorized.",
+    "Preserve rejection of names containing a dot.",
+    "Preserve successful construction and registration for non-empty, dot-free names.",
+    "Do not add validation for register_blueprint(name=...) overrides or nested name_prefix values; the request concerns a Blueprint given an empty constructor name.",
+    "Add a regression test alongside the existing dotted-name validation tests."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Require Blueprint constructor names to be non-empty. In src/flask/blueprints.py, Blueprint.__init__ must raise ValueError when name == \"\", before assigning self.name. Preserve the existing ValueError for names containing a dot and all behavior for non-empty, dot-free names. Add focused regression coverage in tests/test_blueprints.py. Registration-time name overrides are outside this change."
+}

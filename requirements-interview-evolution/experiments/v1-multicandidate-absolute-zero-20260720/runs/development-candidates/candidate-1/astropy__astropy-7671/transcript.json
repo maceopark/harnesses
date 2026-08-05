@@ -1,0 +1,117 @@
+[
+  {
+    "answer": "pkg_resources semantics",
+    "open_material_decisions": [
+      "Required supported version-string formats beyond existing tests and the reported case",
+      "Version parser and semantic compatibility boundary"
+    ],
+    "question": {
+      "header": "Version semantics",
+      "options": [
+        {
+          "description": "Restore the parser behavior explicitly demonstrated in the report, preserving the existing minversion API.",
+          "label": "pkg_resources semantics",
+          "recommended": true
+        },
+        {
+          "description": "Delegate parser choice while requiring the reported case and existing tests to pass.",
+          "label": "Any robust parser",
+          "recommended": false
+        },
+        {
+          "description": "Retain LooseVersion and narrowly prevent the reported mixed-component failure.",
+          "label": "LooseVersion workaround",
+          "recommended": false
+        }
+      ],
+      "prompt": "What compatibility target should replace the failing LooseVersion comparison?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Parser-wide semantics",
+    "open_material_decisions": [
+      "Required supported version-string formats beyond existing tests and the reported case"
+    ],
+    "question": {
+      "header": "Format scope",
+      "options": [
+        {
+          "description": "Require pkg_resources.parse_version ordering for all version strings it accepts, including the existing tests and reported 1.14.3 versus 1.14dev case.",
+          "label": "Parser-wide semantics",
+          "recommended": true
+        },
+        {
+          "description": "Require only the existing minversion cases and the reported 1.14.3 versus 1.14dev case, leaving other formats as bounded residual risk.",
+          "label": "Known cases only",
+          "recommended": false
+        },
+        {
+          "description": "Require pkg_resources-compatible ordering only for valid PEP 440 versions and explicitly leave legacy non-PEP-440 strings unsupported.",
+          "label": "PEP 440 only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which version-string compatibility boundary should the implementation contract require?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve (Recommended)",
+    "open_material_decisions": [
+      "Final owner approval of the implementation contract"
+    ],
+    "question": {
+      "header": "Approve contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with the stated semantics, scope, tests, and residual risk.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a required change before implementation.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: replace LooseVersion-based comparisons in astropy.utils.minversion with pkg_resources.parse_version semantics for every version string accepted by that parser; preserve the existing module/module-name inputs, failed-import False result, invalid-input ValueError, version_path lookup, and inclusive >= versus exclusive > behavior; add regression coverage proving installed 1.14.3 satisfies requested 1.14dev without raising, retain all existing minversion expectations, and exercise both comparison branches where needed to establish the preserved inclusive/exclusive contract. Scope is limited to minversion and its tests—no changes to Astropy’s NumPy minimum, startup behavior, compatibility thresholds, or public API. Acceptance requires the targeted introspection tests to pass and no exception for the reported case. Parser-wide ordering changes relative to LooseVersion are intentional; pkg_resources availability/deprecation is an acknowledged dependency risk at this base revision."
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Targeted astropy.utils introspection tests pass.",
+          "A regression test proves that minversion reports True, without exception, when the installed version is 1.14.3 and the requested version is 1.14dev with inclusive comparison.",
+          "All pre-existing minversion expectations remain passing.",
+          "Tests exercise inclusive and exclusive comparisons sufficiently to verify that >= and > behavior is preserved.",
+          "Tests or inspection confirm that failed module-name imports still return False, invalid module argument types still raise ValueError, and version_path lookup remains unchanged.",
+          "The implementation uses pkg_resources.parse_version for both compared version values and no longer performs the affected comparisons with distutils.version.LooseVersion.",
+          "No changes are made to Astropy’s minimum NumPy version, startup check behavior, NumPy compatibility threshold strings, or the public minversion signature."
+        ],
+        "confirmed_decisions": [
+          "Use pkg_resources.parse_version semantics instead of LooseVersion semantics.",
+          "Apply pkg_resources.parse_version ordering to every version string accepted by that parser, not only the reported example.",
+          "The reported comparison must return True without raising: installed 1.14.3 compared inclusively against required 1.14dev.",
+          "Preserve module-object and module-name-string inputs, failed-import False behavior, invalid-input ValueError behavior, and version_path resolution, as established by F2 and F3.",
+          "Preserve inclusive >= and exclusive > comparison modes, as established by F4.",
+          "Retain the existing expectations for installed 0.12.2 against 0.12, 0.12.1, 0.12.0.dev, 1, and 1.2rc1, as established by F5.",
+          "Restrict implementation scope to astropy.utils.minversion and its tests.",
+          "Do not alter the declared NumPy minimum, startup NumPy validation, NumPy compatibility thresholds, or public minversion API, as bounded by F6-F8 and the repository evidence.",
+          "Accept parser-wide ordering changes relative to LooseVersion as intentional behavior.",
+          "Acknowledge pkg_resources availability or deprecation as a bounded residual dependency risk at this base revision."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Replace the LooseVersion comparisons in astropy.utils.minversion with pkg_resources.parse_version semantics for every version string accepted by that parser. Preserve the public API and existing control flow: imported-module and module-name inputs, False for failed string imports, ValueError for invalid module argument types, version_path lookup, inclusive >= behavior, and exclusive > behavior. Add regression coverage showing that installed version 1.14.3 satisfies requested version 1.14dev without raising, retain the existing minversion expectations, and cover both comparison branches sufficiently to establish preserved inclusive/exclusive behavior. Limit changes to minversion and its tests; do not change Astropy’s NumPy minimum, startup behavior, compatibility thresholds, or public API. Parser-wide ordering differences from LooseVersion are intentional. Availability or deprecation of pkg_resources is an acknowledged dependency risk at this base revision."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved all material decisions. The contract is implementation-ready and no material blocker remains."
+    },
+    "turn": 4
+  }
+]

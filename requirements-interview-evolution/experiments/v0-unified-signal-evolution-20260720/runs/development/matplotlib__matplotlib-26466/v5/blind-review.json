@@ -1,0 +1,30 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/0",
+          "quoted_value": "Both `xy` and an explicitly supplied `xytext` receive construction-time snapshot semantics."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/5",
+          "quoted_value": "Verify shallow-copyable coordinate containers retain their container type in the stored constructor snapshot."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/7/statement",
+          "quoted_value": "If xytext is omitted, it defaults to self.xy, after which its two values are unpacked and passed as the Text position."
+        }
+      ],
+      "description": "The container-type acceptance check is not fully verifiable as written. It can inspect the stored `xy`, but the contract also covers explicit `xytext`, whose outer container is unpacked and not identified as a stored public or internal value. The check must state that type retention applies only to the stored `xy` snapshot, or define a concrete observable for explicit `xytext`.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The acceptance criterion requires preservation of a constructor snapshot’s container type without identifying an observable stored value for every coordinate input covered by the contract.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "The contract applies snapshot semantics to both `xy` and explicit `xytext` and then broadly requires coordinate-container type retention, while repository evidence says `xytext` is unpacked into two Text-position values rather than retained as a container."
+    }
+  ],
+  "summary": "The contract has one material readiness failure: its container-type preservation check lacks a defined observable for explicit `xytext`, which the audited implementation unpacks rather than storing as a coordinate container."
+}

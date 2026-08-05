@@ -1,0 +1,166 @@
+[
+  {
+    "answer": "Consecutive valid signatures",
+    "open_material_decisions": [
+      "Confirm documentation and regression-test acceptance boundaries after behavior is resolved.",
+      "Define handling of signature-like lines whose function or method name does not match the documented object.",
+      "Define the overload-block termination and consumption rule."
+    ],
+    "question": {
+      "header": "Overload block",
+      "options": [
+        {
+          "description": "Consume every consecutive leading signature line whose name is valid for the documented object, stopping before the first non-signature or invalid-name line and preserving that line plus everything after it as content.",
+          "label": "Consecutive valid signatures",
+          "recommended": true
+        },
+        {
+          "description": "Consume every consecutive leading line that matches signature syntax, even when a line names another object, and stop at the first non-signature line.",
+          "label": "All leading signature-like",
+          "recommended": false
+        },
+        {
+          "description": "Collect matching signatures beyond intervening blank, prose, malformed, or mismatched-name lines, requiring additional rules for which scanned lines remain as content.",
+          "label": "Scan beyond interruptions",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which leading docstring lines should autodoc consume and render as overloaded signatures?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Update docs",
+    "open_material_decisions": [
+      "Confirm regression acceptance boundaries, including preservation of existing single-signature behavior and disabled-configuration behavior.",
+      "Confirm whether the autodoc_docstring_signature documentation must explicitly describe consecutive overloaded signatures."
+    ],
+    "question": {
+      "header": "Docs scope",
+      "options": [
+        {
+          "description": "Document that all consecutive leading valid signatures are used and removed, stopping before the first non-signature or invalid-name line.",
+          "label": "Update docs",
+          "recommended": true
+        },
+        {
+          "description": "Implement and test the behavior without changing the existing first-line-oriented documentation.",
+          "label": "Tests only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should the implementation update the autodoc_docstring_signature documentation to describe consecutive overloaded signatures?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Functions and methods",
+    "open_material_decisions": [
+      "Confirm regression acceptance boundaries for existing single-signature behavior and disabled autodoc_docstring_signature behavior.",
+      "Confirm whether consecutive overloaded signatures must be supported for both functions and methods or only methods."
+    ],
+    "question": {
+      "header": "Object scope",
+      "options": [
+        {
+          "description": "Apply the behavior consistently to both documenter types and test overloaded methods plus shared-path compatibility.",
+          "label": "Functions and methods",
+          "recommended": true
+        },
+        {
+          "description": "Limit the new observable behavior to methods, requiring a method-specific implementation boundary.",
+          "label": "Methods only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should consecutive leading overloaded signatures be supported for both functions and methods through their shared extraction path?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Preserve both",
+    "open_material_decisions": [
+      "Confirm regression acceptance boundaries for existing single-signature behavior and disabled autodoc_docstring_signature behavior."
+    ],
+    "question": {
+      "header": "Regression scope",
+      "options": [
+        {
+          "description": "Keep and verify the current single-signature extraction behavior and the disabled-configuration behavior that retains signature-looking lines as content.",
+          "label": "Preserve both",
+          "recommended": true
+        },
+        {
+          "description": "Explicitly preserve and verify existing single-signature extraction, without requiring new or retained disabled-configuration coverage.",
+          "label": "Single only",
+          "recommended": false
+        },
+        {
+          "description": "Require only new overloaded-signature coverage and leave existing regression coverage outside this contract.",
+          "label": "Overloads only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which existing behaviors must the acceptance tests explicitly preserve alongside the new overloaded-signature coverage?"
+    },
+    "turn": 4
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve or reject the consolidated implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this scope and acceptance criteria as implementation-ready.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open and specify changes before implementation.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Do you approve this implementation contract: extend the shared function/method docstring-signature path to collect and render every consecutive leading signature whose name is valid for the documented object; stop at the first non-signature or invalid-name line and preserve that line and all following lines as docstring content; remove only the collected signature lines; retain the existing explicit-signature precedence and autodoc_docstring_signature=False behavior; update the autodoc_docstring_signature documentation; and add regression coverage for overloaded methods, shared function support, existing single-signature extraction, termination/preservation at non-signature or mismatched-name lines, and disabled configuration?"
+    },
+    "turn": 5
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "An overloaded method docstring with two or more consecutive leading valid signatures emits each signature in the method directive and omits those lines from content.",
+          "A function docstring receives the same consecutive-overload behavior through the shared extraction path.",
+          "A single leading valid signature continues to become the directive signature and is removed from content.",
+          "Collection stops at the first non-signature line, preserving that line and all following lines as content.",
+          "Collection stops at the first signature-like line whose name is invalid for the documented object, preserving that line and all following lines as content.",
+          "An explicitly supplied signature continues to take precedence over docstring-signature extraction.",
+          "With autodoc_docstring_signature=False, overloaded or single signature-looking docstring lines are not consumed and remain rendered content.",
+          "The updated documentation states that consecutive leading valid function or method signatures are used and removed until the first non-signature or invalid-name line."
+        ],
+        "confirmed_decisions": [
+          "The overload block consists only of consecutive valid leading signature lines.",
+          "A signature-like line with a name invalid for the documented object terminates collection and is preserved with all following content.",
+          "The new behavior applies to both functions and methods through their shared DocstringSignatureMixin path.",
+          "Collected signatures are rendered as multiple directive signatures using the existing newline-separated downstream representation.",
+          "Only collected leading signature lines are removed from rendered docstring content.",
+          "Existing explicit-signature precedence remains unchanged.",
+          "Existing single-signature extraction remains supported.",
+          "With autodoc_docstring_signature=False, signature-looking lines remain content and introspected or otherwise normal signatures are used.",
+          "The autodoc_docstring_signature documentation must be updated to explain consecutive overloaded signatures and the stopping rule."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend autodoc’s shared function/method docstring-signature extraction so that, when autodoc_docstring_signature is enabled and no explicit signature is supplied, it collects every consecutive valid signature at the beginning of the selected docstring and renders them as overloads. A collected line must match the signature syntax and use a name valid for the documented object under the existing name-validation rules. Collection stops at the first non-signature or invalid-name line; that line and every subsequent line remain docstring content. Only collected signature lines are removed. Preserve explicit-signature precedence, existing single-signature behavior, and the behavior when autodoc_docstring_signature is disabled. Update the configuration documentation to describe the overload behavior."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the consolidated contract, and all material behavioral, scope, compatibility, documentation, and acceptance decisions are resolved."
+    },
+    "turn": 6
+  }
+]

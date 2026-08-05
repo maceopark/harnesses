@@ -1,0 +1,86 @@
+{
+  "audit_summary": "Eleven facts are directly supported by the cited files. Fact-5 overstates how comparison indices are stored.",
+  "facts": [
+    {
+      "id": "fact-1",
+      "line_end": 305,
+      "line_start": 289,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "When given filenames, FITSDiff opens argument a and argument b independently, so even the same pathname is represented by two separately opened HDULists during comparison."
+    },
+    {
+      "id": "fact-2",
+      "line_end": 380,
+      "line_start": 363,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "FITSDiff compares corresponding HDUs with HDUDiff and records an HDU whenever that nested diff is not identical."
+    },
+    {
+      "id": "fact-3",
+      "line_end": 607,
+      "line_start": 601,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "HDUDiff delegates two table-like HDUs to TableDataDiff using their data arrays."
+    },
+    {
+      "id": "fact-4",
+      "line_end": 1463,
+      "line_start": 1445,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "TableDataDiff retrieves each common column's arrays, applies floating-point comparison first, applies row-wise np.allclose only when \"P\" occurs in col.format, and otherwise uses np.where(arra != arrb)."
+    },
+    {
+      "id": "fact-6",
+      "line_end": 134,
+      "line_start": 122,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "A diff object's identical property is true only when all attributes whose names start with diff_ are empty; therefore any recorded table value difference propagates to a non-identical result."
+    },
+    {
+      "id": "fact-7",
+      "line_end": 480,
+      "line_start": 471,
+      "path": "astropy/io/fits/column.py",
+      "statement": "The FITS column implementation defines _FormatQ as a subclass of _FormatP, identifies Q as a variable-length-array format, assigns it format code \"Q\", and uses 64-bit array descriptors."
+    },
+    {
+      "id": "fact-8",
+      "line_end": 727,
+      "line_start": 717,
+      "path": "astropy/io/fits/fitsrec.py",
+      "statement": "FITS_rec recognizes isinstance(recformat, _FormatP) as variable-length data and converts it through _convert_p; because _FormatQ subclasses _FormatP, this reader path covers both descriptor formats."
+    },
+    {
+      "id": "fact-9",
+      "line_end": 823,
+      "line_start": 793,
+      "path": "astropy/io/fits/fitsrec.py",
+      "statement": "The VLA conversion routine explicitly documents that it converts P or Q descriptors and returns each row's heap-backed array through a variable-length field container."
+    },
+    {
+      "id": "fact-10",
+      "line_end": 420,
+      "line_start": 398,
+      "path": "astropy/io/fits/tests/test_diff.py",
+      "statement": "The existing identical-table diff test includes a PI(2) variable-length column and expects the tables to be identical."
+    },
+    {
+      "id": "fact-11",
+      "line_end": 571,
+      "line_start": 536,
+      "path": "astropy/io/fits/tests/test_diff.py",
+      "statement": "The existing differing-table-data test also exercises a PI(2) column and verifies row-level differences, but its test columns do not exercise the Q descriptor format."
+    },
+    {
+      "id": "fact-12",
+      "line_end": 1540,
+      "line_start": 1527,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "When table diff_values is non-empty, the report emits \"Column ... data differs in row ...\" for every stored entry."
+    }
+  ],
+  "scope_summary": "At base commit c0a24c1dc957a3b565294213f435fefb2ec99714, FITSDiff routes table HDUs to TableDataDiff. TableDataDiff has special row-wise VLA comparison only when the column format contains \"P\"; Q-format VLAs therefore fall through to generic object-array inequality even though the FITS reader treats both P and Q formats as VLAs. Existing diff tests cover P-format VLAs but not Q-format VLAs.",
+  "unknowns": [
+    "The supplied base-commit repository contains no Q-format VLA regression test in astropy/io/fits/tests/test_diff.py, so no existing test documents the intended TableDataDiff result for identical Q-format VLA columns."
+  ]
+}

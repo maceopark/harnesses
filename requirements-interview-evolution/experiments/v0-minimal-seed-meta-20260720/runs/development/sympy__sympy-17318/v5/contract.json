@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "split_surds no longer calls _split_gcd when its computed surds list is empty.",
+    "For the empty-surd case, split_surds returns exactly (S.One, S.Zero, expr).",
+    "sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) completes without IndexError and equals 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.",
+    "The direct split_surds regression test passes.",
+    "The reported sqrtdenest regression test passes.",
+    "The existing sympy/simplify/tests/test_sqrtdenest.py tests pass, confirming that successful denesting and unchanged-result cases are not regressed.",
+    "Relevant radsimp tests pass, confirming the new empty-surd guard does not alter normal split_surds partitions."
+  ],
+  "confirmed_decisions": [
+    "Fix the invalid empty-input call at its source in sympy/simplify/radsimp.py rather than catching IndexError or adding a sqrtdenest-specific exception path.",
+    "When split_surds finds no eligible surd factors, it must return (S.One, S.Zero, expr), representing no extracted factor, no grouped surd component, and the original expression as the remainder.",
+    "Do not change _split_gcd's non-empty-input contract; prevent split_surds from calling it with no arguments.",
+    "Add a direct split_surds regression test that exercises an additive expression with no eligible coefficient-stripped Pow factors and asserts the no-op partition.",
+    "Add a sqrtdenest regression test for (3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2, importing I in the test module and asserting that the expanded unchanged form 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2 is returned without an exception.",
+    "Preserve all existing denesting behavior and existing unchanged-result behavior for expressions that cannot be safely denested."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Prevent sqrtdenest from raising IndexError when additive square-root matching reaches split_surds with no eligible surd factors. In split_surds, detect an empty surds list before calling _split_gcd and return the no-op partition (S.One, S.Zero, expr). This preserves the whole additive expression as the remainder, causes the existing sqrtdenest matching flow to decline denesting, and returns the reported expression unchanged. Add direct and end-to-end regression coverage."
+}

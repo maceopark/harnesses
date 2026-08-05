@@ -1,0 +1,20 @@
+{
+  "acceptance_checks": [
+    "The supplied expression `(3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2` passes through sqrtdenest without raising IndexError.",
+    "sqrtdenest returns an expression equal to that supplied input.",
+    "The focused regression test passes.",
+    "The existing `sympy/simplify/tests/test_sqrtdenest.py` test module passes.",
+    "No changes are made to split_surds or _split_gcd, and no broad exception handling is introduced."
+  ],
+  "confirmed_decisions": [
+    "Handle the empty-surd case locally within sqrtdenest rather than changing split_surds behavior for other callers.",
+    "Cover every sqrtdenest Add match with no operands recognized by split_surds, not only the reported expression shape.",
+    "Detect the condition before calling split_surds; do not catch IndexError or other broad exceptions.",
+    "The regression test must assert expression equality with the supplied input, proving both the absence of IndexError and the documented unchanged-expression fallback.",
+    "The implementer may choose the smallest convention-consistent code structure but may not expand behavior beyond the empty-match path.",
+    "Acknowledged residual risk: direct callers of split_surds with no recognized surds remain unchanged and may still raise IndexError."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Add a sqrtdenest-local precheck in the Add matching path so any candidate with no operands recognized by split_surds is treated as the existing no-match result and therefore remains unchanged. Do not modify split_surds or _split_gcd. Add the imaginary-unit import required by the regression test and assert that sqrtdenest returns the supplied expression unchanged."
+}

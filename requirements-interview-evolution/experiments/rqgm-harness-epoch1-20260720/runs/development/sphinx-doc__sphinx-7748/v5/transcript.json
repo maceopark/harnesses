@@ -1,0 +1,118 @@
+[
+  {
+    "answer": "First nonmatching line",
+    "open_material_decisions": [
+      "Define how autodoc identifies the end of the leading overload-signature block."
+    ],
+    "question": {
+      "header": "Stopping rule",
+      "options": [
+        {
+          "description": "Collect every consecutive valid signature for the documented object, then preserve that line and everything after it as docstring content.",
+          "label": "First nonmatching line",
+          "recommended": true
+        },
+        {
+          "description": "Scan until the first blank line, treating any invalid or differently named line before it as ordinary content or an error requiring additional rules.",
+          "label": "First blank line",
+          "recommended": false
+        },
+        {
+          "description": "Continue past intervening non-signature lines to find later signatures, which may remove signature-like prose from the rendered content.",
+          "label": "All leading matches",
+          "recommended": false
+        }
+      ],
+      "prompt": "When scanning consecutive lines at the start of a docstring, where should overload-signature extraction stop?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Shared mixin",
+    "open_material_decisions": [
+      "Decide whether consecutive leading-signature extraction applies to every documenter using DocstringSignatureMixin or only to methods."
+    ],
+    "question": {
+      "header": "Feature scope",
+      "options": [
+        {
+          "description": "Apply the behavior consistently to functions, methods, and classes through DocstringSignatureMixin; existing name-validation rules remain unchanged.",
+          "label": "Shared mixin",
+          "recommended": true
+        },
+        {
+          "description": "Limit multiple-signature extraction to MethodDocumenter, preserving single-line behavior for functions and classes.",
+          "label": "Methods only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which autodoc object types should support consecutive leading docstring signatures?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "{\"selected\":\"Preserve each (Recommended)\"}",
+    "open_material_decisions": [
+      "Define how return annotations from multiple consecutive overload signatures are represented and rendered."
+    ],
+    "question": {
+      "header": "Return types",
+      "options": [
+        {
+          "description": "Render every overload as a complete signature with its own arguments and return annotation, matching each original docstring line.",
+          "label": "Preserve each (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Combine the argument lists but apply only the final matched return annotation to the generated signature block.",
+          "label": "Use final return",
+          "recommended": false
+        },
+        {
+          "description": "Collect overloads only while their return annotation matches the first signature; preserve the first differing line and the remaining content.",
+          "label": "Require same return",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc render return annotations when consecutive overload signatures declare different return types?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Add a fixture with at least two consecutive leading overload signatures for the same method, including different return annotations, followed immediately by prose.",
+          "With `autodoc_docstring_signature=True`, assert that every overload is emitted as an aligned `py:method` signature line and that each overload preserves its own return annotation.",
+          "Assert that all consumed overload lines are absent from rendered docstring content while the first nonmatching line and everything after it are preserved.",
+          "Add shared-mixin coverage demonstrating multiple consecutive signatures for at least a function and a class, using the existing name-validation rules.",
+          "Add or extend coverage showing that a signature-looking line with a different object name terminates the leading block and remains content together with all following lines.",
+          "Retain coverage for one leading signature followed by prose and verify its output remains unchanged.",
+          "Retain or extend disabled-configuration coverage to verify introspected signatures are used and all leading signature-looking lines remain content.",
+          "Add coverage confirming an explicit autodoc directive signature still takes precedence over multiple leading docstring signatures.",
+          "Update `doc/usage/extensions/autodoc.rst` to state that autodoc consumes consecutive valid signatures from the start of the docstring, stops at the first nonmatching line, removes only the accepted signature block from content, and renders each accepted signature.",
+          "Run the targeted autodoc configuration and extension test modules and confirm all existing and new assertions pass."
+        ],
+        "confirmed_decisions": [
+          "Extraction consumes only a consecutive block starting at the first docstring line; the first nonmatching or invalid-name line terminates extraction and remains content.",
+          "The enhancement applies through `DocstringSignatureMixin`, covering functions, methods, and classes rather than methods alone.",
+          "Each extracted overload retains and renders its own argument list and return annotation.",
+          "Existing accepted-name rules remain unchanged: the documented object name is valid, while class documenters also accept `__init__` and class names from the MRO.",
+          "The first docstring candidate containing an accepted leading signature block remains the selected candidate, after which candidate searching stops.",
+          "Multiple formatted signatures are represented as newline-separated text so the existing directive-header generator emits aligned signature lines.",
+          "An explicit signature supplied in the autodoc directive continues to take precedence and prevents docstring-signature extraction.",
+          "With `autodoc_docstring_signature=False`, introspected formatting remains in use and all signature-looking docstring lines remain rendered content.",
+          "A single leading signature remains behaviorally compatible with the current implementation."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend `DocstringSignatureMixin` so that, when `autodoc_docstring_signature` is enabled and no explicit directive signature was supplied, it recognizes every consecutive valid signature at the beginning of the selected docstring. Apply the behavior uniformly to all documenters using the mixin, including functions, methods, and classes. Validate each line using the existing signature parser and existing object-name rules. Stop at the first line that does not parse as a valid signature for the documented object, preserve that line and all subsequent lines as docstring content, and render every accepted overload as a separate newline-delimited signature with its own arguments and return annotation. Preserve existing behavior for a single leading signature, disabled configuration, explicit directive signatures, candidate-docstring selection, and docstrings without a valid leading signature."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The repository evidence and three confirmed decisions fully determine the behavior, compatibility boundaries, implementation surface, documentation update, and regression tests. No material ambiguity remains."
+    },
+    "turn": 4
+  }
+]

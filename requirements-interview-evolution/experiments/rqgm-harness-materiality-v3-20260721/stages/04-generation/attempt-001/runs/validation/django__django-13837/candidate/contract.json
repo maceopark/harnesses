@@ -1,0 +1,25 @@
+{
+  "acceptance_checks": [
+    "A `python -m django runserver` launch produces a child command containing `-m django` followed by the original command arguments.",
+    "A `python -m pkg_other_than_django runserver` launch produces a child command containing `-m pkg_other_than_django` followed by the original command arguments.",
+    "Python warning options remain between the Python executable and the reconstructed module or script invocation.",
+    "Module reconstruction works when the relevant `__main__` module has no `__file__`.",
+    "An ordinary script launch continues to restart with its original script path and arguments.",
+    "A directory or zip-file entry point with an empty module-specification parent is not reconstructed as a `-m` launch.",
+    "Existing Windows executable and script-wrapper fallbacks continue to produce their prior child commands, and an unresolved nonexistent script continues to raise the existing error.",
+    "Restart-level behavior uses the reconstructed non-Django module command when launching the autoreload child process."
+  ],
+  "confirmed_decisions": [
+    "When the running program was launched as `python -m <package>`, autoreload restarts it as `sys.executable`, existing Python warning options, `-m`, the same package name, and the original arguments following `sys.argv[0]`.",
+    "Module-launch detection uses the top-level `__main__` module’s documented module specification and its nonempty parent package name, as explicitly requested.",
+    "`python -m django runserver` continues to restart as `python -m django runserver`.",
+    "`python -m pkg_other_than_django runserver` restarts as `python -m pkg_other_than_django runserver`.",
+    "Detection and reconstruction of module launches do not depend on `django.__main__.__file__`, the launched package’s `__file__`, or path equality with `sys.argv[0]`.",
+    "When the top-level `__main__` module has no module specification, autoreload preserves the existing ordinary-script restart behavior.",
+    "When the module specification’s parent is empty, including directory or zip-file entry-point launches, autoreload does not treat the invocation as `python -m <package>` and preserves the applicable existing non-module behavior.",
+    "Existing Windows `.exe` and `-script.py` entry-point fallbacks and missing-script errors remain unchanged."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update Django’s autoreloader so a server started through `python -m <package> runserver` is restarted through the same package module, including packages other than Django, without depending on a module `__file__`. Preserve existing ordinary-script and Windows entry-point restart behavior."
+}

@@ -1,0 +1,26 @@
+{
+  "acceptance_checks": [
+    "Construct an Annotation through Axes.annotate with a NumPy array as xy and arrowprops enabled; mutating that array afterward does not move the arrow endpoint on draw.",
+    "The reported reproduction renders both arrows horizontally after the source arrays are mutated.",
+    "Construct an Annotation with another mutable accepted xy container, such as a list; mutating the container afterward does not change annotation.xy or its rendered annotated point.",
+    "Immediately after construction, annotation.xy is a distinct two-element tuple containing the original top-level coordinate objects or values.",
+    "Coordinate objects inside xy are not deep-copied, preserving existing identity and unit-conversion behavior.",
+    "Annotations without arrowprops receive the same xy snapshot semantics.",
+    "Assigning a new valid coordinate pair directly to annotation.xy after construction still changes the annotated point on the next draw, including the arrow endpoint when present.",
+    "Other classes that use _AnnotationBase retain their existing xy storage behavior.",
+    "Existing annotation tests continue to pass, including xytext defaulting, coordinate transformations, unit-aware coordinates, drawing, and Axes.annotate signature checks."
+  ],
+  "confirmed_decisions": [
+    "Snapshot all accepted xy coordinate inputs, not only NumPy arrays.",
+    "Snapshot only the two top-level coordinate entries; do not copy the coordinate objects recursively.",
+    "Store the constructor snapshot as a new tuple, providing consistent ownership semantics across mutable input container types.",
+    "Apply the change in Annotation construction rather than _AnnotationBase, avoiding behavior changes for other _AnnotationBase users.",
+    "Apply the snapshot to every Annotation, including annotations without arrows.",
+    "Preserve public assignability of annotation.xy and the existing behavior in which a later explicit assignment changes the annotated point on redraw.",
+    "Do not expand the change to xytext; its two values are already unpacked for Text initialization.",
+    "Keep Axes.annotate forwarding behavior unchanged; Annotation owns the new snapshot responsibility."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Change matplotlib.text.Annotation so construction snapshots every accepted xy input as a new two-element tuple containing the current top-level coordinate values. Apply this only to Annotation, regardless of whether arrowprops is provided. Subsequent mutation of the caller-owned input container must not change the annotation, while deliberate later assignment to annotation.xy must continue to affect subsequent draws."
+}

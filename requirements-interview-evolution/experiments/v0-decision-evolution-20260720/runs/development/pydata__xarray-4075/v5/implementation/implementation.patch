@@ -1,0 +1,55 @@
+diff --git a/xarray/core/weighted.py b/xarray/core/weighted.py
+index 996d2e4..c746642 100644
+--- a/xarray/core/weighted.py
++++ b/xarray/core/weighted.py
+@@ -129,6 +129,9 @@ class Weighted:
+         if skipna or (skipna is None and da.dtype.kind in "cfO"):
+             da = da.fillna(0.0)
+ 
++        if weights.dtype.kind == "b":
++            weights = weights.astype(int)
++
+         # `dot` does not broadcast arrays, so this avoids creating a large
+         # DataArray (if `weights` has additional dimensions)
+         # maybe add fasttrack (`(da * weights).sum(dims=dim, skipna=skipna)`)
+diff --git a/xarray/tests/test_weighted.py b/xarray/tests/test_weighted.py
+index 2453121..6f1f5f2 100644
+--- a/xarray/tests/test_weighted.py
++++ b/xarray/tests/test_weighted.py
+@@ -158,6 +158,36 @@ def test_weighted_mean_nan(weights, expected, skipna):
+     assert_equal(expected, result)
+ 
+ 
++def test_weighted_mean_boolean_weights():
++    da = DataArray([1.0, 1.0, 1.0])
++    weights = DataArray([True, True, False])
++
++    weighted = da.weighted(weights)
++
++    assert_equal(DataArray(2), weighted.sum_of_weights())
++    assert_equal(DataArray(1.0), weighted.mean())
++
++
++def test_weighted_sum_of_weights_boolean_weights_with_nan():
++    da = DataArray([1.0, np.nan, 3.0])
++    weights = DataArray([True, True, True])
++
++    weighted = da.weighted(weights)
++
++    assert_equal(DataArray(2), weighted.sum_of_weights())
++    assert_equal(DataArray(2.0), weighted.mean())
++
++
++def test_weighted_boolean_weights_reduce_dim():
++    da = DataArray([[1.0, 2.0], [3.0, 4.0]], dims=("x", "y"))
++    weights = DataArray([[True, False], [True, True]], dims=("x", "y"))
++
++    weighted = da.weighted(weights)
++
++    assert_equal(DataArray([2, 1], dims="y"), weighted.sum_of_weights(dim="x"))
++    assert_equal(DataArray([2.0, 4.0], dims="y"), weighted.mean(dim="x"))
++
++
+ def expected_weighted(da, weights, dim, skipna, operation):
+     """
+     Generate expected result using ``*`` and ``sum``. This is checked against

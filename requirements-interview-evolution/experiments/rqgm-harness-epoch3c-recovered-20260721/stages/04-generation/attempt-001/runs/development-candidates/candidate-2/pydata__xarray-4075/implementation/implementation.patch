@@ -1,0 +1,70 @@
+diff --git a/xarray/core/weighted.py b/xarray/core/weighted.py
+index 996d2e4..59820f0 100644
+--- a/xarray/core/weighted.py
++++ b/xarray/core/weighted.py
+@@ -142,7 +142,10 @@ class Weighted:
+         # we need to mask data values that are nan; else the weights are wrong
+         mask = da.notnull()
+ 
+-        sum_of_weights = self._reduce(mask, self.weights, dim=dim, skipna=False)
++        # bool weights need to be converted to integers, otherwise the dot
++        # product between two boolean arrays returns a boolean result
++        weights = self.weights * 1 if self.weights.dtype.kind == "b" else self.weights
++        sum_of_weights = self._reduce(mask, weights, dim=dim, skipna=False)
+ 
+         # 0-weights are not valid
+         valid_weights = sum_of_weights != 0.0
+diff --git a/xarray/tests/test_weighted.py b/xarray/tests/test_weighted.py
+index 2453121..372ad24 100644
+--- a/xarray/tests/test_weighted.py
++++ b/xarray/tests/test_weighted.py
+@@ -59,6 +59,28 @@ def test_weighted_sum_of_weights_nan(weights, expected):
+     assert_equal(expected, result)
+ 
+ 
++@pytest.mark.parametrize("as_dataset", (True, False))
++@pytest.mark.parametrize(
++    ("data", "weights", "expected"),
++    (
++        ([1.0, 1.0, 1.0], [True, True, False], 2),
++        ([np.nan, 1.0, 1.0], [True, True, False], 1),
++        ([1.0, 1.0, 1.0], [False, False, False], np.nan),
++    ),
++)
++def test_weighted_sum_of_weights_bool(as_dataset, data, weights, expected):
++    data = DataArray(data)
++    if as_dataset:
++        data = data.to_dataset(name="data")
++
++    result = data.weighted(DataArray(weights)).sum_of_weights()
++    expected = DataArray(expected)
++    if as_dataset:
++        expected = expected.to_dataset(name="data")
++
++    assert_equal(expected, result)
++
++
+ @pytest.mark.parametrize("da", ([1.0, 2], [1, np.nan], [np.nan, np.nan]))
+ @pytest.mark.parametrize("factor", [0, 1, 3.14])
+ @pytest.mark.parametrize("skipna", (True, False))
+@@ -139,6 +161,20 @@ def test_weighted_mean_no_nan(weights, expected):
+     assert_equal(expected, result)
+ 
+ 
++@pytest.mark.parametrize("as_dataset", (True, False))
++def test_weighted_mean_bool(as_dataset):
++    data = DataArray([1.0, 1.0, 1.0])
++    if as_dataset:
++        data = data.to_dataset(name="data")
++
++    result = data.weighted(DataArray([True, True, False])).mean()
++    expected = DataArray(1.0)
++    if as_dataset:
++        expected = expected.to_dataset(name="data")
++
++    assert_equal(expected, result)
++
++
+ @pytest.mark.parametrize(
+     ("weights", "expected"), (([4, 6], 2.0), ([1, 0], np.nan), ([0, 0], np.nan))
+ )

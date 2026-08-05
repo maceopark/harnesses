@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "The exact reproduction using `fits.Column('a', format='QD', array=[[0], [0, 0]])` produces `fits.FITSDiff(path, path).identical == True`.",
+    "The self-comparison has empty difference state, including no differing HDUs, table values, or nonzero table difference total.",
+    "`fits.printdiff` or the equivalent captured report for the identical Q-format file contains no `Data contains differences` or `Column a data differs` entry.",
+    "Two Q-format VLA tables with equal row data compare as identical even when rows have different lengths from one another.",
+    "A changed value in one Q-format VLA row is detected once at the row level and appears in the existing report format with the correct column name and row index.",
+    "The existing P-format VLA difference tests continue to pass unchanged or through equivalent parameterized coverage.",
+    "Run the targeted FITS diff test module, at minimum `astropy/io/fits/tests/test_diff.py`, and confirm all tests pass."
+  ],
+  "confirmed_decisions": [
+    "Change `TableDataDiff` in `astropy/io/fits/diff.py` so the dedicated VLA branch recognizes Q formats as well as P formats; do not route Q VLA object arrays through `np.where(arra != arrb)`.",
+    "Preserve the existing row-by-row comparison behavior and tolerance controls (`rtol` and `atol`) by using `np.allclose` for Q-format VLA rows just as for P-format VLA rows.",
+    "Keep fixed-width, ordinary floating-point, and existing P-format comparison behavior unchanged.",
+    "Add a regression test based on the reported scenario: write a binary table containing a `QD` column with unequal row lengths, compare the resulting file with itself through `FITSDiff`, and assert that the result is identical with no recorded or reported data differences.",
+    "Extend table-difference coverage to a Q-format VLA containing a genuine changed row and assert that the diff remains non-identical, identifies the correct column and row, and maintains correct difference totals/ratio and report output.",
+    "Place the tests in `astropy/io/fits/tests/test_diff.py`, reusing or parameterizing existing P-format VLA diff coverage where practical rather than creating unrelated infrastructure.",
+    "No public API, file-format, tolerance, or report-format changes are authorized or required."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update FITS table-data comparison so both P- and Q-format variable-length-array columns are compared row-by-row with NumPy tolerance semantics. Add regression coverage proving that a FITS file containing a Q-format VLA compares identical to itself and that genuine Q-format VLA differences are still detected and reported."
+}

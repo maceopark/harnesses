@@ -1,0 +1,79 @@
+diff --git a/astropy/utils/introspection.py b/astropy/utils/introspection.py
+index 3e784f9..aa68cc3 100644
+--- a/astropy/utils/introspection.py
++++ b/astropy/utils/introspection.py
+@@ -6,7 +6,8 @@
+ import inspect
+ import types
+ import importlib
+-from distutils.version import LooseVersion
++
++from packaging.version import Version
+ 
+ 
+ __all__ = ['resolve_name', 'minversion', 'find_current_module',
+@@ -140,9 +141,9 @@ def minversion(module, version, inclusive=True, version_path='__version__'):
+         have_version = resolve_name(module.__name__, version_path)
+ 
+     if inclusive:
+-        return LooseVersion(have_version) >= LooseVersion(version)
++        return Version(have_version) >= Version(version)
+     else:
+-        return LooseVersion(have_version) > LooseVersion(version)
++        return Version(have_version) > Version(version)
+ 
+ 
+ def find_current_module(depth=1, finddiff=False):
+diff --git a/astropy/utils/tests/test_introspection.py b/astropy/utils/tests/test_introspection.py
+index d8262d4..3a65b4c 100644
+--- a/astropy/utils/tests/test_introspection.py
++++ b/astropy/utils/tests/test_introspection.py
+@@ -4,6 +4,7 @@
+ from collections import namedtuple
+ 
+ import pytest
++from packaging.version import InvalidVersion
+ 
+ from .. import introspection
+ from ..introspection import (find_current_module, find_mod_objs,
+@@ -73,3 +74,27 @@ def test_minversion():
+         assert minversion(test_module, version)
+     for version in bad_versions:
+         assert not minversion(test_module, version)
++
++
++def test_minversion_package_version_ordering():
++    from types import ModuleType
++    test_module = ModuleType(str("test_module"))
++    test_module.__version__ = '1.14.3'
++
++    assert minversion(test_module, '1.14dev')
++    assert minversion(test_module, '1.14.3')
++    assert not minversion(test_module, '1.14.3', inclusive=False)
++    assert minversion(test_module, '1.14.3rc1', inclusive=False)
++
++
++@pytest.mark.parametrize('have_version, required_version', [
++    ('not a version', '1.0'),
++    ('1.0', 'not a version'),
++])
++def test_minversion_invalid_version(have_version, required_version):
++    from types import ModuleType
++    test_module = ModuleType(str("test_module"))
++    test_module.__version__ = have_version
++
++    with pytest.raises(InvalidVersion):
++        minversion(test_module, required_version)
+diff --git a/setup.py b/setup.py
+index b844b3d..71121da 100755
+--- a/setup.py
++++ b/setup.py
+@@ -81,7 +81,7 @@ setup_requires = [min_numpy_version]
+ if not os.path.exists(os.path.join(os.path.dirname(__file__), 'PKG-INFO')):
+     setup_requires.extend(['cython>=0.21', 'jinja2>=2.7'])
+ 
+-install_requires = [min_numpy_version]
++install_requires = [min_numpy_version, 'packaging']
+ 
+ extras_require = {
+     'test': ['pytest-astropy']

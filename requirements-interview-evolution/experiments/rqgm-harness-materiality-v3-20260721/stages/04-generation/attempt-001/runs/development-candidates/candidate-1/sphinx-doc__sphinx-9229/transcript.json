@@ -1,0 +1,78 @@
+[
+  {
+    "answer": "Documentation only",
+    "open_material_decisions": [
+      "For a type alias with next-line source documentation, whether the generated “alias of …” paragraph must be suppressed or retained alongside that documentation."
+    ],
+    "question": {
+      "header": "Alias output",
+      "options": [
+        {
+          "description": "Render the authored source documentation and suppress the generated “alias of …” paragraph for that alias.",
+          "label": "Documentation only",
+          "recommended": true
+        },
+        {
+          "description": "Render the authored source documentation followed by the generated “alias of …” paragraph.",
+          "label": "Documentation plus alias",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has next-line source documentation, what should autodoc render?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "All supported versions",
+    "open_material_decisions": [
+      "Whether “documentation only” must apply consistently across all supported Python versions or only repair the reported Python 3.6 behavior."
+    ],
+    "question": {
+      "header": "Version scope",
+      "options": [
+        {
+          "description": "Make documented type aliases consistently suppress “alias of …” on every supported Python version.",
+          "label": "All supported versions",
+          "recommended": true
+        },
+        {
+          "description": "Repair only the reported Python 3.6 discrepancy and preserve later-version output.",
+          "label": "Python 3.6 only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Across which Python versions should a documented type alias render only its authored source documentation?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "An automodule containing documented Dict, Union, and Callable type aliases renders each alias’s complete authored next-line documentation.",
+          "None of those documented aliases renders a generated “alias of …” paragraph.",
+          "The documented-alias result is consistent across all supported Python-version branches.",
+          "An undocumented type alias continues to render its existing default alias information.",
+          "Existing non-type-alias autodoc output remains unchanged."
+        ],
+        "confirmed_decisions": [
+          "For a module-level type alias followed immediately by a documentation string, autodoc renders the authored source documentation.",
+          "The authored documentation is preserved in full, including multiline content and reStructuredText markup.",
+          "When authored source documentation exists for the type alias, autodoc suppresses the generated “alias of …” paragraph.",
+          "This behavior applies consistently across all supported Python versions.",
+          "The behavior covers documented aliases such as parameterized Dict, Union, and Callable aliases, regardless of which eligible documenter would otherwise be selected.",
+          "Type aliases without authored next-line source documentation retain their existing default generated output.",
+          "Unrelated class, data, and attribute documentation behavior remains unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Make autodoc consistently honor next-line source documentation for module-level type aliases. On every supported Python version, a documented type alias must render its complete authored documentation and must not render the generated “alias of …” paragraph. Type aliases without next-line source documentation retain the existing default alias output."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The observable behavior, version scope, and preservation boundary are fully determined by the request and interview answers; no material implementation decision remains open."
+    },
+    "turn": 3
+  }
+]

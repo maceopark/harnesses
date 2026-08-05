@@ -1,0 +1,77 @@
+[
+  {
+    "answer": "Mean and denominator",
+    "open_material_decisions": [
+      "Whether boolean weights must have numeric 0/1 semantics only for weighted mean or for both weighted mean and sum_of_weights."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Require both weighted mean and public sum_of_weights to return numerically correct results for boolean weights.",
+          "label": "Mean and denominator",
+          "recommended": true
+        },
+        {
+          "description": "Require only weighted mean to be corrected, without adding a separate outcome requirement for sum_of_weights.",
+          "label": "Mean only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which observable operations must treat boolean weights as numeric 0/1 weights?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "DataArray and Dataset",
+    "open_material_decisions": [
+      "Whether the boolean-weight correction must apply to both DataArrayWeighted and DatasetWeighted, or only to the DataArray case demonstrated by the report."
+    ],
+    "question": {
+      "header": "Object scope",
+      "options": [
+        {
+          "description": "Apply numeric 0/1 semantics consistently to boolean weights for both public weighted object types.",
+          "label": "DataArray and Dataset",
+          "recommended": true
+        },
+        {
+          "description": "Limit the required behavior to the DataArray case demonstrated in the bug report.",
+          "label": "DataArray only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which weighted object types must produce correct mean and sum-of-weights results with boolean weights?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "For data [1.0, 1.0, 1.0] and boolean weights [True, True, False], weighted mean returns 1.0.",
+          "For data [1.0, 1.0, 1.0] and boolean weights [True, True, False], sum_of_weights returns the numeric value 2 rather than boolean True.",
+          "DataArray weighted mean and sum_of_weights produce results equivalent to using numeric 0/1 weights for the same data, dimensions, and missing-data mask.",
+          "Dataset weighted mean and sum_of_weights produce results equivalent to using numeric 0/1 weights for the same variables, dimensions, and missing-data masks.",
+          "All-False boolean weights preserve the existing zero-denominator behavior and yield missing mean and sum-of-weights results.",
+          "Existing numeric-weight behavior remains unchanged."
+        ],
+        "confirmed_decisions": [
+          "Boolean weights have numeric 0/1 semantics for weighted mean.",
+          "Boolean weights have numeric 0/1 semantics for sum_of_weights.",
+          "The corrected behavior applies to both DataArrayWeighted and DatasetWeighted.",
+          "Existing requirements that weights be a DataArray and contain no missing values remain unchanged.",
+          "A zero sum of weights remains invalid and produces a missing result under the existing weighted-reduction behavior."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Correct boolean-weight handling so that DataArray and Dataset weighted operations interpret False as weight 0 and True as weight 1 when computing weighted means and sums of weights."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The supplied repository evidence and two explicit interview answers resolve the material scope: boolean weights must behave as numeric 0/1 weights for both weighted mean and sum_of_weights, across DataArray and Dataset weighted objects. No material blocker remains."
+    },
+    "turn": 3
+  }
+]

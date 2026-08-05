@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "The reported expression can be passed to sqrtdenest without any exception.",
+    "The reported expression evaluates structurally equal to 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2 after sqrtdenest's normal input expansion.",
+    "_sqrt_match does not invoke split_surds when its additive input would produce an empty eligible-surds collection.",
+    "Existing sqrtdenest tests, including successful denesting and unchanged-expression cases, pass.",
+    "The targeted regression test in sympy/simplify/tests/test_sqrtdenest.py passes.",
+    "No changes are required in sympy/simplify/radsimp.py for this issue."
+  ],
+  "confirmed_decisions": [
+    "The fix belongs in sympy/simplify/sqrtdenest.py within _sqrt_match, not in the shared split_surds or _split_gcd helpers.",
+    "Before calling split_surds for an additive radicand, _sqrt_match must determine whether the addends contain at least one eligible Pow remainder of the kind split_surds uses to construct its surd collection.",
+    "When that eligible-surds collection would be empty, _sqrt_match must return a falsey no-match result and must not call split_surds.",
+    "The existing _sqrtdenest1 falsey-match behavior remains authoritative: the square root is returned unchanged.",
+    "Add a regression test using (3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2 and assert that sqrtdenest returns the expanded unchanged form 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2 without raising IndexError.",
+    "Do not broaden the contract or behavior of split_surds or _split_gcd as part of this fix.",
+    "Preserve all existing successful denesting behavior and existing cases that already return unchanged."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Fix sqrtdenest so additive square-root radicands that satisfy the rational-square predicate but contain no eligible Pow surds are treated as an unsuccessful match instead of being passed to split_surds with an empty surd collection. Implement the guard locally in _sqrt_match, preserving shared split_surds behavior. Consequently, _sqrtdenest1 follows its existing no-match path and returns the square-root expression unchanged; recursive reconstruction then preserves the reported full expression without raising IndexError."
+}

@@ -1,0 +1,561 @@
+{
+  "role": "judge",
+  "model": "gpt-5.6-sol",
+  "model_reasoning_effort": "medium",
+  "command": [
+    "codex",
+    "exec",
+    "--model",
+    "gpt-5.6-sol",
+    "-c",
+    "model_reasoning_effort=\"medium\"",
+    "--ephemeral",
+    "--sandbox",
+    "read-only",
+    "--skip-git-repo-check",
+    "--ignore-user-config",
+    "--color",
+    "never",
+    "--output-schema",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-judge-99u75ies/schema.json",
+    "--output-last-message",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-judge-99u75ies/output.json",
+    "-C",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-judge-99u75ies",
+    "<stdin>"
+  ],
+  "prompt": "Compare observed interview and contract against audited public facts and the sealed issue-time decisions. Keep hindsight-only observations diagnostic. Score only the closed schema fields. Apply this frozen evaluator rubric exactly:\nEvaluate the contract from the public request, issue-time owner decisions, and audited contemporaneous repository behavior. Require observable outcomes supported by those sources, including preservation of compatible existing behavior. Treat exact code structure, algorithms, representations, validation mechanisms, messages, refactors, test form or location, and documentation as incidental unless explicitly required. Use later patches and tests only as evidence of behavior or non-regression: they may reveal or confirm a relevant outcome, including closely analogous cases, but cannot retroactively make broader coverage or a particular implementation mandatory. Penalize unsupported behavior, broadened scope, and compatibility regressions; accept any implementation that satisfies the supported observable contract.\nReturn only the JSON required by the supplied schema.\nINPUT:\n{\"alias\": \"sympy__sympy-17318\", \"audited_repository_evidence\": {\"audit_summary\": \"All nine facts are directly supported by the cited repository files and control flow.\", \"facts\": [{\"id\": \"F1\", \"line_end\": 107, \"line_start\": 104, \"path\": \"sympy/simplify/sqrtdenest.py\", \"statement\": \"The documented contract of sqrtdenest is to denest square roots when possible and otherwise return the expression unchanged.\"}, {\"id\": \"F2\", \"line_end\": 137, \"line_start\": 131, \"path\": \"sympy/simplify/sqrtdenest.py\", \"statement\": \"sqrtdenest repeatedly calls _sqrtdenest0 and returns once the transformed expression equals the current expression.\"}, {\"id\": \"F3\", \"line_end\": 236, \"line_start\": 225, \"path\": \"sympy/simplify/sqrtdenest.py\", \"statement\": \"For a square root whose numerator base is an Add, _sqrtdenest0 recursively processes the addends and then passes the rebuilt square root to _sqrtdenest1.\"}, {\"id\": \"F4\", \"line_end\": 256, \"line_start\": 252, \"path\": \"sympy/simplify/sqrtdenest.py\", \"statement\": \"For other expressions with arguments, _sqrtdenest0 recursively reconstructs the expression from processed arguments, allowing nested square roots inside larger expressions to reach the denesting path.\"}, {\"id\": \"F5\", \"line_end\": 334, \"line_start\": 329, \"path\": \"sympy/simplify/sqrtdenest.py\", \"statement\": \"_sqrtdenest1 calls _sqrt_match on every non-atomic square-root base; its unchanged-expression fallback occurs only after _sqrt_match returns, so an exception from _sqrt_match bypasses that fallback.\"}, {\"id\": \"F6\", \"line_end\": 162, \"line_start\": 154, \"path\": \"sympy/simplify/sqrtdenest.py\", \"statement\": \"When _sqrt_match receives an Add whose addends all have rational squares, it unconditionally calls split_surds.\"}, {\"id\": \"F7\", \"line_end\": 1080, \"line_start\": 1076, \"path\": \"sympy/simplify/radsimp.py\", \"statement\": \"split_surds builds its surds list only from coefficient-free factors for which is_Pow is true, then calls _split_gcd with the expanded list without checking whether the list is empty.\"}, {\"id\": \"F8\", \"line_end\": 1117, \"line_start\": 1103, \"path\": \"sympy/simplify/radsimp.py\", \"statement\": \"_split_gcd immediately reads a[0], so calling it with no arguments raises IndexError before it can return a split.\"}, {\"id\": \"F9\", \"line_end\": 55, \"line_start\": 48, \"path\": \"sympy/simplify/tests/test_sqrtdenest.py\", \"statement\": \"Existing sqrtdenest tests already assert unchanged results for expressions that cannot or should not be denested, including a case explicitly described as avoiding a more complicated result.\"}], \"scope_summary\": \"Inspected the supplied repository at base commit d4e0231b08147337745dcf601e62de7eefe2fb2d. The existing failure path spans sqrtdenest’s recursive square-root matching and radsimp’s empty-input-unsafe surd splitting.\", \"unknowns\": []}, \"contract\": {\"acceptance_checks\": [\"Evaluate sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) and confirm it completes without exception.\", \"Confirm the reported input produces 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2 or an expression equal to that unchanged non-denested result.\", \"Confirm representative existing cases that are denestable retain their expected denested results.\", \"Confirm representative existing cases that are not denestable retain their unchanged results.\"], \"confirmed_decisions\": [\"Calling sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) does not raise IndexError or another exception.\", \"For the reported input, sqrtdenest returns the unchanged non-denested result, equivalent to 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.\", \"Expressions that can be denested continue to produce their existing denested results.\", \"Expressions that cannot or should not be denested continue to be returned unchanged.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"Make sqrtdenest safely handle the reported expression when its nested square root cannot be denested, returning the unchanged non-denested expression instead of raising IndexError.\"}, \"hindsight_observations\": [{\"description\": \"The crash occurs because _sqrt_match accepts additive radicands whose terms merely have rational squares, including imaginary terms, then split_surds constructs an empty surds list and _split_gcd dereferences its nonexistent first element.\", \"evidence_ids\": [\"issue\", \"repository:F5\", \"repository:F7\", \"repository:F9\", \"gold-patch\"], \"id\": \"H1\"}, {\"description\": \"The added regression coverage shows that rejecting unsupported complex matching does not mean every enclosing expression remains unchanged: the reported 3*I case still denests to I through other valid recursive transformations, while the analogous I case remains unchanged.\", \"evidence_ids\": [\"test-patch\", \"fail-to-pass\", \"repository:F4\", \"repository:F6\"], \"id\": \"H2\"}, {\"description\": \"The existing sqrtdenest suite continued to exercise successful denesting and unchanged fallback cases after the fix.\", \"evidence_ids\": [\"pass-to-pass\", \"repository:F10\", \"repository:F11\"], \"id\": \"H3\"}], \"implementation_incidentals\": [{\"description\": \"The gold implementation prevents the invalid split_surds call by requiring every squared addend considered by _sqrt_match to be both rational and positive. This is one implementation strategy consistent with the established public behavior, not the only valid design.\", \"evidence_ids\": [\"gold-patch\", \"repository:F5\"], \"id\": \"I1\"}, {\"description\": \"The patch updates rad_rationalize and split_surds docstrings to describe their supported inputs as terms whose squares are positive rationals.\", \"evidence_ids\": [\"gold-patch\"], \"id\": \"I2\"}, {\"description\": \"The regression test directly asserts the private helper result _sqrt_match(4 + I) == [] and uses unchanged to check structural preservation for one unsupported expression.\", \"evidence_ids\": [\"test-patch\"], \"id\": \"I3\"}], \"material_decisions\": [], \"metadata\": {\"context_mode\": \"repository\", \"partition\": \"development\", \"repository_family\": \"sympy/sympy\"}, \"public_request\": \"sqrtdenest raises IndexError\\n```\\r\\n>>> sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2)\\r\\nTraceback (most recent call last):\\r\\n  File \\\"<stdin>\\\", line 1, in <module>\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 132, in sqrtdenest\\r\\n    z = _sqrtdenest0(expr)\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 242, in _sqrtdenest0\\r\\n    return expr.func(*[_sqrtdenest0(a) for a in args])\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 242, in _sqrtdenest0\\r\\n    return expr.func(*[_sqrtdenest0(a) for a in args])\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 235, in _sqrtdenest0\\r\\n    return _sqrtdenest1(expr)\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 319, in _sqrtdenest1\\r\\n    val = _sqrt_match(a)\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 159, in _sqrt_match\\r\\n    r, b, a = split_surds(p)\\r\\n  File \\\"sympy\\\\simplify\\\\radsimp.py\\\", line 1032, in split_surds\\r\\n    g, b1, b2 = _split_gcd(*surds)\\r\\n  File \\\"sympy\\\\simplify\\\\radsimp.py\\\", line 1068, in _split_gcd\\r\\n    g = a[0]\\r\\nIndexError: tuple index out of range\\r\\n```\\r\\n\\r\\nIf an expression cannot be denested it should be returned unchanged.\\nIndexError fixed for sqrtdenest.\\nFixes #12420 \\r\\nNow if the expression can't be **denested**, it will be returned unchanged.\\r\\nOld Result:\\r\\n```\\r\\n>>> sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2)\\r\\nTraceback (most recent call last):\\r\\n  File \\\"<stdin>\\\", line 1, in <module>\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 132, in sqrtdenest\\r\\n    z = _sqrtdenest0(expr)\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 242, in _sqrtdenest0\\r\\n    return expr.func(*[_sqrtdenest0(a) for a in args])\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 242, in _sqrtdenest0\\r\\n    return expr.func(*[_sqrtdenest0(a) for a in args])\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 235, in _sqrtdenest0\\r\\n    return _sqrtdenest1(expr)\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 319, in _sqrtdenest1\\r\\n    val = _sqrt_match(a)\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 159, in _sqrt_match\\r\\n    r, b, a = split_surds(p)\\r\\n  File \\\"sympy\\\\simplify\\\\radsimp.py\\\", line 1032, in split_surds\\r\\n    g, b1, b2 = _split_gcd(*surds)\\r\\n  File \\\"sympy\\\\simplify\\\\radsimp.py\\\", line 1068, in _split_gcd\\r\\n    g = a[0]\\r\\nIndexError: tuple index out of range\\r\\n\\r\\n```\\r\\nNew Result:\\r\\n\\r\\n```\\r\\nIn [9]: sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2)\\r\\nOut[9]: 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2\\r\\n```\\n\", \"repository_facts\": [{\"evidence\": [{\"cache_required\": true, \"excerpt\": \"def sqrtdenest(expr, max_iter=3):\\n    \\\"\\\"\\\"Denests sqrts in an expression that contain other square roots\\n    if possible, otherwise returns the expr unchanged. This is based on the\\n    algorithms of [1].\", \"excerpt_digest\": \"02a105c16456de8dfbefc748f18fc32ff658aa0f739f1808e73772c777e78b18\", \"id\": \"repository:F1\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L104-L107\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}], \"id\": \"F1\", \"statement\": \"The public sqrtdenest docstring states that it denests nested square roots when possible and otherwise returns the expression unchanged.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    \\\"\\\"\\\"\\n    expr = expand_mul(sympify(expr))\\n    for i in range(max_iter):\\n        z = _sqrtdenest0(expr)\\n        if expr == z:\\n            return expr\\n        expr = z\\n    return expr\", \"excerpt_digest\": \"3193346f39bfa4dc15ee9e6ca498a226bdddf724b95cc112b2144ba1f1a8e37d\", \"id\": \"repository:F2\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L130-L137\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}], \"id\": \"F2\", \"statement\": \"sqrtdenest repeatedly calls _sqrtdenest0 and returns the current expression when a pass makes no change.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    if isinstance(expr, Expr):\\n        args = expr.args\\n        if args:\\n            return expr.func(*[_sqrtdenest0(a) for a in args])\\n    return expr\", \"excerpt_digest\": \"7c2b5876853d65324618d8e8c806b76ef860e7a02679d857856e384fb57477ab\", \"id\": \"repository:F4\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L252-L256\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}], \"id\": \"F4\", \"statement\": \"For other Expr instances with arguments, _sqrtdenest0 reconstructs the expression from recursively processed arguments.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    from sympy.simplify.radsimp import split_surds\\n\\n    p = _mexpand(p)\\n    if p.is_Number:\\n        res = (p, S.Zero, S.Zero)\\n    elif p.is_Add:\\n        pargs = sorted(p.args, key=default_sort_key)\\n        if all((x**2).is_Rational for x in pargs):\\n            r, b, a = split_surds(p)\\n            res = a, b, r\\n            return list(res)\", \"excerpt_digest\": \"102bf533beb753337c8adf30a093172101f224a50ddf80912993892b6c7af00c\", \"id\": \"repository:F5\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L152-L162\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}], \"id\": \"F5\", \"statement\": \"_sqrt_match expands an Add and calls split_surds when every addend has a rational square.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    if not is_sqrt(expr):\\n        return expr\\n\\n    a = expr.base\\n    if a.is_Atom:\\n        return expr\\n    val = _sqrt_match(a)\\n    if not val:\\n        return expr\", \"excerpt_digest\": \"df35bc9f21d658401b198be04bd89dbcc1653d9e3b933cec51b7b57fe74de1d6\", \"id\": \"repository:F6\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L326-L334\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}], \"id\": \"F6\", \"statement\": \"_sqrtdenest1 calls _sqrt_match on a non-atomic square-root base and returns the original expression when no match is produced.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    args = sorted(expr.args, key=default_sort_key)\\n    coeff_muls = [x.as_coeff_Mul() for x in args]\\n    surds = [x[1]**2 for x in coeff_muls if x[1].is_Pow]\\n    surds.sort(key=default_sort_key)\\n    g, b1, b2 = _split_gcd(*surds)\\n    g2 = g\\n    if not b2 and len(b1) >= 2:\\n        b1n = [x/g for x in b1]\\n        b1n = [x for x in b1n if x != 1]\\n        # only a common factor has been factored; split again\\n        g1, b1n, b2 = _split_gcd(*b1n)\", \"excerpt_digest\": \"43914d5a040b41a3d5c6e05ddcb5ff99c68522ee6e220cca22725e8d25c5f8b8\", \"id\": \"repository:F7\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/radsimp.py:L1076-L1086\", \"source\": \"repository\", \"source_digest\": \"83c35c6d5d0759a151699e9894b0762dad50b028d932196f8bff4d7e802e408b\"}], \"id\": \"F7\", \"statement\": \"split_surds builds its surds list only from coefficient-free factors whose residual factor is a Pow, then unconditionally passes that list to _split_gcd.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    a1v, a2v = [], []\\n    for c, s in coeff_muls:\\n        if s.is_Pow and s.exp == S.Half:\\n            s1 = s.base\\n            if s1 in b1:\\n                a1v.append(c*sqrt(s1/g2))\\n            else:\\n                a2v.append(c*s)\\n        else:\\n            a2v.append(c*s)\\n    a = Add(*a1v)\\n    b = Add(*a2v)\\n    return g2, a, b\", \"excerpt_digest\": \"956c7bfd13e259b6ee24e2ebd5c9bc4be853af902d385499ffcdeef326777790\", \"id\": \"repository:F8\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/radsimp.py:L1088-L1100\", \"source\": \"repository\", \"source_digest\": \"83c35c6d5d0759a151699e9894b0762dad50b028d932196f8bff4d7e802e408b\"}], \"id\": \"F8\", \"statement\": \"split_surds partitions terms after the gcd split and returns a three-item tuple consisting of the extracted factor and two sums.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"def _split_gcd(*a):\\n    \\\"\\\"\\\"\\n    split the list of integers ``a`` into a list of integers, ``a1`` having\\n    ``g = gcd(a1)``, and a list ``a2`` whose elements are not divisible by\\n    ``g``.  Returns ``g, a1, a2``\\n\\n    Examples\\n    ========\\n\\n    >>> from sympy.simplify.radsimp import _split_gcd\\n    >>> _split_gcd(55, 35, 22, 14, 77, 10)\\n    (5, [55, 35, 10], [22, 14, 77])\\n    \\\"\\\"\\\"\\n    g = a[0]\\n    b1 = [g]\", \"excerpt_digest\": \"22ff76e2453ac1fa8f1f8052efbeddad614fc0d32b43cb1deabe8e8515a15d25\", \"id\": \"repository:F9\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/radsimp.py:L1103-L1117\", \"source\": \"repository\", \"source_digest\": \"83c35c6d5d0759a151699e9894b0762dad50b028d932196f8bff4d7e802e408b\"}], \"id\": \"F9\", \"statement\": \"_split_gcd immediately reads a[0] without checking whether any arguments were supplied.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    # check that the result is not more complicated than the input\\n    z = sqrt(-2*r29 + cos(2) + 2*sqrt(-10*r29 + 55) + 16)\\n    assert sqrtdenest(z) == z\\n\\n    assert sqrtdenest(sqrt(r6 + sqrt(15))) == sqrt(r6 + sqrt(15))\\n\\n    z = sqrt(15 - 2*sqrt(31) + 2*sqrt(55 - 10*r29))\\n    assert sqrtdenest(z) == z\", \"excerpt_digest\": \"eed7928c3f5652457ba4c5174418e226617cd001d3c67f4247c584931a5bdf99\", \"id\": \"repository:F10\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/tests/test_sqrtdenest.py:L48-L55\", \"source\": \"repository\", \"source_digest\": \"8b7efc5d17eeef2d29ffb526c0d411d26b6141334bcfd18733b1d47d4f5c458f\"}], \"id\": \"F10\", \"statement\": \"Existing sqrtdenest tests explicitly assert unchanged results for several expressions that are not denested.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    z = sqrt(-490*r3 - 98*sqrt(115) - 98*sqrt(345) - 2107)\\n    assert sqrtdenest(z) == sqrt(-1)*(7*r5 + 7*r15 + 7*sqrt(23))\\n    z = sqrt(-4*sqrt(14) - 2*r6 + 4*sqrt(21) + 34)\\n    assert sqrtdenest(z) == z\\n    assert sqrtdenest(sqrt(-8*r2 - 2*r5 + 18)) == -r10 + 1 + r2 + r5\\n    assert sqrtdenest(sqrt(8*r2 + 2*r5 - 18)) == \\\\\\n        sqrt(-1)*(-r10 + 1 + r2 + r5)\\n    assert sqrtdenest(sqrt(8*r2/3 + 14*r5/3 + S(154)/9)) == \\\\\\n        -r10/3 + r2 + r5 + 3\\n    assert sqrtdenest(sqrt(sqrt(2*r6 + 5) + sqrt(2*r7 + 8))) == \\\\\\n        sqrt(1 + r2 + r3 + r7)\\n    assert sqrtdenest(sqrt(4*r15 + 8*r5 + 12*r3 + 24)) == 1 + r3 + r5 + r15\\n\\n    w = 1 + r2 + r3 + r5 + r7\\n    assert sqrtdenest(sqrt((w**2).expand())) == w\\n    z = sqrt((w**2).expand() + 1)\\n    assert sqrtdenest(z) == z\\n\\n    z = sqrt(2*r10 + 6*r2 + 4*r5 + 12 + 10*r15 + 30*r3)\\n    assert sqrtdenest(z) == z\", \"excerpt_digest\": \"4ae63adc34036b6adf886004bfcac401ac56397cd2bfbee8e66a87ae7718487e\", \"id\": \"repository:F11\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/tests/test_sqrtdenest.py:L67-L86\", \"source\": \"repository\", \"source_digest\": \"8b7efc5d17eeef2d29ffb526c0d411d26b6141334bcfd18733b1d47d4f5c458f\"}], \"id\": \"F11\", \"statement\": \"The recursive-denesting tests also assert that multiple candidate expressions are returned unchanged.\"}], \"review_state\": {\"dispositions_complete\": true, \"status\": \"approved\"}, \"sealed_evidence\": [{\"cache_required\": true, \"excerpt\": \"sqrtdenest raises IndexError\\n```\\n>>> sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2)\\nTraceback (most recent call last):\\n  File \\\"<stdin>\\\", line 1, in <module>\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 132, in sqrtdenest\\n    z = _sqrtdenest0(expr)\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 242, in _sqrtdenest0\\n    return expr.func(*[_sqrtdenest0(a) for a in args])\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 242, in _sqrtdenest0\\n    return expr.func(*[_sqrtdenest0(a) for a in args])\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 235, in _sqrtdenest0\\n    return _sqrtdenest1(expr)\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 319, in _sqrtdenest1\\n    val = _sqrt_match(a)\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 159, in _sqrt_match\\n    r, b, a = split_surds(p)\\n  File \\\"sympy\\\\simplify\\\\radsimp.py\\\", line 1032, in split_surds\\n    g, b1, b2 = _split_gcd(*surds)\\n  File \\\"sympy\\\\simplify\\\\radsimp.py\\\", line 1068, in _split_gcd\", \"excerpt_digest\": \"380a20c144157b3c73fe0dfb911c4673b901251bc8e566dd3fb4200965a5dce4\", \"id\": \"issue\", \"knowledge_timing\": \"issue_time_author_knowable\", \"locator\": \"sha256:8a310f20c7a096a6254d15f08997beaed275576879e726690cc2a8de13e47e3c\", \"source\": \"issue\", \"source_digest\": \"8a310f20c7a096a6254d15f08997beaed275576879e726690cc2a8de13e47e3c\"}, {\"cache_required\": true, \"excerpt\": \"diff --git a/sympy/simplify/radsimp.py b/sympy/simplify/radsimp.py\\n--- a/sympy/simplify/radsimp.py\\n+++ b/sympy/simplify/radsimp.py\\n@@ -920,7 +920,7 @@ def handle(expr):\\n def rad_rationalize(num, den):\\n     \\\"\\\"\\\"\\n     Rationalize num/den by removing square roots in the denominator;\\n-    num and den are sum of terms whose squares are rationals\\n+    num and den are sum of terms whose squares are positive rationals.\\n \\n     Examples\\n     ========\\n@@ -1061,9 +1061,9 @@ def denom_expand(expr, **hints):\\n \\n def split_surds(expr):\\n     \\\"\\\"\\\"\\n-    split an expression with terms whose squares are rationals\\n+    Split an expression with terms whose squares are positive rationals\\n     into a sum of terms whose surds squared have gcd equal to g\\n-    and a sum of terms with surds squared prime with g\", \"excerpt_digest\": \"b2a48024c6aa1dd54c4c0421e10593458074ab297934979978d02a7bc04b0be3\", \"id\": \"gold-patch\", \"knowledge_timing\": \"hindsight_only\", \"locator\": \"sha256:9b911775207c165c369d7fdd0af375428405d1adfed3849eccfe95a19c561219\", \"source\": \"patch\", \"source_digest\": \"9b911775207c165c369d7fdd0af375428405d1adfed3849eccfe95a19c561219\"}, {\"cache_required\": true, \"excerpt\": \"diff --git a/sympy/simplify/tests/test_sqrtdenest.py b/sympy/simplify/tests/test_sqrtdenest.py\\n--- a/sympy/simplify/tests/test_sqrtdenest.py\\n+++ b/sympy/simplify/tests/test_sqrtdenest.py\\n@@ -1,5 +1,7 @@\\n from sympy import sqrt, root, S, Symbol, sqrtdenest, Integral, cos\\n from sympy.simplify.sqrtdenest import _subsets as subsets\\n+from sympy.simplify.sqrtdenest import _sqrt_match\\n+from sympy.core.expr import unchanged\\n from sympy.utilities.pytest import slow\\n \\n r2, r3, r5, r6, r7, r10, r15, r29 = [sqrt(x) for x in [2, 3, 5, 6, 7, 10,\\n@@ -180,6 +182,12 @@ def test_issue_5653():\\n     assert sqrtdenest(\\n         sqrt(2 + sqrt(2 + sqrt(2)))) == sqrt(2 + sqrt(2 + sqrt(2)))\\n \\n+def test_issue_12420():\\n+    I = S.ImaginaryUnit\\n+    assert _sqrt_match(4 + I) == []\\n+    assert sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) == I\\n+    e = 3 - sqrt(2)*sqrt(4 + I) + 3*I\", \"excerpt_digest\": \"4bed6463711886c67a1c9756c91a26299a9c7be0452147311bba9056e3c13c4f\", \"id\": \"test-patch\", \"knowledge_timing\": \"hindsight_only\", \"locator\": \"sha256:bd1d58da2ab8231d3d0f56f268e9118c59cbc03202604a71ce63d5aeeda20545\", \"source\": \"test\", \"source_digest\": \"bd1d58da2ab8231d3d0f56f268e9118c59cbc03202604a71ce63d5aeeda20545\"}, {\"cache_required\": true, \"excerpt\": \"[\\\"test_issue_12420\\\"]\", \"excerpt_digest\": \"1a601811e2713c515fc89a7c303e6f4c6fbb6a14e5e57d8b03e10444906de2f9\", \"id\": \"fail-to-pass\", \"knowledge_timing\": \"hindsight_only\", \"locator\": \"sha256:1a601811e2713c515fc89a7c303e6f4c6fbb6a14e5e57d8b03e10444906de2f9\", \"source\": \"test\", \"source_digest\": \"1a601811e2713c515fc89a7c303e6f4c6fbb6a14e5e57d8b03e10444906de2f9\"}, {\"cache_required\": true, \"excerpt\": \"[\\\"test_sqrtdenest\\\",\\\"test_sqrtdenest2\\\",\\\"test_sqrtdenest_rec\\\",\\\"test_issue_6241\\\",\\\"test_sqrtdenest3\\\",\\\"test_sqrtdenest4\\\",\\\"test_sqrt_symbolic_denest\\\",\\\"test_issue_5857\\\",\\\"test_subsets\\\",\\\"test_issue_5653\\\"]\", \"excerpt_digest\": \"235d2f057278e366ec51c858d5cf4c205bca4c7f9fe32f80b3bbe25c96878faa\", \"id\": \"pass-to-pass\", \"knowledge_timing\": \"hindsight_only\", \"locator\": \"sha256:235d2f057278e366ec51c858d5cf4c205bca4c7f9fe32f80b3bbe25c96878faa\", \"source\": \"test\", \"source_digest\": \"235d2f057278e366ec51c858d5cf4c205bca4c7f9fe32f80b3bbe25c96878faa\"}, {\"cache_required\": true, \"excerpt\": \"def sqrtdenest(expr, max_iter=3):\\n    \\\"\\\"\\\"Denests sqrts in an expression that contain other square roots\\n    if possible, otherwise returns the expr unchanged. This is based on the\\n    algorithms of [1].\", \"excerpt_digest\": \"02a105c16456de8dfbefc748f18fc32ff658aa0f739f1808e73772c777e78b18\", \"id\": \"repository:F1\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L104-L107\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}, {\"cache_required\": true, \"excerpt\": \"    \\\"\\\"\\\"\\n    expr = expand_mul(sympify(expr))\\n    for i in range(max_iter):\\n        z = _sqrtdenest0(expr)\\n        if expr == z:\\n            return expr\\n        expr = z\\n    return expr\", \"excerpt_digest\": \"3193346f39bfa4dc15ee9e6ca498a226bdddf724b95cc112b2144ba1f1a8e37d\", \"id\": \"repository:F2\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L130-L137\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}, {\"cache_required\": true, \"excerpt\": \"    if isinstance(expr, Expr):\\n        args = expr.args\\n        if args:\\n            return expr.func(*[_sqrtdenest0(a) for a in args])\\n    return expr\", \"excerpt_digest\": \"7c2b5876853d65324618d8e8c806b76ef860e7a02679d857856e384fb57477ab\", \"id\": \"repository:F4\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L252-L256\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}, {\"cache_required\": true, \"excerpt\": \"    from sympy.simplify.radsimp import split_surds\\n\\n    p = _mexpand(p)\\n    if p.is_Number:\\n        res = (p, S.Zero, S.Zero)\\n    elif p.is_Add:\\n        pargs = sorted(p.args, key=default_sort_key)\\n        if all((x**2).is_Rational for x in pargs):\\n            r, b, a = split_surds(p)\\n            res = a, b, r\\n            return list(res)\", \"excerpt_digest\": \"102bf533beb753337c8adf30a093172101f224a50ddf80912993892b6c7af00c\", \"id\": \"repository:F5\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L152-L162\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}, {\"cache_required\": true, \"excerpt\": \"    if not is_sqrt(expr):\\n        return expr\\n\\n    a = expr.base\\n    if a.is_Atom:\\n        return expr\\n    val = _sqrt_match(a)\\n    if not val:\\n        return expr\", \"excerpt_digest\": \"df35bc9f21d658401b198be04bd89dbcc1653d9e3b933cec51b7b57fe74de1d6\", \"id\": \"repository:F6\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L326-L334\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}, {\"cache_required\": true, \"excerpt\": \"    args = sorted(expr.args, key=default_sort_key)\\n    coeff_muls = [x.as_coeff_Mul() for x in args]\\n    surds = [x[1]**2 for x in coeff_muls if x[1].is_Pow]\\n    surds.sort(key=default_sort_key)\\n    g, b1, b2 = _split_gcd(*surds)\\n    g2 = g\\n    if not b2 and len(b1) >= 2:\\n        b1n = [x/g for x in b1]\\n        b1n = [x for x in b1n if x != 1]\\n        # only a common factor has been factored; split again\\n        g1, b1n, b2 = _split_gcd(*b1n)\", \"excerpt_digest\": \"43914d5a040b41a3d5c6e05ddcb5ff99c68522ee6e220cca22725e8d25c5f8b8\", \"id\": \"repository:F7\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/radsimp.py:L1076-L1086\", \"source\": \"repository\", \"source_digest\": \"83c35c6d5d0759a151699e9894b0762dad50b028d932196f8bff4d7e802e408b\"}, {\"cache_required\": true, \"excerpt\": \"    a1v, a2v = [], []\\n    for c, s in coeff_muls:\\n        if s.is_Pow and s.exp == S.Half:\\n            s1 = s.base\\n            if s1 in b1:\\n                a1v.append(c*sqrt(s1/g2))\\n            else:\\n                a2v.append(c*s)\\n        else:\\n            a2v.append(c*s)\\n    a = Add(*a1v)\\n    b = Add(*a2v)\\n    return g2, a, b\", \"excerpt_digest\": \"956c7bfd13e259b6ee24e2ebd5c9bc4be853af902d385499ffcdeef326777790\", \"id\": \"repository:F8\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/radsimp.py:L1088-L1100\", \"source\": \"repository\", \"source_digest\": \"83c35c6d5d0759a151699e9894b0762dad50b028d932196f8bff4d7e802e408b\"}, {\"cache_required\": true, \"excerpt\": \"def _split_gcd(*a):\\n    \\\"\\\"\\\"\\n    split the list of integers ``a`` into a list of integers, ``a1`` having\\n    ``g = gcd(a1)``, and a list ``a2`` whose elements are not divisible by\\n    ``g``.  Returns ``g, a1, a2``\\n\\n    Examples\\n    ========\\n\\n    >>> from sympy.simplify.radsimp import _split_gcd\\n    >>> _split_gcd(55, 35, 22, 14, 77, 10)\\n    (5, [55, 35, 10], [22, 14, 77])\\n    \\\"\\\"\\\"\\n    g = a[0]\\n    b1 = [g]\", \"excerpt_digest\": \"22ff76e2453ac1fa8f1f8052efbeddad614fc0d32b43cb1deabe8e8515a15d25\", \"id\": \"repository:F9\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/radsimp.py:L1103-L1117\", \"source\": \"repository\", \"source_digest\": \"83c35c6d5d0759a151699e9894b0762dad50b028d932196f8bff4d7e802e408b\"}, {\"cache_required\": true, \"excerpt\": \"    # check that the result is not more complicated than the input\\n    z = sqrt(-2*r29 + cos(2) + 2*sqrt(-10*r29 + 55) + 16)\\n    assert sqrtdenest(z) == z\\n\\n    assert sqrtdenest(sqrt(r6 + sqrt(15))) == sqrt(r6 + sqrt(15))\\n\\n    z = sqrt(15 - 2*sqrt(31) + 2*sqrt(55 - 10*r29))\\n    assert sqrtdenest(z) == z\", \"excerpt_digest\": \"eed7928c3f5652457ba4c5174418e226617cd001d3c67f4247c584931a5bdf99\", \"id\": \"repository:F10\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/tests/test_sqrtdenest.py:L48-L55\", \"source\": \"repository\", \"source_digest\": \"8b7efc5d17eeef2d29ffb526c0d411d26b6141334bcfd18733b1d47d4f5c458f\"}, {\"cache_required\": true, \"excerpt\": \"    z = sqrt(-490*r3 - 98*sqrt(115) - 98*sqrt(345) - 2107)\\n    assert sqrtdenest(z) == sqrt(-1)*(7*r5 + 7*r15 + 7*sqrt(23))\\n    z = sqrt(-4*sqrt(14) - 2*r6 + 4*sqrt(21) + 34)\\n    assert sqrtdenest(z) == z\\n    assert sqrtdenest(sqrt(-8*r2 - 2*r5 + 18)) == -r10 + 1 + r2 + r5\\n    assert sqrtdenest(sqrt(8*r2 + 2*r5 - 18)) == \\\\\\n        sqrt(-1)*(-r10 + 1 + r2 + r5)\\n    assert sqrtdenest(sqrt(8*r2/3 + 14*r5/3 + S(154)/9)) == \\\\\\n        -r10/3 + r2 + r5 + 3\\n    assert sqrtdenest(sqrt(sqrt(2*r6 + 5) + sqrt(2*r7 + 8))) == \\\\\\n        sqrt(1 + r2 + r3 + r7)\\n    assert sqrtdenest(sqrt(4*r15 + 8*r5 + 12*r3 + 24)) == 1 + r3 + r5 + r15\\n\\n    w = 1 + r2 + r3 + r5 + r7\\n    assert sqrtdenest(sqrt((w**2).expand())) == w\\n    z = sqrt((w**2).expand() + 1)\\n    assert sqrtdenest(z) == z\\n\\n    z = sqrt(2*r10 + 6*r2 + 4*r5 + 12 + 10*r15 + 30*r3)\\n    assert sqrtdenest(z) == z\", \"excerpt_digest\": \"4ae63adc34036b6adf886004bfcac401ac56397cd2bfbee8e66a87ae7718487e\", \"id\": \"repository:F11\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/tests/test_sqrtdenest.py:L67-L86\", \"source\": \"repository\", \"source_digest\": \"8b7efc5d17eeef2d29ffb526c0d411d26b6141334bcfd18733b1d47d4f5c458f\"}], \"sealed_inputs\": {\"fail_to_pass\": {\"cache_key\": \"sha256:1a601811e2713c515fc89a7c303e6f4c6fbb6a14e5e57d8b03e10444906de2f9\", \"digest\": \"1a601811e2713c515fc89a7c303e6f4c6fbb6a14e5e57d8b03e10444906de2f9\"}, \"gold_patch\": {\"cache_key\": \"sha256:9b911775207c165c369d7fdd0af375428405d1adfed3849eccfe95a19c561219\", \"digest\": \"9b911775207c165c369d7fdd0af375428405d1adfed3849eccfe95a19c561219\"}, \"issue\": {\"cache_key\": \"sha256:8a310f20c7a096a6254d15f08997beaed275576879e726690cc2a8de13e47e3c\", \"digest\": \"8a310f20c7a096a6254d15f08997beaed275576879e726690cc2a8de13e47e3c\"}, \"pass_to_pass\": {\"cache_key\": \"sha256:235d2f057278e366ec51c858d5cf4c205bca4c7f9fe32f80b3bbe25c96878faa\", \"digest\": \"235d2f057278e366ec51c858d5cf4c205bca4c7f9fe32f80b3bbe25c96878faa\"}, \"test_patch\": {\"cache_key\": \"sha256:bd1d58da2ab8231d3d0f56f268e9118c59cbc03202604a71ce63d5aeeda20545\", \"digest\": \"bd1d58da2ab8231d3d0f56f268e9118c59cbc03202604a71ce63d5aeeda20545\"}}, \"transcript\": [{\"interviewer\": {\"action\": \"complete\", \"contract\": {\"acceptance_checks\": [\"Evaluate sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) and confirm it completes without exception.\", \"Confirm the reported input produces 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2 or an expression equal to that unchanged non-denested result.\", \"Confirm representative existing cases that are denestable retain their expected denested results.\", \"Confirm representative existing cases that are not denestable retain their unchanged results.\"], \"confirmed_decisions\": [\"Calling sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) does not raise IndexError or another exception.\", \"For the reported input, sqrtdenest returns the unchanged non-denested result, equivalent to 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.\", \"Expressions that can be denested continue to produce their existing denested results.\", \"Expressions that cannot or should not be denested continue to be returned unchanged.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"Make sqrtdenest safely handle the reported expression when its nested square root cannot be denested, returning the unchanged non-denested expression instead of raising IndexError.\"}, \"open_material_decisions\": [], \"question\": null, \"reason\": \"The request and audited repository evidence determine the required observable behavior without a material ambiguity: sqrtdenest must not raise IndexError for the reported non-denestable expression and must return its unchanged non-denested result while preserving existing denesting behavior.\"}, \"turn\": 1}], \"upstream\": {\"base_commit\": \"d4e0231b08147337745dcf601e62de7eefe2fb2d\", \"dataset\": \"princeton-nlp/SWE-bench_Verified\", \"instance_id_digest\": \"00d509ec7b12de1513e2141b9b9202ef5ad0a05ba340202345966463280ab142\", \"issue_cache_key\": \"sha256:8a310f20c7a096a6254d15f08997beaed275576879e726690cc2a8de13e47e3c\", \"issue_digest\": \"8a310f20c7a096a6254d15f08997beaed275576879e726690cc2a8de13e47e3c\", \"revision\": \"c104f840cc67f8b6eec6f759ebc8b2693d585d4a\", \"source_url\": \"https://github.com/sympy/sympy/pull/17318\"}}",
+  "input": {
+    "alias": "sympy__sympy-17318",
+    "public_request": "sqrtdenest raises IndexError\n```\r\n>>> sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2)\r\nTraceback (most recent call last):\r\n  File \"<stdin>\", line 1, in <module>\r\n  File \"sympy\\simplify\\sqrtdenest.py\", line 132, in sqrtdenest\r\n    z = _sqrtdenest0(expr)\r\n  File \"sympy\\simplify\\sqrtdenest.py\", line 242, in _sqrtdenest0\r\n    return expr.func(*[_sqrtdenest0(a) for a in args])\r\n  File \"sympy\\simplify\\sqrtdenest.py\", line 242, in _sqrtdenest0\r\n    return expr.func(*[_sqrtdenest0(a) for a in args])\r\n  File \"sympy\\simplify\\sqrtdenest.py\", line 235, in _sqrtdenest0\r\n    return _sqrtdenest1(expr)\r\n  File \"sympy\\simplify\\sqrtdenest.py\", line 319, in _sqrtdenest1\r\n    val = _sqrt_match(a)\r\n  File \"sympy\\simplify\\sqrtdenest.py\", line 159, in _sqrt_match\r\n    r, b, a = split_surds(p)\r\n  File \"sympy\\simplify\\radsimp.py\", line 1032, in split_surds\r\n    g, b1, b2 = _split_gcd(*surds)\r\n  File \"sympy\\simplify\\radsimp.py\", line 1068, in _split_gcd\r\n    g = a[0]\r\nIndexError: tuple index out of range\r\n```\r\n\r\nIf an expression cannot be denested it should be returned unchanged.\nIndexError fixed for sqrtdenest.\nFixes #12420 \r\nNow if the expression can't be **denested**, it will be returned unchanged.\r\nOld Result:\r\n```\r\n>>> sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2)\r\nTraceback (most recent call last):\r\n  File \"<stdin>\", line 1, in <module>\r\n  File \"sympy\\simplify\\sqrtdenest.py\", line 132, in sqrtdenest\r\n    z = _sqrtdenest0(expr)\r\n  File \"sympy\\simplify\\sqrtdenest.py\", line 242, in _sqrtdenest0\r\n    return expr.func(*[_sqrtdenest0(a) for a in args])\r\n  File \"sympy\\simplify\\sqrtdenest.py\", line 242, in _sqrtdenest0\r\n    return expr.func(*[_sqrtdenest0(a) for a in args])\r\n  File \"sympy\\simplify\\sqrtdenest.py\", line 235, in _sqrtdenest0\r\n    return _sqrtdenest1(expr)\r\n  File \"sympy\\simplify\\sqrtdenest.py\", line 319, in _sqrtdenest1\r\n    val = _sqrt_match(a)\r\n  File \"sympy\\simplify\\sqrtdenest.py\", line 159, in _sqrt_match\r\n    r, b, a = split_surds(p)\r\n  File \"sympy\\simplify\\radsimp.py\", line 1032, in split_surds\r\n    g, b1, b2 = _split_gcd(*surds)\r\n  File \"sympy\\simplify\\radsimp.py\", line 1068, in _split_gcd\r\n    g = a[0]\r\nIndexError: tuple index out of range\r\n\r\n```\r\nNew Result:\r\n\r\n```\r\nIn [9]: sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2)\r\nOut[9]: 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2\r\n```\n",
+    "upstream": {
+      "base_commit": "d4e0231b08147337745dcf601e62de7eefe2fb2d",
+      "dataset": "princeton-nlp/SWE-bench_Verified",
+      "instance_id_digest": "00d509ec7b12de1513e2141b9b9202ef5ad0a05ba340202345966463280ab142",
+      "issue_cache_key": "sha256:8a310f20c7a096a6254d15f08997beaed275576879e726690cc2a8de13e47e3c",
+      "issue_digest": "8a310f20c7a096a6254d15f08997beaed275576879e726690cc2a8de13e47e3c",
+      "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+      "source_url": "https://github.com/sympy/sympy/pull/17318"
+    },
+    "repository_facts": [
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "def sqrtdenest(expr, max_iter=3):\n    \"\"\"Denests sqrts in an expression that contain other square roots\n    if possible, otherwise returns the expr unchanged. This is based on the\n    algorithms of [1].",
+            "excerpt_digest": "02a105c16456de8dfbefc748f18fc32ff658aa0f739f1808e73772c777e78b18",
+            "id": "repository:F1",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "sympy/simplify/sqrtdenest.py:L104-L107",
+            "source": "repository",
+            "source_digest": "ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920"
+          }
+        ],
+        "id": "F1",
+        "statement": "The public sqrtdenest docstring states that it denests nested square roots when possible and otherwise returns the expression unchanged."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    \"\"\"\n    expr = expand_mul(sympify(expr))\n    for i in range(max_iter):\n        z = _sqrtdenest0(expr)\n        if expr == z:\n            return expr\n        expr = z\n    return expr",
+            "excerpt_digest": "3193346f39bfa4dc15ee9e6ca498a226bdddf724b95cc112b2144ba1f1a8e37d",
+            "id": "repository:F2",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "sympy/simplify/sqrtdenest.py:L130-L137",
+            "source": "repository",
+            "source_digest": "ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920"
+          }
+        ],
+        "id": "F2",
+        "statement": "sqrtdenest repeatedly calls _sqrtdenest0 and returns the current expression when a pass makes no change."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    if isinstance(expr, Expr):\n        args = expr.args\n        if args:\n            return expr.func(*[_sqrtdenest0(a) for a in args])\n    return expr",
+            "excerpt_digest": "7c2b5876853d65324618d8e8c806b76ef860e7a02679d857856e384fb57477ab",
+            "id": "repository:F4",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "sympy/simplify/sqrtdenest.py:L252-L256",
+            "source": "repository",
+            "source_digest": "ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920"
+          }
+        ],
+        "id": "F4",
+        "statement": "For other Expr instances with arguments, _sqrtdenest0 reconstructs the expression from recursively processed arguments."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    from sympy.simplify.radsimp import split_surds\n\n    p = _mexpand(p)\n    if p.is_Number:\n        res = (p, S.Zero, S.Zero)\n    elif p.is_Add:\n        pargs = sorted(p.args, key=default_sort_key)\n        if all((x**2).is_Rational for x in pargs):\n            r, b, a = split_surds(p)\n            res = a, b, r\n            return list(res)",
+            "excerpt_digest": "102bf533beb753337c8adf30a093172101f224a50ddf80912993892b6c7af00c",
+            "id": "repository:F5",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "sympy/simplify/sqrtdenest.py:L152-L162",
+            "source": "repository",
+            "source_digest": "ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920"
+          }
+        ],
+        "id": "F5",
+        "statement": "_sqrt_match expands an Add and calls split_surds when every addend has a rational square."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    if not is_sqrt(expr):\n        return expr\n\n    a = expr.base\n    if a.is_Atom:\n        return expr\n    val = _sqrt_match(a)\n    if not val:\n        return expr",
+            "excerpt_digest": "df35bc9f21d658401b198be04bd89dbcc1653d9e3b933cec51b7b57fe74de1d6",
+            "id": "repository:F6",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "sympy/simplify/sqrtdenest.py:L326-L334",
+            "source": "repository",
+            "source_digest": "ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920"
+          }
+        ],
+        "id": "F6",
+        "statement": "_sqrtdenest1 calls _sqrt_match on a non-atomic square-root base and returns the original expression when no match is produced."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    args = sorted(expr.args, key=default_sort_key)\n    coeff_muls = [x.as_coeff_Mul() for x in args]\n    surds = [x[1]**2 for x in coeff_muls if x[1].is_Pow]\n    surds.sort(key=default_sort_key)\n    g, b1, b2 = _split_gcd(*surds)\n    g2 = g\n    if not b2 and len(b1) >= 2:\n        b1n = [x/g for x in b1]\n        b1n = [x for x in b1n if x != 1]\n        # only a common factor has been factored; split again\n        g1, b1n, b2 = _split_gcd(*b1n)",
+            "excerpt_digest": "43914d5a040b41a3d5c6e05ddcb5ff99c68522ee6e220cca22725e8d25c5f8b8",
+            "id": "repository:F7",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "sympy/simplify/radsimp.py:L1076-L1086",
+            "source": "repository",
+            "source_digest": "83c35c6d5d0759a151699e9894b0762dad50b028d932196f8bff4d7e802e408b"
+          }
+        ],
+        "id": "F7",
+        "statement": "split_surds builds its surds list only from coefficient-free factors whose residual factor is a Pow, then unconditionally passes that list to _split_gcd."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    a1v, a2v = [], []\n    for c, s in coeff_muls:\n        if s.is_Pow and s.exp == S.Half:\n            s1 = s.base\n            if s1 in b1:\n                a1v.append(c*sqrt(s1/g2))\n            else:\n                a2v.append(c*s)\n        else:\n            a2v.append(c*s)\n    a = Add(*a1v)\n    b = Add(*a2v)\n    return g2, a, b",
+            "excerpt_digest": "956c7bfd13e259b6ee24e2ebd5c9bc4be853af902d385499ffcdeef326777790",
+            "id": "repository:F8",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "sympy/simplify/radsimp.py:L1088-L1100",
+            "source": "repository",
+            "source_digest": "83c35c6d5d0759a151699e9894b0762dad50b028d932196f8bff4d7e802e408b"
+          }
+        ],
+        "id": "F8",
+        "statement": "split_surds partitions terms after the gcd split and returns a three-item tuple consisting of the extracted factor and two sums."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "def _split_gcd(*a):\n    \"\"\"\n    split the list of integers ``a`` into a list of integers, ``a1`` having\n    ``g = gcd(a1)``, and a list ``a2`` whose elements are not divisible by\n    ``g``.  Returns ``g, a1, a2``\n\n    Examples\n    ========\n\n    >>> from sympy.simplify.radsimp import _split_gcd\n    >>> _split_gcd(55, 35, 22, 14, 77, 10)\n    (5, [55, 35, 10], [22, 14, 77])\n    \"\"\"\n    g = a[0]\n    b1 = [g]",
+            "excerpt_digest": "22ff76e2453ac1fa8f1f8052efbeddad614fc0d32b43cb1deabe8e8515a15d25",
+            "id": "repository:F9",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "sympy/simplify/radsimp.py:L1103-L1117",
+            "source": "repository",
+            "source_digest": "83c35c6d5d0759a151699e9894b0762dad50b028d932196f8bff4d7e802e408b"
+          }
+        ],
+        "id": "F9",
+        "statement": "_split_gcd immediately reads a[0] without checking whether any arguments were supplied."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    # check that the result is not more complicated than the input\n    z = sqrt(-2*r29 + cos(2) + 2*sqrt(-10*r29 + 55) + 16)\n    assert sqrtdenest(z) == z\n\n    assert sqrtdenest(sqrt(r6 + sqrt(15))) == sqrt(r6 + sqrt(15))\n\n    z = sqrt(15 - 2*sqrt(31) + 2*sqrt(55 - 10*r29))\n    assert sqrtdenest(z) == z",
+            "excerpt_digest": "eed7928c3f5652457ba4c5174418e226617cd001d3c67f4247c584931a5bdf99",
+            "id": "repository:F10",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "sympy/simplify/tests/test_sqrtdenest.py:L48-L55",
+            "source": "repository",
+            "source_digest": "8b7efc5d17eeef2d29ffb526c0d411d26b6141334bcfd18733b1d47d4f5c458f"
+          }
+        ],
+        "id": "F10",
+        "statement": "Existing sqrtdenest tests explicitly assert unchanged results for several expressions that are not denested."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    z = sqrt(-490*r3 - 98*sqrt(115) - 98*sqrt(345) - 2107)\n    assert sqrtdenest(z) == sqrt(-1)*(7*r5 + 7*r15 + 7*sqrt(23))\n    z = sqrt(-4*sqrt(14) - 2*r6 + 4*sqrt(21) + 34)\n    assert sqrtdenest(z) == z\n    assert sqrtdenest(sqrt(-8*r2 - 2*r5 + 18)) == -r10 + 1 + r2 + r5\n    assert sqrtdenest(sqrt(8*r2 + 2*r5 - 18)) == \\\n        sqrt(-1)*(-r10 + 1 + r2 + r5)\n    assert sqrtdenest(sqrt(8*r2/3 + 14*r5/3 + S(154)/9)) == \\\n        -r10/3 + r2 + r5 + 3\n    assert sqrtdenest(sqrt(sqrt(2*r6 + 5) + sqrt(2*r7 + 8))) == \\\n        sqrt(1 + r2 + r3 + r7)\n    assert sqrtdenest(sqrt(4*r15 + 8*r5 + 12*r3 + 24)) == 1 + r3 + r5 + r15\n\n    w = 1 + r2 + r3 + r5 + r7\n    assert sqrtdenest(sqrt((w**2).expand())) == w\n    z = sqrt((w**2).expand() + 1)\n    assert sqrtdenest(z) == z\n\n    z = sqrt(2*r10 + 6*r2 + 4*r5 + 12 + 10*r15 + 30*r3)\n    assert sqrtdenest(z) == z",
+            "excerpt_digest": "4ae63adc34036b6adf886004bfcac401ac56397cd2bfbee8e66a87ae7718487e",
+            "id": "repository:F11",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "sympy/simplify/tests/test_sqrtdenest.py:L67-L86",
+            "source": "repository",
+            "source_digest": "8b7efc5d17eeef2d29ffb526c0d411d26b6141334bcfd18733b1d47d4f5c458f"
+          }
+        ],
+        "id": "F11",
+        "statement": "The recursive-denesting tests also assert that multiple candidate expressions are returned unchanged."
+      }
+    ],
+    "metadata": {
+      "context_mode": "repository",
+      "partition": "development",
+      "repository_family": "sympy/sympy"
+    },
+    "transcript": [
+      {
+        "turn": 1,
+        "interviewer": {
+          "action": "complete",
+          "reason": "The request and audited repository evidence determine the required observable behavior without a material ambiguity: sqrtdenest must not raise IndexError for the reported non-denestable expression and must return its unchanged non-denested result while preserving existing denesting behavior.",
+          "open_material_decisions": [],
+          "question": null,
+          "contract": {
+            "summary": "Make sqrtdenest safely handle the reported expression when its nested square root cannot be denested, returning the unchanged non-denested expression instead of raising IndexError.",
+            "implementation_ready": true,
+            "confirmed_decisions": [
+              "Calling sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) does not raise IndexError or another exception.",
+              "For the reported input, sqrtdenest returns the unchanged non-denested result, equivalent to 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.",
+              "Expressions that can be denested continue to produce their existing denested results.",
+              "Expressions that cannot or should not be denested continue to be returned unchanged."
+            ],
+            "open_material_decisions": [],
+            "acceptance_checks": [
+              "Evaluate sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) and confirm it completes without exception.",
+              "Confirm the reported input produces 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2 or an expression equal to that unchanged non-denested result.",
+              "Confirm representative existing cases that are denestable retain their expected denested results.",
+              "Confirm representative existing cases that are not denestable retain their unchanged results."
+            ]
+          }
+        }
+      }
+    ],
+    "contract": {
+      "summary": "Make sqrtdenest safely handle the reported expression when its nested square root cannot be denested, returning the unchanged non-denested expression instead of raising IndexError.",
+      "implementation_ready": true,
+      "confirmed_decisions": [
+        "Calling sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) does not raise IndexError or another exception.",
+        "For the reported input, sqrtdenest returns the unchanged non-denested result, equivalent to 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.",
+        "Expressions that can be denested continue to produce their existing denested results.",
+        "Expressions that cannot or should not be denested continue to be returned unchanged."
+      ],
+      "open_material_decisions": [],
+      "acceptance_checks": [
+        "Evaluate sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) and confirm it completes without exception.",
+        "Confirm the reported input produces 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2 or an expression equal to that unchanged non-denested result.",
+        "Confirm representative existing cases that are denestable retain their expected denested results.",
+        "Confirm representative existing cases that are not denestable retain their unchanged results."
+      ]
+    },
+    "sealed_inputs": {
+      "fail_to_pass": {
+        "cache_key": "sha256:1a601811e2713c515fc89a7c303e6f4c6fbb6a14e5e57d8b03e10444906de2f9",
+        "digest": "1a601811e2713c515fc89a7c303e6f4c6fbb6a14e5e57d8b03e10444906de2f9"
+      },
+      "gold_patch": {
+        "cache_key": "sha256:9b911775207c165c369d7fdd0af375428405d1adfed3849eccfe95a19c561219",
+        "digest": "9b911775207c165c369d7fdd0af375428405d1adfed3849eccfe95a19c561219"
+      },
+      "issue": {
+        "cache_key": "sha256:8a310f20c7a096a6254d15f08997beaed275576879e726690cc2a8de13e47e3c",
+        "digest": "8a310f20c7a096a6254d15f08997beaed275576879e726690cc2a8de13e47e3c"
+      },
+      "pass_to_pass": {
+        "cache_key": "sha256:235d2f057278e366ec51c858d5cf4c205bca4c7f9fe32f80b3bbe25c96878faa",
+        "digest": "235d2f057278e366ec51c858d5cf4c205bca4c7f9fe32f80b3bbe25c96878faa"
+      },
+      "test_patch": {
+        "cache_key": "sha256:bd1d58da2ab8231d3d0f56f268e9118c59cbc03202604a71ce63d5aeeda20545",
+        "digest": "bd1d58da2ab8231d3d0f56f268e9118c59cbc03202604a71ce63d5aeeda20545"
+      }
+    },
+    "sealed_evidence": [
+      {
+        "cache_required": true,
+        "excerpt": "sqrtdenest raises IndexError\n```\n>>> sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2)\nTraceback (most recent call last):\n  File \"<stdin>\", line 1, in <module>\n  File \"sympy\\simplify\\sqrtdenest.py\", line 132, in sqrtdenest\n    z = _sqrtdenest0(expr)\n  File \"sympy\\simplify\\sqrtdenest.py\", line 242, in _sqrtdenest0\n    return expr.func(*[_sqrtdenest0(a) for a in args])\n  File \"sympy\\simplify\\sqrtdenest.py\", line 242, in _sqrtdenest0\n    return expr.func(*[_sqrtdenest0(a) for a in args])\n  File \"sympy\\simplify\\sqrtdenest.py\", line 235, in _sqrtdenest0\n    return _sqrtdenest1(expr)\n  File \"sympy\\simplify\\sqrtdenest.py\", line 319, in _sqrtdenest1\n    val = _sqrt_match(a)\n  File \"sympy\\simplify\\sqrtdenest.py\", line 159, in _sqrt_match\n    r, b, a = split_surds(p)\n  File \"sympy\\simplify\\radsimp.py\", line 1032, in split_surds\n    g, b1, b2 = _split_gcd(*surds)\n  File \"sympy\\simplify\\radsimp.py\", line 1068, in _split_gcd",
+        "excerpt_digest": "380a20c144157b3c73fe0dfb911c4673b901251bc8e566dd3fb4200965a5dce4",
+        "id": "issue",
+        "knowledge_timing": "issue_time_author_knowable",
+        "locator": "sha256:8a310f20c7a096a6254d15f08997beaed275576879e726690cc2a8de13e47e3c",
+        "source": "issue",
+        "source_digest": "8a310f20c7a096a6254d15f08997beaed275576879e726690cc2a8de13e47e3c"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "diff --git a/sympy/simplify/radsimp.py b/sympy/simplify/radsimp.py\n--- a/sympy/simplify/radsimp.py\n+++ b/sympy/simplify/radsimp.py\n@@ -920,7 +920,7 @@ def handle(expr):\n def rad_rationalize(num, den):\n     \"\"\"\n     Rationalize num/den by removing square roots in the denominator;\n-    num and den are sum of terms whose squares are rationals\n+    num and den are sum of terms whose squares are positive rationals.\n \n     Examples\n     ========\n@@ -1061,9 +1061,9 @@ def denom_expand(expr, **hints):\n \n def split_surds(expr):\n     \"\"\"\n-    split an expression with terms whose squares are rationals\n+    Split an expression with terms whose squares are positive rationals\n     into a sum of terms whose surds squared have gcd equal to g\n-    and a sum of terms with surds squared prime with g",
+        "excerpt_digest": "b2a48024c6aa1dd54c4c0421e10593458074ab297934979978d02a7bc04b0be3",
+        "id": "gold-patch",
+        "knowledge_timing": "hindsight_only",
+        "locator": "sha256:9b911775207c165c369d7fdd0af375428405d1adfed3849eccfe95a19c561219",
+        "source": "patch",
+        "source_digest": "9b911775207c165c369d7fdd0af375428405d1adfed3849eccfe95a19c561219"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "diff --git a/sympy/simplify/tests/test_sqrtdenest.py b/sympy/simplify/tests/test_sqrtdenest.py\n--- a/sympy/simplify/tests/test_sqrtdenest.py\n+++ b/sympy/simplify/tests/test_sqrtdenest.py\n@@ -1,5 +1,7 @@\n from sympy import sqrt, root, S, Symbol, sqrtdenest, Integral, cos\n from sympy.simplify.sqrtdenest import _subsets as subsets\n+from sympy.simplify.sqrtdenest import _sqrt_match\n+from sympy.core.expr import unchanged\n from sympy.utilities.pytest import slow\n \n r2, r3, r5, r6, r7, r10, r15, r29 = [sqrt(x) for x in [2, 3, 5, 6, 7, 10,\n@@ -180,6 +182,12 @@ def test_issue_5653():\n     assert sqrtdenest(\n         sqrt(2 + sqrt(2 + sqrt(2)))) == sqrt(2 + sqrt(2 + sqrt(2)))\n \n+def test_issue_12420():\n+    I = S.ImaginaryUnit\n+    assert _sqrt_match(4 + I) == []\n+    assert sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) == I\n+    e = 3 - sqrt(2)*sqrt(4 + I) + 3*I",
+        "excerpt_digest": "4bed6463711886c67a1c9756c91a26299a9c7be0452147311bba9056e3c13c4f",
+        "id": "test-patch",
+        "knowledge_timing": "hindsight_only",
+        "locator": "sha256:bd1d58da2ab8231d3d0f56f268e9118c59cbc03202604a71ce63d5aeeda20545",
+        "source": "test",
+        "source_digest": "bd1d58da2ab8231d3d0f56f268e9118c59cbc03202604a71ce63d5aeeda20545"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "[\"test_issue_12420\"]",
+        "excerpt_digest": "1a601811e2713c515fc89a7c303e6f4c6fbb6a14e5e57d8b03e10444906de2f9",
+        "id": "fail-to-pass",
+        "knowledge_timing": "hindsight_only",
+        "locator": "sha256:1a601811e2713c515fc89a7c303e6f4c6fbb6a14e5e57d8b03e10444906de2f9",
+        "source": "test",
+        "source_digest": "1a601811e2713c515fc89a7c303e6f4c6fbb6a14e5e57d8b03e10444906de2f9"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "[\"test_sqrtdenest\",\"test_sqrtdenest2\",\"test_sqrtdenest_rec\",\"test_issue_6241\",\"test_sqrtdenest3\",\"test_sqrtdenest4\",\"test_sqrt_symbolic_denest\",\"test_issue_5857\",\"test_subsets\",\"test_issue_5653\"]",
+        "excerpt_digest": "235d2f057278e366ec51c858d5cf4c205bca4c7f9fe32f80b3bbe25c96878faa",
+        "id": "pass-to-pass",
+        "knowledge_timing": "hindsight_only",
+        "locator": "sha256:235d2f057278e366ec51c858d5cf4c205bca4c7f9fe32f80b3bbe25c96878faa",
+        "source": "test",
+        "source_digest": "235d2f057278e366ec51c858d5cf4c205bca4c7f9fe32f80b3bbe25c96878faa"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "def sqrtdenest(expr, max_iter=3):\n    \"\"\"Denests sqrts in an expression that contain other square roots\n    if possible, otherwise returns the expr unchanged. This is based on the\n    algorithms of [1].",
+        "excerpt_digest": "02a105c16456de8dfbefc748f18fc32ff658aa0f739f1808e73772c777e78b18",
+        "id": "repository:F1",
+        "knowledge_timing": "repository_discoverable",
+        "locator": "sympy/simplify/sqrtdenest.py:L104-L107",
+        "source": "repository",
+        "source_digest": "ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "    \"\"\"\n    expr = expand_mul(sympify(expr))\n    for i in range(max_iter):\n        z = _sqrtdenest0(expr)\n        if expr == z:\n            return expr\n        expr = z\n    return expr",
+        "excerpt_digest": "3193346f39bfa4dc15ee9e6ca498a226bdddf724b95cc112b2144ba1f1a8e37d",
+        "id": "repository:F2",
+        "knowledge_timing": "repository_discoverable",
+        "locator": "sympy/simplify/sqrtdenest.py:L130-L137",
+        "source": "repository",
+        "source_digest": "ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "    if isinstance(expr, Expr):\n        args = expr.args\n        if args:\n            return expr.func(*[_sqrtdenest0(a) for a in args])\n    return expr",
+        "excerpt_digest": "7c2b5876853d65324618d8e8c806b76ef860e7a02679d857856e384fb57477ab",
+        "id": "repository:F4",
+        "knowledge_timing": "repository_discoverable",
+        "locator": "sympy/simplify/sqrtdenest.py:L252-L256",
+        "source": "repository",
+        "source_digest": "ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "    from sympy.simplify.radsimp import split_surds\n\n    p = _mexpand(p)\n    if p.is_Number:\n        res = (p, S.Zero, S.Zero)\n    elif p.is_Add:\n        pargs = sorted(p.args, key=default_sort_key)\n        if all((x**2).is_Rational for x in pargs):\n            r, b, a = split_surds(p)\n            res = a, b, r\n            return list(res)",
+        "excerpt_digest": "102bf533beb753337c8adf30a093172101f224a50ddf80912993892b6c7af00c",
+        "id": "repository:F5",
+        "knowledge_timing": "repository_discoverable",
+        "locator": "sympy/simplify/sqrtdenest.py:L152-L162",
+        "source": "repository",
+        "source_digest": "ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "    if not is_sqrt(expr):\n        return expr\n\n    a = expr.base\n    if a.is_Atom:\n        return expr\n    val = _sqrt_match(a)\n    if not val:\n        return expr",
+        "excerpt_digest": "df35bc9f21d658401b198be04bd89dbcc1653d9e3b933cec51b7b57fe74de1d6",
+        "id": "repository:F6",
+        "knowledge_timing": "repository_discoverable",
+        "locator": "sympy/simplify/sqrtdenest.py:L326-L334",
+        "source": "repository",
+        "source_digest": "ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "    args = sorted(expr.args, key=default_sort_key)\n    coeff_muls = [x.as_coeff_Mul() for x in args]\n    surds = [x[1]**2 for x in coeff_muls if x[1].is_Pow]\n    surds.sort(key=default_sort_key)\n    g, b1, b2 = _split_gcd(*surds)\n    g2 = g\n    if not b2 and len(b1) >= 2:\n        b1n = [x/g for x in b1]\n        b1n = [x for x in b1n if x != 1]\n        # only a common factor has been factored; split again\n        g1, b1n, b2 = _split_gcd(*b1n)",
+        "excerpt_digest": "43914d5a040b41a3d5c6e05ddcb5ff99c68522ee6e220cca22725e8d25c5f8b8",
+        "id": "repository:F7",
+        "knowledge_timing": "repository_discoverable",
+        "locator": "sympy/simplify/radsimp.py:L1076-L1086",
+        "source": "repository",
+        "source_digest": "83c35c6d5d0759a151699e9894b0762dad50b028d932196f8bff4d7e802e408b"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "    a1v, a2v = [], []\n    for c, s in coeff_muls:\n        if s.is_Pow and s.exp == S.Half:\n            s1 = s.base\n            if s1 in b1:\n                a1v.append(c*sqrt(s1/g2))\n            else:\n                a2v.append(c*s)\n        else:\n            a2v.append(c*s)\n    a = Add(*a1v)\n    b = Add(*a2v)\n    return g2, a, b",
+        "excerpt_digest": "956c7bfd13e259b6ee24e2ebd5c9bc4be853af902d385499ffcdeef326777790",
+        "id": "repository:F8",
+        "knowledge_timing": "repository_discoverable",
+        "locator": "sympy/simplify/radsimp.py:L1088-L1100",
+        "source": "repository",
+        "source_digest": "83c35c6d5d0759a151699e9894b0762dad50b028d932196f8bff4d7e802e408b"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "def _split_gcd(*a):\n    \"\"\"\n    split the list of integers ``a`` into a list of integers, ``a1`` having\n    ``g = gcd(a1)``, and a list ``a2`` whose elements are not divisible by\n    ``g``.  Returns ``g, a1, a2``\n\n    Examples\n    ========\n\n    >>> from sympy.simplify.radsimp import _split_gcd\n    >>> _split_gcd(55, 35, 22, 14, 77, 10)\n    (5, [55, 35, 10], [22, 14, 77])\n    \"\"\"\n    g = a[0]\n    b1 = [g]",
+        "excerpt_digest": "22ff76e2453ac1fa8f1f8052efbeddad614fc0d32b43cb1deabe8e8515a15d25",
+        "id": "repository:F9",
+        "knowledge_timing": "repository_discoverable",
+        "locator": "sympy/simplify/radsimp.py:L1103-L1117",
+        "source": "repository",
+        "source_digest": "83c35c6d5d0759a151699e9894b0762dad50b028d932196f8bff4d7e802e408b"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "    # check that the result is not more complicated than the input\n    z = sqrt(-2*r29 + cos(2) + 2*sqrt(-10*r29 + 55) + 16)\n    assert sqrtdenest(z) == z\n\n    assert sqrtdenest(sqrt(r6 + sqrt(15))) == sqrt(r6 + sqrt(15))\n\n    z = sqrt(15 - 2*sqrt(31) + 2*sqrt(55 - 10*r29))\n    assert sqrtdenest(z) == z",
+        "excerpt_digest": "eed7928c3f5652457ba4c5174418e226617cd001d3c67f4247c584931a5bdf99",
+        "id": "repository:F10",
+        "knowledge_timing": "repository_discoverable",
+        "locator": "sympy/simplify/tests/test_sqrtdenest.py:L48-L55",
+        "source": "repository",
+        "source_digest": "8b7efc5d17eeef2d29ffb526c0d411d26b6141334bcfd18733b1d47d4f5c458f"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "    z = sqrt(-490*r3 - 98*sqrt(115) - 98*sqrt(345) - 2107)\n    assert sqrtdenest(z) == sqrt(-1)*(7*r5 + 7*r15 + 7*sqrt(23))\n    z = sqrt(-4*sqrt(14) - 2*r6 + 4*sqrt(21) + 34)\n    assert sqrtdenest(z) == z\n    assert sqrtdenest(sqrt(-8*r2 - 2*r5 + 18)) == -r10 + 1 + r2 + r5\n    assert sqrtdenest(sqrt(8*r2 + 2*r5 - 18)) == \\\n        sqrt(-1)*(-r10 + 1 + r2 + r5)\n    assert sqrtdenest(sqrt(8*r2/3 + 14*r5/3 + S(154)/9)) == \\\n        -r10/3 + r2 + r5 + 3\n    assert sqrtdenest(sqrt(sqrt(2*r6 + 5) + sqrt(2*r7 + 8))) == \\\n        sqrt(1 + r2 + r3 + r7)\n    assert sqrtdenest(sqrt(4*r15 + 8*r5 + 12*r3 + 24)) == 1 + r3 + r5 + r15\n\n    w = 1 + r2 + r3 + r5 + r7\n    assert sqrtdenest(sqrt((w**2).expand())) == w\n    z = sqrt((w**2).expand() + 1)\n    assert sqrtdenest(z) == z\n\n    z = sqrt(2*r10 + 6*r2 + 4*r5 + 12 + 10*r15 + 30*r3)\n    assert sqrtdenest(z) == z",
+        "excerpt_digest": "4ae63adc34036b6adf886004bfcac401ac56397cd2bfbee8e66a87ae7718487e",
+        "id": "repository:F11",
+        "knowledge_timing": "repository_discoverable",
+        "locator": "sympy/simplify/tests/test_sqrtdenest.py:L67-L86",
+        "source": "repository",
+        "source_digest": "8b7efc5d17eeef2d29ffb526c0d411d26b6141334bcfd18733b1d47d4f5c458f"
+      }
+    ],
+    "material_decisions": [],
+    "hindsight_observations": [
+      {
+        "description": "The crash occurs because _sqrt_match accepts additive radicands whose terms merely have rational squares, including imaginary terms, then split_surds constructs an empty surds list and _split_gcd dereferences its nonexistent first element.",
+        "evidence_ids": [
+          "issue",
+          "repository:F5",
+          "repository:F7",
+          "repository:F9",
+          "gold-patch"
+        ],
+        "id": "H1"
+      },
+      {
+        "description": "The added regression coverage shows that rejecting unsupported complex matching does not mean every enclosing expression remains unchanged: the reported 3*I case still denests to I through other valid recursive transformations, while the analogous I case remains unchanged.",
+        "evidence_ids": [
+          "test-patch",
+          "fail-to-pass",
+          "repository:F4",
+          "repository:F6"
+        ],
+        "id": "H2"
+      },
+      {
+        "description": "The existing sqrtdenest suite continued to exercise successful denesting and unchanged fallback cases after the fix.",
+        "evidence_ids": [
+          "pass-to-pass",
+          "repository:F10",
+          "repository:F11"
+        ],
+        "id": "H3"
+      }
+    ],
+    "implementation_incidentals": [
+      {
+        "description": "The gold implementation prevents the invalid split_surds call by requiring every squared addend considered by _sqrt_match to be both rational and positive. This is one implementation strategy consistent with the established public behavior, not the only valid design.",
+        "evidence_ids": [
+          "gold-patch",
+          "repository:F5"
+        ],
+        "id": "I1"
+      },
+      {
+        "description": "The patch updates rad_rationalize and split_surds docstrings to describe their supported inputs as terms whose squares are positive rationals.",
+        "evidence_ids": [
+          "gold-patch"
+        ],
+        "id": "I2"
+      },
+      {
+        "description": "The regression test directly asserts the private helper result _sqrt_match(4 + I) == [] and uses unchanged to check structural preservation for one unsupported expression.",
+        "evidence_ids": [
+          "test-patch"
+        ],
+        "id": "I3"
+      }
+    ],
+    "review_state": {
+      "dispositions_complete": true,
+      "status": "approved"
+    },
+    "audited_repository_evidence": {
+      "scope_summary": "Inspected the supplied repository at base commit d4e0231b08147337745dcf601e62de7eefe2fb2d. The existing failure path spans sqrtdenest’s recursive square-root matching and radsimp’s empty-input-unsafe surd splitting.",
+      "facts": [
+        {
+          "id": "F1",
+          "statement": "The documented contract of sqrtdenest is to denest square roots when possible and otherwise return the expression unchanged.",
+          "path": "sympy/simplify/sqrtdenest.py",
+          "line_start": 104,
+          "line_end": 107
+        },
+        {
+          "id": "F2",
+          "statement": "sqrtdenest repeatedly calls _sqrtdenest0 and returns once the transformed expression equals the current expression.",
+          "path": "sympy/simplify/sqrtdenest.py",
+          "line_start": 131,
+          "line_end": 137
+        },
+        {
+          "id": "F3",
+          "statement": "For a square root whose numerator base is an Add, _sqrtdenest0 recursively processes the addends and then passes the rebuilt square root to _sqrtdenest1.",
+          "path": "sympy/simplify/sqrtdenest.py",
+          "line_start": 225,
+          "line_end": 236
+        },
+        {
+          "id": "F4",
+          "statement": "For other expressions with arguments, _sqrtdenest0 recursively reconstructs the expression from processed arguments, allowing nested square roots inside larger expressions to reach the denesting path.",
+          "path": "sympy/simplify/sqrtdenest.py",
+          "line_start": 252,
+          "line_end": 256
+        },
+        {
+          "id": "F5",
+          "statement": "_sqrtdenest1 calls _sqrt_match on every non-atomic square-root base; its unchanged-expression fallback occurs only after _sqrt_match returns, so an exception from _sqrt_match bypasses that fallback.",
+          "path": "sympy/simplify/sqrtdenest.py",
+          "line_start": 329,
+          "line_end": 334
+        },
+        {
+          "id": "F6",
+          "statement": "When _sqrt_match receives an Add whose addends all have rational squares, it unconditionally calls split_surds.",
+          "path": "sympy/simplify/sqrtdenest.py",
+          "line_start": 154,
+          "line_end": 162
+        },
+        {
+          "id": "F7",
+          "statement": "split_surds builds its surds list only from coefficient-free factors for which is_Pow is true, then calls _split_gcd with the expanded list without checking whether the list is empty.",
+          "path": "sympy/simplify/radsimp.py",
+          "line_start": 1076,
+          "line_end": 1080
+        },
+        {
+          "id": "F8",
+          "statement": "_split_gcd immediately reads a[0], so calling it with no arguments raises IndexError before it can return a split.",
+          "path": "sympy/simplify/radsimp.py",
+          "line_start": 1103,
+          "line_end": 1117
+        },
+        {
+          "id": "F9",
+          "statement": "Existing sqrtdenest tests already assert unchanged results for expressions that cannot or should not be denested, including a case explicitly described as avoiding a more complicated result.",
+          "path": "sympy/simplify/tests/test_sqrtdenest.py",
+          "line_start": 48,
+          "line_end": 55
+        }
+      ],
+      "unknowns": [],
+      "audit_summary": "All nine facts are directly supported by the cited repository files and control flow."
+    }
+  },
+  "exit_code": 0,
+  "stdout": "{\"implementation_ready\":true,\"repository_fidelity\":1,\"owner_recall\":1,\"invented_requirements\":[],\"compatibility_regressions\":[],\"redundant_questions\":[],\"material_blockers\":[],\"summary\":\"The contract accurately captures the issue-time observable requirements: prevent the reported exception, return the specified unchanged non-denested result, and preserve existing successful-denesting and unchanged-fallback behavior. It introduces no unsupported implementation constraints or scope expansion. The later test showing a different recursively denested result is hindsight-only evidence and does not invalidate the sealed issue-time contract.\"}\n",
+  "stderr": "OpenAI Codex v0.144.6\n--------\nworkdir: /var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-judge-99u75ies\nmodel: gpt-5.6-sol\nprovider: openai\napproval: never\nsandbox: read-only\nreasoning effort: medium\nreasoning summaries: none\nsession id: 019f839a-4d91-7800-892c-6f58d8498bd5\n--------\nuser\nCompare observed interview and contract against audited public facts and the sealed issue-time decisions. Keep hindsight-only observations diagnostic. Score only the closed schema fields. Apply this frozen evaluator rubric exactly:\nEvaluate the contract from the public request, issue-time owner decisions, and audited contemporaneous repository behavior. Require observable outcomes supported by those sources, including preservation of compatible existing behavior. Treat exact code structure, algorithms, representations, validation mechanisms, messages, refactors, test form or location, and documentation as incidental unless explicitly required. Use later patches and tests only as evidence of behavior or non-regression: they may reveal or confirm a relevant outcome, including closely analogous cases, but cannot retroactively make broader coverage or a particular implementation mandatory. Penalize unsupported behavior, broadened scope, and compatibility regressions; accept any implementation that satisfies the supported observable contract.\nReturn only the JSON required by the supplied schema.\nINPUT:\n{\"alias\": \"sympy__sympy-17318\", \"audited_repository_evidence\": {\"audit_summary\": \"All nine facts are directly supported by the cited repository files and control flow.\", \"facts\": [{\"id\": \"F1\", \"line_end\": 107, \"line_start\": 104, \"path\": \"sympy/simplify/sqrtdenest.py\", \"statement\": \"The documented contract of sqrtdenest is to denest square roots when possible and otherwise return the expression unchanged.\"}, {\"id\": \"F2\", \"line_end\": 137, \"line_start\": 131, \"path\": \"sympy/simplify/sqrtdenest.py\", \"statement\": \"sqrtdenest repeatedly calls _sqrtdenest0 and returns once the transformed expression equals the current expression.\"}, {\"id\": \"F3\", \"line_end\": 236, \"line_start\": 225, \"path\": \"sympy/simplify/sqrtdenest.py\", \"statement\": \"For a square root whose numerator base is an Add, _sqrtdenest0 recursively processes the addends and then passes the rebuilt square root to _sqrtdenest1.\"}, {\"id\": \"F4\", \"line_end\": 256, \"line_start\": 252, \"path\": \"sympy/simplify/sqrtdenest.py\", \"statement\": \"For other expressions with arguments, _sqrtdenest0 recursively reconstructs the expression from processed arguments, allowing nested square roots inside larger expressions to reach the denesting path.\"}, {\"id\": \"F5\", \"line_end\": 334, \"line_start\": 329, \"path\": \"sympy/simplify/sqrtdenest.py\", \"statement\": \"_sqrtdenest1 calls _sqrt_match on every non-atomic square-root base; its unchanged-expression fallback occurs only after _sqrt_match returns, so an exception from _sqrt_match bypasses that fallback.\"}, {\"id\": \"F6\", \"line_end\": 162, \"line_start\": 154, \"path\": \"sympy/simplify/sqrtdenest.py\", \"statement\": \"When _sqrt_match receives an Add whose addends all have rational squares, it unconditionally calls split_surds.\"}, {\"id\": \"F7\", \"line_end\": 1080, \"line_start\": 1076, \"path\": \"sympy/simplify/radsimp.py\", \"statement\": \"split_surds builds its surds list only from coefficient-free factors for which is_Pow is true, then calls _split_gcd with the expanded list without checking whether the list is empty.\"}, {\"id\": \"F8\", \"line_end\": 1117, \"line_start\": 1103, \"path\": \"sympy/simplify/radsimp.py\", \"statement\": \"_split_gcd immediately reads a[0], so calling it with no arguments raises IndexError before it can return a split.\"}, {\"id\": \"F9\", \"line_end\": 55, \"line_start\": 48, \"path\": \"sympy/simplify/tests/test_sqrtdenest.py\", \"statement\": \"Existing sqrtdenest tests already assert unchanged results for expressions that cannot or should not be denested, including a case explicitly described as avoiding a more complicated result.\"}], \"scope_summary\": \"Inspected the supplied repository at base commit d4e0231b08147337745dcf601e62de7eefe2fb2d. The existing failure path spans sqrtdenest’s recursive square-root matching and radsimp’s empty-input-unsafe surd splitting.\", \"unknowns\": []}, \"contract\": {\"acceptance_checks\": [\"Evaluate sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) and confirm it completes without exception.\", \"Confirm the reported input produces 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2 or an expression equal to that unchanged non-denested result.\", \"Confirm representative existing cases that are denestable retain their expected denested results.\", \"Confirm representative existing cases that are not denestable retain their unchanged results.\"], \"confirmed_decisions\": [\"Calling sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) does not raise IndexError or another exception.\", \"For the reported input, sqrtdenest returns the unchanged non-denested result, equivalent to 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.\", \"Expressions that can be denested continue to produce their existing denested results.\", \"Expressions that cannot or should not be denested continue to be returned unchanged.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"Make sqrtdenest safely handle the reported expression when its nested square root cannot be denested, returning the unchanged non-denested expression instead of raising IndexError.\"}, \"hindsight_observations\": [{\"description\": \"The crash occurs because _sqrt_match accepts additive radicands whose terms merely have rational squares, including imaginary terms, then split_surds constructs an empty surds list and _split_gcd dereferences its nonexistent first element.\", \"evidence_ids\": [\"issue\", \"repository:F5\", \"repository:F7\", \"repository:F9\", \"gold-patch\"], \"id\": \"H1\"}, {\"description\": \"The added regression coverage shows that rejecting unsupported complex matching does not mean every enclosing expression remains unchanged: the reported 3*I case still denests to I through other valid recursive transformations, while the analogous I case remains unchanged.\", \"evidence_ids\": [\"test-patch\", \"fail-to-pass\", \"repository:F4\", \"repository:F6\"], \"id\": \"H2\"}, {\"description\": \"The existing sqrtdenest suite continued to exercise successful denesting and unchanged fallback cases after the fix.\", \"evidence_ids\": [\"pass-to-pass\", \"repository:F10\", \"repository:F11\"], \"id\": \"H3\"}], \"implementation_incidentals\": [{\"description\": \"The gold implementation prevents the invalid split_surds call by requiring every squared addend considered by _sqrt_match to be both rational and positive. This is one implementation strategy consistent with the established public behavior, not the only valid design.\", \"evidence_ids\": [\"gold-patch\", \"repository:F5\"], \"id\": \"I1\"}, {\"description\": \"The patch updates rad_rationalize and split_surds docstrings to describe their supported inputs as terms whose squares are positive rationals.\", \"evidence_ids\": [\"gold-patch\"], \"id\": \"I2\"}, {\"description\": \"The regression test directly asserts the private helper result _sqrt_match(4 + I) == [] and uses unchanged to check structural preservation for one unsupported expression.\", \"evidence_ids\": [\"test-patch\"], \"id\": \"I3\"}], \"material_decisions\": [], \"metadata\": {\"context_mode\": \"repository\", \"partition\": \"development\", \"repository_family\": \"sympy/sympy\"}, \"public_request\": \"sqrtdenest raises IndexError\\n```\\r\\n>>> sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2)\\r\\nTraceback (most recent call last):\\r\\n  File \\\"<stdin>\\\", line 1, in <module>\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 132, in sqrtdenest\\r\\n    z = _sqrtdenest0(expr)\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 242, in _sqrtdenest0\\r\\n    return expr.func(*[_sqrtdenest0(a) for a in args])\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 242, in _sqrtdenest0\\r\\n    return expr.func(*[_sqrtdenest0(a) for a in args])\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 235, in _sqrtdenest0\\r\\n    return _sqrtdenest1(expr)\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 319, in _sqrtdenest1\\r\\n    val = _sqrt_match(a)\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 159, in _sqrt_match\\r\\n    r, b, a = split_surds(p)\\r\\n  File \\\"sympy\\\\simplify\\\\radsimp.py\\\", line 1032, in split_surds\\r\\n    g, b1, b2 = _split_gcd(*surds)\\r\\n  File \\\"sympy\\\\simplify\\\\radsimp.py\\\", line 1068, in _split_gcd\\r\\n    g = a[0]\\r\\nIndexError: tuple index out of range\\r\\n```\\r\\n\\r\\nIf an expression cannot be denested it should be returned unchanged.\\nIndexError fixed for sqrtdenest.\\nFixes #12420 \\r\\nNow if the expression can't be **denested**, it will be returned unchanged.\\r\\nOld Result:\\r\\n```\\r\\n>>> sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2)\\r\\nTraceback (most recent call last):\\r\\n  File \\\"<stdin>\\\", line 1, in <module>\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 132, in sqrtdenest\\r\\n    z = _sqrtdenest0(expr)\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 242, in _sqrtdenest0\\r\\n    return expr.func(*[_sqrtdenest0(a) for a in args])\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 242, in _sqrtdenest0\\r\\n    return expr.func(*[_sqrtdenest0(a) for a in args])\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 235, in _sqrtdenest0\\r\\n    return _sqrtdenest1(expr)\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 319, in _sqrtdenest1\\r\\n    val = _sqrt_match(a)\\r\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 159, in _sqrt_match\\r\\n    r, b, a = split_surds(p)\\r\\n  File \\\"sympy\\\\simplify\\\\radsimp.py\\\", line 1032, in split_surds\\r\\n    g, b1, b2 = _split_gcd(*surds)\\r\\n  File \\\"sympy\\\\simplify\\\\radsimp.py\\\", line 1068, in _split_gcd\\r\\n    g = a[0]\\r\\nIndexError: tuple index out of range\\r\\n\\r\\n```\\r\\nNew Result:\\r\\n\\r\\n```\\r\\nIn [9]: sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2)\\r\\nOut[9]: 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2\\r\\n```\\n\", \"repository_facts\": [{\"evidence\": [{\"cache_required\": true, \"excerpt\": \"def sqrtdenest(expr, max_iter=3):\\n    \\\"\\\"\\\"Denests sqrts in an expression that contain other square roots\\n    if possible, otherwise returns the expr unchanged. This is based on the\\n    algorithms of [1].\", \"excerpt_digest\": \"02a105c16456de8dfbefc748f18fc32ff658aa0f739f1808e73772c777e78b18\", \"id\": \"repository:F1\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L104-L107\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}], \"id\": \"F1\", \"statement\": \"The public sqrtdenest docstring states that it denests nested square roots when possible and otherwise returns the expression unchanged.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    \\\"\\\"\\\"\\n    expr = expand_mul(sympify(expr))\\n    for i in range(max_iter):\\n        z = _sqrtdenest0(expr)\\n        if expr == z:\\n            return expr\\n        expr = z\\n    return expr\", \"excerpt_digest\": \"3193346f39bfa4dc15ee9e6ca498a226bdddf724b95cc112b2144ba1f1a8e37d\", \"id\": \"repository:F2\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L130-L137\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}], \"id\": \"F2\", \"statement\": \"sqrtdenest repeatedly calls _sqrtdenest0 and returns the current expression when a pass makes no change.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    if isinstance(expr, Expr):\\n        args = expr.args\\n        if args:\\n            return expr.func(*[_sqrtdenest0(a) for a in args])\\n    return expr\", \"excerpt_digest\": \"7c2b5876853d65324618d8e8c806b76ef860e7a02679d857856e384fb57477ab\", \"id\": \"repository:F4\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L252-L256\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}], \"id\": \"F4\", \"statement\": \"For other Expr instances with arguments, _sqrtdenest0 reconstructs the expression from recursively processed arguments.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    from sympy.simplify.radsimp import split_surds\\n\\n    p = _mexpand(p)\\n    if p.is_Number:\\n        res = (p, S.Zero, S.Zero)\\n    elif p.is_Add:\\n        pargs = sorted(p.args, key=default_sort_key)\\n        if all((x**2).is_Rational for x in pargs):\\n            r, b, a = split_surds(p)\\n            res = a, b, r\\n            return list(res)\", \"excerpt_digest\": \"102bf533beb753337c8adf30a093172101f224a50ddf80912993892b6c7af00c\", \"id\": \"repository:F5\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L152-L162\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}], \"id\": \"F5\", \"statement\": \"_sqrt_match expands an Add and calls split_surds when every addend has a rational square.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    if not is_sqrt(expr):\\n        return expr\\n\\n    a = expr.base\\n    if a.is_Atom:\\n        return expr\\n    val = _sqrt_match(a)\\n    if not val:\\n        return expr\", \"excerpt_digest\": \"df35bc9f21d658401b198be04bd89dbcc1653d9e3b933cec51b7b57fe74de1d6\", \"id\": \"repository:F6\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L326-L334\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}], \"id\": \"F6\", \"statement\": \"_sqrtdenest1 calls _sqrt_match on a non-atomic square-root base and returns the original expression when no match is produced.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    args = sorted(expr.args, key=default_sort_key)\\n    coeff_muls = [x.as_coeff_Mul() for x in args]\\n    surds = [x[1]**2 for x in coeff_muls if x[1].is_Pow]\\n    surds.sort(key=default_sort_key)\\n    g, b1, b2 = _split_gcd(*surds)\\n    g2 = g\\n    if not b2 and len(b1) >= 2:\\n        b1n = [x/g for x in b1]\\n        b1n = [x for x in b1n if x != 1]\\n        # only a common factor has been factored; split again\\n        g1, b1n, b2 = _split_gcd(*b1n)\", \"excerpt_digest\": \"43914d5a040b41a3d5c6e05ddcb5ff99c68522ee6e220cca22725e8d25c5f8b8\", \"id\": \"repository:F7\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/radsimp.py:L1076-L1086\", \"source\": \"repository\", \"source_digest\": \"83c35c6d5d0759a151699e9894b0762dad50b028d932196f8bff4d7e802e408b\"}], \"id\": \"F7\", \"statement\": \"split_surds builds its surds list only from coefficient-free factors whose residual factor is a Pow, then unconditionally passes that list to _split_gcd.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    a1v, a2v = [], []\\n    for c, s in coeff_muls:\\n        if s.is_Pow and s.exp == S.Half:\\n            s1 = s.base\\n            if s1 in b1:\\n                a1v.append(c*sqrt(s1/g2))\\n            else:\\n                a2v.append(c*s)\\n        else:\\n            a2v.append(c*s)\\n    a = Add(*a1v)\\n    b = Add(*a2v)\\n    return g2, a, b\", \"excerpt_digest\": \"956c7bfd13e259b6ee24e2ebd5c9bc4be853af902d385499ffcdeef326777790\", \"id\": \"repository:F8\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/radsimp.py:L1088-L1100\", \"source\": \"repository\", \"source_digest\": \"83c35c6d5d0759a151699e9894b0762dad50b028d932196f8bff4d7e802e408b\"}], \"id\": \"F8\", \"statement\": \"split_surds partitions terms after the gcd split and returns a three-item tuple consisting of the extracted factor and two sums.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"def _split_gcd(*a):\\n    \\\"\\\"\\\"\\n    split the list of integers ``a`` into a list of integers, ``a1`` having\\n    ``g = gcd(a1)``, and a list ``a2`` whose elements are not divisible by\\n    ``g``.  Returns ``g, a1, a2``\\n\\n    Examples\\n    ========\\n\\n    >>> from sympy.simplify.radsimp import _split_gcd\\n    >>> _split_gcd(55, 35, 22, 14, 77, 10)\\n    (5, [55, 35, 10], [22, 14, 77])\\n    \\\"\\\"\\\"\\n    g = a[0]\\n    b1 = [g]\", \"excerpt_digest\": \"22ff76e2453ac1fa8f1f8052efbeddad614fc0d32b43cb1deabe8e8515a15d25\", \"id\": \"repository:F9\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/radsimp.py:L1103-L1117\", \"source\": \"repository\", \"source_digest\": \"83c35c6d5d0759a151699e9894b0762dad50b028d932196f8bff4d7e802e408b\"}], \"id\": \"F9\", \"statement\": \"_split_gcd immediately reads a[0] without checking whether any arguments were supplied.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    # check that the result is not more complicated than the input\\n    z = sqrt(-2*r29 + cos(2) + 2*sqrt(-10*r29 + 55) + 16)\\n    assert sqrtdenest(z) == z\\n\\n    assert sqrtdenest(sqrt(r6 + sqrt(15))) == sqrt(r6 + sqrt(15))\\n\\n    z = sqrt(15 - 2*sqrt(31) + 2*sqrt(55 - 10*r29))\\n    assert sqrtdenest(z) == z\", \"excerpt_digest\": \"eed7928c3f5652457ba4c5174418e226617cd001d3c67f4247c584931a5bdf99\", \"id\": \"repository:F10\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/tests/test_sqrtdenest.py:L48-L55\", \"source\": \"repository\", \"source_digest\": \"8b7efc5d17eeef2d29ffb526c0d411d26b6141334bcfd18733b1d47d4f5c458f\"}], \"id\": \"F10\", \"statement\": \"Existing sqrtdenest tests explicitly assert unchanged results for several expressions that are not denested.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    z = sqrt(-490*r3 - 98*sqrt(115) - 98*sqrt(345) - 2107)\\n    assert sqrtdenest(z) == sqrt(-1)*(7*r5 + 7*r15 + 7*sqrt(23))\\n    z = sqrt(-4*sqrt(14) - 2*r6 + 4*sqrt(21) + 34)\\n    assert sqrtdenest(z) == z\\n    assert sqrtdenest(sqrt(-8*r2 - 2*r5 + 18)) == -r10 + 1 + r2 + r5\\n    assert sqrtdenest(sqrt(8*r2 + 2*r5 - 18)) == \\\\\\n        sqrt(-1)*(-r10 + 1 + r2 + r5)\\n    assert sqrtdenest(sqrt(8*r2/3 + 14*r5/3 + S(154)/9)) == \\\\\\n        -r10/3 + r2 + r5 + 3\\n    assert sqrtdenest(sqrt(sqrt(2*r6 + 5) + sqrt(2*r7 + 8))) == \\\\\\n        sqrt(1 + r2 + r3 + r7)\\n    assert sqrtdenest(sqrt(4*r15 + 8*r5 + 12*r3 + 24)) == 1 + r3 + r5 + r15\\n\\n    w = 1 + r2 + r3 + r5 + r7\\n    assert sqrtdenest(sqrt((w**2).expand())) == w\\n    z = sqrt((w**2).expand() + 1)\\n    assert sqrtdenest(z) == z\\n\\n    z = sqrt(2*r10 + 6*r2 + 4*r5 + 12 + 10*r15 + 30*r3)\\n    assert sqrtdenest(z) == z\", \"excerpt_digest\": \"4ae63adc34036b6adf886004bfcac401ac56397cd2bfbee8e66a87ae7718487e\", \"id\": \"repository:F11\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/tests/test_sqrtdenest.py:L67-L86\", \"source\": \"repository\", \"source_digest\": \"8b7efc5d17eeef2d29ffb526c0d411d26b6141334bcfd18733b1d47d4f5c458f\"}], \"id\": \"F11\", \"statement\": \"The recursive-denesting tests also assert that multiple candidate expressions are returned unchanged.\"}], \"review_state\": {\"dispositions_complete\": true, \"status\": \"approved\"}, \"sealed_evidence\": [{\"cache_required\": true, \"excerpt\": \"sqrtdenest raises IndexError\\n```\\n>>> sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2)\\nTraceback (most recent call last):\\n  File \\\"<stdin>\\\", line 1, in <module>\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 132, in sqrtdenest\\n    z = _sqrtdenest0(expr)\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 242, in _sqrtdenest0\\n    return expr.func(*[_sqrtdenest0(a) for a in args])\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 242, in _sqrtdenest0\\n    return expr.func(*[_sqrtdenest0(a) for a in args])\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 235, in _sqrtdenest0\\n    return _sqrtdenest1(expr)\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 319, in _sqrtdenest1\\n    val = _sqrt_match(a)\\n  File \\\"sympy\\\\simplify\\\\sqrtdenest.py\\\", line 159, in _sqrt_match\\n    r, b, a = split_surds(p)\\n  File \\\"sympy\\\\simplify\\\\radsimp.py\\\", line 1032, in split_surds\\n    g, b1, b2 = _split_gcd(*surds)\\n  File \\\"sympy\\\\simplify\\\\radsimp.py\\\", line 1068, in _split_gcd\", \"excerpt_digest\": \"380a20c144157b3c73fe0dfb911c4673b901251bc8e566dd3fb4200965a5dce4\", \"id\": \"issue\", \"knowledge_timing\": \"issue_time_author_knowable\", \"locator\": \"sha256:8a310f20c7a096a6254d15f08997beaed275576879e726690cc2a8de13e47e3c\", \"source\": \"issue\", \"source_digest\": \"8a310f20c7a096a6254d15f08997beaed275576879e726690cc2a8de13e47e3c\"}, {\"cache_required\": true, \"excerpt\": \"diff --git a/sympy/simplify/radsimp.py b/sympy/simplify/radsimp.py\\n--- a/sympy/simplify/radsimp.py\\n+++ b/sympy/simplify/radsimp.py\\n@@ -920,7 +920,7 @@ def handle(expr):\\n def rad_rationalize(num, den):\\n     \\\"\\\"\\\"\\n     Rationalize num/den by removing square roots in the denominator;\\n-    num and den are sum of terms whose squares are rationals\\n+    num and den are sum of terms whose squares are positive rationals.\\n \\n     Examples\\n     ========\\n@@ -1061,9 +1061,9 @@ def denom_expand(expr, **hints):\\n \\n def split_surds(expr):\\n     \\\"\\\"\\\"\\n-    split an expression with terms whose squares are rationals\\n+    Split an expression with terms whose squares are positive rationals\\n     into a sum of terms whose surds squared have gcd equal to g\\n-    and a sum of terms with surds squared prime with g\", \"excerpt_digest\": \"b2a48024c6aa1dd54c4c0421e10593458074ab297934979978d02a7bc04b0be3\", \"id\": \"gold-patch\", \"knowledge_timing\": \"hindsight_only\", \"locator\": \"sha256:9b911775207c165c369d7fdd0af375428405d1adfed3849eccfe95a19c561219\", \"source\": \"patch\", \"source_digest\": \"9b911775207c165c369d7fdd0af375428405d1adfed3849eccfe95a19c561219\"}, {\"cache_required\": true, \"excerpt\": \"diff --git a/sympy/simplify/tests/test_sqrtdenest.py b/sympy/simplify/tests/test_sqrtdenest.py\\n--- a/sympy/simplify/tests/test_sqrtdenest.py\\n+++ b/sympy/simplify/tests/test_sqrtdenest.py\\n@@ -1,5 +1,7 @@\\n from sympy import sqrt, root, S, Symbol, sqrtdenest, Integral, cos\\n from sympy.simplify.sqrtdenest import _subsets as subsets\\n+from sympy.simplify.sqrtdenest import _sqrt_match\\n+from sympy.core.expr import unchanged\\n from sympy.utilities.pytest import slow\\n \\n r2, r3, r5, r6, r7, r10, r15, r29 = [sqrt(x) for x in [2, 3, 5, 6, 7, 10,\\n@@ -180,6 +182,12 @@ def test_issue_5653():\\n     assert sqrtdenest(\\n         sqrt(2 + sqrt(2 + sqrt(2)))) == sqrt(2 + sqrt(2 + sqrt(2)))\\n \\n+def test_issue_12420():\\n+    I = S.ImaginaryUnit\\n+    assert _sqrt_match(4 + I) == []\\n+    assert sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) == I\\n+    e = 3 - sqrt(2)*sqrt(4 + I) + 3*I\", \"excerpt_digest\": \"4bed6463711886c67a1c9756c91a26299a9c7be0452147311bba9056e3c13c4f\", \"id\": \"test-patch\", \"knowledge_timing\": \"hindsight_only\", \"locator\": \"sha256:bd1d58da2ab8231d3d0f56f268e9118c59cbc03202604a71ce63d5aeeda20545\", \"source\": \"test\", \"source_digest\": \"bd1d58da2ab8231d3d0f56f268e9118c59cbc03202604a71ce63d5aeeda20545\"}, {\"cache_required\": true, \"excerpt\": \"[\\\"test_issue_12420\\\"]\", \"excerpt_digest\": \"1a601811e2713c515fc89a7c303e6f4c6fbb6a14e5e57d8b03e10444906de2f9\", \"id\": \"fail-to-pass\", \"knowledge_timing\": \"hindsight_only\", \"locator\": \"sha256:1a601811e2713c515fc89a7c303e6f4c6fbb6a14e5e57d8b03e10444906de2f9\", \"source\": \"test\", \"source_digest\": \"1a601811e2713c515fc89a7c303e6f4c6fbb6a14e5e57d8b03e10444906de2f9\"}, {\"cache_required\": true, \"excerpt\": \"[\\\"test_sqrtdenest\\\",\\\"test_sqrtdenest2\\\",\\\"test_sqrtdenest_rec\\\",\\\"test_issue_6241\\\",\\\"test_sqrtdenest3\\\",\\\"test_sqrtdenest4\\\",\\\"test_sqrt_symbolic_denest\\\",\\\"test_issue_5857\\\",\\\"test_subsets\\\",\\\"test_issue_5653\\\"]\", \"excerpt_digest\": \"235d2f057278e366ec51c858d5cf4c205bca4c7f9fe32f80b3bbe25c96878faa\", \"id\": \"pass-to-pass\", \"knowledge_timing\": \"hindsight_only\", \"locator\": \"sha256:235d2f057278e366ec51c858d5cf4c205bca4c7f9fe32f80b3bbe25c96878faa\", \"source\": \"test\", \"source_digest\": \"235d2f057278e366ec51c858d5cf4c205bca4c7f9fe32f80b3bbe25c96878faa\"}, {\"cache_required\": true, \"excerpt\": \"def sqrtdenest(expr, max_iter=3):\\n    \\\"\\\"\\\"Denests sqrts in an expression that contain other square roots\\n    if possible, otherwise returns the expr unchanged. This is based on the\\n    algorithms of [1].\", \"excerpt_digest\": \"02a105c16456de8dfbefc748f18fc32ff658aa0f739f1808e73772c777e78b18\", \"id\": \"repository:F1\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L104-L107\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}, {\"cache_required\": true, \"excerpt\": \"    \\\"\\\"\\\"\\n    expr = expand_mul(sympify(expr))\\n    for i in range(max_iter):\\n        z = _sqrtdenest0(expr)\\n        if expr == z:\\n            return expr\\n        expr = z\\n    return expr\", \"excerpt_digest\": \"3193346f39bfa4dc15ee9e6ca498a226bdddf724b95cc112b2144ba1f1a8e37d\", \"id\": \"repository:F2\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L130-L137\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}, {\"cache_required\": true, \"excerpt\": \"    if isinstance(expr, Expr):\\n        args = expr.args\\n        if args:\\n            return expr.func(*[_sqrtdenest0(a) for a in args])\\n    return expr\", \"excerpt_digest\": \"7c2b5876853d65324618d8e8c806b76ef860e7a02679d857856e384fb57477ab\", \"id\": \"repository:F4\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L252-L256\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}, {\"cache_required\": true, \"excerpt\": \"    from sympy.simplify.radsimp import split_surds\\n\\n    p = _mexpand(p)\\n    if p.is_Number:\\n        res = (p, S.Zero, S.Zero)\\n    elif p.is_Add:\\n        pargs = sorted(p.args, key=default_sort_key)\\n        if all((x**2).is_Rational for x in pargs):\\n            r, b, a = split_surds(p)\\n            res = a, b, r\\n            return list(res)\", \"excerpt_digest\": \"102bf533beb753337c8adf30a093172101f224a50ddf80912993892b6c7af00c\", \"id\": \"repository:F5\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L152-L162\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}, {\"cache_required\": true, \"excerpt\": \"    if not is_sqrt(expr):\\n        return expr\\n\\n    a = expr.base\\n    if a.is_Atom:\\n        return expr\\n    val = _sqrt_match(a)\\n    if not val:\\n        return expr\", \"excerpt_digest\": \"df35bc9f21d658401b198be04bd89dbcc1653d9e3b933cec51b7b57fe74de1d6\", \"id\": \"repository:F6\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/sqrtdenest.py:L326-L334\", \"source\": \"repository\", \"source_digest\": \"ab0369f4ed2ef4dfde5a8f33365f2dbd26f316e8dbad4ea106ece78ba3233920\"}, {\"cache_required\": true, \"excerpt\": \"    args = sorted(expr.args, key=default_sort_key)\\n    coeff_muls = [x.as_coeff_Mul() for x in args]\\n    surds = [x[1]**2 for x in coeff_muls if x[1].is_Pow]\\n    surds.sort(key=default_sort_key)\\n    g, b1, b2 = _split_gcd(*surds)\\n    g2 = g\\n    if not b2 and len(b1) >= 2:\\n        b1n = [x/g for x in b1]\\n        b1n = [x for x in b1n if x != 1]\\n        # only a common factor has been factored; split again\\n        g1, b1n, b2 = _split_gcd(*b1n)\", \"excerpt_digest\": \"43914d5a040b41a3d5c6e05ddcb5ff99c68522ee6e220cca22725e8d25c5f8b8\", \"id\": \"repository:F7\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/radsimp.py:L1076-L1086\", \"source\": \"repository\", \"source_digest\": \"83c35c6d5d0759a151699e9894b0762dad50b028d932196f8bff4d7e802e408b\"}, {\"cache_required\": true, \"excerpt\": \"    a1v, a2v = [], []\\n    for c, s in coeff_muls:\\n        if s.is_Pow and s.exp == S.Half:\\n            s1 = s.base\\n            if s1 in b1:\\n                a1v.append(c*sqrt(s1/g2))\\n            else:\\n                a2v.append(c*s)\\n        else:\\n            a2v.append(c*s)\\n    a = Add(*a1v)\\n    b = Add(*a2v)\\n    return g2, a, b\", \"excerpt_digest\": \"956c7bfd13e259b6ee24e2ebd5c9bc4be853af902d385499ffcdeef326777790\", \"id\": \"repository:F8\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/radsimp.py:L1088-L1100\", \"source\": \"repository\", \"source_digest\": \"83c35c6d5d0759a151699e9894b0762dad50b028d932196f8bff4d7e802e408b\"}, {\"cache_required\": true, \"excerpt\": \"def _split_gcd(*a):\\n    \\\"\\\"\\\"\\n    split the list of integers ``a`` into a list of integers, ``a1`` having\\n    ``g = gcd(a1)``, and a list ``a2`` whose elements are not divisible by\\n    ``g``.  Returns ``g, a1, a2``\\n\\n    Examples\\n    ========\\n\\n    >>> from sympy.simplify.radsimp import _split_gcd\\n    >>> _split_gcd(55, 35, 22, 14, 77, 10)\\n    (5, [55, 35, 10], [22, 14, 77])\\n    \\\"\\\"\\\"\\n    g = a[0]\\n    b1 = [g]\", \"excerpt_digest\": \"22ff76e2453ac1fa8f1f8052efbeddad614fc0d32b43cb1deabe8e8515a15d25\", \"id\": \"repository:F9\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/radsimp.py:L1103-L1117\", \"source\": \"repository\", \"source_digest\": \"83c35c6d5d0759a151699e9894b0762dad50b028d932196f8bff4d7e802e408b\"}, {\"cache_required\": true, \"excerpt\": \"    # check that the result is not more complicated than the input\\n    z = sqrt(-2*r29 + cos(2) + 2*sqrt(-10*r29 + 55) + 16)\\n    assert sqrtdenest(z) == z\\n\\n    assert sqrtdenest(sqrt(r6 + sqrt(15))) == sqrt(r6 + sqrt(15))\\n\\n    z = sqrt(15 - 2*sqrt(31) + 2*sqrt(55 - 10*r29))\\n    assert sqrtdenest(z) == z\", \"excerpt_digest\": \"eed7928c3f5652457ba4c5174418e226617cd001d3c67f4247c584931a5bdf99\", \"id\": \"repository:F10\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/tests/test_sqrtdenest.py:L48-L55\", \"source\": \"repository\", \"source_digest\": \"8b7efc5d17eeef2d29ffb526c0d411d26b6141334bcfd18733b1d47d4f5c458f\"}, {\"cache_required\": true, \"excerpt\": \"    z = sqrt(-490*r3 - 98*sqrt(115) - 98*sqrt(345) - 2107)\\n    assert sqrtdenest(z) == sqrt(-1)*(7*r5 + 7*r15 + 7*sqrt(23))\\n    z = sqrt(-4*sqrt(14) - 2*r6 + 4*sqrt(21) + 34)\\n    assert sqrtdenest(z) == z\\n    assert sqrtdenest(sqrt(-8*r2 - 2*r5 + 18)) == -r10 + 1 + r2 + r5\\n    assert sqrtdenest(sqrt(8*r2 + 2*r5 - 18)) == \\\\\\n        sqrt(-1)*(-r10 + 1 + r2 + r5)\\n    assert sqrtdenest(sqrt(8*r2/3 + 14*r5/3 + S(154)/9)) == \\\\\\n        -r10/3 + r2 + r5 + 3\\n    assert sqrtdenest(sqrt(sqrt(2*r6 + 5) + sqrt(2*r7 + 8))) == \\\\\\n        sqrt(1 + r2 + r3 + r7)\\n    assert sqrtdenest(sqrt(4*r15 + 8*r5 + 12*r3 + 24)) == 1 + r3 + r5 + r15\\n\\n    w = 1 + r2 + r3 + r5 + r7\\n    assert sqrtdenest(sqrt((w**2).expand())) == w\\n    z = sqrt((w**2).expand() + 1)\\n    assert sqrtdenest(z) == z\\n\\n    z = sqrt(2*r10 + 6*r2 + 4*r5 + 12 + 10*r15 + 30*r3)\\n    assert sqrtdenest(z) == z\", \"excerpt_digest\": \"4ae63adc34036b6adf886004bfcac401ac56397cd2bfbee8e66a87ae7718487e\", \"id\": \"repository:F11\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sympy/simplify/tests/test_sqrtdenest.py:L67-L86\", \"source\": \"repository\", \"source_digest\": \"8b7efc5d17eeef2d29ffb526c0d411d26b6141334bcfd18733b1d47d4f5c458f\"}], \"sealed_inputs\": {\"fail_to_pass\": {\"cache_key\": \"sha256:1a601811e2713c515fc89a7c303e6f4c6fbb6a14e5e57d8b03e10444906de2f9\", \"digest\": \"1a601811e2713c515fc89a7c303e6f4c6fbb6a14e5e57d8b03e10444906de2f9\"}, \"gold_patch\": {\"cache_key\": \"sha256:9b911775207c165c369d7fdd0af375428405d1adfed3849eccfe95a19c561219\", \"digest\": \"9b911775207c165c369d7fdd0af375428405d1adfed3849eccfe95a19c561219\"}, \"issue\": {\"cache_key\": \"sha256:8a310f20c7a096a6254d15f08997beaed275576879e726690cc2a8de13e47e3c\", \"digest\": \"8a310f20c7a096a6254d15f08997beaed275576879e726690cc2a8de13e47e3c\"}, \"pass_to_pass\": {\"cache_key\": \"sha256:235d2f057278e366ec51c858d5cf4c205bca4c7f9fe32f80b3bbe25c96878faa\", \"digest\": \"235d2f057278e366ec51c858d5cf4c205bca4c7f9fe32f80b3bbe25c96878faa\"}, \"test_patch\": {\"cache_key\": \"sha256:bd1d58da2ab8231d3d0f56f268e9118c59cbc03202604a71ce63d5aeeda20545\", \"digest\": \"bd1d58da2ab8231d3d0f56f268e9118c59cbc03202604a71ce63d5aeeda20545\"}}, \"transcript\": [{\"interviewer\": {\"action\": \"complete\", \"contract\": {\"acceptance_checks\": [\"Evaluate sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) and confirm it completes without exception.\", \"Confirm the reported input produces 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2 or an expression equal to that unchanged non-denested result.\", \"Confirm representative existing cases that are denestable retain their expected denested results.\", \"Confirm representative existing cases that are not denestable retain their unchanged results.\"], \"confirmed_decisions\": [\"Calling sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) does not raise IndexError or another exception.\", \"For the reported input, sqrtdenest returns the unchanged non-denested result, equivalent to 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.\", \"Expressions that can be denested continue to produce their existing denested results.\", \"Expressions that cannot or should not be denested continue to be returned unchanged.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"Make sqrtdenest safely handle the reported expression when its nested square root cannot be denested, returning the unchanged non-denested expression instead of raising IndexError.\"}, \"open_material_decisions\": [], \"question\": null, \"reason\": \"The request and audited repository evidence determine the required observable behavior without a material ambiguity: sqrtdenest must not raise IndexError for the reported non-denestable expression and must return its unchanged non-denested result while preserving existing denesting behavior.\"}, \"turn\": 1}], \"upstream\": {\"base_commit\": \"d4e0231b08147337745dcf601e62de7eefe2fb2d\", \"dataset\": \"princeton-nlp/SWE-bench_Verified\", \"instance_id_digest\": \"00d509ec7b12de1513e2141b9b9202ef5ad0a05ba340202345966463280ab142\", \"issue_cache_key\": \"sha256:8a310f20c7a096a6254d15f08997beaed275576879e726690cc2a8de13e47e3c\", \"issue_digest\": \"8a310f20c7a096a6254d15f08997beaed275576879e726690cc2a8de13e47e3c\", \"revision\": \"c104f840cc67f8b6eec6f759ebc8b2693d585d4a\", \"source_url\": \"https://github.com/sympy/sympy/pull/17318\"}}\ncodex\n{\"implementation_ready\":true,\"repository_fidelity\":1,\"owner_recall\":1,\"invented_requirements\":[],\"compatibility_regressions\":[],\"redundant_questions\":[],\"material_blockers\":[],\"summary\":\"The contract accurately captures the issue-time observable requirements: prevent the reported exception, return the specified unchanged non-denested result, and preserve existing successful-denesting and unchanged-fallback behavior. It introduces no unsupported implementation constraints or scope expansion. The later test showing a different recursively denested result is hindsight-only evidence and does not invalidate the sealed issue-time contract.\"}\ntokens used\n18,041\n"
+}

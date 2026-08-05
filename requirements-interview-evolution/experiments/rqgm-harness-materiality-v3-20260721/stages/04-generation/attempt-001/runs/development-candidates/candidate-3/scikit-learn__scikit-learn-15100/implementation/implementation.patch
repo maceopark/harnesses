@@ -1,0 +1,41 @@
+diff --git a/sklearn/feature_extraction/tests/test_text.py b/sklearn/feature_extraction/tests/test_text.py
+index 7b7697f..b7f7cad 100644
+--- a/sklearn/feature_extraction/tests/test_text.py
++++ b/sklearn/feature_extraction/tests/test_text.py
+@@ -87,6 +87,11 @@ def test_strip_accents():
+     expected = 'iiiinooooouuuuy'
+     assert strip_accents_unicode(a) == expected
+ 
++    precomposed = '\u00f1'
++    decomposed = 'n\u0303'
++    assert strip_accents_unicode(precomposed) == 'n'
++    assert strip_accents_unicode(decomposed) == 'n'
++
+     # check some arabic
+     a = '\u0625'  # alef with a hamza below: إ
+     expected = '\u0627'  # simple alef: ا
+@@ -168,6 +173,8 @@ def test_word_analyzer_unigrams_and_bigrams():
+                 'etait pas', 'pas tres', 'tres bon']
+     assert wa(text) == expected
+ 
++    assert wa('jalape\u00f1o') == wa('jalapen\u0303o') == ['jalapeno']
++
+ 
+ def test_unicode_decode_error():
+     # decode_error default to strict, so this should fail
+diff --git a/sklearn/feature_extraction/text.py b/sklearn/feature_extraction/text.py
+index bb5a9d6..11236d9 100644
+--- a/sklearn/feature_extraction/text.py
++++ b/sklearn/feature_extraction/text.py
+@@ -130,10 +130,7 @@ def strip_accents_unicode(s):
+         ASCII equivalent.
+     """
+     normalized = unicodedata.normalize('NFKD', s)
+-    if normalized == s:
+-        return s
+-    else:
+-        return ''.join([c for c in normalized if not unicodedata.combining(c)])
++    return ''.join([c for c in normalized if not unicodedata.combining(c)])
+ 
+ 
+ def strip_accents_ascii(s):

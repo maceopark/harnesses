@@ -1,0 +1,64 @@
+[
+  {
+    "answer": "Shared behavior",
+    "open_material_decisions": [
+      "Whether boolean-weight support is limited to the reported DataArray weighted mean case or applies consistently to every weighted operation that uses the shared sum-of-weights calculation."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Make boolean weights work consistently for DataArray and Dataset weighted mean and sum_of_weights, including missing-data masking and dimensional reductions.",
+          "label": "Shared behavior",
+          "recommended": true
+        },
+        {
+          "description": "Cover weighted mean for both DataArray and Dataset, without separately contracting direct sum_of_weights behavior.",
+          "label": "Mean operations",
+          "recommended": false
+        },
+        {
+          "description": "Guarantee only the scalar DataArray weighted mean example from the issue.",
+          "label": "Reported case",
+          "recommended": false
+        }
+      ],
+      "prompt": "How broadly should boolean weights be treated as numeric 0/1 weights?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "The reported three-element DataArray example returns a scalar value of 1.0.",
+          "For representative DataArray inputs, boolean weights and their integer 0/1 equivalents yield equal weighted mean results.",
+          "For representative Dataset inputs, boolean weights and their integer 0/1 equivalents yield equal weighted mean results for each applicable variable.",
+          "For both DataArray and Dataset inputs, boolean weights and equivalent integer weights yield equal sum_of_weights results.",
+          "Equivalence holds for inputs containing missing data and for reductions over selected dimensions.",
+          "All-False boolean weights yield a missing weighted mean and a missing sum_of_weights result.",
+          "Existing weighted-operation coverage for numeric weights continues to pass."
+        ],
+        "confirmed_decisions": [
+          "Boolean weight values represent numeric weights: True contributes 1 and False contributes 0.",
+          "For xr.DataArray([1.0, 1.0, 1.0]) with boolean weights [True, True, False], weighted mean returns 1.0 rather than 2.0.",
+          "DataArrayWeighted.mean and DatasetWeighted.mean produce results consistent with equivalent integer 0/1 weights.",
+          "DataArrayWeighted.sum_of_weights and DatasetWeighted.sum_of_weights produce results consistent with equivalent integer 0/1 weights.",
+          "The behavior applies when reducing all dimensions or selected dimensions.",
+          "Weights corresponding to missing data values do not contribute to sum_of_weights, with boolean weights following the same masking behavior as equivalent integer weights.",
+          "A resulting sum of weights equal to zero remains invalid and is represented as missing, consistent with existing weighted behavior.",
+          "Existing behavior for non-boolean weights remains unchanged.",
+          "The existing requirements that weights be a DataArray and contain no missing values remain unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Correct weighted reductions so boolean weights behave as numeric 0/1 weights for both DataArray and Dataset weighted mean and sum_of_weights operations, including missing-data masking and dimensional reductions."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The reported defect and the interview answer fully determine the observable scope: boolean weights are numeric 0/1 weights wherever the shared sum-of-weights behavior is exposed, for both DataArray and Dataset. No material product decision remains open."
+    },
+    "turn": 2
+  }
+]

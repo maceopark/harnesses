@@ -1,0 +1,155 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..26b8277 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -2015,7 +2015,9 @@ class DataDocumenter(GenericAliasMixin, NewTypeMixin, TypeVarMixin,
+         if not more_content:
+             more_content = StringList()
+ 
+-        self.update_content(more_content)
++        comment = self.get_module_comment(self.objpath[-1])
++        if not (comment and inspect.isgenericalias(self.object)):
++            self.update_content(more_content)
+         super().add_content(more_content, no_docstring=no_docstring)
+ 
+ 
+diff --git a/sphinx/util/inspect.py b/sphinx/util/inspect.py
+index f216e87..c270bf9 100644
+--- a/sphinx/util/inspect.py
++++ b/sphinx/util/inspect.py
+@@ -404,6 +404,12 @@ def isgenericalias(obj: Any) -> bool:
+     elif (hasattr(typing, '_SpecialGenericAlias') and  # for py39+
+             isinstance(obj, typing._SpecialGenericAlias)):  # type: ignore
+         return True
++    elif sys.version_info < (3, 7):
++        # Python 3.6 does not expose a common runtime class for typing aliases.
++        # Keep this compatibility check deliberately limited to the aliases
++        # whose documentation is supported here.
++        return repr(obj).startswith(('typing.Dict[', 'typing.Union[',
++                                     'typing.Callable['))
+     else:
+         return False
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/genericalias.py b/tests/roots/test-ext-autodoc/target/genericalias.py
+index 9909efc..7e71142 100644
+--- a/tests/roots/test-ext-autodoc/target/genericalias.py
++++ b/tests/roots/test-ext-autodoc/target/genericalias.py
+@@ -1,10 +1,47 @@
+-from typing import Callable, List
++from pathlib import Path
++from typing import Any, Callable, Dict, List, Union
+ 
+ #: A list of int
+ T = List[int]
+ 
+ C = Callable[[int], None]  # a generic alias not having a doccomment
+ 
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary with PyScaffold's options, see ``pyscaffold.api.create_project``.
++Should be treated as immutable (if required, copy before changing).
++
++Please notice some behaviours given by the options **SHOULD** be observed. For example,
++files should be overwritten when the **force** option is ``True``. Similarly when
++**pretend** is ``True``, no operation should be really performed, but any action should
++be logged as if realized.
++"""
++
++FileContents = Union[str, None]
++"""When the file content is ``None``, the file should not be written to
++disk (empty files are represented by an empty string ``""`` as content).
++"""
++
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of functions considered file operations::
++
++    Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++
++- **path** (:obj:`pathlib.Path`): file path potentially to be written to/changed
++  in the disk.
++- **contents** (:obj:`FileContents`): usually a string that represents a text content
++  of the file. :obj:`None` indicates the file should not be written.
++- **opts** (:obj:`ScaffoldOpts`): a dict with PyScaffold's options.
++
++If the file is written (or more generally changed, such as new access permissions),
++by convention they should return the :obj:`file path <pathlib.Path>`.
++If no file was touched, :obj:`None` should be returned. Please notice a **FileOp**
++might return :obj:`None` if a pre-existing file in the disk is not modified.
++
++.. note::
++    A **FileOp** usually has side effects (e.g. write a file to the disk), see
++    :obj:`FileFileContents` and :obj:`ScaffoldOpts` for other conventions.
++"""
++
+ 
+ class Class:
+     #: A list of int
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..e2c0fd5 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -13,6 +13,8 @@ import sys
+ 
+ import pytest
+ 
++from sphinx.pycode import ModuleAnalyzer
++
+ from .test_ext_autodoc import do_autodoc
+ 
+ 
+@@ -96,11 +98,28 @@ def test_autodata_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++@pytest.mark.parametrize('name', ['ScaffoldOpts', 'FileContents', 'FileOp'])
++def test_autodata_GenericAlias_multiline_docstring(app, name):
++    actual = list(do_autodoc(app, 'data', 'target.genericalias.' + name))
++    analyzer = ModuleAnalyzer.for_module('target.genericalias')
++    analyzer.analyze()
++    documentation = list(analyzer.attr_docs[('', name)])
++    rendered_documentation = [('   ' + line if line else '') for line in documentation]
++    start = actual.index(rendered_documentation[0])
++    assert actual[start:start + len(rendered_documentation)] == rendered_documentation
++    assert not any('alias of ' in line for line in actual)
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodata_GenericAlias_without_documentation(app):
++    actual = list(do_autodoc(app, 'data', 'target.genericalias.C'))
++    assert any('alias of ' in line for line in actual)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_NewType(app):
+     actual = do_autodoc(app, 'data', 'target.typevar.T6')
+diff --git a/tests/test_util_inspect.py b/tests/test_util_inspect.py
+index dd9bd14..a797ed1 100644
+--- a/tests/test_util_inspect.py
++++ b/tests/test_util_inspect.py
+@@ -659,6 +659,21 @@ def test_isgenericalias(app):
+     assert inspect.isgenericalias(Base) is False
+ 
+ 
++def test_isgenericalias_on_python36(monkeypatch):
++    class Alias:
++        def __init__(self, representation):
++            self.representation = representation
++
++        def __repr__(self):
++            return self.representation
++
++    monkeypatch.setattr(inspect.sys, 'version_info', (3, 6, 9))
++    assert inspect.isgenericalias(Alias('typing.Dict[str, typing.Any]')) is True
++    assert inspect.isgenericalias(Alias('typing.Union[str, NoneType]')) is True
++    assert inspect.isgenericalias(Alias('typing.Callable[[int], NoneType]')) is True
++    assert inspect.isgenericalias(Alias('typing.List[int]')) is False
++
++
+ def test_unpartial():
+     def func1(a, b, c):
+         pass

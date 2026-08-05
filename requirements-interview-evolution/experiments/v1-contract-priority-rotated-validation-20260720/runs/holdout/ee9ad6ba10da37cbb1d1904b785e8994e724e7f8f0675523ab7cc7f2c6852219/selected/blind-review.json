@@ -1,0 +1,80 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/3",
+          "quoted_value": "Existing covered behavior for removing exact `\"\"`, `\".\"`, or exact `os.getcwd()` current-directory entries remains passing."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/5/statement",
+          "quoted_value": "The existing test directly replaces sys.path, invokes modify_sys_path, and expects its first working-directory entry to be removed."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/6/statement",
+          "quoted_value": "An existing test with an empty-string first entry and a leading-colon PYTHONPATH expects both that entry and the following working-directory entry to be removed."
+        }
+      ],
+      "description": "Readiness is overstated because the baseline compatibility claim for an exact `\".\"` first entry is not verifiable from the audited repository evidence. The desired exact-dot behavior is owner-approved, but it should be framed as coverage to add unless existing coverage is audited.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The contract labels exact-dot removal as existing covered behavior although the audited test evidence establishes coverage only for an exact cwd first entry and an empty-string first entry.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "An acceptance check requires existing coverage for `\".\"` to remain passing, but no audited fact identifies such a test."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/4",
+          "quoted_value": "Existing covered explicit-current-directory `PYTHONPATH` exception behavior remains passing."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/4/statement",
+          "quoted_value": "After the unconditional removal, the helper can remove an additional entry when PYTHONPATH begins or ends with a colon, subject to exceptions for explicit current-directory forms."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/audit_summary",
+          "quoted_value": "All eight facts are directly supported by the cited repository files and line ranges."
+        }
+      ],
+      "description": "The acceptance requirement may be valid, but its characterization as existing covered behavior is not auditable from the supplied evidence. Implementation readiness therefore depends on an unverified regression baseline.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The contract asserts an existing tested compatibility baseline for explicit-current-directory PYTHONPATH exceptions without audited evidence of such a test.",
+      "id": "FINDING-2",
+      "material": true,
+      "observable_signal": "The audited evidence describes the implementation's exception logic, but none of its test facts establishes coverage of that exception behavior."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/6",
+          "quoted_value": "Existing path-stripping and local-plugin import integration tests remain passing."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/scope_summary",
+          "quoted_value": "Base commit 684a1d6aa0a6791e20078bc524f97c8906332390. The module entry point unconditionally invokes a helper whose first operation removes sys.path[0]; existing tests encode removal when the first entry is the working directory or an empty string, but do not show the reported arbitrary-prefix runpy case."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        }
+      ],
+      "description": "The contract delegates a material compatibility boundary to unaudited test-suite assertions. Before declaring implementation readiness, the relevant integration tests must be established in audited evidence or the acceptance check must avoid claiming that they already exist.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The contract requires named integration-test suites to remain passing even though those tests are absent from the audited evidence.",
+      "id": "FINDING-3",
+      "material": true,
+      "observable_signal": "No audited fact establishes path-stripping or local-plugin import integration tests, yet the contract treats both as verified existing checks."
+    }
+  ],
+  "summary": "The behavior decisions are explicit and owner-approved, but the contract is not materially implementation-ready because three acceptance baselines are asserted as existing coverage without support in the audited repository evidence."
+}

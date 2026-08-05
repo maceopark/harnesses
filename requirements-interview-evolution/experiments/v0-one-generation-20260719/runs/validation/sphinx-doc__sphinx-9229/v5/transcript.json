@@ -1,0 +1,127 @@
+[
+  {
+    "answer": "Docs only (Recommended)",
+    "open_material_decisions": [
+      "Whether a documented type alias should retain the generated “alias of …” paragraph after its source documentation."
+    ],
+    "question": {
+      "header": "Alias text",
+      "options": [
+        {
+          "description": "Render the custom source documentation and suppress “alias of …”, matching the issue’s stated expected behavior.",
+          "label": "Docs only (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Render the custom source documentation followed by “alias of …”, matching existing Python 3.7+ GenericAlias behavior.",
+          "label": "Docs then alias",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has assignment-following source documentation, what exact content should autodoc render?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "All aliases",
+    "open_material_decisions": [
+      "Whether “docs only” applies to every documented type alias or only to legacy aliases that currently lose their source documentation."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Apply one consistent rule to every documented type alias, including aliases that currently show both sections on Python 3.7+.",
+          "label": "All aliases",
+          "recommended": true
+        },
+        {
+          "description": "Fix only aliases routed through the Python 3.6 class-like path, leaving Python 3.7+ output unchanged.",
+          "label": "Legacy path only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which documented aliases should switch to source documentation without the generated “alias of …” paragraph?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Keep alias text",
+    "open_material_decisions": [
+      "What autodoc should render for a type alias that has no assignment-following source documentation."
+    ],
+    "question": {
+      "header": "No docs",
+      "options": [
+        {
+          "description": "Preserve the generated “alias of …” paragraph as the fallback for undocumented aliases.",
+          "label": "Keep alias text",
+          "recommended": true
+        },
+        {
+          "description": "Suppress “alias of …” even when the alias has no custom source documentation.",
+          "label": "Render nothing",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has no source documentation, what should autodoc render?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Typing aliases only",
+    "open_material_decisions": [
+      "Whether the docs-only rule should apply only to aliases produced by typing constructs or to every class-like alias handled as an attribute by ClassDocumenter."
+    ],
+    "question": {
+      "header": "Alias scope",
+      "options": [
+        {
+          "description": "Limit the behavior change to aliases built from typing constructs such as Dict, Union, Callable, and List.",
+          "label": "Typing aliases only",
+          "recommended": true
+        },
+        {
+          "description": "Apply the same docs-only rule to ordinary imported or renamed classes documented as attributes.",
+          "label": "All class aliases",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should source documentation suppress “alias of …” only for typing-based aliases, or for every class-like alias that autodoc documents as an attribute?"
+    },
+    "turn": 4
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "An automodule regression fixture containing documented Dict, Union, and Callable aliases with next-line triple-quoted multiline strings renders each alias’s complete source documentation.",
+          "None of those documented aliases renders an “alias of …” paragraph.",
+          "A documented List alias that currently renders both source documentation and “alias of …” on Python 3.7+ changes to render source documentation only.",
+          "A typing alias without assignment-following source documentation continues to render “alias of …”.",
+          "An ordinary imported or renamed class documented as an attribute retains its existing alias behavior.",
+          "Explicit autodata and automodule output follow the same documented-versus-undocumented typing-alias rule.",
+          "Existing parser coverage for multiline assignment-following strings continues to pass.",
+          "Targeted autodoc and pycode parser tests pass on every Python-version branch supported by the repository’s test configuration."
+        ],
+        "confirmed_decisions": [
+          "For a typing-based alias with assignment-following source documentation, render the source documentation and omit the generated “alias of …” paragraph.",
+          "Apply this rule to all documented typing-based aliases, not only the Python 3.6 legacy path.",
+          "Cover typing constructs such as Dict, Union, Callable, and List regardless of whether runtime classification routes them through ClassDocumenter, DataDocumenter, or GenericAliasMixin.",
+          "When a typing-based alias has no assignment-following source documentation, preserve the generated “alias of …” paragraph.",
+          "Do not extend the docs-only behavior to ordinary imported or renamed classes documented as attributes.",
+          "Preserve multiline source documentation exactly through the existing parser and ModuleAnalyzer line-processing behavior.",
+          "Ensure class-like alias handling consults the analyzer associated with the module containing the documented assignment, so source documentation is not lost through ClassDocumenter’s module-selection path."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Make autodoc render assignment-following source documentation as the sole body for every documented typing-based alias. This applies consistently across supported Python/runtime classification paths, including legacy class-like handling and modern GenericAlias handling. Suppress the generated “alias of …” paragraph only when such source documentation exists. Undocumented typing aliases retain “alias of …”. Ordinary imported or renamed class aliases remain unchanged."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested rendering behavior, scope, fallback, and exclusions are fully specified. The repository evidence identifies the affected ClassDocumenter and GenericAlias paths, so no material product decision remains before implementation."
+    },
+    "turn": 5
+  }
+]

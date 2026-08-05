@@ -1,0 +1,76 @@
+[
+  {
+    "answer": "Mean and denominator",
+    "open_material_decisions": [
+      "Whether the fix contract covers only weighted mean or also requires the public sum-of-weights result to be numerically correct for boolean weights."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Require weighted mean and the public sum-of-weights result to treat True/False as numeric 1/0; weighted sum retains its compatible behavior.",
+          "label": "Mean and denominator",
+          "recommended": true
+        },
+        {
+          "description": "Require only weighted mean to return the correct value, leaving other weighted-operation behavior outside the contract.",
+          "label": "Mean only",
+          "recommended": false
+        }
+      ],
+      "prompt": "For boolean weights, which public weighted results must the contract require to be corrected?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "DataArray and Dataset",
+    "open_material_decisions": [
+      "Whether boolean-weight correctness is required only for DataArray weighted results or for both DataArray and Dataset weighted results."
+    ],
+    "question": {
+      "header": "Object scope",
+      "options": [
+        {
+          "description": "Require consistent corrected behavior across both public weighted APIs that share this implementation.",
+          "label": "DataArray and Dataset",
+          "recommended": true
+        },
+        {
+          "description": "Limit the contract to the object type demonstrated by the reported reproducer.",
+          "label": "DataArray only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which public object types must correctly treat boolean weights as numeric 1/0 for weighted mean and sum of weights?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "For DataArray([1.0, 1.0, 1.0]) with boolean weights DataArray([True, True, False]), weighted mean returns 1.0 rather than 2.0.",
+          "For the same DataArray and boolean weights, sum of weights returns the numeric value 2 rather than boolean True.",
+          "Equivalent Dataset weighted mean and sum-of-weights operations treat True and False as weights 1 and 0 and return numerically correct results.",
+          "All-False boolean weights preserve the existing zero-total-weight behavior: weighted mean and sum of weights return missing results.",
+          "Existing weighted-operation tests for non-boolean weights continue to pass."
+        ],
+        "confirmed_decisions": [
+          "The fix covers both weighted mean and the public sum-of-weights result.",
+          "The corrected behavior applies to both DataArray and Dataset weighted APIs.",
+          "Boolean weights remain valid inputs and are treated as numeric 1/0 rather than rejected.",
+          "Weighted sum is outside the behavior-change scope and retains compatible behavior.",
+          "Weights must continue to satisfy the existing requirements that they are a DataArray and contain no missing values."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Boolean DataArray weights must be accepted by weighted operations and interpreted numerically, with True contributing weight 1 and False contributing weight 0. For both DataArray and Dataset weighted APIs, weighted mean and the public sum-of-weights result must use the numeric total of applicable boolean weights. Existing compatible behavior for other weight dtypes and weighted operations remains unchanged."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested observable behavior is sufficiently specified by the issue, audited repository evidence, and interview answers. No material implementation decision remains open."
+    },
+    "turn": 3
+  }
+]

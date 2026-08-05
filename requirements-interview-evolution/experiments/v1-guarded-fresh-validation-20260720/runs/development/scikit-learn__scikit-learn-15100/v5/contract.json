@@ -1,0 +1,24 @@
+{
+  "acceptance_checks": [
+    "A direct regression assertion shows `strip_accents_unicode('n\\u0303') == 'n'`.",
+    "A direct regression assertion shows composed `ñ` and decomposed `n\\u0303` both produce `n`.",
+    "A focused assertion confirms an already-NFKD string without combining characters remains unchanged in value.",
+    "Existing `test_strip_accents` expectations continue to pass.",
+    "Existing CountVectorizer word-analyzer accent-stripping expectations continue to pass.",
+    "The focused text-feature test suite passes without changes to ASCII accent stripping, public APIs, or documentation."
+  ],
+  "confirmed_decisions": [
+    "Remove the equality-based early return from `strip_accents_unicode`.",
+    "Apply combining-character filtering to every NFKD-normalized input.",
+    "Remove all characters with a nonzero `unicodedata.combining` value, not only the reported combining tilde.",
+    "Require composed and canonically equivalent decomposed accented text to produce identical stripped output.",
+    "Preserve already-NFKD text that contains no combining characters.",
+    "Add a focused direct regression test covering decomposed `n` plus COMBINING TILDE and its equivalence to composed `ñ`.",
+    "Keep existing focused Unicode accent and CountVectorizer analyzer tests passing.",
+    "Limit implementation changes to Unicode accent stripping and focused tests; leave ASCII stripping, public APIs, and documentation unchanged.",
+    "Accept the cross-script change for already-decomposed combining marks as intentional within the approved compatibility boundary."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update `strip_accents_unicode` so it always applies NFKD normalization and removes every character whose `unicodedata.combining` value is nonzero. Canonically equivalent composed and decomposed accented inputs, including `ñ` and `n` followed by COMBINING TILDE, must both return `n`. Already-NFKD strings without combining characters must retain their existing value. Add a focused direct regression test for decomposed input and preserve existing Unicode accent-stripping and CountVectorizer analyzer behavior. Scope is limited to the Unicode accent-stripping implementation and focused tests; do not change ASCII stripping, public APIs, or documentation. The acknowledged residual risk is an intentional behavior change for already-decomposed combining marks across scripts, consistent with the approved all-combining-marks boundary."
+}

@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "Regression coverage proves that an arbitrary value at `sys.path[0]` survives `modify_sys_path()`.",
+    "Coverage proves that, with an arbitrary first entry and a leading-colon `PYTHONPATH`, the arbitrary entry survives while only the applicable following exact cwd entry is removed.",
+    "Coverage proves that, with an arbitrary first entry and a trailing-colon `PYTHONPATH`, the arbitrary entry survives while only the applicable exact cwd entry is removed.",
+    "Existing covered behavior for removing exact `\"\"`, `\".\"`, or exact `os.getcwd()` current-directory entries remains passing.",
+    "Existing covered explicit-current-directory `PYTHONPATH` exception behavior remains passing.",
+    "Existing covered retention of trailing working-directory entries used by editable installations remains passing.",
+    "Existing path-stripping and local-plugin import integration tests remain passing."
+  ],
+  "confirmed_decisions": [
+    "The removable first-entry set is exactly `\"\"`, `\".\"`, and the exact string returned by `os.getcwd()`; no normalization, resolution, case folding, or symlink equivalence is authorized.",
+    "If an arbitrary `sys.path[0]` is preserved, leading- or trailing-colon `PYTHONPATH` handling must preserve that prefix and remove only the applicable exact current-directory entry introduced by the empty component.",
+    "The change is limited to `modify_sys_path()` and its `python -m pylint`/`runpy` path; installed console-script behavior is out of scope.",
+    "Existing exact empty-string/cwd removals, explicit-cwd `PYTHONPATH` exceptions, and retained trailing cwd entries for editable installations remain compatible behavior.",
+    "The owner accepts retention of cwd-equivalent but non-exact path spellings as a bounded residual risk.",
+    "The complete contract was explicitly approved by the owner."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Change only `pylint.modify_sys_path()` behavior used by `python -m pylint` and `runpy`, with minimum regression coverage. Remove `sys.path[0]` only when its value is exactly `\"\"`, `\".\"`, or exactly equal to `os.getcwd()`; preserve every other first entry, including paths merely equivalent after normalization, resolution, case conversion, or symlink traversal. When an arbitrary first entry is preserved and `PYTHONPATH` begins or ends with a colon, preserve that arbitrary entry while removing only the applicable exact current-directory entry introduced by the empty PYTHONPATH component. Retain established removals for existing exact-empty-string/current-working-directory cases, explicit-current-directory `PYTHONPATH` exceptions, and trailing working-directory entries used by editable installations. Exclude changes to console-script behavior, path normalization or equivalence matching, unrelated import handling, supported environments, and public APIs. Internal control flow and test-fixture organization remain implementation discretion provided removals are value-qualified, safe for exercised path shapes, and all acceptance checks pass. Accepted residual risk: unusual uncited `sys.path` layouts may retain cwd-equivalent entries not matching the approved exact values, intentionally avoiding broader deletion behavior."
+}

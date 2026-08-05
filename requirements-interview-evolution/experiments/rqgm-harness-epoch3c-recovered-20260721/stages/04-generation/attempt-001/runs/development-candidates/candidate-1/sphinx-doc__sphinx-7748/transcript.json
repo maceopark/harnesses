@@ -1,0 +1,109 @@
+[
+  {
+    "answer": "Functions and methods",
+    "open_material_decisions": [
+      "Whether consecutive leading docstring signatures are recognized for both functions and methods or only for methods."
+    ],
+    "question": {
+      "header": "Object scope",
+      "options": [
+        {
+          "description": "Extend the shared docstring-signature behavior consistently to both object types while preserving their existing name validation.",
+          "label": "Functions and methods",
+          "recommended": true
+        },
+        {
+          "description": "Limit the new overloaded-signature behavior to method documenters; functions retain single-signature behavior.",
+          "label": "Methods only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which autodoc object types should support multiple consecutive signatures at the start of a docstring?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "First non-signature",
+    "open_material_decisions": [
+      "Where recognition of consecutive leading docstring signatures stops."
+    ],
+    "question": {
+      "header": "Block ending",
+      "options": [
+        {
+          "description": "Collect each consecutive valid signature from the first line onward, then preserve the first non-signature line and everything after it as docstring content.",
+          "label": "First non-signature",
+          "recommended": true
+        },
+        {
+          "description": "Scan beyond intervening prose and extract every later matching signature line, removing those lines from their original content positions.",
+          "label": "All matching lines",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc determine the end of the consecutive signature block at the start of a function or method docstring?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Stop and preserve",
+    "open_material_decisions": [
+      "How a signature-shaped line with a nonmatching object name affects collection of the leading signature block."
+    ],
+    "question": {
+      "header": "Name mismatch",
+      "options": [
+        {
+          "description": "Treat it as the first non-signature for this object, stop collecting, and preserve that line and everything after it as docstring content.",
+          "label": "Stop and preserve",
+          "recommended": true
+        },
+        {
+          "description": "Leave the mismatched line in the content but continue searching later lines for more signatures of the documented object.",
+          "label": "Skip and continue",
+          "recommended": false
+        },
+        {
+          "description": "Include every signature-shaped line in the leading block regardless of its object name.",
+          "label": "Accept any name",
+          "recommended": false
+        }
+      ],
+      "prompt": "After one valid leading signature, what should happen when the next signature-shaped line names a different object?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A function docstring beginning with two valid signatures for that function emits both signatures in their original order and excludes both lines from rendered content.",
+          "A method docstring beginning with two valid signatures for that method emits both signatures in their original order and excludes both lines from rendered content.",
+          "Prose immediately following a leading signature block is preserved as docstring content.",
+          "A non-signature line between signature-looking lines ends collection; that line and every later line remain content.",
+          "A signature-shaped line with a nonmatching object name ends collection and remains content with all following lines.",
+          "Existing behavior remains unchanged for one valid leading signature, disabled autodoc_docstring_signature, and explicit directive signatures."
+        ],
+        "confirmed_decisions": [
+          "The multiple-signature behavior applies to both functions and methods.",
+          "Recognition begins with the first docstring line and continues only through consecutive valid signature lines.",
+          "Every recognized signature must satisfy the existing object-name validation rules.",
+          "A signature-shaped line naming a different object ends collection and is preserved, together with everything after it, as docstring content.",
+          "All recognized leading signature lines are removed from rendered docstring content and displayed as separate signatures for the documented object.",
+          "A single leading signature continues to produce the existing single-signature outcome.",
+          "When autodoc_docstring_signature is disabled, signature-looking docstring lines remain content and autodoc retains its existing signature behavior.",
+          "An explicitly supplied directive signature continues to take precedence over docstring signatures.",
+          "The autodoc_docstring_signature documentation must describe recognition and removal of consecutive leading signatures for functions and methods."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "When autodoc_docstring_signature is enabled and no explicit directive signature is supplied, autodoc recognizes a consecutive block of valid signatures at the start of a function or method docstring and displays every recognized overload. Collection ends at the first line that is not a valid signature for the documented object; that line and all subsequent lines remain docstring content."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The interview resolved every material ambiguity affecting observable behavior. The requested change can now be implemented without inventing additional behavior."
+    },
+    "turn": 4
+  }
+]

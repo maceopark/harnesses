@@ -1,0 +1,30 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/6",
+          "quoted_value": "An explicitly supplied signature continues to take precedence over signatures found in the docstring."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/5",
+          "quoted_value": "Existing configuration and explicit-signature precedence behavior is preserved."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/4/statement",
+          "quoted_value": "When extraction is enabled and no explicit arguments were supplied, `DocstringSignatureMixin.format_signature()` assigns the single extracted argument and return-annotation pair to `self.args` and `self.retann` before delegating to the normal formatter."
+        }
+      ],
+      "description": "This leaves a material compatibility gap: an implementation could keep the explicit signature as the displayed signature while still removing the leading overload block from the docstring, and would satisfy the stated check despite changing existing behavior. The repository evidence says extraction is entered only when no explicit arguments were supplied, so the acceptance contract should explicitly verify that signature-like docstring lines remain content in the explicit-signature case.",
+      "failure_class": "omission",
+      "general_cause": "The contract preserves explicit-signature precedence without specifying the associated rendered-content behavior that the repository’s current control flow also preserves.",
+      "id": "F-1",
+      "material": true,
+      "observable_signal": "The acceptance check verifies only that an explicit signature wins; it does not require leading signature-like docstring lines to remain rendered content when extraction is bypassed because an explicit signature was supplied."
+    }
+  ],
+  "summary": "The contract is nearly implementation-ready, but one material compatibility outcome is not testably specified: with an explicit signature, leading signature-like docstring lines must remain rendered content because existing extraction is bypassed."
+}

@@ -1,0 +1,61 @@
+[
+  {
+    "answer": "Leading dot only",
+    "open_material_decisions": [
+      "Whether the fix should reject only hosts beginning with a dot or all ASCII hostnames containing empty labels."
+    ],
+    "question": {
+      "header": "Validation scope",
+      "options": [
+        {
+          "description": "Fix the reported `.example.com` case with the smallest compatibility-preserving change and regression test.",
+          "label": "Leading dot only",
+          "recommended": true
+        },
+        {
+          "description": "Also reject forms such as `example..com` and possibly trailing-dot hosts, broadening behavior beyond the reported regression.",
+          "label": "Any empty label",
+          "recommended": false
+        },
+        {
+          "description": "Reject leading and interior empty labels while continuing to allow a single trailing dot for fully qualified domain names.",
+          "label": "Leading and consecutive",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which ASCII hostname forms should raise `InvalidURL('URL has an invalid label.')` during request preparation?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Preparing a GET request for `http://.example.com` raises `requests.exceptions.InvalidURL`.",
+          "The exception message is exactly `URL has an invalid label.`",
+          "The regression is exercised through request preparation, demonstrating failure before adapter connection handling.",
+          "Existing wildcard-host and invalid-IDN preparation tests continue to pass.",
+          "Previously accepted non-leading-dot ASCII hostname forms are not newly rejected by this change.",
+          "The targeted URL-preparation tests pass, followed by the repository’s applicable test suite without regressions."
+        ],
+        "confirmed_decisions": [
+          "Validation scope is leading-dot hosts only.",
+          "Preserve current handling of other ASCII hostname forms, including interior consecutive dots and trailing dots.",
+          "Raise Requests `InvalidURL`, not a raw `UnicodeError`.",
+          "Use the existing exact invalid-label message: `URL has an invalid label.`",
+          "Reject the URL during `PreparedRequest.prepare_url`, before connection lookup or network I/O.",
+          "Extend the existing prepared-request bad-URL regression coverage in `tests/test_requests.py` with the reported leading-dot hostname case.",
+          "Do not add dependencies or change urllib3 behavior."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update `PreparedRequest.prepare_url` so an ASCII hostname beginning with `.`—including `http://.example.com`—is rejected during request preparation with `requests.exceptions.InvalidURL('URL has an invalid label.')`. Keep the change local to Requests hostname validation; do not rely on adapter- or urllib3-level exception translation."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The reported outcome and success criteria are now sufficiently specified: reject only leading-dot ASCII hosts during URL preparation, using the existing Requests invalid-label exception behavior, without broadening validation to other empty-label forms."
+    },
+    "turn": 2
+  }
+]

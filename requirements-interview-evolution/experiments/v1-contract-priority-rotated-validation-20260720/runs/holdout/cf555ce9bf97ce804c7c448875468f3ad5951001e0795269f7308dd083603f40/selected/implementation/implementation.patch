@@ -1,0 +1,65 @@
+diff --git a/src/_pytest/main.py b/src/_pytest/main.py
+index 3c20502..2357fee 100644
+--- a/src/_pytest/main.py
++++ b/src/_pytest/main.py
+@@ -494,6 +494,7 @@ class Session(nodes.FSCollector):
+ 
+     def _collect(self, arg):
+         from _pytest.python import Package
++        from _pytest.python import path_matches_patterns
+ 
+         names = self._parsearg(arg)
+         argpath = names.pop(0)
+@@ -532,7 +533,9 @@ class Session(nodes.FSCollector):
+                     # Collect packages first.
+                     seen_dirs.add(dirpath)
+                     pkginit = dirpath.join("__init__.py")
+-                    if pkginit.exists():
++                    if pkginit.exists() and path_matches_patterns(
++                        pkginit, self.config.getini("python_files")
++                    ):
+                         for x in self._collectfile(pkginit):
+                             yield x
+                             if isinstance(x, Package):
+@@ -541,6 +544,9 @@ class Session(nodes.FSCollector):
+                     # Do not collect packages here.
+                     continue
+ 
++                if path.basename == "__init__.py":
++                    continue
++
+                 for x in self._collectfile(path):
+                     key = (type(x), x.fspath)
+                     if key in self._node_cache:
+diff --git a/testing/test_collection.py b/testing/test_collection.py
+index dee07d5..d1be83e 100644
+--- a/testing/test_collection.py
++++ b/testing/test_collection.py
+@@ -1004,6 +1004,27 @@ def test_collect_init_tests(testdir):
+     assert "test_foo" not in result.stdout.str()
+ 
+ 
++def test_does_not_collect_init_only_package(testdir):
++    pkg = testdir.mkpydir("pkg")
++    pkg.join("__init__.py").write("raise RuntimeError('not importable')")
++    testdir.makepyfile("def test_passes(): pass")
++
++    result = testdir.runpytest()
++
++    result.stdout.fnmatch_lines(["*1 passed in*"])
++    assert result.ret == 0
++
++
++def test_collect_test_module_below_nonmatching_init(testdir):
++    pkg = testdir.mkpydir("pkg")
++    pkg.join("test_module.py").write("def test_passes(): pass")
++
++    result = testdir.runpytest("--collect-only", "-q")
++
++    result.stdout.fnmatch_lines(["pkg/test_module.py::test_passes", "*1 test collected*"])
++    assert result.ret == 0
++
++
+ def test_collect_invalid_signature_message(testdir):
+     """Check that we issue a proper message when we can't determine the signature of a test
+     function (#4026).

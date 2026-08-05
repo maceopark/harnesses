@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "`minversion` no longer constructs or compares `LooseVersion` objects and instead compares values returned by `pkg_resources.parse_version`.",
+    "For a module whose configured version attribute is `1.14.3`, `minversion(module, '1.14dev')` returns `True` in inclusive mode and does not raise `TypeError`.",
+    "Both comparison paths use parsed versions while retaining `>=` for `inclusive=True` and `>` for `inclusive=False`.",
+    "The existing focused expectations remain passing: installed `0.12.2` satisfies `0.12`, `0.12.1`, and `0.12.0.dev`, and does not satisfy `1` or `1.2rc1`.",
+    "Existing behavior for module objects, import-name strings, failed imports, invalid argument types, and direct or dotted `version_path` lookup remains unchanged.",
+    "The focused introspection test suite passes after the change."
+  ],
+  "confirmed_decisions": [
+    "Use `pkg_resources.parse_version` as the comparison implementation instead of `distutils.version.LooseVersion`.",
+    "Parse both compared version values through the package parser.",
+    "Use the package parser in both inclusive and exclusive comparison branches.",
+    "Preserve existing input handling: module objects and import-name strings remain supported, failed string imports return `False`, and invalid module argument types retain their existing error behavior.",
+    "Preserve existing `version_path` lookup behavior, including dotted attribute paths.",
+    "Preserve comparison operators: inclusive mode uses `>=`; exclusive mode uses `>`.",
+    "Add the reported `1.14.3` versus `1.14dev` case to focused `minversion` regression tests.",
+    "Do not introduce broader normalization rules or new guarantees for unspecified development, release-candidate, post-release, or other version formats beyond the selected parser's behavior."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Replace `distutils.version.LooseVersion` comparisons in `astropy.utils.introspection.minversion` with `pkg_resources.parse_version` comparisons. Apply the parser to both the installed version obtained through the existing `version_path` logic and the requested minimum version. Preserve all existing module resolution, failed-import, argument-validation, version lookup, inclusive (`>=`), and exclusive (`>`) behavior. Add focused regression coverage proving that an installed version of `1.14.3` satisfies an inclusive `1.14dev` requirement without raising `TypeError`, while retaining the existing `minversion` expectations."
+}

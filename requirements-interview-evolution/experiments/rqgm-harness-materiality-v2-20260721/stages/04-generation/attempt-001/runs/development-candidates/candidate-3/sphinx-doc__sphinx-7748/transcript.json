@@ -1,0 +1,87 @@
+[
+  {
+    "answer": "Contiguous matches",
+    "open_material_decisions": [
+      "Define where extraction of consecutive overloaded signatures stops."
+    ],
+    "question": {
+      "header": "Block boundary",
+      "options": [
+        {
+          "description": "Collect consecutive leading lines that are valid signatures for the documented object, then stop at the first other line and preserve that line and everything after it as docstring content.",
+          "label": "Contiguous matches",
+          "recommended": true
+        },
+        {
+          "description": "Continue scanning the opening portion and collect later matching signatures even when non-signature lines appear between them, removing only collected signature lines from content.",
+          "label": "All leading signatures",
+          "recommended": false
+        },
+        {
+          "description": "Treat every line before the first blank line as part of the signature block and require each such line to be a valid matching signature.",
+          "label": "Until blank line",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc determine the end of the leading overloaded-signature block?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Functions and methods",
+    "open_material_decisions": [
+      "Decide whether consecutive docstring-signature extraction applies to both functions and methods or only methods."
+    ],
+    "question": {
+      "header": "Object scope",
+      "options": [
+        {
+          "description": "Extend the existing shared behavior consistently for both supported object types, including overloaded wrapped functions.",
+          "label": "Functions and methods",
+          "recommended": true
+        },
+        {
+          "description": "Limit the new multi-signature behavior to methods; functions retain single-signature extraction.",
+          "label": "Methods only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should autodoc collect consecutive leading signatures for both functions and methods, or only for methods?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A function docstring beginning with two valid matching signatures followed by prose produces two displayed function signatures in source order, and the prose remains as content.",
+          "A method docstring beginning with two valid matching signatures followed by prose produces two displayed method signatures in source order, and the prose remains as content.",
+          "A leading valid signature followed by a non-signature line stops extraction; that line and every subsequent line remain in the rendered content even if a later line resembles a signature.",
+          "A leading valid signature followed by a signature for a different object stops extraction at the different-object line and preserves it and all subsequent lines as content.",
+          "Existing single-signature function and method behavior remains unchanged.",
+          "With `autodoc_docstring_signature` disabled, autodoc uses its ordinary signature behavior and preserves all leading signature-like docstring lines as content.",
+          "When an explicit signature is supplied, autodoc does not replace it with or remove consecutive signature-like lines from the docstring."
+        ],
+        "confirmed_decisions": [
+          "The enhanced behavior applies to both functions and methods.",
+          "Autodoc collects consecutive valid signature lines from the start of the docstring.",
+          "Each collected signature must name the object being documented under the existing name-validation rules.",
+          "Collection stops at the first line that is not a valid matching signature.",
+          "The first non-matching line and all following lines remain in the rendered docstring content.",
+          "Collected overload signatures are displayed in their original order as separate signatures for the same documented object.",
+          "A single leading signature continues to behave as before.",
+          "When `autodoc_docstring_signature` is disabled, no docstring signatures are extracted and the docstring content remains intact.",
+          "An explicitly supplied signature continues to take precedence over docstring-signature discovery."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "When `autodoc_docstring_signature` is enabled and no explicit signature is supplied, autodoc supports overloaded functions and methods whose docstrings begin with multiple consecutive signatures. It displays every valid leading signature in source order and removes those signature lines from the rendered docstring content."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The repository evidence and interview answers resolve the material behavior: consecutive valid leading signatures are collected for both functions and methods, and extraction ends at the first non-matching line. No material blocker remains."
+    },
+    "turn": 3
+  }
+]

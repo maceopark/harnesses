@@ -1,0 +1,34 @@
+{
+  "material_decisions": [
+    {
+      "id": "D1",
+      "answer": "Emit a bare JSON array of task objects; do not wrap it in a `tasks` property and do not add metadata.",
+      "why_material": "The top-level shape is the primary machine-consumer contract and cannot be inferred from the repository."
+    },
+    {
+      "id": "D2",
+      "answer": "Represent an empty result as `[]`.",
+      "why_material": "Automation requires a parseable payload even when no tasks match, while the repository defines only the empty text-mode behavior."
+    },
+    {
+      "id": "D3",
+      "answer": "Emit compact, single-line JSON followed by exactly one newline. Serialize object keys in the stable order `id`, `title`, `done`, `due`, `priority`.",
+      "why_material": "Whitespace, trailing-newline, and key-order choices determine exact stdout and future compatibility tests, but are not currently specified."
+    },
+    {
+      "id": "D4",
+      "answer": "Make `--json` a `list` subcommand option, accepted after `list` alongside its filters; do not introduce it as a global option before the subcommand.",
+      "why_material": "Option placement changes the public CLI grammar and is not determined by existing behavior."
+    },
+    {
+      "id": "D5",
+      "answer": "Use standards-compliant JSON string escaping for titles and other strings, including quotes, backslashes, newlines, tabs, and control characters; preserve their decoded string values exactly.",
+      "why_material": "Machine consumers need valid JSON for arbitrary existing titles, and the repository has no JSON-output compatibility contract for these values."
+    }
+  ],
+  "owner_rules": [
+    "Treat the JSON shape and byte-level formatting above as a stable public interface for automation.",
+    "Do not add metadata, schema-version fields, summaries, labels, or text-mode display values to JSON records.",
+    "Keep `--json` additive and scoped only to successful `list` output; existing error reporting and exit semantics remain shared with text mode."
+  ]
+}

@@ -1,0 +1,106 @@
+[
+  {
+    "answer": "Shared denominator fix",
+    "open_material_decisions": [
+      "Scope of boolean-weight normalization across weighted operations."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Normalize boolean weights in the sum-of-weights path so weighted mean and direct sum_of_weights both behave like masked multiplication followed by numeric sum; leave weighted sum unchanged.",
+          "label": "Shared denominator fix",
+          "recommended": true
+        },
+        {
+          "description": "Correct weighted mean for boolean weights without requiring direct sum_of_weights behavior to change.",
+          "label": "Mean only",
+          "recommended": false
+        },
+        {
+          "description": "Require explicit boolean-weight normalization across every weighted reduction, including weighted sum as well as mean and sum_of_weights.",
+          "label": "All reductions",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which observable behavior should the implementation contract require for boolean weights?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Eager and dask",
+    "open_material_decisions": [
+      "Whether acceptance must cover both eager NumPy-backed and dask-backed boolean weights, or only the reported eager case."
+    ],
+    "question": {
+      "header": "Backends",
+      "options": [
+        {
+          "description": "Require equivalent correct results for NumPy-backed and dask-backed DataArrays, while preserving existing numeric-weight behavior.",
+          "label": "Eager and dask",
+          "recommended": true
+        },
+        {
+          "description": "Require the reported NumPy-backed case and preserve numeric-weight behavior, leaving dask behavior as a bounded residual risk.",
+          "label": "Eager only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which backend compatibility boundary should the contract require for the shared boolean-weight denominator fix?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Owner approval of the executable implementation contract."
+    ],
+    "question": {
+      "header": "Approve contract",
+      "options": [
+        {
+          "description": "Seal this scope, behavior, compatibility boundary, acceptance evidence, delegation boundary, and residual risk as the implementation contract.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Keep the decisions open and specify changes before the contract is sealed.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: fix the shared sum-of-weights denominator path so boolean weights use numeric masked-sum semantics; require both weighted mean and direct sum_of_weights to return correct results for boolean weights on eager NumPy-backed and dask-backed DataArrays; preserve existing numeric-weight behavior and leave weighted sum behavior unchanged; accept with regression tests covering the reported [True, True, False] mean result of 1.0, the corresponding denominator of 2, equivalent eager/dask behavior, and unchanged representative numeric-weight results; implementation details may be chosen by the implementer provided no broader dtype/API behavior is intentionally changed, with backend-specific dtype differences outside these asserted values acknowledged as residual risk."
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "For data [1.0, 1.0, 1.0] and boolean weights [True, True, False], weighted mean returns 1.0.",
+          "For the same data and weights, direct sum_of_weights returns 2.",
+          "The asserted boolean-weight mean and denominator results are equivalent for eager NumPy-backed and dask-backed DataArrays.",
+          "Representative existing numeric-weight mean and sum_of_weights behavior remains unchanged.",
+          "Weighted sum behavior is unchanged.",
+          "No broader dtype validation, dtype normalization, or public API change is intentionally introduced."
+        ],
+        "confirmed_decisions": [
+          "Apply the fix to the shared denominator path, affecting weighted mean and direct sum_of_weights.",
+          "Do not require changes to weighted sum behavior.",
+          "Require equivalent asserted behavior for eager NumPy-backed and dask-backed DataArrays.",
+          "Preserve existing numeric-weight behavior.",
+          "Permit implementation-level discretion over the internal fix as long as the approved observable behavior and compatibility boundary are maintained.",
+          "Acknowledge backend-specific dtype differences outside the asserted result values as a bounded residual risk."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix the shared sum-of-weights denominator path so boolean weights use numeric masked-sum semantics. Weighted mean and direct sum_of_weights must return correct results for boolean weights on both eager NumPy-backed and dask-backed DataArrays. Preserve existing numeric-weight behavior and leave weighted sum behavior unchanged. The implementer may choose the internal coercion or equivalent implementation provided it does not intentionally broaden dtype or public API behavior."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved an executable contract after resolving the material scope and backend compatibility decisions. No material blocker remains."
+    },
+    "turn": 4
+  }
+]

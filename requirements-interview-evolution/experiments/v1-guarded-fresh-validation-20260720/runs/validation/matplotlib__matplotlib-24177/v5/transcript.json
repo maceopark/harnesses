@@ -1,0 +1,169 @@
+[
+  {
+    "answer": "Shared branch",
+    "open_material_decisions": [
+      "Whether the fix must cover only vertical histtype='step' density histograms or the full shared step-rendering family, including histtype='stepfilled' and horizontal orientation."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Require correct autoscaling for step and stepfilled histograms in both vertical and horizontal orientations, while preserving existing count, stacking, bottom, and log-scale behavior.",
+          "label": "Shared branch",
+          "recommended": true
+        },
+        {
+          "description": "Require only the reported vertical histtype='step' case; behavior of stepfilled and horizontal variants remains outside the contract.",
+          "label": "Step vertical only",
+          "recommended": false
+        },
+        {
+          "description": "Require vertical step and stepfilled density histograms, but leave horizontal orientation outside the contract.",
+          "label": "Step types vertical",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which histogram variants must the autoscaling contract cover when density=True?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Normal padding",
+    "open_material_decisions": [
+      "The required relationship between the density histogram maximum and the autoscaled dependent-axis upper limit."
+    ],
+    "question": {
+      "header": "Autoscale",
+      "options": [
+        {
+          "description": "Require the autoscaled limit to exceed the maximum rendered density, preserving the normal Matplotlib margin; exact equality with bar-histogram limits is not required.",
+          "label": "Normal padding",
+          "recommended": true
+        },
+        {
+          "description": "Require step and stepfilled density histograms to produce the same dependent-axis limits as an equivalent bar density histogram.",
+          "label": "Match bars",
+          "recommended": false
+        },
+        {
+          "description": "Require only that the limit reach at least the maximum density, allowing zero padding at the top.",
+          "label": "No clipping",
+          "recommended": false
+        }
+      ],
+      "prompt": "What dependent-axis limit behavior should the regression contract require for density step histograms?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Normalize and fit",
+    "open_material_decisions": [
+      "Whether data rescaling must preserve density heights or only preserve normalization and correctly autoscale the dependent axis."
+    ],
+    "question": {
+      "header": "Rescaling",
+      "options": [
+        {
+          "description": "Allow density heights to change with units as NumPy defines, while requiring area one and an autoscaled axis with normal padding that contains the full histogram.",
+          "label": "Normalize and fit",
+          "recommended": true
+        },
+        {
+          "description": "Require density heights to remain unchanged after rescaling the input data, in addition to fixing autoscaling.",
+          "label": "Invariant heights",
+          "recommended": false
+        },
+        {
+          "description": "Require only correct dependent-axis autoscaling and leave density normalization or scaling relationships outside regression coverage.",
+          "label": "Autoscale only",
+          "recommended": false
+        }
+      ],
+      "prompt": "When the input data are multiplied by a scale factor, what behavior should the contract require?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Preserve only",
+    "open_material_decisions": [
+      "Whether acceptance coverage must include stacked datasets, nonzero bottom, and logarithmic dependent axes, or whether those modes only need preservation through existing regression tests while the new density autoscaling assertions cover the ordinary linear, unstacked, zero-baseline case."
+    ],
+    "question": {
+      "header": "Compound modes",
+      "options": [
+        {
+          "description": "Add the new density autoscaling assertions for ordinary linear, unstacked, zero-baseline step and stepfilled histograms in both orientations; require existing stacked, bottom, count, and log behavior to remain regression-clean.",
+          "label": "Preserve only",
+          "recommended": true
+        },
+        {
+          "description": "Require explicit new density autoscaling tests for stacked datasets, nonzero bottom, and log axes as well as both step types and orientations.",
+          "label": "Test all modes",
+          "recommended": false
+        },
+        {
+          "description": "Explicitly cover ordinary and stacked density autoscaling, while treating nonzero-bottom and log modes as preservation-only compatibility boundaries.",
+          "label": "Stacked too",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should stacked, nonzero-bottom, and log-scale modes be handled in the implementation contract?"
+    },
+    "turn": 4
+  },
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Owner approval of the consolidated implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with the stated scope, acceptance checks, delegation boundary, and residual risk.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can identify a material requirement that must change before implementation.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: fix the shared step-rendering path so density=True histograms using step or stepfilled autoscale with normal Matplotlib padding beyond the maximum rendered density in both vertical and horizontal orientations; retain NumPy density semantics, including area-one normalization and unit-dependent height changes after data rescaling; add regression coverage for linear, unstacked, zero-baseline cases across both histtypes and orientations, asserting normalization and that the dependent-axis limit contains the full histogram with positive normal padding; preserve existing count, stacked, nonzero-bottom, and log-scale behavior through the existing regression suite. The implementer may choose the smallest internal fix after confirming the clipping cause, but may not change public API, density values, polygon geometry, or autoscaling behavior outside the shared step branch. Residual risk: compound density combinations are preservation-only and receive no new explicit assertions."
+    },
+    "turn": 5
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "For both histtype='step' and histtype='stepfilled' with vertical orientation, density=True produces an area-one histogram and the autoscaled y-axis upper limit is greater than the maximum rendered density.",
+          "For both histtype='step' and histtype='stepfilled' with horizontal orientation, density=True produces an area-one histogram and the autoscaled x-axis upper limit is greater than the maximum rendered density.",
+          "Regression inputs are linear-scale, unstacked, and use the default zero baseline.",
+          "Rescaling input data may alter density heights according to NumPy semantics, but normalization remains correct and the dependent axis retains positive normal padding around the full histogram.",
+          "Existing histogram tests covering count values and geometry, stacking, nonzero bottom behavior, and logarithmic scales pass without regression.",
+          "The change introduces no public API modification and does not alter computed density values or step/stepfilled polygon geometry.",
+          "Autoscaling behavior outside the shared step-rendering branch remains unchanged."
+        ],
+        "confirmed_decisions": [
+          "The fix covers the shared step-rendering family: step and stepfilled histograms in vertical and horizontal orientations.",
+          "Autoscaled dependent-axis limits must exceed the maximum rendered density with normal Matplotlib padding; exact equality with bar-histogram limits is not required.",
+          "Input rescaling retains NumPy density behavior: density heights may change with units, while area-one normalization and complete autoscale fitting are required.",
+          "New explicit regression assertions cover ordinary linear, unstacked, zero-baseline density histograms.",
+          "Count, stacked, nonzero-bottom, and logarithmic-scale modes are compatibility boundaries verified through the existing regression suite rather than expanded new scenario tests.",
+          "The implementation must be confined to the shared step-rendering path and must preserve the public API, density values, and polygon geometry.",
+          "The owner approved this consolidated contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix the shared step-rendering path so density=True histograms using histtype='step' or histtype='stepfilled' autoscale with normal Matplotlib padding beyond the maximum rendered density in both vertical and horizontal orientations. Preserve NumPy density semantics: histogram area remains one and density heights may change when input units are rescaled. Add regression coverage for linear, unstacked, zero-baseline cases across both histogram types and orientations, asserting correct normalization and a dependent-axis limit that contains the full rendered histogram with positive normal padding. Existing count, stacked, nonzero-bottom, and logarithmic-scale behavior must remain regression-clean. The implementer may select the smallest internal correction after confirming the clipping cause, but must not change the public API, computed density values, polygon geometry, or autoscaling behavior outside the shared step-rendering branch. Compound density combinations are preservation-only and do not require new explicit assertions."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the consolidated contract, resolving all material behavioral and acceptance decisions. The contract is implementation-ready and leaves only a bounded internal implementation choice."
+    },
+    "turn": 6
+  }
+]

@@ -1,0 +1,60 @@
+diff --git a/xarray/core/weighted.py b/xarray/core/weighted.py
+index 996d2e4..eb23faf 100644
+--- a/xarray/core/weighted.py
++++ b/xarray/core/weighted.py
+@@ -142,7 +142,12 @@ class Weighted:
+         # we need to mask data values that are nan; else the weights are wrong
+         mask = da.notnull()
+ 
+-        sum_of_weights = self._reduce(mask, self.weights, dim=dim, skipna=False)
++        # bool weights need to be converted to integers, as ``dot`` does not
++        # automatically promote the result of a bool-by-bool operation
++        weights = (
++            self.weights * 1 if self.weights.dtype.kind == "b" else self.weights
++        )
++        sum_of_weights = self._reduce(mask, weights, dim=dim, skipna=False)
+ 
+         # 0-weights are not valid
+         valid_weights = sum_of_weights != 0.0
+diff --git a/xarray/tests/test_weighted.py b/xarray/tests/test_weighted.py
+index 2453121..52ee9ad 100644
+--- a/xarray/tests/test_weighted.py
++++ b/xarray/tests/test_weighted.py
+@@ -59,6 +59,20 @@ def test_weighted_sum_of_weights_nan(weights, expected):
+     assert_equal(expected, result)
+ 
+ 
++@pytest.mark.parametrize(
++    ("data", "expected"),
++    (([1.0, 1.0, 1.0], 2), ([np.nan, 1.0, 1.0], 1)),
++)
++def test_weighted_sum_of_weights_bool(data, expected):
++
++    da = DataArray(data)
++    weights = DataArray([True, True, False])
++
++    result = da.weighted(weights).sum_of_weights()
++
++    assert_equal(DataArray(expected), result)
++
++
+ @pytest.mark.parametrize("da", ([1.0, 2], [1, np.nan], [np.nan, np.nan]))
+ @pytest.mark.parametrize("factor", [0, 1, 3.14])
+ @pytest.mark.parametrize("skipna", (True, False))
+@@ -139,6 +153,16 @@ def test_weighted_mean_no_nan(weights, expected):
+     assert_equal(expected, result)
+ 
+ 
++def test_weighted_mean_bool():
++
++    da = DataArray([1.0, 1.0, 1.0])
++    weights = DataArray([True, True, False])
++
++    result = da.weighted(weights).mean()
++
++    assert_equal(DataArray(1.0), result)
++
++
+ @pytest.mark.parametrize(
+     ("weights", "expected"), (([4, 6], 2.0), ([1, 0], np.nan), ([0, 0], np.nan))
+ )

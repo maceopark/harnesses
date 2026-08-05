@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "For `DataArray([1.0, 1.0, 1.0]).weighted(DataArray([True, True, False])).mean()`, the scalar result equals `1.0`.",
+    "Boolean `sum_of_weights` returns the arithmetic count/sum of valid true weights rather than a boolean dot/einsum result.",
+    "When data contain missing values, boolean weights corresponding to missing data are excluded from the denominator consistently with `weights.where(data.notnull()).sum(dim=dim, skipna=True)`.",
+    "All-false boolean weights produce a zero denominator that is converted to a missing `sum_of_weights` and weighted-mean result.",
+    "Existing numeric-weight tests continue to pass, including positive, partially zero, all-zero, and negative weight cases already covered by the suite.",
+    "Existing dimension-selection behavior and weighted missing-data behavior continue to pass their repository tests.",
+    "New focused regression tests and the existing weighted test module pass at base commit `19b088636eb7d3f65ab7a1046ac672e0689371d8` with the implementation applied."
+  ],
+  "confirmed_decisions": [
+    "Use dtype-general denominator semantics equivalent to masking weights by data validity and summing, rather than limiting the correction to boolean weights.",
+    "Preserve the public acceptance rules for weights: weights remain DataArray objects without missing values; no new dtype rejection is required.",
+    "Preserve existing numeric-weight behavior, requested dimension reductions, missing-data masking, and conversion of a zero denominator to a missing result.",
+    "Require the reported boolean-weighted mean example to produce `1.0` instead of `2.0`.",
+    "Require boolean regression coverage for direct sum of weights and weighted mean, including masked data and an all-false denominator.",
+    "Allow the implementer to choose the internal implementation as long as the contracted behavior and compatibility boundary are satisfied.",
+    "Accept bounded residual risk for backend-specific dtype behavior not exercised by the existing weighted test matrix."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update the sum-of-weights denominator so every currently accepted weight dtype behaves equivalently to `weights.where(data.notnull()).sum(dim=dim, skipna=True)`. This must fix boolean weights while preserving existing numeric-weight results, dimension handling, missing-data masking, and zero-denominator-to-missing behavior. The reported boolean example must return `1.0`. Add regression coverage for boolean `sum_of_weights` and weighted mean, including masked data and an all-false zero denominator. Internal implementation details are delegated to the implementer provided these observable requirements hold. The acknowledged residual risk is backend-specific dtype behavior outside the repository's existing weighted test matrix."
+}

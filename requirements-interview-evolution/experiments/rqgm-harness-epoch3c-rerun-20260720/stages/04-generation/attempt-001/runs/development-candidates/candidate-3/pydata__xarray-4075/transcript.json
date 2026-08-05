@@ -1,0 +1,60 @@
+[
+  {
+    "answer": "All affected APIs",
+    "open_material_decisions": [
+      "Whether boolean-weight correctness is required only for the reported DataArray weighted mean or for every affected public weighted operation and container that uses the shared sum-of-weights behavior."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Require correct 0/1 weight semantics for mean and sum_of_weights on both DataArray and Dataset weighted objects; weighted sum must remain correct.",
+          "label": "All affected APIs",
+          "recommended": true
+        },
+        {
+          "description": "Require correct boolean-weighted mean for both DataArray and Dataset, without separately contracting sum_of_weights behavior.",
+          "label": "Mean on both",
+          "recommended": false
+        },
+        {
+          "description": "Require only the demonstrated DataArray weighted mean result, leaving other shared public behavior out of scope.",
+          "label": "Reported case only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which observable scope should the contract require for boolean weights?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A DataArray with values [1.0, 1.0, 1.0] and boolean weights [true, true, false] has weighted mean 1.0, sum_of_weights 2, and weighted sum 2.0.",
+          "Boolean-weight results for DataArray weighted mean, sum_of_weights, and sum match the results obtained with equivalent numeric 0/1 weights across supported reduction dimensions.",
+          "Dataset weighted mean, sum_of_weights, and sum with boolean weights match the corresponding results produced with equivalent numeric 0/1 weights for each affected variable.",
+          "Boolean weights associated with missing data values are excluded according to the existing missing-data semantics.",
+          "An applicable boolean-weight total of zero continues to yield the existing missing result for sum_of_weights and weighted mean.",
+          "Existing numeric-weight behavior remains unchanged."
+        ],
+        "confirmed_decisions": [
+          "Boolean weights are supported and interpreted as numeric weights: true contributes 1 and false contributes 0.",
+          "The required scope includes DataArrayWeighted and DatasetWeighted.",
+          "The required public operations include mean and sum_of_weights; sum must continue to produce the correct 0/1-weighted result.",
+          "For the reported DataArray values [1.0, 1.0, 1.0] and boolean weights [true, true, false], weighted mean returns 1.0 and sum_of_weights returns 2.",
+          "Data values excluded by existing missing-value behavior do not contribute their corresponding boolean weights.",
+          "When the applicable boolean weights total zero, existing zero-total-weight behavior is preserved."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Boolean DataArray weights must behave as numeric 0/1 weights across all affected public weighted operations for both DataArray and Dataset objects. In particular, sum_of_weights must return the arithmetic sum of applicable true weights, weighted mean must use that sum as its denominator, and weighted sum must retain correct 0/1-weight behavior. Existing masking, dimensional reduction, and zero-total-weight behavior remain unchanged."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The reported defect, repository evidence, and interview answer resolve the only material scope decision. The contract can require observable boolean-weight behavior without prescribing a particular casting or reduction mechanism."
+    },
+    "turn": 2
+  }
+]

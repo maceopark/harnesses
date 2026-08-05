@@ -1,0 +1,183 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..28f69de 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1797,7 +1797,8 @@ class GenericAliasMixin(DataDocumenterMixinBase):
+                 super().should_suppress_directive_header())
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if inspect.isgenericalias(self.object):
++        has_docstring = getattr(self, 'has_docstring_comment', lambda: False)()
++        if inspect.isgenericalias(self.object) and not has_docstring:
+             more_content.append(_('alias of %s') % restify(self.object), '')
+             more_content.append('', '')
+ 
+@@ -1998,6 +1999,15 @@ class DataDocumenter(GenericAliasMixin, NewTypeMixin, TypeVarMixin,
+ 
+         return None
+ 
++    def has_docstring_comment(self) -> bool:
++        """Return whether the variable is documented by an adjacent string."""
++        try:
++            analyzer = ModuleAnalyzer.for_module(self.modname)
++            analyzer.analyze()
++            return ('', self.objpath[-1]) in analyzer.attr_docstring_docs
++        except PycodeError:
++            return False
++
+     def get_doc(self, ignore: int = None) -> Optional[List[List[str]]]:
+         # Check the variable has a docstring-comment
+         comment = self.get_module_comment(self.objpath[-1])
+diff --git a/sphinx/pycode/__init__.py b/sphinx/pycode/__init__.py
+index 8e79385..a622e3f 100644
+--- a/sphinx/pycode/__init__.py
++++ b/sphinx/pycode/__init__.py
+@@ -165,6 +165,8 @@ class ModuleAnalyzer:
+                 else:
+                     self.attr_docs[scope] = ['']
+ 
++            self.attr_docstring_docs = parser.docstring_comments
++
+             self.annotations = parser.annotations
+             self.finals = parser.finals
+             self.overloads = parser.overloads
+diff --git a/sphinx/pycode/parser.py b/sphinx/pycode/parser.py
+index a00b481..6145177 100644
+--- a/sphinx/pycode/parser.py
++++ b/sphinx/pycode/parser.py
+@@ -15,7 +15,7 @@ from collections import OrderedDict
+ from inspect import Signature
+ from token import DEDENT, INDENT, NAME, NEWLINE, NUMBER, OP, STRING
+ from tokenize import COMMENT, NL
+-from typing import Any, Dict, List, Optional, Tuple
++from typing import Any, Dict, List, Optional, Set, Tuple
+ 
+ from sphinx.pycode.ast import ast  # for py37 or older
+ from sphinx.pycode.ast import parse, unparse
+@@ -225,6 +225,7 @@ class VariableCommentPicker(ast.NodeVisitor):
+         self.current_classes: List[str] = []
+         self.current_function: Optional[ast.FunctionDef] = None
+         self.comments: Dict[Tuple[str, str], str] = OrderedDict()
++        self.docstring_comments: Set[Tuple[str, str]] = set()
+         self.annotations: Dict[Tuple[str, str], str] = {}
+         self.previous: Optional[ast.AST] = None
+         self.deforders: Dict[str, int] = {}
+@@ -270,6 +271,14 @@ class VariableCommentPicker(ast.NodeVisitor):
+             basename = ".".join(qualname[:-1])
+             self.comments[(basename, name)] = comment
+ 
++    def add_variable_docstring(self, name: str, docstring: str) -> None:
++        """Record a docstring immediately following a variable assignment."""
++        qualname = self.get_qualname_for(name)
++        if qualname:
++            basename = ".".join(qualname[:-1])
++            self.comments[(basename, name)] = docstring
++            self.docstring_comments.add((basename, name))
++
+     def add_variable_annotation(self, name: str, annotation: ast.AST) -> None:
+         qualname = self.get_qualname_for(name)
+         if qualname:
+@@ -411,7 +420,7 @@ class VariableCommentPicker(ast.NodeVisitor):
+                     else:
+                         docstring = node.value.s.decode(self.encoding or 'utf-8')
+ 
+-                    self.add_variable_comment(varname, dedent_docstring(docstring))
++                    self.add_variable_docstring(varname, dedent_docstring(docstring))
+                     self.add_entry(varname)
+             except TypeError:
+                 pass  # this assignment is not new definition!
+@@ -545,6 +554,7 @@ class Parser:
+         self.encoding = encoding
+         self.annotations: Dict[Tuple[str, str], str] = {}
+         self.comments: Dict[Tuple[str, str], str] = {}
++        self.docstring_comments: Set[Tuple[str, str]] = set()
+         self.deforders: Dict[str, int] = {}
+         self.definitions: Dict[str, Tuple[str, int, int]] = {}
+         self.finals: List[str] = []
+@@ -562,6 +572,7 @@ class Parser:
+         picker.visit(tree)
+         self.annotations = picker.annotations
+         self.comments = picker.comments
++        self.docstring_comments = picker.docstring_comments
+         self.deforders = picker.deforders
+         self.finals = picker.finals
+         self.overloads = picker.overloads
+diff --git a/tests/roots/test-ext-autodoc/target/genericalias.py b/tests/roots/test-ext-autodoc/target/genericalias.py
+index 9909efc..f1b7f43 100644
+--- a/tests/roots/test-ext-autodoc/target/genericalias.py
++++ b/tests/roots/test-ext-autodoc/target/genericalias.py
+@@ -1,10 +1,28 @@
+-from typing import Callable, List
++from pathlib import Path
++from typing import Any, Callable, Dict, List, Union
+ 
+ #: A list of int
+ T = List[int]
+ 
+ C = Callable[[int], None]  # a generic alias not having a doccomment
+ 
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary with options."""
++
++FileContents = Union[str, None]
++"""When the file content is ``None``, the file should not be written."""
++
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of file operations::
++
++    Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++
++- **path**: file path
++
++.. note::
++    A **FileOp** usually has side effects.
++"""
++
+ 
+ class Class:
+     #: A list of int
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..d93473e 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -88,6 +88,8 @@ def test_autodata_GenericAlias(app):
+             '   A list of int',
+             '',
+         ]
++
++
+     else:
+         assert list(actual) == [
+             '',
+@@ -101,6 +103,31 @@ def test_autodata_GenericAlias(app):
+         ]
+ 
+ 
++@pytest.mark.parametrize(('name', 'documentation'), [
++    ('ScaffoldOpts', ['   Dictionary with options.', '']),
++    ('FileContents', [
++        '   When the file content is ``None``, the file should not be written.',
++        '',
++    ]),
++    ('FileOp', [
++        '   Signature of file operations::',
++        '',
++        '       Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]',
++        '',
++        '   - **path**: file path',
++        '',
++        '   .. note::',
++        '       A **FileOp** usually has side effects.',
++        '',
++    ]),
++])
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodata_GenericAlias_docstring(app, name, documentation):
++    actual = list(do_autodoc(app, 'data', 'target.genericalias.' + name))
++    assert documentation == actual[-len(documentation):]
++    assert not any('alias of ' in line for line in actual)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_NewType(app):
+     actual = do_autodoc(app, 'data', 'target.typevar.T6')

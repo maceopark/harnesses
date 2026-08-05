@@ -1,0 +1,19 @@
+{
+  "acceptance_checks": [
+    "strip_accents_unicode(\"\\u00f1\") returns \"n\".",
+    "strip_accents_unicode(\"n\\u0303\") returns \"n\".",
+    "The composed and decomposed canonically equivalent inputs return identical accent-free strings.",
+    "Existing strip_accents_unicode coverage for accented Latin text, Arabic text, and mixed text continues to pass.",
+    "A vectorizer preprocessor configured with strip_accents='unicode' removes the combining accent from already-NFKD input through the existing preprocessing path."
+  ],
+  "confirmed_decisions": [
+    "Remove the behavior that preserves combining characters solely because the input is already equal to its NFKD-normalized form.",
+    "After NFKD normalization, strip Unicode combining characters regardless of whether normalization changed the input.",
+    "Preserve the existing behavior for precomposed accented text while making canonically equivalent decomposed text yield the same output.",
+    "Apply the correction through the existing strip_accents_unicode function; CountVectorizer and related vectorizers already select this function for strip_accents='unicode', so no separate vectorizer behavior is required.",
+    "Add regression coverage for an already-NFKD base-character-plus-combining-accent input and verify that it matches the result for the equivalent precomposed character."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Correct Unicode accent stripping so canonically equivalent composed and already-NFKD text produce the same accent-free output. In particular, strip_accents_unicode must transform both U+00F1 (LATIN SMALL LETTER N WITH TILDE) and the sequence U+006E U+0303 (LATIN SMALL LETTER N followed by COMBINING TILDE) into \"n\". The corrected behavior must flow through existing vectorizer preprocessing when strip_accents='unicode'."
+}

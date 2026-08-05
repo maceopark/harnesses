@@ -1,0 +1,18 @@
+{
+  "acceptance_checks": [
+    "Given DataArray([1.0, 1.0, 1.0]) and DataArray([True, True, False]), calling weighted(weights).mean() returns a scalar DataArray equal to 1.0.",
+    "For equivalent boolean and numeric 1/0 weights applied to the same data and dimensions, weighted mean results are equal, including the existing missing-data masking behavior.",
+    "The weighted test suite includes a regression case exercising boolean weights through the public weighted-mean API.",
+    "Existing weighted tests for numeric weights, zero total weight, cancelling weights, and missing values continue to pass.",
+    "Run the targeted weighted tests in xarray/tests/test_weighted.py; if the environment still cannot import xarray because pkg_resources is unavailable, record that dependency failure rather than treating the implementation as behaviorally verified."
+  ],
+  "confirmed_decisions": [
+    "Boolean DataArray weights remain valid inputs to the existing weighted API.",
+    "When calculating the normalization denominator for a weighted mean, each applicable True weight contributes one and each False weight contributes zero.",
+    "Weighted means using boolean weights produce the same observable result as using corresponding numeric 1/0 weights.",
+    "Existing behavior for numeric weights, missing data, and zero total weight remains unchanged."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Correct weighted-mean normalization for boolean DataArray weights. For data [1.0, 1.0, 1.0] and boolean weights [True, True, False], DataArray.weighted(...).mean() must return 1.0 rather than 2.0. Boolean weights are accepted through the existing weighted API and contribute as binary weights: True contributes one and False contributes zero. The change is confined to weighted reductions and introduces no new public API or validation behavior."
+}

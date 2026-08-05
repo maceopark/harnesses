@@ -1,0 +1,106 @@
+[
+  {
+    "answer": "Project-relative paths",
+    "open_material_decisions": [
+      "Decide whether recursive discovery must use the same captured ignore-path configuration as normal module expansion or may continue using the live configuration value.",
+      "Define the path basis against which anchored ignore-paths expressions must match during recursive discovery."
+    ],
+    "question": {
+      "header": "Match basis",
+      "options": [
+        {
+          "description": "Match against paths relative to the invocation/config project directory, so `^src/gen/.*$` excludes that subtree on both Windows and POSIX.",
+          "label": "Project-relative paths",
+          "recommended": true
+        },
+        {
+          "description": "Match relative to each recursive target, requiring a pattern such as `^gen/.*$` when the target is `src/`.",
+          "label": "Target-relative paths",
+          "recommended": false
+        },
+        {
+          "description": "Keep matching filesystem paths as walked, meaning anchored project-relative patterns are not guaranteed to match.",
+          "label": "Absolute paths",
+          "recommended": false
+        }
+      ],
+      "prompt": "For `pylint --recursive=y src/` with `ignore-paths = [\"^src/gen/.*$\"]`, which path semantics should the contract require?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Captured value",
+    "open_material_decisions": [
+      "Decide whether recursive discovery must use the same captured ignore-path configuration as normal module expansion or may continue using the live configuration value."
+    ],
+    "question": {
+      "header": "Config source",
+      "options": [
+        {
+          "description": "Use the same initialization-time ignore-path patterns as normal module expansion, providing consistent behavior across both stages.",
+          "label": "Captured value",
+          "recommended": true
+        },
+        {
+          "description": "Continue reading the current config value during recursive discovery, allowing later configuration mutations to affect discovery even if module expansion still uses the captured value.",
+          "label": "Live value",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which ignore-path configuration source should recursive discovery use?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve or revise the executable implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this behavior, scope, acceptance evidence, delegation boundary, and residual risk for implementation.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Do not seal yet; provide corrections to the proposed behavior, scope, or acceptance criteria.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: recursive discovery must apply the initialization-time captured ignore-path patterns, matching them against project-relative paths in both POSIX and Windows forms; therefore, with project configuration `ignore-paths = [\"^src/gen/.*$\"]`, `pylint --recursive=y src/` must exclude `src/gen/` and its Python files. Scope is limited to recursive ignore-path handling and regression coverage. Acceptance requires an end-to-end test loading the anchored pattern from project configuration, proving the generated subtree is absent while a non-ignored file remains linted, plus preservation of existing recursive-ignore tests. Implementation may choose the internal path-normalization/refactoring approach but must not change `ignore`, `ignore-patterns`, configuration precedence, or non-recursive semantics. Residual risk is limited to previously unspecified recursive behavior for anchored ignore-path patterns, which intentionally changes to the approved project-relative basis."
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Add an end-to-end regression test that loads `ignore-paths = [\"^src/gen/.*$\"]` from project configuration and runs recursive linting on `src/`.",
+          "Verify the regression test proves files under `src/gen/` are absent from the linted paths.",
+          "Verify the regression test proves at least one non-ignored file under `src/` remains linted.",
+          "Cover the approved behavior for both POSIX and Windows path forms.",
+          "Run and preserve all existing recursive-ignore tests.",
+          "Verify `ignore`, `ignore-patterns`, configuration precedence, and non-recursive behavior remain unchanged."
+        ],
+        "confirmed_decisions": [
+          "Recursive ignore-path matching uses paths relative to the invocation/config project directory, not paths relative to each recursive target or raw absolute walked paths.",
+          "Recursive discovery uses the same initialization-time captured ignore-path configuration as normal module expansion.",
+          "The implementation may choose the internal path-normalization or refactoring approach.",
+          "Do not change `ignore`, `ignore-patterns`, configuration precedence, or non-recursive semantics.",
+          "The intentional compatibility change is limited to previously unspecified recursive behavior for anchored ignore-path expressions, which will use the approved project-relative basis."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix recursive ignore-path handling so recursive discovery uses the initialization-time captured ignore-path patterns and evaluates them against project-relative paths in both POSIX and Windows forms. With project configuration `ignore-paths = [\"^src/gen/.*$\"]`, running `pylint --recursive=y src/` must exclude `src/gen/` and its Python files. Scope is limited to recursive ignore-path handling and regression coverage."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved an implementable contract, and all material behavioral decisions are resolved."
+    },
+    "turn": 4
+  }
+]

@@ -1,0 +1,84 @@
+[
+  {
+    "answer": "Consecutive leading lines",
+    "open_material_decisions": [
+      "Define the boundary of the leading overload-signature block and the treatment of later signature-like lines."
+    ],
+    "question": {
+      "header": "Block boundary",
+      "options": [
+        {
+          "description": "Extract and remove every consecutive valid signature from the start, stopping permanently at the first non-signature line.",
+          "label": "Consecutive leading lines",
+          "recommended": true
+        },
+        {
+          "description": "Extract and remove every valid signature-like line anywhere in the docstring, including lines after prose or blank lines.",
+          "label": "All matching lines",
+          "recommended": false
+        },
+        {
+          "description": "Extract leading valid signatures while allowing blank lines between them, then stop at the first nonblank non-signature line.",
+          "label": "Leading lines with blanks",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc determine which docstring lines are overloaded signatures?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Functions and methods",
+    "open_material_decisions": [
+      "Whether multiple leading signatures are extracted for both functions and methods or only for methods."
+    ],
+    "question": {
+      "header": "Feature scope",
+      "options": [
+        {
+          "description": "Extend the existing option consistently for both object types it already covers.",
+          "label": "Functions and methods",
+          "recommended": true
+        },
+        {
+          "description": "Support overload blocks only for methods; functions retain single-signature behavior.",
+          "label": "Methods only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which documented object types should support multiple consecutive leading docstring signatures?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "With `autodoc_docstring_signature` enabled, a function docstring beginning with multiple consecutive valid signatures displays every one of those signatures in order and does not render those lines as docstring content.",
+          "With `autodoc_docstring_signature` enabled, a method docstring beginning with multiple consecutive valid signatures displays every one of those signatures in order and does not render those lines as docstring content.",
+          "A non-signature line ends the leading overload block; it and every later line remain rendered content, even if a later line resembles a signature.",
+          "A docstring with one valid leading signature retains the existing single-signature outcome.",
+          "A docstring without a valid leading signature retains its existing signature and content behavior.",
+          "With `autodoc_docstring_signature` disabled, leading signature-like lines remain docstring content and are not used as extracted overload signatures.",
+          "An explicitly supplied signature continues to take precedence over signatures found in the docstring."
+        ],
+        "confirmed_decisions": [
+          "Multiple-signature extraction applies to both functions and methods.",
+          "Only consecutive valid signature lines from the start of the docstring form the overload block.",
+          "The overload block ends at the first non-signature or otherwise invalid signature line; later signature-like lines are not extracted.",
+          "All extracted overload signatures are displayed as signatures in their original order.",
+          "Extracted signature lines are removed from rendered docstring content.",
+          "Existing configuration and explicit-signature precedence behavior is preserved."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend `autodoc_docstring_signature` so that, when enabled, autodoc recognizes an overload block consisting of consecutive valid signature lines at the very start of a function or method docstring. Every signature in that leading block is displayed for the documented object, in source order, and all extracted signature lines are omitted from the rendered docstring content. Extraction stops permanently at the first line that is not a valid signature for that object; that line and all subsequent content remain docstring content. Existing behavior remains unchanged for docstrings with zero or one leading signature, when the option is disabled, and when an explicit signature takes precedence."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner has resolved the material scope and block-boundary decisions. The request and repository constraints now support an implementable contract without inventing additional observable behavior."
+    },
+    "turn": 3
+  }
+]

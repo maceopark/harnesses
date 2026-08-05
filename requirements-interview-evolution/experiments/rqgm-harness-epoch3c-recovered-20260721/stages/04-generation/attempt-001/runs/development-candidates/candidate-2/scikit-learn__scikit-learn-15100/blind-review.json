@@ -1,0 +1,55 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/summary",
+          "quoted_value": "Correct Unicode accent stripping so canonically equivalent composed and already-NFKD inputs produce the same accent-free text. In particular, both U+00F1 (LATIN SMALL LETTER N WITH TILDE) and the already-decomposed sequence U+006E U+0303 must produce \"n\" through strip_accents_unicode. The same behavior must be observable when strip_accents='unicode' is used by the shared vectorizer preprocessing path, including CountVectorizer and inheriting vectorizers such as TfidfVectorizer. Existing behavior for supported composed accented text remains unchanged."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/4",
+          "quoted_value": "TfidfVectorizer configured with strip_accents='unicode' exhibits the same corrected preprocessing behavior."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/3/statement",
+          "quoted_value": "Vectorizer preprocessing maps strip_accents='unicode' directly to strip_accents_unicode and passes the selected function into the shared preprocessing pipeline."
+        }
+      ],
+      "description": "The TfidfVectorizer-specific requirement is unsupported by the permitted audited evidence. Shared preprocessing behavior supports vectorizer integration generally, but does not establish that TfidfVectorizer inherits or exercises that path. This adds a material implementation and verification obligation beyond the grounded record.",
+      "failure_class": "invention",
+      "general_cause": "The contract names a specific inheriting vectorizer without audited evidence establishing that inheritance relationship or specifically identifying that class as in scope.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "TfidfVectorizer is explicitly required in the summary and acceptance checks, while the audited evidence only establishes the shared vectorizer preprocessing mapping and the public request refers generically to CountVectorizer and related behavior."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/4",
+          "quoted_value": "No change is required to strip_accents='ascii', custom callable accent stripping, or strip_accents=None behavior."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/5",
+          "quoted_value": "Previously supported composed Latin, composed Arabic, and mixed accented/plain inputs continue to produce their established accent-free results."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/2/statement",
+          "quoted_value": "The ASCII implementation has no equality-based early return: it always NFKD-normalizes and then removes non-ASCII characters through ASCII encoding with the 'ignore' error policy."
+        }
+      ],
+      "description": "The contract lacks a verifiable regression check protecting strip_accents='ascii', custom callable stripping, and strip_accents=None, despite making their unchanged behavior a confirmed decision. This leaves a material compatibility promise unverified.",
+      "failure_class": "omission",
+      "general_cause": "A confirmed compatibility boundary was not translated into a corresponding acceptance check.",
+      "id": "FINDING-2",
+      "material": true,
+      "observable_signal": "The contract declares that ASCII, custom-callable, and disabled accent stripping require no change, but its regression check only covers previously supported Unicode-mode inputs."
+    }
+  ],
+  "summary": "The contract is not fully implementation-ready: it invents a TfidfVectorizer-specific obligation not established by the permitted audited evidence, and it omits acceptance coverage for an explicit compatibility boundary covering ASCII, custom-callable, and disabled accent stripping."
+}

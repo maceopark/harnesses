@@ -1,0 +1,26 @@
+{
+  "acceptance_checks": [
+    "With `sys.path[0] == \"\"`, `modify_sys_path()` removes that first entry.",
+    "With `sys.path[0] == \".\"`, `modify_sys_path()` removes that first entry.",
+    "With `sys.path[0] == os.getcwd()`, `modify_sys_path()` removes that first entry.",
+    "With an arbitrary value at `sys.path[0]`, the value remains present and in the first position after `modify_sys_path()`, except that separately identified working-directory entries caused by `PYTHONPATH` colon semantics may be removed.",
+    "The reported `runpy.run_module(\"pylint\", run_name=\"__main__\", alter_sys=True)` execution does not remove an arbitrary bundled-library entry from the front of `sys.path`.",
+    "With an empty `sys.path`, `modify_sys_path()` completes without raising and leaves it empty.",
+    "Existing leading-colon and trailing-colon `PYTHONPATH` scenarios continue removing the intended working-directory entries.",
+    "When an arbitrary first entry is preserved, leading/trailing-colon cleanup does not remove that entry through positional indexing.",
+    "Existing module-execution protection against accidental imports from the current working directory remains covered and passing.",
+    "Targeted tests for `modify_sys_path()` and the runpy regression pass."
+  ],
+  "confirmed_decisions": [
+    "Initial removal uses exact string matching only: `\"\"`, `\".\"`, or `os.getcwd()`.",
+    "An empty `sys.path` causes no removal and no error.",
+    "Every other initial entry is preserved, including the arbitrary bundled-library entry in the reported runpy case.",
+    "Leading/trailing-colon `PYTHONPATH` cleanup remains supported and removes only its corresponding working-directory entries, without relying on old indices that could remove a preserved arbitrary entry.",
+    "The scope is limited to `modify_sys_path()` and module execution paths that call it; `run_pylint()` and the installed console-script entry point are not broadened to call it.",
+    "Regression coverage is contractual for the exact eligible values, arbitrary-first-entry/runpy behavior, empty `sys.path`, and existing `PYTHONPATH` colon cases.",
+    "Normalized, resolved, symlinked, or otherwise equivalent spellings of the current working directory are not additionally eligible unless their exact value is `\"\"`, `\".\"`, or `os.getcwd()`."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update `modify_sys_path()` so an empty `sys.path` is a no-op; remove `sys.path[0]` only when its exact string value is `\"\"`, `\".\"`, or `os.getcwd()`; and preserve every other first entry. Retain the existing cleanup for working-directory entries introduced by leading or trailing colons in `PYTHONPATH`, but target those entries so a preserved arbitrary first entry is never removed. Limit the behavioral change to callers of `modify_sys_path()`, including `python -m pylint` and the reported `runpy.run_module(..., run_name=\"__main__\", alter_sys=True)` path; the installed `pylint` console script remains outside this path. Add regression coverage for all three eligible exact values, an arbitrary preserved first entry including the reported runpy scenario, an empty `sys.path`, and existing leading/trailing-colon `PYTHONPATH` behavior. Paths equivalent to the working directory but not exactly equal to one of the three approved strings remain preserved by design."
+}

@@ -1,0 +1,20 @@
+{
+  "acceptance_checks": [
+    "A synthetic module with `__version__ = '1.14.3'` satisfies `minversion(module, '1.14dev')` and no `TypeError` is raised.",
+    "Existing `test_minversion` good-version and bad-version expectations continue to pass.",
+    "Inclusive mode still accepts equal versions; exclusive mode still rejects equal versions.",
+    "The targeted introspection test module passes.",
+    "The implementation no longer imports or uses `distutils.version.LooseVersion` for `minversion` comparisons."
+  ],
+  "confirmed_decisions": [
+    "Replace the `LooseVersion` comparison path in `astropy/utils/introspection.py` with `pkg_resources.parse_version`.",
+    "For installed `1.14.3` and required `1.14dev`, inclusive `minversion` returns `True` and does not raise.",
+    "Preserve inclusive comparison as `>=` and exclusive comparison as `>`.",
+    "Preserve support for module objects and module-name strings, including returning `False` when a named module cannot be imported.",
+    "Preserve direct and dotted `version_path` resolution and existing invalid-module `ValueError` behavior.",
+    "Add focused regression coverage in `astropy/utils/tests/test_introspection.py`; no new dependency is required because the repository setup already uses setuptools."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Restore `pkg_resources.parse_version` in `astropy.utils.introspection.minversion` so version comparisons use packaging-style ordering instead of `distutils.version.LooseVersion`. Preserve all existing module resolution, version-path lookup, missing-module, argument-validation, and inclusive/exclusive behavior. Add regression coverage proving that an installed version of `1.14.3` satisfies a required version of `1.14dev` without raising `TypeError`."
+}

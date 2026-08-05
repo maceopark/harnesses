@@ -1,0 +1,102 @@
+[
+  {
+    "answer": "Fix split_surds",
+    "open_material_decisions": [
+      "Whether direct split_surds coverage is required in addition to the sqrtdenest regression.",
+      "Whether to fix the empty-surds case in split_surds for all callers or contain it within sqrtdenest."
+    ],
+    "question": {
+      "header": "Fix boundary",
+      "options": [
+        {
+          "description": "Guard the empty list at its source so sqrtdenest and any other callers receive a valid non-match result instead of IndexError.",
+          "label": "Fix split_surds",
+          "recommended": true
+        },
+        {
+          "description": "Change only the sqrtdenest matching path, leaving split_surds behavior unchanged for other direct or indirect callers.",
+          "label": "Contain in sqrtdenest",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should the empty-surds case be handled?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Both levels",
+    "open_material_decisions": [
+      "Whether direct split_surds coverage is required in addition to the public sqrtdenest regression."
+    ],
+    "question": {
+      "header": "Test scope",
+      "options": [
+        {
+          "description": "Add the reported sqrtdenest regression plus a direct split_surds empty-surds test to lock both public behavior and the chosen fix boundary.",
+          "label": "Both levels",
+          "recommended": true
+        },
+        {
+          "description": "Add only the reported sqrtdenest regression, relying on it to exercise split_surds indirectly.",
+          "label": "Public only",
+          "recommended": false
+        }
+      ],
+      "prompt": "What regression coverage should the implementation include?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "No-op tuple",
+    "open_material_decisions": [
+      "What tuple split_surds should return when the input Add contains no Pow-based surds."
+    ],
+    "question": {
+      "header": "Empty result",
+      "options": [
+        {
+          "description": "Return (1, 0, expr), preserving the entire input in the unmatched remainder so callers treat it as unchanged.",
+          "label": "No-op tuple",
+          "recommended": true
+        },
+        {
+          "description": "Return a different sentinel or tuple shape, requiring callers and direct tests to define special-case handling.",
+          "label": "Alternate sentinel",
+          "recommended": false
+        }
+      ],
+      "prompt": "When split_surds finds no surds, what result should it return?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "split_surds checks whether its derived surds list is empty before invoking _split_gcd.",
+          "For an Add containing no Pow-based surds, split_surds returns (S.One, S.Zero, expr) and raises no exception.",
+          "The reported sqrtdenest expression returns 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2 without IndexError.",
+          "The new direct split_surds regression passes and locks the no-op tuple contract.",
+          "Existing tests in sympy/simplify/tests/test_sqrtdenest.py continue to pass, including unchanged-result cases.",
+          "Relevant radsimp tests continue to pass, demonstrating no regression for ordinary non-empty surd splitting."
+        ],
+        "confirmed_decisions": [
+          "Fix the empty-surds condition at its source in split_surds, covering sqrtdenest and other callers.",
+          "Do not alter _split_gcd's non-empty-input contract; prevent split_surds from calling it without arguments.",
+          "When split_surds has no Pow-based surds, return (S.One, S.Zero, expr).",
+          "Add a public regression test for sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2), asserting that it does not raise and equals 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.",
+          "Add a direct split_surds regression using an Add with no Pow-based surds, asserting the no-op tuple.",
+          "Preserve all existing denesting behavior, including returning expressions unchanged when no acceptable denesting exists."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update split_surds in sympy/simplify/radsimp.py to handle an empty Pow-based surds list before calling _split_gcd. Return the no-op tuple (S.One, S.Zero, expr), preserving the complete input as the unmatched remainder. This makes the reported sqrtdenest call return its unchanged expanded expression instead of raising IndexError. Add regression coverage at both the public sqrtdenest level and the direct split_surds level."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The desired behavior, fix boundary, empty-case return value, and regression scope are all resolved. The repository evidence supports an implementation-ready contract with no remaining material decisions."
+    },
+    "turn": 4
+  }
+]

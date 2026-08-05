@@ -1,0 +1,24 @@
+{
+  "acceptance_checks": [
+    "With default python_files patterns, running pytest on a directory containing foobar/__init__.py with import-failing code does not import that initializer and produces no collection error.",
+    "A matching test file beneath foobar is still collected and executed without importing foobar/__init__.py.",
+    "When python_files is configured to include __init__.py, a recursively discovered initializer retains existing import and collection behavior, including surfacing import failures as collection errors.",
+    "Passing __init__.py directly retains existing import and collection behavior, including surfacing import failures as collection errors.",
+    "Existing tests covering collection of initializer tests under broadened python_files configuration continue to pass.",
+    "Existing tests covering direct __init__.py arguments continue to pass.",
+    "Existing collect_ignore behavior continues to prevent collection or import within ignored package trees.",
+    "A focused regression test distinguishes the fixed behavior from the previous item-count-only coverage by placing failing code in an unselected initializer under an ordinary directory invocation.",
+    "The full relevant collection test suite passes without requiring preservation of the Package collector hierarchy for unselected initializers."
+  ],
+  "confirmed_decisions": [
+    "For an ordinary directory invocation, a recursively encountered __init__.py that does not match python_files must be ignored rather than imported to establish package collection semantics.",
+    "Explicitly passed __init__.py files retain their existing import and collection behavior.",
+    "Recursively encountered __init__.py files that match python_files retain their existing import and collection behavior.",
+    "Matching descendant test files remain discoverable and runnable when their package's unselected __init__.py is not imported.",
+    "Internal collector or node hierarchy may change for directories whose initializer is unselected.",
+    "Existing pytest_ignore_collect behavior must remain effective."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Fix the pytest 5.2.3 regression by preventing recursively discovered package initializers from being imported unless they are selected for collection. An initializer is selected when it matches the configured python_files patterns or is passed explicitly. A recursively encountered, unselected __init__.py must not be imported, but matching test files beneath its directory must still be discovered and executed. Preserving the existing internal Package collector hierarchy for unselected initializers is not required."
+}

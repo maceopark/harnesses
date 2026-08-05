@@ -1,0 +1,24 @@
+{
+  "acceptance_checks": [
+    "With `sys.path = [\"something\", ...]` and no PYTHONPATH edge case, calling `modify_sys_path()` leaves `\"something\"` at index 0.",
+    "With `sys.path[0]` equal to `\"\"`, `\".\"`, or the mocked current working directory, calling `modify_sys_path()` removes that first entry.",
+    "With `sys.path = []`, calling `modify_sys_path()` completes successfully and leaves the list empty.",
+    "When an unrelated custom entry is first and a leading- or trailing-colon PYTHONPATH condition introduces a later current-directory entry, the custom entry remains and only the qualifying current-directory entry is removed.",
+    "When the PYTHONPATH edge-case target position contains an unrelated path rather than `\"\"`, `\".\"`, or the current working directory, that entry is preserved.",
+    "Existing `modify_sys_path` cases for leading/trailing PYTHONPATH colons and explicit current-directory PYTHONPATH entries continue to pass.",
+    "The integration tests proving that `python -m pylint` does not import shadowing local modules and can load a local plugin when the current directory is explicitly on PYTHONPATH continue to pass."
+  ],
+  "confirmed_decisions": [
+    "Limit the behavior change to `modify_sys_path()` used by module execution through `pylint/__main__.py`; do not change `run_pylint()` or console-script routing.",
+    "At function entry, remove `sys.path[0]` only if it equals `\"\"`, `\".\"`, or the value returned by `os.getcwd()`.",
+    "If `sys.path[0]` is an unrelated path such as `\"something\"`, preserve it.",
+    "If `sys.path` is empty, perform no removal and do not raise `IndexError`.",
+    "Preserve existing PYTHONPATH semantics: a leading or trailing colon may introduce a current-directory entry that should still be removed unless PYTHONPATH explicitly represents the current directory using the existing exclusions.",
+    "Make PYTHONPATH cleanup value-aware rather than relying on indices shifted by an unconditional first pop: remove only the expected entry when its value is `\"\"`, `\".\"`, or `os.getcwd()`; preserve unrelated entries.",
+    "Retain existing behavior for ordinary `python -m pylint` execution, including protection against importing local files that shadow standard-library or Pylint modules.",
+    "Extend the existing `test_modify_sys_path` coverage rather than introducing a new test framework or dependency."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update `modify_sys_path()` so it removes entries only when they represent the current working directory (`\"\"`, `\".\"`, or `os.getcwd()`). Preserve unrelated custom entries, including `sys.path[0]` under `runpy`, while retaining the existing PYTHONPATH leading/trailing-colon cleanup through value-aware indexing. An empty `sys.path` must remain unchanged without raising."
+}

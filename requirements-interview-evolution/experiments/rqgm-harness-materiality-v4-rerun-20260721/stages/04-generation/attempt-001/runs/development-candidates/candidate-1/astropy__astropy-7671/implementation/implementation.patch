@@ -1,0 +1,75 @@
+diff --git a/astropy/utils/introspection.py b/astropy/utils/introspection.py
+index 3e784f9..9c1e3a0 100644
+--- a/astropy/utils/introspection.py
++++ b/astropy/utils/introspection.py
+@@ -6,7 +6,11 @@
+ import inspect
+ import types
+ import importlib
+-from distutils.version import LooseVersion
++
++try:
++    from packaging.version import parse as parse_version
++except ImportError:
++    from pkg_resources import parse_version
+ 
+ 
+ __all__ = ['resolve_name', 'minversion', 'find_current_module',
+@@ -140,9 +144,9 @@ def minversion(module, version, inclusive=True, version_path='__version__'):
+         have_version = resolve_name(module.__name__, version_path)
+ 
+     if inclusive:
+-        return LooseVersion(have_version) >= LooseVersion(version)
++        return parse_version(have_version) >= parse_version(version)
+     else:
+-        return LooseVersion(have_version) > LooseVersion(version)
++        return parse_version(have_version) > parse_version(version)
+ 
+ 
+ def find_current_module(depth=1, finddiff=False):
+diff --git a/astropy/utils/tests/test_introspection.py b/astropy/utils/tests/test_introspection.py
+index d8262d4..cfa3ef1 100644
+--- a/astropy/utils/tests/test_introspection.py
++++ b/astropy/utils/tests/test_introspection.py
+@@ -2,6 +2,8 @@
+ 
+ # namedtuple is needed for find_mod_objs so it can have a non-local module
+ from collections import namedtuple
++import sys
++from types import ModuleType, SimpleNamespace
+ 
+ import pytest
+ 
+@@ -63,9 +65,9 @@ def test_find_mod_objs():
+     assert namedtuple not in objs
+ 
+ 
+-def test_minversion():
+-    from types import ModuleType
++def test_minversion(monkeypatch):
+     test_module = ModuleType(str("test_module"))
++    monkeypatch.setitem(sys.modules, test_module.__name__, test_module)
+     test_module.__version__ = '0.12.2'
+     good_versions = ['0.12', '0.12.1', '0.12.0.dev']
+     bad_versions = ['1', '1.2rc1']
+@@ -73,3 +75,20 @@ def test_minversion():
+         assert minversion(test_module, version)
+     for version in bad_versions:
+         assert not minversion(test_module, version)
++
++    test_module.__version__ = '1.14.3'
++    assert minversion(test_module, '1.14dev')
++    assert minversion(test_module.__name__, '1.14dev')
++
++    test_module.__version__ = '1.0rc1'
++    assert minversion(test_module, '1.0.dev1')
++    assert not minversion(test_module, '1.0')
++    assert minversion(test_module, '1.0rc1')
++    assert not minversion(test_module, '1.0rc1', inclusive=False)
++
++    test_module.version = SimpleNamespace(value='2.0')
++    assert minversion(test_module, '2.0', version_path='version.value')
++    assert not minversion('module_that_does_not_exist', '1.0')
++
++    with pytest.raises(ValueError):
++        minversion(object(), '1.0')

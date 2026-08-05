@@ -1,0 +1,81 @@
+[
+  {
+    "answer": "All combining marks",
+    "open_material_decisions": [
+      "Whether the fix must apply uniformly to all Unicode combining characters after NFKD normalization or only to the reported decomposed tilde case."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Always filter Unicode combining characters from the NFKD-normalized value; add direct regression coverage for composed and already-decomposed equivalent input, while preserving non-combining characters and existing vectorizer integration.",
+          "label": "All combining marks",
+          "recommended": true
+        },
+        {
+          "description": "Guarantee only that precomposed ñ and decomposed n + combining tilde both produce n, without requiring uniform behavior for other already-decomposed accents.",
+          "label": "Reported tilde only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which observable compatibility boundary should govern `strip_accents_unicode` for input already in NFKD form?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this scope, behavior, tests, compatibility boundary, and residual risk as implementation-ready.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can identify a material requirement that must be revised.",
+          "label": "Request changes",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: update `strip_accents_unicode` so it always filters all Unicode combining characters from the NFKD-normalized value, including when the input is already NFKD; preserve every non-combining character and the existing `CountVectorizer`/`TfidfVectorizer` integration; add direct regression coverage proving canonically equivalent composed and decomposed accented inputs produce the same accent-free output, while retaining existing accent-stripping tests. No documentation or ASCII-mode change is required. Acceptance requires the targeted text-feature tests to pass. Residual risk: removing the faulty early return changes already-NFKD strings containing any combining mark, intentionally matching the selected all-combining-marks boundary. Is this contract approved for implementation?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A direct test demonstrates that precomposed `ñ` and decomposed `n` plus COMBINING TILDE both produce `n` through `strip_accents_unicode`.",
+          "Regression coverage demonstrates the selected general rule: combining characters are removed from the NFKD-normalized value even when normalization does not change the input.",
+          "Existing tests for composed Latin accents, the composed Arabic accent, and mixed accented/plain text continue to pass.",
+          "Non-combining characters in tested inputs remain unchanged.",
+          "Targeted text feature-extraction tests pass.",
+          "Bounded residual risk is acknowledged: already-NFKD strings containing any Unicode combining mark will now change because those marks are removed; this is intentional under the approved all-combining-marks boundary."
+        ],
+        "confirmed_decisions": [
+          "The compatibility boundary applies uniformly to all Unicode combining characters after NFKD normalization, not only the reported combining tilde case.",
+          "Already-NFKD input containing combining marks must no longer bypass filtering.",
+          "Non-combining characters must be preserved.",
+          "Existing `strip_accents='unicode'` integration through the shared vectorizer preprocessing pipeline must remain unchanged.",
+          "Regression coverage must include canonically equivalent composed and already-decomposed accented inputs and assert identical accent-free output.",
+          "Existing accent-stripping tests must remain in place and pass.",
+          "No change to `strip_accents_ascii` is required.",
+          "No documentation change is required because the documented accent-removal behavior already describes the intended result.",
+          "The owner explicitly approved this contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "At base commit af8a6e592a1a15d92d77011856d5aa0ec4db4c6c, update `strip_accents_unicode` in `sklearn/feature_extraction/text.py` so it always filters all Unicode combining characters from the NFKD-normalized value, including when the input is already in NFKD form. Preserve every non-combining character and existing `CountVectorizer` and `TfidfVectorizer` integration. Add direct regression coverage in `sklearn/feature_extraction/tests/test_text.py` proving canonically equivalent composed and decomposed accented inputs produce the same accent-free output, while retaining existing accent-stripping coverage. No documentation or ASCII-mode change is required."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly selected the all-combining-marks compatibility boundary and approved the resulting implementation contract. No material decision remains open."
+    },
+    "turn": 3
+  }
+]

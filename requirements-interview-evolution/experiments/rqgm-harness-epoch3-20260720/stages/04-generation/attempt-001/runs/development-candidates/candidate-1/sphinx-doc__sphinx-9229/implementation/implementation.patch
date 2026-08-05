@@ -1,0 +1,115 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..3fbc9c5 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -2037,6 +2037,19 @@ class NewTypeDataDocumenter(DataDocumenter):
+         return inspect.isNewType(member) and isattr
+ 
+ 
++class GenericAliasDataDocumenter(DataDocumenter):
++    """Specialized Documenter subclass for generic aliases."""
++
++    objtype = 'genericaliasdata'
++    directivetype = 'data'
++    priority = FunctionDocumenter.priority + 1
++
++    @classmethod
++    def can_document_member(cls, member: Any, membername: str, isattr: bool, parent: Any
++                            ) -> bool:
++        return inspect.isgenericalias(member) and isattr
++
++
+ class MethodDocumenter(DocstringSignatureMixin, ClassLevelDocumenter):  # type: ignore
+     """
+     Specialized Documenter subclass for methods (normal, static and class).
+@@ -2699,6 +2712,7 @@ def setup(app: Sphinx) -> Dict[str, Any]:
+     app.add_autodocumenter(ExceptionDocumenter)
+     app.add_autodocumenter(DataDocumenter)
+     app.add_autodocumenter(NewTypeDataDocumenter)
++    app.add_autodocumenter(GenericAliasDataDocumenter)
+     app.add_autodocumenter(FunctionDocumenter)
+     app.add_autodocumenter(DecoratorDocumenter)
+     app.add_autodocumenter(MethodDocumenter)
+diff --git a/tests/roots/test-ext-autodoc/target/genericalias.py b/tests/roots/test-ext-autodoc/target/genericalias.py
+index 9909efc..76f628b 100644
+--- a/tests/roots/test-ext-autodoc/target/genericalias.py
++++ b/tests/roots/test-ext-autodoc/target/genericalias.py
+@@ -1,10 +1,32 @@
+-from typing import Callable, List
++from pathlib import Path
++from typing import Any, Callable, Dict, List, Union
+ 
+ #: A list of int
+ T = List[int]
+ 
+ C = Callable[[int], None]  # a generic alias not having a doccomment
+ 
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary with options.
++
++Should be treated as immutable.
++"""
++
++FileContents = Union[str, None]
++"""When the file content is ``None``, the file should not be written to disk."""
++
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of functions considered file operations::
++
++    Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++
++- **path**: file path potentially to be written
++- **contents**: text content
++
++.. note::
++   A **FileOp** usually has side effects.
++"""
++
+ 
+ class Class:
+     #: A list of int
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..abcf20b 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -101,6 +101,40 @@ def test_autodata_GenericAlias(app):
+         ]
+ 
+ 
++@pytest.mark.parametrize(('name', 'documentation'), [
++    ('ScaffoldOpts', [
++        '   Dictionary with options.',
++        '',
++        '   Should be treated as immutable.',
++    ]),
++    ('FileContents', [
++        '   When the file content is ``None``, the file should not be written to disk.',
++    ]),
++    ('FileOp', [
++        '   Signature of functions considered file operations::',
++        '',
++        '       Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]',
++        '',
++        '   - **path**: file path potentially to be written',
++        '   - **contents**: text content',
++        '',
++        '   .. note::',
++        '      A **FileOp** usually has side effects.',
++    ]),
++])
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_automodule_documented_GenericAlias(app, name, documentation):
++    options = {'members': [name]}
++    actual = list(do_autodoc(app, 'module', 'target.genericalias', options))
++
++    for line in documentation:
++        assert line in actual
++
++    documentation_start = actual.index(documentation[0])
++    alias_start = next(i for i, line in enumerate(actual) if 'alias of ' in line)
++    assert documentation_start < alias_start
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_NewType(app):
+     actual = do_autodoc(app, 'data', 'target.typevar.T6')

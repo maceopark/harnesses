@@ -1,0 +1,118 @@
+[
+  {
+    "answer": "Normalize reduction operand",
+    "open_material_decisions": [
+      "Where boolean weights should be normalized and which weighted operations should inherit that behavior."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Convert boolean weights to an integer-like numeric operand inside the shared weighted reduction path, so all weighted reductions consistently treat True as 1 and False as 0.",
+          "label": "Normalize reduction operand",
+          "recommended": true
+        },
+        {
+          "description": "Convert boolean weights only while computing sum_of_weights, narrowly correcting weighted mean and denominator results without changing other reduction paths.",
+          "label": "Fix denominator only",
+          "recommended": false
+        },
+        {
+          "description": "Convert boolean weights when creating the Weighted object, so every later operation stores and uses numeric weights.",
+          "label": "Normalize at construction",
+          "recommended": false
+        }
+      ],
+      "prompt": "What behavior should the implementation establish for boolean weights?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Convert to int",
+    "open_material_decisions": [
+      "The minimum regression-test coverage required across weighted operations, missing data, dimensions, DatasetWeighted, and lazy backends.",
+      "Which numeric dtype boolean weights should use in the shared weighted reduction path."
+    ],
+    "question": {
+      "header": "Target dtype",
+      "options": [
+        {
+          "description": "Treat True and False as 1 and 0 using an integer cast, matching the issue's proposed behavior while avoiding unnecessary floating-point promotion.",
+          "label": "Convert to int (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Use an integer-like multiplication such as weights * 1, preserving the issue's exact proposed mechanism but leaving dtype selection to array dispatch.",
+          "label": "Multiply by one",
+          "recommended": false
+        },
+        {
+          "description": "Cast boolean weights to floating point, ensuring numeric einsum behavior but potentially promoting outputs more broadly.",
+          "label": "Convert to float",
+          "recommended": false
+        }
+      ],
+      "prompt": "When the shared reduction receives boolean weights, what numeric representation should it use?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Core focused coverage",
+    "open_material_decisions": [
+      "The minimum regression-test coverage required across weighted operations, missing data, dimensions, DatasetWeighted, and lazy backends."
+    ],
+    "question": {
+      "header": "Test coverage",
+      "options": [
+        {
+          "description": "Test DataArray weighted mean and sum_of_weights with boolean weights, including missing data and a dimension-specific reduction; rely on the shared path for Dataset and lazy backends.",
+          "label": "Core focused coverage",
+          "recommended": true
+        },
+        {
+          "description": "Also test DatasetWeighted and all affected eager weighted operations, increasing confidence with more test cases.",
+          "label": "Broad eager coverage",
+          "recommended": false
+        },
+        {
+          "description": "Require the broad eager cases plus a lazy-array regression test to verify dtype conversion through backend dispatch.",
+          "label": "Include lazy backend",
+          "recommended": false
+        }
+      ],
+      "prompt": "What minimum regression coverage should be required for the boolean-weight fix?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "The reported example DataArray([1., 1., 1.]).weighted(DataArray([True, True, False])).mean() returns scalar 1.0 rather than 2.0.",
+          "sum_of_weights with [True, True, False] returns numeric 2, not boolean True.",
+          "When data contains missing values, boolean weights at missing positions are excluded from the denominator and the mean matches the existing mask-then-sum reference semantics.",
+          "An explicit dimension reduction with boolean weights produces the expected remaining dimensions and numeric values.",
+          "Existing integer, floating-point, zero, and negative-weight behavior remains unchanged.",
+          "Existing weighted tests pass alongside the new focused regressions."
+        ],
+        "confirmed_decisions": [
+          "Boolean weights are supported and semantically represent numeric weights with True equal to 1 and False equal to 0.",
+          "Normalization belongs in the shared weighted reduction helper, not solely in _sum_of_weights and not in Weighted initialization.",
+          "Only a boolean weights operand is converted; non-boolean weight dtypes retain existing behavior.",
+          "Convert boolean weights to integer before the dot/einsum operation, avoiding boolean dot semantics and unnecessary float promotion.",
+          "The Weighted object continues to store the originally supplied DataArray rather than a converted copy.",
+          "Minimum regression coverage is core-focused: DataArray weighted mean and sum_of_weights with boolean weights, including missing data and dimension-specific reduction.",
+          "DatasetWeighted-specific and lazy-backend regression tests are not required for this change because they use the shared reduction path."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix boolean weights in the shared weighted reduction path. Before calling dot, detect boolean weights and cast the reduction operand to integer so True contributes 1 and False contributes 0. Do not mutate or replace the weights stored on the Weighted object. This shared-path correction applies consistently to weighted operations that use the helper, including sum_of_weights and weighted mean. Add focused DataArray regressions for weighted mean and sum_of_weights using boolean weights, covering missing data and an explicit dimension reduction."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The clarified choices resolve all material behavioral, placement, dtype, and minimum test-coverage decisions. The result is implementation-ready."
+    },
+    "turn": 4
+  }
+]

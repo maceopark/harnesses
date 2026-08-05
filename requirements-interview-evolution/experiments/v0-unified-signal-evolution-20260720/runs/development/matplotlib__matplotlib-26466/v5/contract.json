@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "Construct an arrow annotation with a NumPy array as `xy`, mutate that original array after construction, draw or update positions, and verify the arrow's annotated endpoint remains at the construction-time coordinates.",
+    "Construct an arrow annotation with a mutable explicit `xytext`, mutate that original container after construction, draw or update positions, and verify the text/arrow-start endpoint remains at the construction-time coordinates.",
+    "Verify both endpoints remain unchanged when both original `xy` and explicit `xytext` containers are mutated after construction.",
+    "Verify omitted `xytext` still initializes the Text position from the construction-time `xy` values and does not regain an alias to the caller-owned object.",
+    "Exercise a valid two-value coordinate iterable whose shallow-copy operation raises and verify Annotation construction succeeds using a tuple snapshot and remains isolated from later source mutation where observable.",
+    "Verify shallow-copyable coordinate containers retain their container type in the stored constructor snapshot.",
+    "Run the existing nearby annotation-position tests to confirm movement through `set_position` and the `xyann` setter remains supported.",
+    "Run the targeted Matplotlib text/annotation test module successfully."
+  ],
+  "confirmed_decisions": [
+    "Both `xy` and an explicitly supplied `xytext` receive construction-time snapshot semantics.",
+    "Snapshots use shallow copying to preserve the coordinate container type and element semantics where supported.",
+    "If shallow copying raises or is unsupported, construction falls back to a two-value tuple snapshot instead of retaining the reference or rejecting an otherwise valid coordinate input.",
+    "Mutation isolation applies only to constructor inputs; later assignments through `annotation.xy` and `annotation.xyann` preserve existing semantics.",
+    "The fix belongs in the Annotation coordinate initialization path rather than only in `Axes.annotate`, so direct `Annotation` construction receives the same behavior.",
+    "Existing explicit repositioning through `set_position`, `xyann`, and direct supported coordinate assignment must remain functional."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Change `matplotlib.text.Annotation` construction to snapshot caller-supplied coordinate containers. In `_AnnotationBase.__init__`, store a shallow copy of `xy`; if shallow copying is unsupported or raises, unpack its two coordinate values and store them as a tuple. In `Annotation.__init__`, apply the same snapshot behavior to an explicitly supplied `xytext` before its values become the Text position. If `xytext` is omitted, retain the existing semantic that it initially uses the annotated point's construction-time values. Limit this isolation to construction: later assignments through `annotation.xy` or `annotation.xyann` retain their current behavior. Add regression tests proving that mutating original mutable `xy` or explicit `xytext` containers after construction does not move either arrow endpoint, while the existing public movement APIs continue to work."
+}

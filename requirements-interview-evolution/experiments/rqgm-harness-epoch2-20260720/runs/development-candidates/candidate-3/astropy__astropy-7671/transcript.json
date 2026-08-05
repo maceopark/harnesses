@@ -1,0 +1,89 @@
+[
+  {
+    "answer": "Package versions",
+    "open_material_decisions": [
+      "Version-comparison compatibility scope"
+    ],
+    "question": {
+      "header": "Semantics",
+      "options": [
+        {
+          "description": "Use standard Python package-version ordering consistently, including development and release-candidate versions, while preserving the existing API and inclusive/exclusive behavior.",
+          "label": "Package versions",
+          "recommended": true
+        },
+        {
+          "description": "Require only that mixed numeric/dev comparisons such as the reported case return the correct boolean without raising, leaving other legacy ordering behavior unspecified.",
+          "label": "Narrow regression",
+          "recommended": false
+        },
+        {
+          "description": "Preserve existing LooseVersion-compatible outcomes wherever they are defined and repair only comparisons that currently raise TypeError.",
+          "label": "Legacy broadly",
+          "recommended": false
+        }
+      ],
+      "prompt": "What comparison semantics should `minversion` guarantee beyond fixing the reported `1.14.3` versus `1.14dev` failure?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Reject clearly",
+    "open_material_decisions": [
+      "Behavior for non-standard package version strings"
+    ],
+    "question": {
+      "header": "Invalid versions",
+      "options": [
+        {
+          "description": "Raise the standard parser's invalid-version error instead of inventing an ordering for non-standard versions.",
+          "label": "Reject clearly",
+          "recommended": true
+        },
+        {
+          "description": "Use standard ordering for valid package versions but fall back to the existing loose comparison for non-standard strings when it can compare them.",
+          "label": "Legacy fallback",
+          "recommended": false
+        },
+        {
+          "description": "Treat any non-standard installed or requested version as not satisfying the requirement.",
+          "label": "Return false",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should `minversion` behave when either version string is not a valid standard Python package version?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A module reporting version `1.14.3` satisfies requested version `1.14dev` without raising an exception.",
+          "Existing valid-version outcomes remain correct: installed `0.12.2` satisfies `0.12`, `0.12.1`, and `0.12.0.dev`, but does not satisfy `1` or `1.2rc1`.",
+          "Inclusive and exclusive comparisons produce distinct results when installed and requested versions are equal.",
+          "Valid development, release-candidate, and final versions follow standard Python package-version ordering.",
+          "An invalid installed or requested version raises the standard parser's invalid-version error.",
+          "Existing behavior for module objects, module-name strings, failed imports, invalid module argument types, and custom version paths remains unchanged."
+        ],
+        "confirmed_decisions": [
+          "`minversion` guarantees standard Python package-version ordering for valid package versions, including development and release-candidate versions.",
+          "The reported comparison of installed `1.14.3` against requested `1.14dev` returns `True` rather than raising `TypeError`.",
+          "Inclusive mode continues to mean installed version greater than or equal to the requested version; exclusive mode continues to require strictly greater than.",
+          "Non-standard package version strings are rejected with the standard parser's invalid-version error; no legacy comparison fallback or false result is introduced.",
+          "The existing `minversion` API remains public through `astropy.utils` and continues to accept either an imported module or a module-name string.",
+          "A module-name string that cannot be imported continues to return `False`, and unsupported module argument types continue to raise `ValueError`.",
+          "Version retrieval continues to honor `version_path`, including both direct attributes and dotted paths."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update `astropy.utils.minversion` so version checks use standard Python package-version ordering instead of LooseVersion ordering. Valid development, release-candidate, and final-release versions must compare without mixed-type failures; for example, an installed version of `1.14.3` satisfies a requested version of `1.14dev`. Preserve the existing public API, module resolution, version-path lookup, and inclusive/exclusive comparison behavior. If either version is not a valid standard package version, raise the standard parser's invalid-version error."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The interview resolved the only material ambiguities: comparison semantics and invalid-version behavior. The repository evidence establishes the existing public API, import behavior, version lookup, and inclusive/exclusive modes, so the change is implementation-ready."
+    },
+    "turn": 3
+  }
+]

@@ -1,0 +1,24 @@
+{
+  "acceptance_checks": [
+    "Calling sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) does not raise an exception.",
+    "The result equals the input expression under sqrtdenest's existing normalization behavior, canonically 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2.",
+    "A regression test covering the reported expression passes.",
+    "The existing sympy/simplify/tests/test_sqrtdenest.py test module passes.",
+    "The implementation changes neither split_surds nor _split_gcd behavior.",
+    "Existing unchanged-result cases for expressions that cannot be denested continue to pass."
+  ],
+  "confirmed_decisions": [
+    "Handle the empty-surds case in the sqrtdenest path, not globally in split_surds or _split_gcd.",
+    "For an Add whose terms pass _sqrt_match's rational-square condition but yield no recognized surd powers, _sqrt_match must report no match.",
+    "Rely on _sqrtdenest1's existing no-match fallback to preserve the expression.",
+    "The reported input must complete without raising IndexError and return the unchanged expression as represented after sqrtdenest's existing expand_mul/sympify normalization.",
+    "Preserve existing sqrtdenest behavior outside the reported failure path.",
+    "Do not alter split_surds or _split_gcd semantics for other current or future callers.",
+    "The implementation may choose the smallest guard consistent with the contract.",
+    "Add the regression to the existing sqrtdenest test suite and run both the targeted regression and the complete sqrtdenest test module.",
+    "The owner approved this contract without scope expansion."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "At base commit d4e0231b08147337745dcf601e62de7eefe2fb2d, fix the reported sqrtdenest IndexError only within the sqrtdenest path. Modify _sqrt_match so that an additive candidate containing no surd powers recognized by split_surds is treated as no match. This must allow the existing _sqrtdenest1 fallback to return the expression unchanged under sqrtdenest's existing normalization behavior. Do not change split_surds or _split_gcd behavior for other callers. Add a regression test for (3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2, and verify the targeted regression and the existing sqrtdenest test module. Residual risk is explicitly accepted: split_surds remains unsafe if another caller directly supplies an input that produces an empty surd list."
+}

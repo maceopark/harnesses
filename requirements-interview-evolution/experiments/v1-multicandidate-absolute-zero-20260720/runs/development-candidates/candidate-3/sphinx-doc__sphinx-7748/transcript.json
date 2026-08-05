@@ -1,0 +1,119 @@
+[
+  {
+    "answer": "Consecutive valid signatures",
+    "open_material_decisions": [
+      "Define where extraction of consecutive leading overloaded signatures stops, including treatment of a signature-shaped line whose object name does not match the documented function or method."
+    ],
+    "question": {
+      "header": "Scan boundary",
+      "options": [
+        {
+          "description": "Extract and remove consecutive leading lines that fully parse as signatures and have an accepted object name; stop before the first non-signature or wrong-name line, preserving that line and everything after it as content.",
+          "label": "Consecutive valid signatures",
+          "recommended": true
+        },
+        {
+          "description": "Continue across consecutive signature-shaped lines, extracting matching names but also removing wrong-name signature-shaped lines from content.",
+          "label": "Signature-shaped block",
+          "recommended": false
+        },
+        {
+          "description": "Keep scanning beyond intervening non-signature or wrong-name lines to find later matching signatures, which may alter ordinary docstring content.",
+          "label": "All leading matches",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc determine the leading block of overloaded docstring signatures?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Functions and methods",
+    "open_material_decisions": [
+      "Decide whether consecutive overloaded-signature extraction applies to both functions and methods or only methods."
+    ],
+    "question": {
+      "header": "Object scope",
+      "options": [
+        {
+          "description": "Extend the existing shared DocstringSignatureMixin behavior consistently for both object types, matching the current configuration’s documented scope.",
+          "label": "Functions and methods",
+          "recommended": true
+        },
+        {
+          "description": "Limit the new multi-signature behavior to methods; functions retain first-line-only extraction despite sharing the current path.",
+          "label": "Methods only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which autodoc object types should support consecutive leading overloaded signatures?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "{\"selection\":\"Approve contract\"}",
+    "open_material_decisions": [
+      "Approve or revise the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this as the implementation-ready scope and acceptance contract.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the task open so you can specify a material change to the proposed behavior or acceptance boundary.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: extend autodoc_docstring_signature for both functions and methods to extract every consecutive leading docstring line that fully matches the existing signature parser and has an object name accepted by the existing name-validation rules; preserve source order and each overload’s arguments and return annotation; stop before the first non-signature or wrong-name line, preserving that line and all following lines as docstring content; remove only extracted signature lines; retain the existing enabled/default setting, explicit-signature precedence, candidate-docstring selection behavior, and disabled behavior; emit the overloads as newline-separated directive signatures using the existing multi-signature rendering path; update the configuration documentation and add tests covering multiple overloads, their removal from content, the stopping boundary, both functions and methods, and disabled-mode preservation. Implementation details may be chosen locally provided these observable boundaries remain unchanged. Residual risk: other extensions overriding signature formatting could interact with newline-composed results, but compatibility beyond existing formatter contracts is not expanded."
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "With the configuration enabled, a function docstring containing two or more consecutive valid leading signatures emits all of them as ordered directive signature lines.",
+          "With the configuration enabled, a method docstring containing two or more consecutive valid leading signatures emits all of them as ordered directive signature lines.",
+          "Each overload preserves its parsed arguments and optional return annotation.",
+          "All extracted signature lines are absent from the rendered docstring body, while following prose remains.",
+          "A leading valid signature followed by a non-signature line stops extraction and preserves that line and everything after it.",
+          "A leading valid signature followed by a signature-shaped line with an unaccepted object name stops extraction and preserves the wrong-name line and everything after it.",
+          "An explicitly supplied signature retains precedence over docstring signatures.",
+          "With `autodoc_docstring_signature` disabled, all signature-looking docstring lines remain content and existing introspected-signature behavior is preserved.",
+          "Existing single-signature behavior continues to pass.",
+          "Configuration documentation states that consecutive valid leading signatures for functions and methods are recognized and removed from content.",
+          "The relevant targeted autodoc test suite passes."
+        ],
+        "confirmed_decisions": [
+          "Extraction covers both functions and methods through their shared `DocstringSignatureMixin` behavior.",
+          "Only consecutive valid leading signatures are extracted.",
+          "Every extracted line must fully match the existing signature parser and pass the existing accepted-object-name validation.",
+          "Extraction stops at the first non-signature or wrong-name line; that line and all following lines remain content.",
+          "Extracted overloads retain source order, arguments, and return annotations.",
+          "Only extracted signature lines are removed from rendered docstring content.",
+          "Multiple signatures are emitted using the existing newline-separated directive-signature rendering path.",
+          "The configuration remains enabled by default.",
+          "An explicitly supplied signature continues to take precedence and prevents docstring-signature extraction.",
+          "Existing candidate-docstring selection behavior remains unchanged.",
+          "When `autodoc_docstring_signature` is disabled, signature-looking lines remain docstring content and the normal introspected signature is used.",
+          "Documentation will be updated to describe consecutive leading signature extraction.",
+          "Implementation mechanics may be selected locally within the approved observable boundaries.",
+          "Compatibility with extension overrides beyond the existing signature-formatter contract is not expanded."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend `autodoc_docstring_signature` for both functions and methods to extract every consecutive leading docstring line that fully matches the existing signature parser and has an object name accepted by the existing name-validation rules. Preserve source order and each overload’s arguments and return annotation. Stop before the first non-signature or wrong-name line, preserving that line and all following lines as docstring content, and remove only successfully extracted signature lines. Retain the existing enabled/default setting, explicit-signature precedence, candidate-docstring selection behavior, and disabled behavior. Emit overloads as newline-separated directive signatures through the existing multi-signature rendering path. Update the configuration documentation and add focused regression tests. Implementation details are delegated locally provided these observable boundaries remain unchanged. Acknowledged residual risk: extensions overriding signature formatting may interact with newline-composed results; compatibility beyond the existing formatter contract is not required."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner approved the proposed contract after resolving the scan boundary and object scope. No material implementation decision remains open."
+    },
+    "turn": 4
+  }
+]

@@ -1,0 +1,75 @@
+diff --git a/django/db/migrations/operations/models.py b/django/db/migrations/operations/models.py
+index c120f5d..408dcb9 100644
+--- a/django/db/migrations/operations/models.py
++++ b/django/db/migrations/operations/models.py
+@@ -480,6 +480,17 @@ class AlterTogetherOptionOperation(ModelOptionOperation):
+     def option_value(self):
+         return getattr(self, self.option_name)
+ 
++    def reduce(self, operation, app_label):
++        if (
++            {type(self), type(operation)} == {
++                AlterUniqueTogether,
++                AlterIndexTogether,
++            } and
++            self.name_lower == operation.name_lower
++        ):
++            return True
++        return super().reduce(operation, app_label)
++
+     def deconstruct(self):
+         kwargs = {
+             'name': self.name,
+diff --git a/tests/migrations/test_autodetector.py b/tests/migrations/test_autodetector.py
+index d25b14c..360cc11 100644
+--- a/tests/migrations/test_autodetector.py
++++ b/tests/migrations/test_autodetector.py
+@@ -1573,21 +1573,13 @@ class AutodetectorTests(TestCase):
+         self.assertOperationTypes(changes, 'otherapp', 0, [
+             'AlterUniqueTogether',
+             'AlterIndexTogether',
+-            'AlterUniqueTogether',
+-            'AlterIndexTogether',
+         ])
+         self.assertOperationAttributes(
+-            changes, 'otherapp', 0, 0, name='book', unique_together=set(),
+-        )
+-        self.assertOperationAttributes(
+-            changes, 'otherapp', 0, 1, name='book', index_together=set(),
+-        )
+-        self.assertOperationAttributes(
+-            changes, 'otherapp', 0, 2, name='book',
++            changes, 'otherapp', 0, 0, name='book',
+             unique_together={('title', 'author')},
+         )
+         self.assertOperationAttributes(
+-            changes, 'otherapp', 0, 3, name='book',
++            changes, 'otherapp', 0, 1, name='book',
+             index_together={('title', 'author')},
+         )
+ 
+diff --git a/tests/migrations/test_optimizer.py b/tests/migrations/test_optimizer.py
+index 0caaf66..460d045 100644
+--- a/tests/migrations/test_optimizer.py
++++ b/tests/migrations/test_optimizer.py
+@@ -212,6 +212,20 @@ class OptimizerTests(SimpleTestCase):
+             migrations.AlterIndexTogether("Foo", [["a", "c"]]),
+         )
+ 
++    def test_alter_together_options(self):
++        self.assertOptimizesTo(
++            [
++                migrations.AlterUniqueTogether("Foo", set()),
++                migrations.AlterIndexTogether("Foo", set()),
++                migrations.AlterUniqueTogether("Foo", {("a",)}),
++                migrations.AlterIndexTogether("Foo", {("a",)}),
++            ],
++            [
++                migrations.AlterUniqueTogether("Foo", {("a",)}),
++                migrations.AlterIndexTogether("Foo", {("a",)}),
++            ],
++        )
++
+     def test_alter_alter_owrt_model(self):
+         self._test_alter_alter_model(
+             migrations.AlterOrderWithRespectTo("Foo", "a"),

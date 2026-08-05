@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "Focused introspection tests pass.",
+    "All existing `test_minversion` cases continue to pass under PEP 440 ordering.",
+    "With a synthetic installed version of `1.14.3`, `minversion(..., '1.14dev', inclusive=True)` returns `True` without raising.",
+    "The exclusive branch compares the same versions using strict PEP 440 `>` semantics and has regression coverage.",
+    "No new dependency is introduced.",
+    "Module-object/module-name handling, missing-module `False`, `version_path` behavior, and public exports remain unchanged."
+  ],
+  "confirmed_decisions": [
+    "Use PEP 440 comparison semantics rather than a targeted `LooseVersion` workaround.",
+    "Use the selected PEP 440 parser's normal behavior for invalid or non-PEP-440 version strings; do not require a legacy fallback or forced `False`.",
+    "Use an existing repository-compatible parsing entry point and add no new dependency.",
+    "Preserve all non-comparison behavior of `minversion`, including input handling, missing-module behavior, version attribute resolution, and exports.",
+    "Cover the `1.14.3` versus `1.14dev` regression in inclusive and exclusive comparison modes.",
+    "The owner explicitly approved the complete contract."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Replace `LooseVersion` comparisons inside `astropy.utils.minversion` with an existing repository-compatible PEP 440 parser, without adding a dependency. Apply PEP 440 ordering to both inclusive (`>=`) and exclusive (`>`) checks. Preserve module-object and module-name inputs, missing-module `False`, `version_path` lookup, public exports, and existing valid-version behavior under PEP 440 semantics. For installed version `1.14.3` and required version `1.14dev`, inclusive mode must return `True` without raising; exclusive mode must use the corresponding strict PEP 440 comparison. Compatibility is guaranteed only for valid PEP 440 versions; invalid inputs may exhibit the parser's normal warning, result, or exception behavior. Add focused regression coverage for the reported case and both comparison branches. Residual risk: callers relying on historical `LooseVersion` ordering for non-PEP-440 strings may observe changed behavior."
+}

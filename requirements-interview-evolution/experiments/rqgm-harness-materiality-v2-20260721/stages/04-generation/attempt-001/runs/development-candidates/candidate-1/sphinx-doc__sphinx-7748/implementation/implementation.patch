@@ -1,0 +1,218 @@
+diff --git a/doc/usage/extensions/autodoc.rst b/doc/usage/extensions/autodoc.rst
+index 36be756..2dfe6e1 100644
+--- a/doc/usage/extensions/autodoc.rst
++++ b/doc/usage/extensions/autodoc.rst
+@@ -446,13 +446,13 @@ There are also config values that you can set:
+ 
+    Functions imported from C modules cannot be introspected, and therefore the
+    signature for such functions cannot be automatically determined.  However, it
+-   is an often-used convention to put the signature into the first line of the
++   is an often-used convention to put signatures into the first lines of the
+    function's docstring.
+ 
+    If this boolean value is set to ``True`` (which is the default), autodoc will
+-   look at the first line of the docstring for functions and methods, and if it
+-   looks like a signature, use the line as the signature and remove it from the
+-   docstring content.
++   look at the first lines of the docstring for functions and methods, and use
++   consecutive matching signature lines as the object's signature.  These lines
++   are removed from the docstring content.
+ 
+    .. versionadded:: 1.1
+ 
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index f8e4be9..6ca0b97 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1037,7 +1037,7 @@ class DocstringSignatureMixin:
+     feature of reading the signature from the docstring.
+     """
+ 
+-    def _find_signature(self, encoding: str = None) -> Tuple[str, str]:
++    def _find_signature(self, encoding: str = None) -> Optional[List[Tuple[str, str]]]:
+         if encoding is not None:
+             warnings.warn("The 'encoding' argument to autodoc.%s._find_signature() is "
+                           "deprecated." % self.__class__.__name__,
+@@ -1049,24 +1049,29 @@ class DocstringSignatureMixin:
+             # no lines in docstring, no match
+             if not doclines:
+                 continue
+-            # match first line of docstring against signature RE
+-            match = py_ext_sig_re.match(doclines[0])
+-            if not match:
+-                continue
+-            exmod, path, base, args, retann = match.groups()
+-            # the base name must match ours
++            signatures = []
+             valid_names = [self.objpath[-1]]  # type: ignore
+             if isinstance(self, ClassDocumenter):
+                 valid_names.append('__init__')
+                 if hasattr(self.object, '__mro__'):
+                     valid_names.extend(cls.__name__ for cls in self.object.__mro__)
+-            if base not in valid_names:
++
++            for docline in doclines:
++                match = py_ext_sig_re.match(docline)
++                if not match:
++                    break
++                exmod, path, base, args, retann = match.groups()
++                if base not in valid_names:
++                    break
++                signatures.append((args, retann))
++
++            if not signatures:
+                 continue
+             # re-prepare docstring to ignore more leading indentation
+             tab_width = self.directive.state.document.settings.tab_width  # type: ignore
+-            self._new_docstrings[i] = prepare_docstring('\n'.join(doclines[1:]),
++            self._new_docstrings[i] = prepare_docstring('\n'.join(doclines[len(signatures):]),
+                                                         tabsize=tab_width)
+-            result = args, retann
++            result = signatures
+             # don't look any further
+             break
+         return result
+@@ -1087,7 +1092,10 @@ class DocstringSignatureMixin:
+             # the feature is enabled
+             result = self._find_signature()
+             if result is not None:
+-                self.args, self.retann = result
++                signatures = []
++                for self.args, self.retann in result:
++                    signatures.append(super().format_signature(**kwargs))  # type: ignore
++                return '\n'.join(signatures)
+         return super().format_signature(**kwargs)  # type: ignore
+ 
+ 
+@@ -1105,7 +1113,7 @@ class DocstringStripSignatureMixin(DocstringSignatureMixin):
+                 # Discarding _args is a only difference with
+                 # DocstringSignatureMixin.format_signature.
+                 # Documenter.format_signature use self.args value to format.
+-                _args, self.retann = result
++                _args, self.retann = result[0]
+         return super().format_signature(**kwargs)
+ 
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/__init__.py b/tests/roots/test-ext-autodoc/target/__init__.py
+index b6684ee..2642b90 100644
+--- a/tests/roots/test-ext-autodoc/target/__init__.py
++++ b/tests/roots/test-ext-autodoc/target/__init__.py
+@@ -97,6 +97,34 @@ def function(foo, *args, **kwds):
+     pass
+ 
+ 
++def overloaded_function(*args):
++    """overloaded_function(value: int) -> int
++    overloaded_function(value: str) -> str
++    Function overloads.
++    """
++
++
++def interrupted_overloaded_function(*args):
++    """interrupted_overloaded_function(value: int) -> int
++    another_function(value: str) -> str
++    interrupted_overloaded_function(value: bytes) -> bytes
++    """
++
++
++def prose_interrupted_overloaded_function(*args):
++    """prose_interrupted_overloaded_function(value: int) -> int
++    Function prose.
++    prose_interrupted_overloaded_function(value: str) -> str
++    """
++
++
++def blank_interrupted_overloaded_function(*args):
++    """blank_interrupted_overloaded_function(value: int) -> int
++
++    blank_interrupted_overloaded_function(value: str) -> str
++    """
++
++
+ class Outer(object):
+     """Foo"""
+ 
+@@ -129,6 +157,12 @@ First line of docstring
+             indented line
+         """
+ 
++    def overloaded(self, *args):
++        """overloaded(value: int) -> int
++        overloaded(value: str) -> str
++        Method overloads.
++        """
++
+     @property
+     def prop1(self):
+         """DocstringSig.prop1(self)
+diff --git a/tests/test_ext_autodoc_configs.py b/tests/test_ext_autodoc_configs.py
+index 2255888..75f77cc 100644
+--- a/tests/test_ext_autodoc_configs.py
++++ b/tests/test_ext_autodoc_configs.py
+@@ -321,6 +321,66 @@ def test_autodoc_docstring_signature(app):
+     ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_docstring_overloaded_method_signature(app):
++    actual = do_autodoc(app, 'method', 'target.DocstringSig.overloaded')
++    assert list(actual) == [
++        '',
++        '.. py:method:: DocstringSig.overloaded(value: int) -> int',
++        '               (value: str) -> str',
++        '   :module: target',
++        '',
++        '   Method overloads.',
++        '',
++    ]
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_docstring_overloaded_function_signature(app):
++    actual = do_autodoc(app, 'function', 'target.overloaded_function')
++    assert list(actual) == [
++        '',
++        '.. py:function:: overloaded_function(value: int) -> int',
++        '                 (value: str) -> str',
++        '   :module: target',
++        '',
++        '   Function overloads.',
++        '',
++    ]
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_docstring_overload_block_boundaries(app):
++    actual = do_autodoc(app, 'function', 'target.interrupted_overloaded_function')
++    assert '.. py:function:: interrupted_overloaded_function(value: int) -> int' in actual
++    assert '   another_function(value: str) -> str' in actual
++    assert '   interrupted_overloaded_function(value: bytes) -> bytes' in actual
++
++    actual = do_autodoc(app, 'function', 'target.prose_interrupted_overloaded_function')
++    assert '.. py:function:: prose_interrupted_overloaded_function(value: int) -> int' in actual
++    assert '   Function prose.' in actual
++    assert '   prose_interrupted_overloaded_function(value: str) -> str' in actual
++
++    actual = do_autodoc(app, 'function', 'target.blank_interrupted_overloaded_function')
++    assert '.. py:function:: blank_interrupted_overloaded_function(value: int) -> int' in actual
++    assert '   blank_interrupted_overloaded_function(value: str) -> str' in actual
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_docstring_overload_signature_precedence(app):
++    app.config.autodoc_docstring_signature = False
++    actual = do_autodoc(app, 'function', 'target.overloaded_function')
++    assert '.. py:function:: overloaded_function(*args)' in actual
++    assert '   overloaded_function(value: int) -> int' in actual
++    assert '   overloaded_function(value: str) -> str' in actual
++
++    app.config.autodoc_docstring_signature = True
++    actual = do_autodoc(app, 'function', 'target.overloaded_function(explicit)')
++    assert '.. py:function:: overloaded_function(explicit)' in actual
++    assert '   overloaded_function(value: int) -> int' in actual
++    assert '   overloaded_function(value: str) -> str' in actual
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autoclass_content_and_docstring_signature_class(app):
+     app.config.autoclass_content = 'class'

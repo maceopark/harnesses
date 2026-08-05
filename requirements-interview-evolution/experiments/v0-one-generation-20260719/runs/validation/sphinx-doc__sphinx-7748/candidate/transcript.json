@@ -1,0 +1,67 @@
+[
+  {
+    "answer": "Consecutive matches",
+    "open_material_decisions": [
+      "Define how autodoc identifies the complete leading overload-signature block and where extraction stops."
+    ],
+    "question": {
+      "header": "Scan boundary",
+      "options": [
+        {
+          "description": "Collect every consecutive leading line that parses as a signature for the documented object, then stop at the first non-matching or differently named line and preserve that line plus everything after it as content.",
+          "label": "Consecutive matches",
+          "recommended": true
+        },
+        {
+          "description": "Keep scanning past blank or unrelated lines for later matching signatures, removing every match found before ordinary documentation begins.",
+          "label": "All leading signatures",
+          "recommended": false
+        },
+        {
+          "description": "Support only a narrower SWIG formatting convention, which must be specified before the implementation contract can be completed.",
+          "label": "SWIG-specific format",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc recognize multiple overloaded signatures at the start of a docstring?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Add a method fixture whose docstring begins with at least two consecutive same-name signatures followed by prose; enabled autodoc output contains one aligned py:method directive line per signature and begins content with the prose.",
+          "Cover overloads with distinct return annotations and verify each annotation appears on its corresponding directive signature line.",
+          "Verify extraction stops at the first non-signature line and preserves that line plus all later lines unchanged as content.",
+          "Verify a differently named signature terminates the leading block and is preserved with subsequent content rather than extracted.",
+          "Verify a signature-looking line appearing after prose is not extracted.",
+          "Verify the existing single-signature enabled test remains unchanged.",
+          "Verify the disabled-configuration case preserves every signature line as docstring content and uses the normal introspected signature.",
+          "Verify an explicitly supplied directive signature continues to take precedence over docstring signatures.",
+          "Update doc/usage/extensions/autodoc.rst to state that consecutive valid signatures at the beginning of function and method docstrings are used and removed from content.",
+          "Run the targeted ext-autodoc configuration tests and relevant autodoc test suite successfully."
+        ],
+        "confirmed_decisions": [
+          "Only a consecutive leading signature block is extracted.",
+          "Scanning starts at docstring line 1 and stops at the first line that is not a valid signature for the documented object.",
+          "The first nonmatching or differently named line and every following line remain docstring content.",
+          "Each overload is rendered as a separate aligned directive signature line.",
+          "Each extracted signature retains its own arguments and return annotation.",
+          "The existing accepted-name rules continue to apply, including class-specific __init__ and MRO names.",
+          "Extraction still occurs only when no explicit signature was supplied and autodoc_docstring_signature is enabled.",
+          "When autodoc_docstring_signature is disabled, all signature-looking lines remain content and the normal introspected signature is used.",
+          "Single-signature docstrings retain their current behavior."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend autodoc_docstring_signature so functions and methods can extract a consecutive block of overloaded signatures from the start of a docstring. Beginning at the first line, collect each consecutive line that fully parses as a Python extended signature and whose base name is valid for the documented object under the existing name-validation rules. Stop at the first non-signature or differently named line. Display every collected signature, including its own arguments and optional return annotation, as aligned directive signature lines. Remove only the collected signature lines from rendered docstring content. Preserve the stopping line and all subsequent content. Existing configuration gating, explicit-signature precedence, and single-signature behavior remain unchanged. Update the user documentation to describe consecutive leading signatures rather than only the first line."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The repository evidence and the confirmed scan-boundary decision fully define the requested behavior. No material ambiguity remains before implementation."
+    },
+    "turn": 2
+  }
+]

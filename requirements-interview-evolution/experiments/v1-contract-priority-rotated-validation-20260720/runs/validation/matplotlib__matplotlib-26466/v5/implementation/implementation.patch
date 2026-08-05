@@ -1,0 +1,63 @@
+diff --git a/lib/matplotlib/tests/test_text.py b/lib/matplotlib/tests/test_text.py
+index 47121b7..40fd7fb 100644
+--- a/lib/matplotlib/tests/test_text.py
++++ b/lib/matplotlib/tests/test_text.py
+@@ -343,6 +343,37 @@ def test_set_position():
+         assert a + shift_val == b
+ 
+ 
++def test_annotation_xy_copy():
++    fig, ax = plt.subplots()
++    xy = np.array([0., 0.])
++    xytext = [0.5, 0.5]
++    ann = ax.annotate("test", xy, xytext=xytext,
++                      arrowprops={"arrowstyle": "->"})
++
++    xy[:] = 1
++    xytext[:] = [0.75, 0.75]
++    fig.canvas.draw()
++    assert np.array_equal(ann.xy, [0, 0])
++    assert ann.xyann == [0.75, 0.75]
++    assert np.array_equal(ann.arrow_patch._posA_posB[1],
++                          ax.transData.transform([0, 0]))
++
++    ann.xy[:] = 0.25
++    fig.canvas.draw()
++    assert np.array_equal(ann.arrow_patch._posA_posB[1],
++                          ax.transData.transform([0.25, 0.25]))
++
++    ann.xy = [0.1, 0.2]
++    fig.canvas.draw()
++    assert np.array_equal(ann.arrow_patch._posA_posB[1],
++                          ax.transData.transform([0.1, 0.2]))
++
++    xy = [0, 0]
++    ann = ax.annotate("test", xy)
++    xy[:] = [1, 1]
++    assert ann.xy == [0, 0]
++
++
+ def test_char_index_at():
+     fig = plt.figure()
+     text = fig.text(0.1, 0.9, "")
+diff --git a/lib/matplotlib/text.py b/lib/matplotlib/text.py
+index d4922fc..55f2dd6 100644
+--- a/lib/matplotlib/text.py
++++ b/lib/matplotlib/text.py
+@@ -2,6 +2,7 @@
+ Classes for including text in a figure.
+ """
+ 
++import copy
+ import functools
+ import logging
+ import math
+@@ -1456,7 +1457,7 @@ class _AnnotationBase:
+                  xycoords='data',
+                  annotation_clip=None):
+ 
+-        self.xy = xy
++        self.xy = copy.copy(xy)
+         self.xycoords = xycoords
+         self.set_annotation_clip(annotation_clip)
+ 

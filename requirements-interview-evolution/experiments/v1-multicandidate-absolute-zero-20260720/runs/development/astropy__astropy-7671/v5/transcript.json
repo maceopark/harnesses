@@ -1,0 +1,86 @@
+[
+  {
+    "answer": "pkg_resources parser",
+    "open_material_decisions": [
+      "Choose the version comparison implementation and compatibility boundary for all `minversion` inputs."
+    ],
+    "question": {
+      "header": "Version parser",
+      "options": [
+        {
+          "description": "Restore `pkg_resources.parse_version` for both inclusive and exclusive comparisons; require `1.14.3 >= 1.14dev` to return `True`, preserve the existing tested outcomes, and acknowledge that other unusual version strings may follow pkg_resources ordering rather than LooseVersion ordering.",
+          "label": "pkg_resources parser",
+          "recommended": true
+        },
+        {
+          "description": "Keep LooseVersion generally and special-case the reported mixed numeric/dev comparison, minimizing intended behavior change but adding custom ordering logic.",
+          "label": "Targeted LooseVersion fix",
+          "recommended": false
+        },
+        {
+          "description": "Allow the implementer to choose an available standards-based parser, constrained to fix the reported case and preserve all existing minversion tests, with parser-specific ordering changes recorded as residual risk.",
+          "label": "Delegate parser choice",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which comparison contract should the implementation use?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the consolidated implementation contract."
+    ],
+    "question": {
+      "header": "Approve contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with the stated pkg_resources compatibility boundary and regression criteria.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Do not seal yet; provide requested changes to scope, behavior, tests, or compatibility boundaries.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: replace LooseVersion comparisons inside minversion with pkg_resources.parse_version for both inclusive (>=) and exclusive (>) modes; preserve module/module-name handling, import-failure behavior, version_path lookup, and existing tested results; add regression coverage proving an installed version of 1.14.3 satisfies a requested 1.14dev without raising TypeError (including the public minversion behavior), while existing minversion tests continue to pass; limit changes to the implementation, imports, and focused tests. Compatibility boundary: all version strings accepted by minversion will follow pkg_resources ordering, so unusual strings may compare differently than under LooseVersion; this is an acknowledged residual risk, not a requirement to preserve untested LooseVersion ordering. May implementation proceed under this contract?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A synthetic or equivalent module reporting version 1.14.3 satisfies minversion(module, '1.14dev') and does not raise TypeError.",
+          "The regression is verified through the publicly exported astropy.utils.minversion API.",
+          "Both inclusive (>=) and exclusive (>) paths use pkg_resources.parse_version comparisons.",
+          "The existing astropy.utils introspection minversion tests continue to pass unchanged in outcome.",
+          "Focused tests confirm no regression to the established module/module-name handling and version lookup behavior where covered by the existing suite.",
+          "The implementation diff remains limited to the required import/comparison replacement and focused tests."
+        ],
+        "confirmed_decisions": [
+          "Use pkg_resources.parse_version as the version parser and comparator.",
+          "Apply the replacement to both inclusive and exclusive comparison branches.",
+          "Require minversion for installed version 1.14.3 and requested version 1.14dev to return True without raising TypeError.",
+          "Preserve existing module-object and module-name input behavior, including False for failed string imports and ValueError for unsupported argument types.",
+          "Preserve direct and dotted version_path lookup behavior.",
+          "Preserve all outcomes covered by the existing minversion tests.",
+          "Keep the change scoped to implementation imports/comparisons and focused regression tests.",
+          "Compatibility boundary: every version string accepted by minversion will use pkg_resources ordering. Unusual strings may therefore compare differently than with LooseVersion; this bounded behavior change is an acknowledged residual risk, not a requirement to preserve untested LooseVersion ordering.",
+          "The owner explicitly approved this contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Replace distutils.version.LooseVersion comparisons inside astropy.utils.introspection.minversion with pkg_resources.parse_version for both inclusive (>=) and exclusive (>) comparisons. Preserve module and module-name handling, failed-import behavior, version_path lookup, and existing tested results. Add focused regression coverage proving that installed version 1.14.3 satisfies requested version 1.14dev without raising TypeError, including behavior through the public astropy.utils.minversion export. Limit changes to the necessary implementation import/comparison code and focused tests."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner selected pkg_resources.parse_version and explicitly approved the consolidated contract. No material decisions remain open."
+    },
+    "turn": 3
+  }
+]

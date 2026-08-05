@@ -1,0 +1,25 @@
+{
+  "acceptance_checks": [
+    "A focused regression test demonstrates that minversion on a module whose installed version is 1.14.3 with requested version 1.14dev returns true and raises no TypeError when inclusive is true.",
+    "A focused regression test demonstrates the same installed/requested versions return true and raise no TypeError when inclusive is false.",
+    "All existing astropy.utils introspection/minversion tests continue to pass unchanged in behavioral expectation.",
+    "The implementation continues to use legacy LooseVersion ordering outside the bounded mixed numeric/text failure handling.",
+    "No new runtime dependency is introduced.",
+    "Existing module resolution, missing-module return value, invalid-module error behavior, version_path lookup, and public astropy.utils exposure remain unchanged.",
+    "Acknowledged residual risk: non-standard version strings remain governed by legacy LooseVersion behavior unless they encounter the same mixed numeric/text comparison failure class."
+  ],
+  "confirmed_decisions": [
+    "Use a targeted compatibility fix rather than restoring pkg_resources or adopting a different general-purpose version parser.",
+    "Preserve existing LooseVersion behavior outside the mixed numeric/text comparison failure class.",
+    "Do not add a runtime dependency.",
+    "Preserve current module-object and module-name handling, including False for an unresolved module-name string and ValueError for unsupported module argument types.",
+    "Preserve version_path behavior, including direct attributes and dotted-path resolution.",
+    "Preserve inclusive comparison as greater-than-or-equal and exclusive comparison as strictly greater-than.",
+    "Require installed 1.14.3 versus requested 1.14dev to return true for both inclusive and exclusive modes.",
+    "Retain existing minversion coverage and add focused regression coverage for the reported case.",
+    "Delegation boundary: implementation may select the smallest internal normalization or comparison adjustment, but may not replace LooseVersion semantics broadly, introduce a dependency, or change the specified observable behaviors."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Apply a targeted compatibility fix to astropy.utils.minversion so the reported LooseVersion mixed numeric/text comparison does not raise TypeError. Preserve LooseVersion-based ordering and the existing module resolution, version_path lookup, inclusive/exclusive semantics, missing-module behavior, invalid-input errors, and public exposure outside this failure class. For an installed version of 1.14.3 and requested version 1.14dev, minversion must return true in both inclusive and exclusive modes. Add no runtime dependency. The implementer may choose the smallest internal normalization or comparison adjustment satisfying these constraints."
+}

@@ -1,0 +1,105 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..ee54188 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -2015,7 +2015,10 @@ class DataDocumenter(GenericAliasMixin, NewTypeMixin, TypeVarMixin,
+         if not more_content:
+             more_content = StringList()
+ 
+-        self.update_content(more_content)
++        # Source documentation attached to an assignment describes the alias itself
++        # and takes precedence over the generated ``alias of ...`` description.
++        if not self.get_module_comment(self.objpath[-1]):
++            self.update_content(more_content)
+         super().add_content(more_content, no_docstring=no_docstring)
+ 
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/genericalias.py b/tests/roots/test-ext-autodoc/target/genericalias.py
+index 9909efc..e39b4a4 100644
+--- a/tests/roots/test-ext-autodoc/target/genericalias.py
++++ b/tests/roots/test-ext-autodoc/target/genericalias.py
+@@ -1,10 +1,27 @@
+-from typing import Callable, List
++from typing import Any, Callable, Dict, List, Union
+ 
+ #: A list of int
+ T = List[int]
+ 
+ C = Callable[[int], None]  # a generic alias not having a doccomment
+ 
++DocumentedDict = Dict[str, Any]
++"""Dictionary documentation.
++
++With a second paragraph.
++"""
++
++DocumentedUnion = Union[str, None]
++"""Union documentation spanning
++multiple lines.
++"""
++
++DocumentedCallable = Callable[[int], None]
++"""Callable documentation::
++
++    Callable[[int], None]
++"""
++
+ 
+ class Class:
+     #: A list of int
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..b153f80 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -96,11 +96,31 @@ def test_autodata_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
++@pytest.mark.skipif(sys.version_info < (3, 7), reason='python 3.7+ is required.')
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++@pytest.mark.parametrize(('name', 'documentation'), [
++    ('DocumentedDict', ['Dictionary documentation.', '', 'With a second paragraph.']),
++    ('DocumentedUnion', ['Union documentation spanning', 'multiple lines.']),
++    ('DocumentedCallable', ['Callable documentation::', '', '    Callable[[int], None]']),
++])
++def test_autodata_documented_GenericAlias(app, name, documentation):
++    actual = do_autodoc(app, 'data', 'target.genericalias.' + name)
++    content = list(actual)
++    expected = ['   ' + line if line else '' for line in documentation]
++    assert content[-len(documentation) - 1:-1] == expected
++    assert not any('alias of ' in line for line in content)
++
++
++@pytest.mark.skipif(sys.version_info < (3, 7), reason='python 3.7+ is required.')
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodata_undocumented_GenericAlias(app):
++    actual = do_autodoc(app, 'data', 'target.genericalias.C')
++    assert any('alias of ' in line for line in actual)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_NewType(app):
+     actual = do_autodoc(app, 'data', 'target.typevar.T6')
+@@ -111,8 +131,6 @@ def test_autodata_NewType(app):
+         '',
+         '   T6',
+         '',
+-        '   alias of :class:`int`',
+-        '',
+     ]
+ 
+ 
+@@ -126,8 +144,6 @@ def test_autodata_TypeVar(app):
+         '',
+         '   T1',
+         '',
+-        "   alias of TypeVar('T1')",
+-        '',
+     ]
+ 
+ 

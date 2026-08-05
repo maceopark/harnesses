@@ -1,0 +1,40 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/0",
+          "quoted_value": "Version comparisons use PEP 440 ordering."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/1",
+          "quoted_value": "Valid PEP 440 development, pre-release, and release version strings produce results consistent with PEP 440 ordering."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/summary",
+          "quoted_value": "Correct astropy.utils.minversion so it compares package versions using PEP 440 ordering while preserving its existing public API and comparison modes. Valid development, pre-release, and release versions must be ordered consistently; in particular, an installed version of 1.14.3 must satisfy an inclusive minimum of 1.14dev without raising TypeError."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/2/statement",
+          "quoted_value": "minversion reads the installed version from the configured attribute path without normalizing it, then compares LooseVersion(have_version) against LooseVersion(version) using >= when inclusive and > otherwise."
+        }
+      ],
+      "description": "This leaves a material compatibility boundary unresolved: conforming implementations may reject, raise on, or preserve comparisons for non-PEP-440 versions. Because minversion is a public utility and the contract also claims to preserve its existing public API, implementation readiness is overstated until that behavior is explicitly decided or excluded from compatibility guarantees.",
+      "failure_class": "omission",
+      "general_cause": "The contract changes the comparison policy to PEP 440 without deciding what happens to version strings that LooseVersion accepted but that are not valid PEP 440.",
+      "id": "F-001",
+      "material": true,
+      "observable_signal": "The acceptance criteria cover valid PEP 440 strings and five historical examples, but contain no requirement for invalid or legacy version strings, despite the current implementation passing version values directly to LooseVersion without validation."
+    }
+  ],
+  "summary": "The contract is not implementation-ready because it does not define the compatibility policy for non-PEP-440 version strings previously handled by LooseVersion."
+}

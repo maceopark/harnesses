@@ -1,0 +1,20 @@
+{
+  "acceptance_checks": [
+    "Create or write and reopen a binary table containing `format='QD'` with rows `[[0], [0, 0]]`; comparing the resulting file with itself through `FITSDiff` yields an identical result with no recorded HDU or table-data differences.",
+    "Compare two Q-format VLA tables whose corresponding rows contain equal numeric arrays; `TableDataDiff` yields an identical result and records zero differing rows.",
+    "Compare Q-format VLA tables with at least one genuinely different row value; the result is non-identical, the differing-row total is correct, and the affected row is available for normal difference reporting.",
+    "Verify that Q-format floating VLA values within configured tolerances are not reported as different, while values outside those tolerances are reported.",
+    "Existing identical and differing comparisons for P-format VLAs and representative non-VLA columns continue to produce their prior results."
+  ],
+  "confirmed_decisions": [
+    "The change applies to Q-format FITS variable-length array columns, which the repository already recognizes as VLAs alongside P-format columns.",
+    "Equal Q-format VLA row values are treated as identical even when the column is represented as an object-like collection of arrays with different lengths across rows.",
+    "A FITSDiff comparison of the reproduction file against itself returns `identical == True` and reports no HDU or table-data differences.",
+    "Actual Q-format VLA row-value differences still produce a non-identical result and are counted and reported for the affected rows.",
+    "Configured relative and absolute tolerances apply to numeric Q-format VLA values consistently with existing VLA comparison behavior.",
+    "P-format VLA comparison and comparisons of other table column formats retain their existing observable behavior."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Correct FITS table-data comparison so Q-format variable-length array columns produce differences only when their row values actually differ. Comparing the same FITS file to itself, including the reported `QD` reproduction with differently sized row arrays, must be identical and must not emit table-data difference entries. Genuine Q-format VLA value differences must continue to make `TableDataDiff` and the enclosing `FITSDiff` non-identical and must be attributed to the affected rows. Existing behavior for P-format VLAs and non-VLA columns must remain unchanged, including configured numeric tolerances."
+}

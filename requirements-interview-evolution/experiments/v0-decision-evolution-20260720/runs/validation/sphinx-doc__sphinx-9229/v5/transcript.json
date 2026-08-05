@@ -1,0 +1,149 @@
+[
+  {
+    "answer": "Docstring only",
+    "open_material_decisions": [
+      "When a type alias has an immediately following source docstring, whether autodoc should suppress the generated “alias of …” text or retain it after the docstring."
+    ],
+    "question": {
+      "header": "Alias output",
+      "options": [
+        {
+          "description": "Render the source docstring and suppress the generated “alias of …” text, matching the issue’s stated expected behavior.",
+          "label": "Docstring only",
+          "recommended": true
+        },
+        {
+          "description": "Render the source docstring followed by the generated “alias of …” text, matching the existing Python 3.7+ generic-alias test behavior.",
+          "label": "Docstring then alias",
+          "recommended": false
+        }
+      ],
+      "prompt": "When autodoc finds a source docstring for a type alias, what should the rendered content contain?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "All documented aliases",
+    "open_material_decisions": [
+      "Whether source documentation should take precedence over the generated “alias of …” text only for module-level type aliases, or consistently for both module-level aliases and class attributes/aliased classes."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Use source documentation without “alias of …” for module data and class attributes/aliased classes, producing consistent behavior across documenters.",
+          "label": "All documented aliases",
+          "recommended": true
+        },
+        {
+          "description": "Fix module-level type aliases such as the reported examples while preserving current class-attribute and aliased-class output.",
+          "label": "Module aliases only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should the “docstring only” rule apply when autodoc finds source documentation for an alias?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Keep alias text",
+    "open_material_decisions": [
+      "Whether aliases without an immediately following source docstring should retain the generated “alias of …” content."
+    ],
+    "question": {
+      "header": "No docstring",
+      "options": [
+        {
+          "description": "Preserve the existing generated “alias of …” content for undocumented aliases; only documented aliases suppress it.",
+          "label": "Keep alias text",
+          "recommended": true
+        },
+        {
+          "description": "Remove the generated “alias of …” content even when the alias has no source documentation.",
+          "label": "Suppress alias text",
+          "recommended": false
+        }
+      ],
+      "prompt": "What should autodoc render for an alias when no source docstring is available?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "All recognized forms",
+    "open_material_decisions": [
+      "Whether the documented-alias rule applies only to string docstrings immediately following assignments or to every assignment documentation form recognized by ModuleAnalyzer, including #: comments."
+    ],
+    "question": {
+      "header": "Doc forms",
+      "options": [
+        {
+          "description": "Apply the rule to both immediately following string docstrings and #: assignment comments recognized by ModuleAnalyzer, keeping autodoc behavior consistent.",
+          "label": "All recognized forms",
+          "recommended": true
+        },
+        {
+          "description": "Apply the rule only to the next-line triple-quoted syntax from the report; keep existing alias output for #: comments.",
+          "label": "String docstrings only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which source documentation forms should make an alias render documentation only and suppress “alias of …”?"
+    },
+    "turn": 4
+  },
+  {
+    "answer": "Content only",
+    "open_material_decisions": [
+      "Whether the fix should change only alias-content selection or also normalize directive kind, headers, and displayed values across Python versions and documenters."
+    ],
+    "question": {
+      "header": "Output shape",
+      "options": [
+        {
+          "description": "Preserve existing directive selection, headers, signatures, and values; change only content precedence so documented aliases show source documentation without alias text.",
+          "label": "Content only",
+          "recommended": true
+        },
+        {
+          "description": "Also make directive kinds, headers, signatures, or displayed values consistent across Python versions and documenters.",
+          "label": "Normalize output",
+          "recommended": false
+        }
+      ],
+      "prompt": "Beyond replacing “alias of …” with recognized source documentation, should the fix alter any directive kind, header, signature, or displayed value?"
+    },
+    "turn": 5
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Add regression coverage for module-level type aliases using immediately following multiline string docstrings, including representative Dict, Union, and Callable aliases; each documented alias contains its complete source documentation and no generated “alias of …” text.",
+          "Add or update coverage for documented aliases using #: assignment comments; recognized documentation is rendered and “alias of …” is absent.",
+          "Add coverage for documented class attributes and classes exposed under alias names; recognized source documentation is preserved rather than replaced by “alias of …”.",
+          "Retain coverage for an undocumented alias and verify that it still renders the generated “alias of …” content.",
+          "Update existing generic-alias expectations that currently require both documentation and alias text so documented aliases expect documentation only.",
+          "Verify that directive kinds, module headers, signatures, and displayed values remain identical to their pre-change output apart from removal of generated alias content where recognized source documentation exists.",
+          "Run the targeted autodoc and autodata test modules across the repository’s supported Python-version branches where available, ensuring the result is consistent despite version-dependent generic-alias recognition.",
+          "Run the broader autodoc test suite to confirm that ordinary classes, data values, attributes, imported members, and undocumented aliases retain existing behavior."
+        ],
+        "confirmed_decisions": [
+          "Documented aliases render source documentation only; they do not append or substitute generated “alias of …” text.",
+          "The rule applies consistently to module-level aliases, class attributes, and aliased classes.",
+          "Both immediately following string docstrings and assignment comments such as #: comments count when recognized by ModuleAnalyzer.",
+          "Aliases without recognized source documentation retain the existing generated “alias of …” content.",
+          "The change affects content precedence only; existing directive selection, headers, signatures, values, documenter priorities, and unrelated autodoc behavior remain unchanged.",
+          "Behavior must not depend on whether a runtime or Python version classifies an alias for ClassDocumenter, DataDocumenter, or another existing alias-capable documenter: whichever documenter is selected must honor recognized source documentation."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Change Sphinx autodoc so that whenever an alias has assignment documentation recognized by ModuleAnalyzer, autodoc renders that source documentation as the alias content and suppresses the generated “alias of …” content. Apply this consistently to module-level data aliases, class attributes, and classes documented under alias names, regardless of which eligible documenter wins. If no recognized source documentation exists, preserve the current generated “alias of …” content. Do not otherwise normalize or change directive kinds, headers, signatures, displayed values, member selection, or documenter priority."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requirements are fully clarified: recognized source documentation takes precedence for every documented alias, while undocumented aliases retain existing generated alias text. The requested change is bounded to content selection and is implementable from the audited repository evidence."
+    },
+    "turn": 6
+  }
+]

@@ -1,0 +1,142 @@
+[
+  {
+    "answer": "All Q VLAs",
+    "open_material_decisions": [
+      "Whether the fix must cover every Q-format VLA element type supported by the existing P-format comparison branch or only the reported QD reproduction."
+    ],
+    "question": {
+      "header": "Q VLA scope",
+      "options": [
+        {
+          "description": "Require Q-format VLAs to use the same row-wise, tolerance-aware comparison semantics as P-format VLAs, with regression coverage for the reported QD case and representative P/Q parity evidence.",
+          "label": "All Q VLAs",
+          "recommended": true
+        },
+        {
+          "description": "Require only the reported QD same-file reproduction to become identical, without guaranteeing behavior for other Q element types.",
+          "label": "QD case only",
+          "recommended": false
+        },
+        {
+          "description": "Delegate breadth to the implementer, constrained to the smallest safe change that fixes QD and preserves existing non-VLA behavior, with tests documenting the selected boundary.",
+          "label": "Implementer delegated",
+          "recommended": false
+        }
+      ],
+      "prompt": "What compatibility boundary should the implementation contract require for Q-format variable-length arrays?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Full parity (Recommended)",
+    "open_material_decisions": [
+      "Whether regression coverage must verify full P/Q comparison parity—including identical values, genuine differences, and rtol/atol behavior—or only the reported same-file false positive."
+    ],
+    "question": {
+      "header": "Parity tests",
+      "options": [
+        {
+          "description": "Test the reported QD same-file case plus representative Q-VLA equality, genuine-difference detection, and rtol/atol behavior matching P VLAs.",
+          "label": "Full parity (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Test the QD reproduction and representative equal Q VLAs, without contractually requiring difference or tolerance tests.",
+          "label": "Equality only",
+          "recommended": false
+        },
+        {
+          "description": "Let the implementer choose the smallest test matrix that proves all Q VLAs enter the P-style branch while preserving non-VLA behavior.",
+          "label": "Delegate tests",
+          "recommended": false
+        }
+      ],
+      "prompt": "What acceptance evidence should be required for the new all-Q-VLA compatibility boundary?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Semantic detection",
+    "open_material_decisions": [
+      "How TableDataDiff should recognize P- and Q-format VLA columns while preserving all non-VLA dispatch behavior.",
+      "Owner approval of the final executable contract after this technical boundary is resolved."
+    ],
+    "question": {
+      "header": "VLA dispatch",
+      "options": [
+        {
+          "description": "Require use of existing parsed column-format metadata or type relationships to recognize both P and Q VLAs, while leaving non-VLA dispatch unchanged.",
+          "label": "Semantic detection",
+          "recommended": true
+        },
+        {
+          "description": "Permit the minimal literal change that makes the existing branch accept both P and Q format strings, with full parity tests guarding behavior.",
+          "label": "Extend guard",
+          "recommended": false
+        },
+        {
+          "description": "Let the implementer choose the smallest repository-consistent mechanism, constrained to P/Q parity, unchanged non-VLA dispatch, and the approved regression evidence.",
+          "label": "Delegate mechanism",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should the contract constrain detection of P- and Q-format VLA columns in TableDataDiff?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the final executable implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with the stated scope, evidence, delegation boundary, and residual risk.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can identify a material boundary or acceptance requirement to change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: update TableDataDiff to recognize P- and Q-format VLA columns semantically through existing parsed column-format metadata or type relationships; compare every supported Q VLA with the same row-wise, rtol/atol-aware semantics currently used for P VLAs; leave dispatch and behavior for non-VLA columns unchanged; add regression coverage proving the reported QD same-file comparison is identical and representative P/Q parity for equal values, genuine differences, and rtol/atol handling. The implementer may choose the repository-consistent semantic API and representative element types, but must show the tests exercise both descriptor formats and the stated comparison outcomes. Residual risk: representative tests cannot exhaust every Q element type, row shape, or supported NumPy version, so untested combinations retain bounded compatibility risk."
+    },
+    "turn": 4
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Comparing a FITS file containing the reported `QD` column data (`[[0], [0, 0]]`) with itself yields `FITSDiff.identical == True` and records no table-data difference.",
+          "Representative equal Q-format VLA values compare as identical using the same semantics as their P-format counterparts.",
+          "Representative genuine differences in Q-format VLA rows are detected and reported consistently with equivalent P-format VLA differences.",
+          "Representative floating-point P- and Q-format VLAs exhibit matching `rtol` and `atol` behavior.",
+          "Tests explicitly exercise both P and Q descriptor formats.",
+          "The implementation recognizes P/Q VLAs through existing semantic format metadata or type relationships.",
+          "Existing non-VLA dispatch and behavior remain unchanged, demonstrated by relevant existing regression tests."
+        ],
+        "confirmed_decisions": [
+          "The compatibility boundary covers all supported Q-format VLAs, not only the reported QD reproduction.",
+          "Q-format VLAs must use the same row-wise and tolerance-aware comparison behavior as P-format VLAs.",
+          "Acceptance evidence must cover the reported QD same-file false positive, representative equal P/Q VLAs, genuine differences, and `rtol`/`atol` behavior.",
+          "VLA dispatch must use semantic detection based on existing parsed format metadata or type relationships rather than relying on literal substring matching.",
+          "Non-VLA comparison dispatch and observable behavior must remain unchanged.",
+          "The implementer may choose the specific repository-consistent semantic API and representative VLA element types, constrained by the approved behavior and tests.",
+          "The owner explicitly approved this executable contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update `TableDataDiff` so it semantically recognizes both P- and Q-format variable-length-array columns through existing parsed column-format metadata or type relationships. Every supported Q VLA must receive the same row-wise, `rtol`/`atol`-aware comparison semantics currently used for P VLAs. Dispatch and behavior for non-VLA columns must remain unchanged. Add regression coverage proving that the reported QD same-file comparison is identical and demonstrating representative P/Q parity for equal values, genuine differences, and tolerance handling. The implementer may select the repository-consistent semantic API and representative element types, provided the tests exercise both descriptor formats and every required comparison outcome. Representative coverage cannot exhaust every Q element type, row shape, NumPy behavior, or supported NumPy version; untested combinations retain bounded residual compatibility risk."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the final contract after resolving scope, acceptance evidence, and the VLA-dispatch mechanism. No material implementation decision remains open."
+    },
+    "turn": 5
+  }
+]

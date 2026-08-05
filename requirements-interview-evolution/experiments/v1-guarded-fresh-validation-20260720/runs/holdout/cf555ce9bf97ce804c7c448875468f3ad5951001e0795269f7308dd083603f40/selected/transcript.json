@@ -1,0 +1,78 @@
+[
+  {
+    "answer": "Preserve explicit handling",
+    "open_material_decisions": [
+      "Treatment of an explicitly named __init__.py that does not match python_files."
+    ],
+    "question": {
+      "header": "Explicit path",
+      "options": [
+        {
+          "description": "Recommended: stop automatic recursive import of unmatched initializers, while preserving the existing initial-command-line-path behavior and current direct-argument expectations.",
+          "label": "Preserve explicit handling",
+          "recommended": true
+        },
+        {
+          "description": "Require even explicitly supplied initializers to match `python_files`, changing the current initial-path exemption.",
+          "label": "Apply patterns everywhere",
+          "recommended": false
+        }
+      ],
+      "prompt": "After the fix, how should pytest handle an explicitly supplied `path/to/__init__.py` when it does not match `python_files`?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve (Recommended)",
+    "open_material_decisions": [
+      "Owner approval of the complete implementation contract."
+    ],
+    "question": {
+      "header": "Approve contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with no remaining material decisions.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a materially different behavior or compatibility boundary.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: During recursive directory collection, an encountered `__init__.py` that does not match configured `python_files` must not produce a `Package` collector and therefore must not be imported merely because it initializes a package. A matching initializer must retain package collection and initializer-test behavior. An explicitly supplied `__init__.py` remains exempt from pattern filtering, preserving current direct-argument behavior. Implement the smallest compatible collection change and add regression coverage proving that default recursive collection does not import a failing unmatched initializer, while configured matching still collects initializer tests and existing explicit-path cases remain valid. Existing `pytest_ignore_collect` behavior must remain effective. Scope is limited to Python initializer eligibility during collection; no broader traversal, import-mode, or pattern semantics are required. Acceptance requires the new targeted regression tests and relevant existing collection tests to pass. Implementation details may be chosen by the implementer within these constraints. Residual risk: changing whether unmatched initializers create package collectors may affect internal package-root bookkeeping, so relevant package-collection regressions must be run, but no additional observable compatibility guarantee is imposed without evidence."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Add targeted regression coverage showing that default recursive collection does not import a failing `__init__.py` that does not match `python_files`.",
+          "Verify that configuring `python_files` to match `__init__.py` still collects initializer tests.",
+          "Verify that existing explicit-initializer-path cases retain their current behavior.",
+          "Run relevant existing collection tests, including package collection and `pytest_ignore_collect` coverage.",
+          "All new targeted regression tests and relevant existing collection tests pass."
+        ],
+        "confirmed_decisions": [
+          "Unmatched `__init__.py` files encountered through recursive directory collection must not create `Package` collectors or be imported solely due to package initialization.",
+          "Configured `python_files` matching continues to enable package collection and tests defined in `__init__.py`.",
+          "Explicitly supplied `__init__.py` paths remain exempt from `python_files` filtering.",
+          "Existing `pytest_ignore_collect` behavior remains effective.",
+          "The change is limited to initializer eligibility during Python collection; broader traversal, import-mode, and pattern semantics are unchanged.",
+          "Implementation details are delegated to the implementer subject to the approved behavioral and compatibility boundaries.",
+          "The owner explicitly approved this contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Limit the regression fix to Python package-initializer eligibility during collection. During recursive directory collection, an encountered `__init__.py` that does not match the configured `python_files` patterns must not produce a `Package` collector and therefore must not be imported merely because it initializes a package. A matching initializer must retain existing package collection and initializer-test behavior. An explicitly supplied `__init__.py` remains exempt from pattern filtering, preserving current direct-argument behavior. Existing `pytest_ignore_collect` behavior must remain effective. Implement the smallest compatible collection change; broader traversal, import-mode, and filename-pattern semantic changes are out of scope. The implementer may choose implementation details within these constraints. Bounded residual risk: not creating package collectors for unmatched initializers may affect internal package-root bookkeeping, so relevant package-collection regressions must be run, but no broader observable compatibility guarantee is required without evidence."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the complete implementation contract, and no material decision remains unresolved."
+    },
+    "turn": 3
+  }
+]

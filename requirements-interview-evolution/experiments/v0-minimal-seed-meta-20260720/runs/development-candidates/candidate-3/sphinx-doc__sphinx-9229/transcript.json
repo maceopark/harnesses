@@ -1,0 +1,55 @@
+[
+  {
+    "answer": "Documentation only",
+    "open_material_decisions": [
+      "Whether generated `alias of …` content remains alongside an alias’s source documentation or is suppressed whenever source documentation exists."
+    ],
+    "question": {
+      "header": "Alias text",
+      "options": [
+        {
+          "description": "Render the source documentation and suppress the generated `alias of …` paragraph, matching the stated expected behavior.",
+          "label": "Documentation only",
+          "recommended": true
+        },
+        {
+          "description": "Preserve the source documentation and also retain the generated `alias of …` paragraph, matching existing Python 3.7+ GenericAlias behavior.",
+          "label": "Documentation and alias",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has source documentation, what should autodoc render?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A regression fixture defines documented aliases using `Dict`, `Union`, and `Callable`, each followed immediately by a multiline string whose content starts on the next line.",
+          "Autodoc output for each documented alias contains its complete source documentation.",
+          "Autodoc output for each documented alias does not contain a generated `alias of …` paragraph.",
+          "The regression demonstrates the expected behavior on the reported Python 3.6 path or an equivalent version-specific test branch capable of proving that behavior.",
+          "An undocumented type alias continues to produce its existing default alias/value representation.",
+          "Existing parser coverage for assignment-following multiline documentation continues to pass.",
+          "Existing relevant autodoc tests pass after their documented-alias expectations are updated to the confirmed documentation-only behavior."
+        ],
+        "confirmed_decisions": [
+          "For a type alias with source documentation, autodoc renders the source documentation only; it does not also render a generated `alias of …` paragraph.",
+          "The behavior covers next-line multiline string documentation immediately following a type-alias assignment, including the reported `Dict`, `Union`, and `Callable` forms.",
+          "The three reported documented aliases must behave consistently rather than varying according to their runtime classification or selected autodoc documenter.",
+          "Aliases without source documentation retain their existing default output; this change does not remove generated alias information globally.",
+          "The fix applies to the Python 3.6 reproduction described in the report and must not regress supported newer-Python behavior for documented aliases."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Make autodoc consistently preserve assignment-following source documentation for documented type aliases, including the reported `Dict`, `Union`, and `Callable` aliases using next-line multiline string documentation. When such source documentation exists, render it as the alias documentation and suppress the generated `alias of …` paragraph. Keep existing default rendering for aliases without source documentation."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner resolved the only material ambiguity: documented type aliases must render their source documentation without generated `alias of …` content. The public request and repository evidence establish the remaining scope sufficiently for implementation."
+    },
+    "turn": 2
+  }
+]

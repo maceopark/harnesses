@@ -1,0 +1,146 @@
+[
+  {
+    "answer": "Guard sqrtdenest",
+    "open_material_decisions": [
+      "Choose the behavior-changing boundary for handling an empty surd list."
+    ],
+    "question": {
+      "header": "Fix boundary",
+      "options": [
+        {
+          "description": "Recommended: keep the change scoped to sqrtdenest so the reported expression is returned unchanged without altering split_surds behavior for other callers.",
+          "label": "Guard sqrtdenest",
+          "recommended": true
+        },
+        {
+          "description": "Define an empty-input result in split_surds, changing behavior for every current or future caller that supplies an expression with no recognized surd operands.",
+          "label": "Harden split_surds",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should the empty-surd case be handled?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "All empty matches",
+    "open_material_decisions": [
+      "Define whether the sqrtdenest-local guard must handle every empty-surd match or only the reported regression shape."
+    ],
+    "question": {
+      "header": "Guard scope",
+      "options": [
+        {
+          "description": "Recommended: when sqrtdenest's matching path finds no recognized surd operands, treat it as no match and preserve the expression; verify the reported case plus existing sqrtdenest tests.",
+          "label": "All empty matches",
+          "recommended": true
+        },
+        {
+          "description": "Special-case only the supplied complex expression pattern, minimizing immediate behavioral reach but leaving equivalent empty-surd paths able to raise IndexError.",
+          "label": "Reported shape only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Within sqrtdenest, what condition should the regression fix cover?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Precheck operands",
+    "open_material_decisions": [
+      "Choose how the empty-surd condition is detected and converted into sqrtdenest's existing no-match behavior."
+    ],
+    "question": {
+      "header": "Guard method",
+      "options": [
+        {
+          "description": "Detect that the expanded Add has no recognized surd operands before calling split_surds, then return the existing no-match value so the expression remains unchanged without suppressing unrelated errors.",
+          "label": "Precheck operands",
+          "recommended": true
+        },
+        {
+          "description": "Catch IndexError around split_surds and treat it as no match, which is smaller but could conceal a different indexing defect raised inside that call.",
+          "label": "Catch IndexError",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should the sqrtdenest-local guard represent an empty surd match?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Exact unchanged result",
+    "open_material_decisions": [
+      "Define the required assertion for the reported regression."
+    ],
+    "question": {
+      "header": "Regression test",
+      "options": [
+        {
+          "description": "Recommended: assert that sqrtdenest returns an expression equal to the supplied input, which also proves no IndexError escapes and directly locks the documented fallback contract.",
+          "label": "Exact unchanged result",
+          "recommended": true
+        },
+        {
+          "description": "Assert only that the call completes, allowing a future denested or otherwise transformed result for this expression.",
+          "label": "No exception only",
+          "recommended": false
+        }
+      ],
+      "prompt": "What must the regression test assert for the supplied expression?"
+    },
+    "turn": 4
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve or revise the consolidated implementation contract."
+    ],
+    "question": {
+      "header": "Contract approval",
+      "options": [
+        {
+          "description": "Proceed with this exact scope, behavior, acceptance evidence, delegation boundary, and residual risk.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Do not seal the contract yet; specify which requirement or boundary should change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: add a sqrtdenest-local precheck in the Add matching path so any candidate with no operands recognized by split_surds is treated as an existing no-match result; do not change split_surds or _split_gcd; add the required imaginary-unit test import and a regression asserting the supplied expression is returned unchanged; run that regression and the existing sqrtdenest test module. The implementer may choose the smallest convention-consistent code structure, but may not catch broad exceptions or expand behavior outside this empty-match path. Residual risk: other direct callers of split_surds with no recognized surds remain unchanged and may still raise IndexError."
+    },
+    "turn": 5
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "The supplied expression `(3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2` passes through sqrtdenest without raising IndexError.",
+          "sqrtdenest returns an expression equal to that supplied input.",
+          "The focused regression test passes.",
+          "The existing `sympy/simplify/tests/test_sqrtdenest.py` test module passes.",
+          "No changes are made to split_surds or _split_gcd, and no broad exception handling is introduced."
+        ],
+        "confirmed_decisions": [
+          "Handle the empty-surd case locally within sqrtdenest rather than changing split_surds behavior for other callers.",
+          "Cover every sqrtdenest Add match with no operands recognized by split_surds, not only the reported expression shape.",
+          "Detect the condition before calling split_surds; do not catch IndexError or other broad exceptions.",
+          "The regression test must assert expression equality with the supplied input, proving both the absence of IndexError and the documented unchanged-expression fallback.",
+          "The implementer may choose the smallest convention-consistent code structure but may not expand behavior beyond the empty-match path.",
+          "Acknowledged residual risk: direct callers of split_surds with no recognized surds remain unchanged and may still raise IndexError."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Add a sqrtdenest-local precheck in the Add matching path so any candidate with no operands recognized by split_surds is treated as the existing no-match result and therefore remains unchanged. Do not modify split_surds or _split_gcd. Add the imaginary-unit import required by the regression test and assert that sqrtdenest returns the supplied expression unchanged."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the consolidated contract, resolving every material behavior, scope, implementation-boundary, and acceptance decision."
+    },
+    "turn": 6
+  }
+]

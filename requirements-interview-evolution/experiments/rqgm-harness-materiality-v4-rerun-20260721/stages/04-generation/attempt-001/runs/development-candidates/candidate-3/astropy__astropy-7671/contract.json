@@ -1,0 +1,19 @@
+{
+  "acceptance_checks": [
+    "A regression test using a synthetic module with `__version__ == '1.14.3'` verifies that `minversion(module, '1.14dev')` returns `True` and does not raise an exception.",
+    "The regression is covered for the public `minversion` behavior without depending on the locally installed NumPy version.",
+    "Existing `test_minversion` expectations for installed `0.12.2` against `0.12`, `0.12.1`, `0.12.0.dev`, `1`, and `1.2rc1` continue to pass.",
+    "Tests confirm both comparison modes retain their contract: equality passes when `inclusive=True` and fails when `inclusive=False`.",
+    "Tests for string-name import failure and custom `version_path` behavior continue to pass, demonstrating that unrelated public behavior was preserved."
+  ],
+  "confirmed_decisions": [
+    "Restore the version-comparison semantics that existed before removal of `pkg_resources.parse_version`, rather than applying a narrow special case only to the reported input.",
+    "`minversion` must return `True`, without raising `TypeError`, when the installed version is `1.14.3`, the required version is `1.14dev`, and `inclusive=True`.",
+    "Inclusive comparisons continue to mean installed version greater than or equal to the requested version; exclusive comparisons continue to require installed version strictly greater than the requested version.",
+    "Existing input and version lookup behavior remains unchanged: imported modules and import-name strings are accepted, failed named imports return `False`, invalid module argument types raise `ValueError`, and `version_path` continues to support direct and dotted attributes.",
+    "The change remains observable through the existing `astropy.utils.minversion` public export."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update `astropy.utils.minversion` so version comparisons again follow the standards-aware ordering semantics provided before PR #7647, eliminating the `LooseVersion` mixed-component failure. An installed version of `1.14.3` must satisfy a required version of `1.14dev`. Preserve the existing public interface and behavior for module objects, import-name strings, `version_path`, missing imports, and inclusive versus exclusive comparisons."
+}

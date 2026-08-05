@@ -1,0 +1,121 @@
+[
+  {
+    "answer": "Import only when selected",
+    "open_material_decisions": [
+      "Whether a recursively encountered __init__.py that does not match python_files should be completely ignored or may still be imported to establish package collection semantics.",
+      "Whether explicit __init__.py arguments and configurations whose python_files matches __init__.py retain existing collection/import behavior."
+    ],
+    "question": {
+      "header": "Import rule",
+      "options": [
+        {
+          "description": "Do not import it unless it matches python_files; continue importing/collecting it when explicitly passed or matched by configuration.",
+          "label": "Import only when selected",
+          "recommended": true
+        },
+        {
+          "description": "Never import recursively discovered initializers, even when python_files includes __init__.py; only an explicit file argument may collect one.",
+          "label": "Never auto-import",
+          "recommended": false
+        },
+        {
+          "description": "Keep importing initializers to construct package collectors and address only the reported platform-specific failure through another exception or ignore mechanism.",
+          "label": "Preserve package imports",
+          "recommended": false
+        }
+      ],
+      "prompt": "What should pytest do with an existing package __init__.py encountered recursively under an ordinary directory argument?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Preserve both",
+    "open_material_decisions": [
+      "Whether explicitly passed __init__.py files and recursively encountered __init__.py files matching python_files should retain their existing import and collection behavior."
+    ],
+    "question": {
+      "header": "Selected init",
+      "options": [
+        {
+          "description": "Continue importing and collecting explicitly passed or pattern-matched initializers; suppress only unselected recursive initializers.",
+          "label": "Preserve both",
+          "recommended": true
+        },
+        {
+          "description": "Collect an initializer only when passed directly, ignoring matches caused solely by python_files configuration.",
+          "label": "Explicit only",
+          "recommended": false
+        },
+        {
+          "description": "Never import or collect __init__.py, including when directly passed or matched by configuration.",
+          "label": "Ignore all",
+          "recommended": false
+        }
+      ],
+      "prompt": "When __init__.py is explicitly passed or matches the configured python_files patterns, should pytest preserve its existing import and collection behavior?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Collect without init",
+    "open_material_decisions": [
+      "Whether preserving the exact package collector/node hierarchy is required, or only preserving descendant test discovery and execution.",
+      "Whether tests beneath a recursively encountered package whose __init__.py does not match python_files must still be discovered and run without importing that initializer."
+    ],
+    "question": {
+      "header": "Child tests",
+      "options": [
+        {
+          "description": "Continue discovering and running matching descendant tests while never importing the unselected initializer; internal collector structure may change.",
+          "label": "Collect without init",
+          "recommended": true
+        },
+        {
+          "description": "Continue discovering descendant tests without importing the initializer, while also preserving the existing Package collector and node hierarchy.",
+          "label": "Preserve hierarchy",
+          "recommended": false
+        },
+        {
+          "description": "Treat the unselected initializer as making the whole package directory ineligible, so descendant tests are not collected.",
+          "label": "Skip package tree",
+          "recommended": false
+        }
+      ],
+      "prompt": "If a recursively encountered package has an unselected __init__.py, what should happen to matching test files inside that directory?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "With default python_files patterns, running pytest on a directory containing foobar/__init__.py with import-failing code does not import that initializer and produces no collection error.",
+          "A matching test file beneath foobar is still collected and executed without importing foobar/__init__.py.",
+          "When python_files is configured to include __init__.py, a recursively discovered initializer retains existing import and collection behavior, including surfacing import failures as collection errors.",
+          "Passing __init__.py directly retains existing import and collection behavior, including surfacing import failures as collection errors.",
+          "Existing tests covering collection of initializer tests under broadened python_files configuration continue to pass.",
+          "Existing tests covering direct __init__.py arguments continue to pass.",
+          "Existing collect_ignore behavior continues to prevent collection or import within ignored package trees.",
+          "A focused regression test distinguishes the fixed behavior from the previous item-count-only coverage by placing failing code in an unselected initializer under an ordinary directory invocation.",
+          "The full relevant collection test suite passes without requiring preservation of the Package collector hierarchy for unselected initializers."
+        ],
+        "confirmed_decisions": [
+          "For an ordinary directory invocation, a recursively encountered __init__.py that does not match python_files must be ignored rather than imported to establish package collection semantics.",
+          "Explicitly passed __init__.py files retain their existing import and collection behavior.",
+          "Recursively encountered __init__.py files that match python_files retain their existing import and collection behavior.",
+          "Matching descendant test files remain discoverable and runnable when their package's unselected __init__.py is not imported.",
+          "Internal collector or node hierarchy may change for directories whose initializer is unselected.",
+          "Existing pytest_ignore_collect behavior must remain effective."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix the pytest 5.2.3 regression by preventing recursively discovered package initializers from being imported unless they are selected for collection. An initializer is selected when it matches the configured python_files patterns or is passed explicitly. A recursively encountered, unselected __init__.py must not be imported, but matching test files beneath its directory must still be discovered and executed. Preserving the existing internal Package collector hierarchy for unselected initializers is not required."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The three answers resolve the material behavior choices and yield an implementation-ready contract grounded in the supplied repository evidence."
+    },
+    "turn": 4
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "acceptance_checks": [
+    "For data DataArray([1.0, 1.0, 1.0]) and boolean weights DataArray([True, True, False]), weighted mean over all dimensions equals 1.0 rather than 2.0.",
+    "For the same data and weights, sum_of_weights over all dimensions equals the numeric value 2 rather than boolean True.",
+    "Existing weighted behavior for numeric weights continues to pass its current tests.",
+    "Existing weighted-sum behavior remains unchanged."
+  ],
+  "confirmed_decisions": [
+    "The correction applies to DataArrayWeighted only.",
+    "For DataArrayWeighted, both weighted mean and the public sum_of_weights operation must treat boolean weights as numeric 0/1 when calculating the denominator.",
+    "Weighted sum is not part of the requested behavior change.",
+    "No particular conversion dtype or internal implementation location is prescribed."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Correct DataArrayWeighted handling of boolean weights for weighted mean and sum_of_weights. Boolean False/True weights must contribute as numeric 0/1 when calculating the denominator, so DataArray([1.0, 1.0, 1.0]).weighted(DataArray([True, True, False])).mean() returns 1.0 and its sum_of_weights returns 2. The change must not alter the established behavior of weighted sum or numeric weights. DatasetWeighted behavior is outside this contract."
+}

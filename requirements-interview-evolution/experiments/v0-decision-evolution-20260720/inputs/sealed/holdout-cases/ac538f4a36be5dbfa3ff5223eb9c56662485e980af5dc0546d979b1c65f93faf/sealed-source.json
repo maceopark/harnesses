@@ -1,0 +1,239 @@
+{
+  "alias": "ac538f4a36be5dbfa3ff5223eb9c56662485e980af5dc0546d979b1c65f93faf",
+  "evidence": [
+    {
+      "cache_required": true,
+      "excerpt": "BytesWarning when using --setup-show with bytes parameter\nWith Python 3.8.2, pytest 5.4.1 (or latest master; stacktraces are from there) and this file:\n\n```python\nimport pytest\n\n@pytest.mark.parametrize('data', [b'Hello World'])\ndef test_data(data):\n    pass\n```\n\nwhen running `python3 -bb -m pytest --setup-show` (note the `-bb` to turn on ByteWarning and treat it as error), I get:\n\n```\n___________________ ERROR at setup of test_data[Hello World] ___________________\n\ncls = <class '_pytest.runner.CallInfo'>\nfunc = <function call_runtest_hook.<locals>.<lambda> at 0x7fb1f3e29d30>\nwhen = 'setup'\nreraise = (<class '_pytest.outcomes.Exit'>, <class 'KeyboardInterrupt'>)",
+      "excerpt_digest": "2e32b95f20475d00d0b28e6b98ad6a2cb94618d7010a3fc172a6757ad5b1be7c",
+      "id": "issue",
+      "knowledge_timing": "issue_time_author_knowable",
+      "locator": "sha256:088371cacf194b0c57058002e7701c7ce885d7c4548fa25d6757305fc33d7ed1",
+      "source": "issue",
+      "source_digest": "088371cacf194b0c57058002e7701c7ce885d7c4548fa25d6757305fc33d7ed1"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "diff --git a/src/_pytest/setuponly.py b/src/_pytest/setuponly.py\n--- a/src/_pytest/setuponly.py\n+++ b/src/_pytest/setuponly.py\n@@ -1,4 +1,5 @@\n import pytest\n+from _pytest._io.saferepr import saferepr\n \n \n def pytest_addoption(parser):\n@@ -66,7 +67,7 @@ def _show_fixture_action(fixturedef, msg):\n             tw.write(\" (fixtures used: {})\".format(\", \".join(deps)))\n \n     if hasattr(fixturedef, \"cached_param\"):\n-        tw.write(\"[{}]\".format(fixturedef.cached_param))\n+        tw.write(\"[{}]\".format(saferepr(fixturedef.cached_param, maxsize=42)))\n \n     tw.flush()\n ",
+      "excerpt_digest": "355c0111dbff3262ed6a492487df63229cd8d430e87059ffa9751ef32c54344a",
+      "id": "gold-patch",
+      "knowledge_timing": "hindsight_only",
+      "locator": "sha256:3c49041a5759e3b82c185699eca4abb784bc4c0df2c99677370d2a3f3f6ee4f2",
+      "source": "patch",
+      "source_digest": "3c49041a5759e3b82c185699eca4abb784bc4c0df2c99677370d2a3f3f6ee4f2"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "diff --git a/testing/test_setuponly.py b/testing/test_setuponly.py\n--- a/testing/test_setuponly.py\n+++ b/testing/test_setuponly.py\n@@ -1,3 +1,5 @@\n+import sys\n+\n import pytest\n from _pytest.config import ExitCode\n \n@@ -146,10 +148,10 @@ def test_arg1(arg_other):\n \n     result.stdout.fnmatch_lines(\n         [\n-            \"SETUP    S arg_same?foo?\",\n-            \"TEARDOWN S arg_same?foo?\",\n-            \"SETUP    S arg_same?bar?\",\n-            \"TEARDOWN S arg_same?bar?\",\n+            \"SETUP    S arg_same?'foo'?\",\n+            \"TEARDOWN S arg_same?'foo'?\",\n+            \"SETUP    S arg_same?'bar'?\",",
+      "excerpt_digest": "f958908f52605eeb3349c23aba6662874509368184928daf157009a01356c0f1",
+      "id": "test-patch",
+      "knowledge_timing": "hindsight_only",
+      "locator": "sha256:c7bcc2ef1cfc5051c19866d9538d8926f0c972c44c48007087a6eb547b616650",
+      "source": "test",
+      "source_digest": "c7bcc2ef1cfc5051c19866d9538d8926f0c972c44c48007087a6eb547b616650"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "[\"testing/test_setuponly.py::test_show_fixtures_with_parameters[--setup-only]\",\"testing/test_setuponly.py::test_show_fixtures_with_parameter_ids[--setup-only]\",\"testing/test_setuponly.py::test_show_fixtures_with_parameter_ids_function[--setup-only]\",\"testing/test_setuponly.py::test_show_fixtures_with_parameters[--setup-plan]\",\"testing/test_setuponly.py::test_show_fixtures_with_parameter_ids[--setup-plan]\",\"testing/test_setuponly.py::test_show_fixtures_with_parameter_ids_function[--setup-plan]\",\"testing/test_setuponly.py::test_show_fixtures_with_parameters[--setup-show]\",\"testing/test_setuponly.py::test_show_fixtures_with_parameter_ids[--setup-show]\",\"testing/test_setuponly.py::test_show_fixtures_with_parameter_ids_function[--setup-show]\",\"testing/test_setuponly.py::test_show_fixture_action_with_bytes\"]",
+      "excerpt_digest": "5954fc4a6bbb0b2026eff0153129912f50ddfc37c410f5a2323d6c27d9f8bc4c",
+      "id": "fail-to-pass",
+      "knowledge_timing": "hindsight_only",
+      "locator": "sha256:5954fc4a6bbb0b2026eff0153129912f50ddfc37c410f5a2323d6c27d9f8bc4c",
+      "source": "test",
+      "source_digest": "5954fc4a6bbb0b2026eff0153129912f50ddfc37c410f5a2323d6c27d9f8bc4c"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "[\"testing/test_setuponly.py::test_show_only_active_fixtures[--setup-only]\",\"testing/test_setuponly.py::test_show_different_scopes[--setup-only]\",\"testing/test_setuponly.py::test_show_nested_fixtures[--setup-only]\",\"testing/test_setuponly.py::test_show_fixtures_with_autouse[--setup-only]\",\"testing/test_setuponly.py::test_show_only_active_fixtures[--setup-plan]\",\"testing/test_setuponly.py::test_show_different_scopes[--setup-plan]\",\"testing/test_setuponly.py::test_show_nested_fixtures[--setup-plan]\",\"testing/test_setuponly.py::test_show_fixtures_with_autouse[--setup-plan]\",\"testing/test_setuponly.py::test_show_only_active_fixtures[--setup-show]\",\"testing/test_setuponly.py::test_show_different_scopes[--setup-show]\",\"testing/test_setuponly.py::test_show_nested_fixtures[--setup-show]\",\"testing/test_setuponly.py::test_show_fixtures_with_autouse[--setup-show]\",\"testing/test_setuponly.py::test_dynamic_fixture_request\",\"testing/test_setuponly.py::test_capturing\",\"testing/test_setuponly.py::test_show_fixtures_and_execute_test\",\"testing/test_setuponly.py::test_setup_show_with_KeyboardInterrupt_in_test\"]",
+      "excerpt_digest": "2935407be861e008f95dc6444bf628a9baf5f00deae6de197108ab361ff5bcbb",
+      "id": "pass-to-pass",
+      "knowledge_timing": "hindsight_only",
+      "locator": "sha256:2935407be861e008f95dc6444bf628a9baf5f00deae6de197108ab361ff5bcbb",
+      "source": "test",
+      "source_digest": "2935407be861e008f95dc6444bf628a9baf5f00deae6de197108ab361ff5bcbb"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "    group.addoption(\n        \"--setupshow\",\n        \"--setup-show\",\n        action=\"store_true\",\n        help=\"show setup of fixtures while executing tests.\",\n    )",
+      "excerpt_digest": "6c871b04de0015ef8a539cfacbc83d7305bbbf0958fd427d41d6c31dac509f5e",
+      "id": "repository:F1",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "src/_pytest/setuponly.py:L12-L17",
+      "source": "repository",
+      "source_digest": "c51373696a6860bd6071cb83aae9b50b79afece716e9a5f58dd9020e476b9397"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "@pytest.hookimpl(hookwrapper=True)\ndef pytest_fixture_setup(fixturedef, request):\n    yield\n    if request.config.option.setupshow:\n        if hasattr(request, \"param\"):\n            # Save the fixture parameter so ._show_fixture_action() can\n            # display it now and during the teardown (in .finish()).\n            if fixturedef.ids:\n                if callable(fixturedef.ids):\n                    fixturedef.cached_param = fixturedef.ids(request.param)\n                else:\n                    fixturedef.cached_param = fixturedef.ids[request.param_index]\n            else:\n                fixturedef.cached_param = request.param\n        _show_fixture_action(fixturedef, \"SETUP\")",
+      "excerpt_digest": "aa629d9d6e8cbc2dab9b8d6e26b8f296b085dbab6a876389ca3193a8a259ab59",
+      "id": "repository:F2",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "src/_pytest/setuponly.py:L20-L34",
+      "source": "repository",
+      "source_digest": "c51373696a6860bd6071cb83aae9b50b79afece716e9a5f58dd9020e476b9397"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "    if msg == \"SETUP\":\n        deps = sorted(arg for arg in fixturedef.argnames if arg != \"request\")\n        if deps:\n            tw.write(\" (fixtures used: {})\".format(\", \".join(deps)))\n\n    if hasattr(fixturedef, \"cached_param\"):\n        tw.write(\"[{}]\".format(fixturedef.cached_param))\n\n    tw.flush()",
+      "excerpt_digest": "ef6528d59953ca20fc908662d569e64f04b2083a4b05de86a8ebcbd77abc5189",
+      "id": "repository:F3",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "src/_pytest/setuponly.py:L63-L71",
+      "source": "repository",
+      "source_digest": "c51373696a6860bd6071cb83aae9b50b79afece716e9a5f58dd9020e476b9397"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "    def _compute_fixture_value(self, fixturedef: \"FixtureDef\") -> None:\n        \"\"\"\n        Creates a SubRequest based on \"self\" and calls the execute method of the given fixturedef object. This will\n        force the FixtureDef object to throw away any previous results and compute a new fixture value, which\n        will be stored into the FixtureDef object itself.\n        \"\"\"\n        # prepare a subrequest object before calling fixture function\n        # (latter managed by fixturedef)\n        argname = fixturedef.argname\n        funcitem = self._pyfuncitem\n        scope = fixturedef.scope\n        try:\n            param = funcitem.callspec.getparam(argname)\n        except (AttributeError, ValueError):\n            param = NOTSET\n            param_index = 0",
+      "excerpt_digest": "1d25e32d32d3af9bd507706bd30831737b2b9a76e5bd2d82045bb3376f38fb1b",
+      "id": "repository:F4",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "src/_pytest/fixtures.py:L524-L539",
+      "source": "repository",
+      "source_digest": "02d5d420b54798d85567e4f1b749d3108a5862a542211ebabaeded0e475b0683"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "class SubRequest(FixtureRequest):\n    \"\"\" a sub request for handling getting a fixture from a\n    test function/fixture. \"\"\"\n\n    def __init__(self, request, scope, param, param_index, fixturedef):\n        self._parent_request = request\n        self.fixturename = fixturedef.argname\n        if param is not NOTSET:\n            self.param = param\n        self.param_index = param_index",
+      "excerpt_digest": "239468326a2268a2b5543bd0b4f0cdc76cf8147854ffc8a36e4306e99fefef87",
+      "id": "repository:F5",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "src/_pytest/fixtures.py:L644-L653",
+      "source": "repository",
+      "source_digest": "02d5d420b54798d85567e4f1b749d3108a5862a542211ebabaeded0e475b0683"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "    result = testdir.runpytest(mode, p)\n    assert result.ret == 0\n\n    result.stdout.fnmatch_lines(\n        [\n            \"SETUP    S arg_same?foo?\",\n            \"TEARDOWN S arg_same?foo?\",\n            \"SETUP    S arg_same?bar?\",\n            \"TEARDOWN S arg_same?bar?\",\n        ]\n    )",
+      "excerpt_digest": "32bed115badc735616373ae1c7428e80ecb608a7a92ea214c0d8e3246de1dc45",
+      "id": "repository:F7",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "testing/test_setuponly.py:L144-L154",
+      "source": "repository",
+      "source_digest": "3ae0ec6d1cee6e86806a4e97e07bccb4f6bf48fb735bc3aab865aa31ce32bf8c"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "def test_show_fixtures_with_parameter_ids_function(testdir, mode):\n    p = testdir.makepyfile(\n        \"\"\"\n        import pytest\n        @pytest.fixture(params=['foo', 'bar'], ids=lambda p: p.upper())\n        def foobar():\n            pass\n        def test_foobar(foobar):\n            pass\n    \"\"\"\n    )\n\n    result = testdir.runpytest(mode, p)\n    assert result.ret == 0\n\n    result.stdout.fnmatch_lines([\"*SETUP    F foobar?FOO?\", \"*SETUP    F foobar?BAR?\"])",
+      "excerpt_digest": "14370af452217988b2aca07fdc5845e0a1119e0b752e866a049d1800537632a3",
+      "id": "repository:F9",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "testing/test_setuponly.py:L186-L201",
+      "source": "repository",
+      "source_digest": "3ae0ec6d1cee6e86806a4e97e07bccb4f6bf48fb735bc3aab865aa31ce32bf8c"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "def saferepr(obj: Any, maxsize: int = 240) -> str:\n    \"\"\"return a size-limited safe repr-string for the given object.\n    Failing __repr__ functions of user instances will be represented\n    with a short exception info and 'saferepr' generally takes\n    care to never raise exceptions itself.  This function is a wrapper\n    around the Repr/reprlib functionality of the standard 2.6 lib.\n    \"\"\"\n    return SafeRepr(maxsize).repr(obj)",
+      "excerpt_digest": "eb6fe9d15e7fb90e8af5db8a95ae09f01d00215dd851e27d6d70af463316eebd",
+      "id": "repository:F10",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "src/_pytest/_io/saferepr.py:L75-L82",
+      "source": "repository",
+      "source_digest": "694df644ccef2a62f16e263a2cc2ba47a2ab4d384b338fe99be112902b1917be"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "    def write(self, msg: str, *, flush: bool = False, **markup: bool) -> None:\n        if msg:\n            current_line = msg.rsplit(\"\\n\", 1)[-1]\n            if \"\\n\" in msg:\n                self._current_line = current_line\n            else:\n                self._current_line += current_line\n\n            msg = self.markup(msg, **markup)\n\n            self._file.write(msg)\n            if flush:\n                self.flush()",
+      "excerpt_digest": "9b6f8364ecdd2bd4e58c7ff3426d1543737890414f07af7db9d57f9c9fc984e7",
+      "id": "repository:F11",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "src/_pytest/_io/terminalwriter.py:L151-L163",
+      "source": "repository",
+      "source_digest": "b16c2b4c46a92dd6359ae1d677b99c23bc49f18d5144b1a48ad7e29fa3d29f4c"
+    }
+  ],
+  "hindsight_observations": [
+    {
+      "description": "The gold implementation applies the repository's saferepr helper to every cached fixture parameter displayed by the shared setup-action function, not only to bytes.",
+      "evidence_ids": [
+        "gold-patch"
+      ],
+      "id": "HO1"
+    },
+    {
+      "description": "The hindsight tests confirm the resulting representation contract by changing expected strings and generated IDs to quoted forms and adding a Python -bb regression test for a bytes parameter.",
+      "evidence_ids": [
+        "test-patch",
+        "fail-to-pass"
+      ],
+      "id": "HO2"
+    },
+    {
+      "description": "The unaffected setup-reporting tests continued to pass, indicating that fixture selection, scope formatting, capture behavior, execution, and interrupt handling were not disturbed by the representation change.",
+      "evidence_ids": [
+        "pass-to-pass"
+      ],
+      "id": "HO3"
+    }
+  ],
+  "implementation_incidentals": [
+    {
+      "description": "The gold patch implements the behavior by importing saferepr directly into src/_pytest/setuponly.py and calling it at the existing cached_param formatting site.",
+      "evidence_ids": [
+        "gold-patch",
+        "repository:F3",
+        "repository:F10"
+      ],
+      "id": "II1"
+    },
+    {
+      "description": "The chosen representation limit is exactly 42 characters; neither the issue nor the issue-time repository establishes that specific threshold as an owner requirement.",
+      "evidence_ids": [
+        "gold-patch"
+      ],
+      "id": "II2"
+    },
+    {
+      "description": "The regression test launches pytest through sys.executable with -bb and therefore adds a module-level sys import; this is test-construction detail rather than product behavior.",
+      "evidence_ids": [
+        "test-patch"
+      ],
+      "id": "II3"
+    }
+  ],
+  "inputs": {
+    "fail_to_pass": {
+      "cache_key": "sha256:5954fc4a6bbb0b2026eff0153129912f50ddfc37c410f5a2323d6c27d9f8bc4c",
+      "digest": "5954fc4a6bbb0b2026eff0153129912f50ddfc37c410f5a2323d6c27d9f8bc4c"
+    },
+    "gold_patch": {
+      "cache_key": "sha256:3c49041a5759e3b82c185699eca4abb784bc4c0df2c99677370d2a3f3f6ee4f2",
+      "digest": "3c49041a5759e3b82c185699eca4abb784bc4c0df2c99677370d2a3f3f6ee4f2"
+    },
+    "issue": {
+      "cache_key": "sha256:088371cacf194b0c57058002e7701c7ce885d7c4548fa25d6757305fc33d7ed1",
+      "digest": "088371cacf194b0c57058002e7701c7ce885d7c4548fa25d6757305fc33d7ed1"
+    },
+    "pass_to_pass": {
+      "cache_key": "sha256:2935407be861e008f95dc6444bf628a9baf5f00deae6de197108ab361ff5bcbb",
+      "digest": "2935407be861e008f95dc6444bf628a9baf5f00deae6de197108ab361ff5bcbb"
+    },
+    "test_patch": {
+      "cache_key": "sha256:c7bcc2ef1cfc5051c19866d9538d8926f0c972c44c48007087a6eb547b616650",
+      "digest": "c7bcc2ef1cfc5051c19866d9538d8926f0c972c44c48007087a6eb547b616650"
+    }
+  },
+  "material_decisions": [
+    {
+      "description": "Choose whether fixture parameters shown by setup-reporting modes should use a safe representation for every parameter value, accepting representation-style output such as quotes around strings, or retain existing string formatting and narrowly handle bytes.",
+      "evidence_ids": [
+        "issue"
+      ],
+      "failure_if_missed": "A narrow conversion could fix the reported bytes case while leaving reporting vulnerable to other unsafe objects; applying representation universally without agreement could unexpectedly change established output consumed by users or tests.",
+      "id": "MD1",
+      "knowledge_timing": "issue_time_author_knowable",
+      "materiality": "This changes user-visible setup output for ordinary strings and custom IDs, while determining whether bytes and objects with problematic string or representation methods can break reporting.",
+      "owner_answer": "Render displayed fixture parameters through a safe, bounded representation consistently rather than special-casing bytes; representation-style changes for existing values are acceptable.",
+      "question_intent": "Should setup reporting adopt safe representation as its general parameter-display contract, or preserve current output and apply a narrower fix only to bytes?",
+      "sources": [
+        "issue",
+        "inferred"
+      ]
+    }
+  ],
+  "review_state": {
+    "dispositions_complete": true,
+    "status": "approved"
+  },
+  "schema": "SealedSWEbenchSource.v1"
+}

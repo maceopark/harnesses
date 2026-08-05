@@ -1,0 +1,632 @@
+{
+  "role": "adjudicator",
+  "model": "gpt-5.6-sol",
+  "command": [
+    "codex",
+    "exec",
+    "--model",
+    "gpt-5.6-sol",
+    "--ephemeral",
+    "--sandbox",
+    "read-only",
+    "--skip-git-repo-check",
+    "--ignore-user-config",
+    "--color",
+    "never",
+    "--output-schema",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-adjudicator-yu7yj2w_/schema.json",
+    "--output-last-message",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-adjudicator-yu7yj2w_/output.json",
+    "-C",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-adjudicator-yu7yj2w_",
+    "<stdin>"
+  ],
+  "prompt": "Disposition every blind finding independently. Approve only citation-supported material readiness failures, and state whether each is repository- and implementation-independent. Do not create replacement requirements. For every verdict, approved must equal exactly: evidence_supported AND verdict.material AND finding.material AND repository_independent AND implementation_independent AND NOT oracle_conflict. Disposition every finding exactly once.\nReturn only the JSON required by the supplied schema.\nINPUT:\n{\"alias\": \"psf__requests-1142\", \"audited_repository_evidence\": {\"audit_summary\": \"All ten facts are directly supported by the cited repository files and lines.\", \"facts\": [{\"id\": \"F1\", \"line_end\": 55, \"line_start\": 47, \"path\": \"requests/api.py\", \"statement\": \"The top-level get() API delegates to request() with method 'get'.\"}, {\"id\": \"F2\", \"line_end\": 280, \"line_start\": 264, \"path\": \"requests/sessions.py\", \"statement\": \"Session.request() uppercases the method, assigns the provided data and headers to a Request, prepares it, and sends the resulting PreparedRequest.\"}, {\"id\": \"F3\", \"line_end\": 207, \"line_start\": 192, \"path\": \"requests/models.py\", \"statement\": \"Request initialization converts omitted data from None to an empty list.\"}, {\"id\": \"F4\", \"line_end\": 227, \"line_start\": 216, \"path\": \"requests/models.py\", \"statement\": \"Request.prepare() prepares headers before preparing the body.\"}, {\"id\": \"F5\", \"line_end\": 380, \"line_start\": 368, \"path\": \"requests/models.py\", \"statement\": \"For non-streamed requests, prepare_body() calls prepare_content_length(body) regardless of HTTP method.\"}, {\"id\": \"F6\", \"line_end\": 395, \"line_start\": 388, \"path\": \"requests/models.py\", \"statement\": \"prepare_content_length() first assigns Content-Length to '0'; it replaces that value only when the body is seekable or non-None.\"}, {\"id\": \"F7\", \"line_end\": 380, \"line_start\": 338, \"path\": \"requests/models.py\", \"statement\": \"Because an ordinary GET has no body, its body remains None before prepare_content_length() is called, leaving the automatically assigned Content-Length value as '0'.\"}, {\"id\": \"F8\", \"line_end\": 169, \"line_start\": 149, \"path\": \"requests/adapters.py\", \"statement\": \"The HTTP adapter passes the PreparedRequest headers directly to urllib3 when sending a request whose body is None.\"}, {\"id\": \"F9\", \"line_end\": 411, \"line_start\": 397, \"path\": \"requests/models.py\", \"statement\": \"When authentication is present, preparation recomputes Content-Length after the authenticator modifies the request, again invoking the same unconditional helper.\"}, {\"id\": \"F10\", \"line_end\": 103, \"line_start\": 85, \"path\": \"test_requests.py\", \"statement\": \"The repository's single test module contains GET request coverage but no occurrence of Content-Length or content-length, so this header behavior has no explicit regression assertion there.\"}], \"scope_summary\": \"Inspected repository psf__requests-1142 at base commit 22623bd8c265b78b161542663ee980738441c307. Existing request preparation unconditionally assigns Content-Length: 0 to ordinary bodyless requests, including GET.\", \"unknowns\": [\"The repository does not establish Amazon's behavior for GET requests containing Content-Length; that claim is external to the supplied base-commit repository.\", \"The repository does not state an owner-selected replacement policy for bodyless non-GET methods or for caller-supplied Content-Length headers.\"]}, \"contract\": {\"acceptance_checks\": [\"Preparing an ordinary GET with final body None results in no automatically generated `Content-Length` header.\", \"Preparing a bodyless GET with an explicitly supplied `Content-Length` preserves that exact header value.\", \"Authentication preparation does not introduce an automatic `Content-Length: 0` on a bodyless GET and preserves an explicit caller-supplied value.\", \"A GET with a non-None body continues to use the repository's existing content-length behavior.\", \"Non-GET methods continue to use the repository's existing content-length behavior.\", \"The repository's regression tests covering ordinary bodyless GET omission and explicit-header preservation pass.\"], \"confirmed_decisions\": [\"Automatic `Content-Length: 0` suppression is limited to bodyless GET requests.\", \"An explicitly caller-supplied `Content-Length` on a bodyless GET is preserved unchanged.\", \"Authentication preparation must not replace or remove an explicitly supplied `Content-Length` on a bodyless GET.\", \"GET requests with a non-None body retain existing content-length behavior.\", \"All non-GET methods retain existing content-length behavior.\", \"Regression coverage must prove omission for an ordinary bodyless GET.\", \"Regression coverage must prove preservation of an explicit `Content-Length` on a bodyless GET.\", \"The implementation route is delegated to the implementer, constrained to the smallest repository-consistent mechanism satisfying this contract.\", \"The Amazon 503 claim is context only and is outside required verification and acceptance.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"For GET requests whose final prepared body is None, Requests must not automatically add `Content-Length: 0`. An explicitly caller-supplied `Content-Length` must be preserved unchanged, including through authentication preparation. GET requests with a non-None body and all non-GET methods retain existing content-length behavior. Implement using the smallest repository-consistent mechanism. The Amazon 503 claim is contextual and requires neither external verification nor a test.\"}, \"findings\": [], \"hindsight_observations\": [{\"description\": \"The accepted patch extended automatic omission to bodyless HEAD requests as well as GET requests, although HEAD was not mentioned in the issue-time request.\", \"evidence_ids\": [\"gold-patch\", \"test-patch\", \"fail-to-pass\"], \"id\": \"H1\"}, {\"description\": \"The accepted behavior continued to generate Content-Length: 0 for bodyless methods other than GET and HEAD, and continued to calculate a length whenever a body was present.\", \"evidence_ids\": [\"gold-patch\"], \"id\": \"H2\"}, {\"description\": \"The added regression test asserted header absence on prepared GET and HEAD requests, and that test was the designated fail-to-pass case.\", \"evidence_ids\": [\"test-patch\", \"fail-to-pass\"], \"id\": \"H3\"}, {\"description\": \"The selected pass-to-pass tests indicate that basic request preparation, entry points, URL validation, parameter placement, and path encoding remained regression checks, but they do not establish that this was the only valid test or implementation design.\", \"evidence_ids\": [\"pass-to-pass\"], \"id\": \"H4\"}], \"implementation_incidentals\": [{\"description\": \"The gold implementation placed a method conditional inside PreparedRequest.prepare_content_length rather than changing the top-level get helper, Session.get, or the adapter.\", \"evidence_ids\": [\"gold-patch\", \"repository:F1\", \"repository:F5\", \"repository:F8\"], \"id\": \"I1\"}, {\"description\": \"The implementation used the exact tuple check self.method not in ('GET', 'HEAD') to decide when a missing body should produce Content-Length: 0.\", \"evidence_ids\": [\"gold-patch\"], \"id\": \"I2\"}, {\"description\": \"Because authentication recomputes Content-Length through the same helper, modifying that helper also applies the selected behavior after authentication mutates a prepared request.\", \"evidence_ids\": [\"repository:F3\", \"repository:F6\", \"gold-patch\"], \"id\": \"I3\"}], \"material_decisions\": [{\"description\": \"Choose whether bodyless GET requests should omit the automatically generated Content-Length header by default, or whether Requests should retain the current default and provide an explicit way for callers to suppress the header.\", \"evidence_ids\": [\"issue\"], \"failure_if_missed\": \"Implementing only an opt-out would leave ordinary requests.get calls incompatible with servers that reject GET requests carrying Content-Length, while unconditional default suppression could be wrong if the owner intended backward-compatible caller control.\", \"id\": \"D1\", \"knowledge_timing\": \"issue_time_author_knowable\", \"materiality\": \"This choice determines the public request behavior and whether affected callers receive compatibility automatically or must opt in at each call site.\", \"owner_answer\": \"Automatically omit Content-Length for bodyless GET requests; callers should not need a separate suppression option for the reported compatibility problem.\", \"question_intent\": \"Should the fix change the default behavior of bodyless GET requests, or add a caller-controlled opt-out while preserving the existing default?\", \"sources\": [\"issue\"]}], \"metadata\": {\"context_mode\": \"repository\", \"partition\": \"validation\", \"repository_family\": \"psf/requests\"}, \"public_request\": \"requests.get is ALWAYS sending content length\\nHi,\\n\\nIt seems like that request.get always adds 'content-length' header to the request.\\nI think that the right behavior is not to add this header automatically in GET requests or add the possibility to not send it.\\n\\nFor example http://amazon.com returns 503 for every get request that contains 'content-length' header.\\n\\nThanks,\\n\\nOren\\n\\n\", \"repository_facts\": [{\"evidence\": [{\"cache_required\": true, \"excerpt\": \"def get(url, **kwargs):\\n    \\\"\\\"\\\"Sends a GET request. Returns :class:`Response` object.\\n\\n    :param url: URL for the new :class:`Request` object.\\n    :param \\\\*\\\\*kwargs: Optional arguments that ``request`` takes.\\n    \\\"\\\"\\\"\\n\\n    kwargs.setdefault('allow_redirects', True)\\n    return request('get', url, **kwargs)\", \"excerpt_digest\": \"efa1a386a35d2df3dd41b0c9911bc5ef2a590703734a9bc2d08be839bb1d0cc9\", \"id\": \"repository:F1\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/api.py:L47-L55\", \"source\": \"repository\", \"source_digest\": \"a137afb51c59436543468bbfdc1959f3ad9e0a5d68652945dd034d9d86576bd6\"}], \"id\": \"F1\", \"statement\": \"The top-level get() helper sets allow_redirects by default and delegates to request() with method 'get'.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        # Create the Request.\\n        req = Request()\\n        req.method = method.upper()\\n        req.url = url\\n        req.headers = headers\\n        req.files = files\\n        req.data = data\\n        req.params = params\\n        req.auth = auth\\n        req.cookies = cookies\\n        req.hooks = hooks\\n\\n        # Prepare the Request.\\n        prep = req.prepare()\\n\\n        # Send the request.\\n        resp = self.send(prep, stream=stream, timeout=timeout, verify=verify, cert=cert, proxies=proxies)\", \"excerpt_digest\": \"497ef5d3d2f8df892a0cf0f443930ec4247e60ff329a7d0852fd2693c665a515\", \"id\": \"repository:F2\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/sessions.py:L264-L280\", \"source\": \"repository\", \"source_digest\": \"54bc557690517b61aa392b423ada8df4fb4b5e089b2c5bb87a69d6e198ab7719\"}], \"id\": \"F2\", \"statement\": \"Session.request() copies the HTTP method and data into a Request, prepares it, and sends the resulting PreparedRequest.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def prepare(self):\\n        \\\"\\\"\\\"Constructs a :class:`PreparedRequest <PreparedRequest>` for transmission and returns it.\\\"\\\"\\\"\\n        p = PreparedRequest()\\n\\n        p.prepare_method(self.method)\\n        p.prepare_url(self.url, self.params)\\n        p.prepare_headers(self.headers)\\n        p.prepare_cookies(self.cookies)\\n        p.prepare_body(self.data, self.files)\\n        # Note that prepare_auth must be last to enable authentication schemes\\n        # such as OAuth to work on a fully prepared request.\\n        p.prepare_auth(self.auth)\\n        # This MUST go after prepare_auth. Authenticators could add a hook\\n        p.prepare_hooks(self.hooks)\", \"excerpt_digest\": \"3d316300da99ab8bcbd4430456aca84b65028f9bfab51a847a43ccb81227dc55\", \"id\": \"repository:F3\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L216-L229\", \"source\": \"repository\", \"source_digest\": \"d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3\"}], \"id\": \"F3\", \"statement\": \"Request.prepare() prepares headers and then prepares the body; authentication preparation follows body preparation.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        else:\\n            # Multi-part file uploads.\\n            if files:\\n                (body, content_type) = self._encode_files(files, data)\\n            else:\\n                if data:\\n                    body = self._encode_params(data)\\n                    if isinstance(data, str) or isinstance(data, builtin_str) or hasattr(data, 'read'):\\n                        content_type = None\\n                    else:\\n                        content_type = 'application/x-www-form-urlencoded'\\n\\n            self.prepare_content_length(body)\\n\\n            # Add content-type if it wasn't explicitly provided.\\n            if (content_type) and (not 'content-type' in self.headers):\\n                self.headers['Content-Type'] = content_type\\n\\n        self.body = body\", \"excerpt_digest\": \"1518ba64469e5ffb1aa2123596b7290ea32ca3699626087eae35a390fa353171\", \"id\": \"repository:F4\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L368-L386\", \"source\": \"repository\", \"source_digest\": \"d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3\"}], \"id\": \"F4\", \"statement\": \"For non-streamed data, prepare_body() invokes prepare_content_length(body) regardless of the HTTP method.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def prepare_content_length(self, body):\\n        self.headers['Content-Length'] = '0'\\n        if hasattr(body, 'seek') and hasattr(body, 'tell'):\\n            body.seek(0, 2)\\n            self.headers['Content-Length'] = str(body.tell())\\n            body.seek(0, 0)\\n        elif body is not None:\\n            self.headers['Content-Length'] = str(len(body))\", \"excerpt_digest\": \"574e946cf0925a3186555bcca197032329e59db51297fb37f6e70046a3cedfc0\", \"id\": \"repository:F5\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L388-L395\", \"source\": \"repository\", \"source_digest\": \"d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3\"}], \"id\": \"F5\", \"statement\": \"prepare_content_length() first assigns Content-Length to '0', replacing it only when the body is seekable or non-None.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def prepare_auth(self, auth):\\n        \\\"\\\"\\\"Prepares the given HTTP auth data.\\\"\\\"\\\"\\n        if auth:\\n            if isinstance(auth, tuple) and len(auth) == 2:\\n                # special-case basic HTTP auth\\n                auth = HTTPBasicAuth(*auth)\\n\\n            # Allow auth to make its changes.\\n            r = auth(self)\\n\\n            # Update self to reflect the auth changes.\\n            self.__dict__.update(r.__dict__)\\n\\n            # Recompute Content-Length\\n            self.prepare_content_length(self.body)\", \"excerpt_digest\": \"9dbfa4e1030a769c7dda417e1d490625fd4666dceae89b7794fb42ae1c565e76\", \"id\": \"repository:F6\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L397-L411\", \"source\": \"repository\", \"source_digest\": \"d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3\"}], \"id\": \"F6\", \"statement\": \"After authentication modifies a prepared request, prepare_auth() recomputes Content-Length from the request body.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def send(self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None):\\n        \\\"\\\"\\\"Sends PreparedRequest object. Returns Response object.\\\"\\\"\\\"\\n\\n        conn = self.get_connection(request.url, proxies)\\n\\n        self.cert_verify(conn, request.url, verify, cert)\\n        url = self.request_url(request, proxies)\\n\\n        chunked = not (request.body is None or 'Content-Length' in request.headers)\\n\\n        try:\\n            if not chunked:\\n                resp = conn.urlopen(\\n                    method=request.method,\\n                    url=url,\\n                    body=request.body,\\n                    headers=request.headers,\\n                    redirect=False,\\n                    assert_same_host=False,\\n                    preload_content=False,\", \"excerpt_digest\": \"c5308788e2c0a7fbf153ed8d50e00c7036bd567561301867a73d80f363b85fb4\", \"id\": \"repository:F7\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/adapters.py:L149-L169\", \"source\": \"repository\", \"source_digest\": \"0025468f820b19769978c3c92557799b5786f3754d413719d3802f70b7d82d4e\"}], \"id\": \"F7\", \"statement\": \"The adapter treats a request as chunked only when it has a body and lacks a Content-Length header; otherwise it passes the prepared headers directly to urllib3's urlopen().\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def get(self, url, **kwargs):\\n        \\\"\\\"\\\"Sends a GET request. Returns :class:`Response` object.\\n\\n        :param url: URL for the new :class:`Request` object.\\n        :param \\\\*\\\\*kwargs: Optional arguments that ``request`` takes.\\n        \\\"\\\"\\\"\\n\\n        kwargs.setdefault('allow_redirects', True)\\n        return self.request('GET', url, **kwargs)\", \"excerpt_digest\": \"9a72a0944fa2866ffdd85d04099da7f73820d077828006285c8a4e3025eba8d9\", \"id\": \"repository:F8\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/sessions.py:L300-L308\", \"source\": \"repository\", \"source_digest\": \"54bc557690517b61aa392b423ada8df4fb4b5e089b2c5bb87a69d6e198ab7719\"}], \"id\": \"F8\", \"statement\": \"Session.get() delegates to Session.request() with method 'GET' and does not contain Content-Length-specific handling.\"}], \"review_state\": {\"dispositions_complete\": true, \"status\": \"approved\"}, \"sealed_evidence\": [{\"cache_required\": true, \"excerpt\": \"requests.get is ALWAYS sending content length\\nHi,\\n\\nIt seems like that request.get always adds 'content-length' header to the request.\\nI think that the right behavior is not to add this header automatically in GET requests or add the possibility to not send it.\\n\\nFor example http://amazon.com returns 503 for every get request that contains 'content-length' header.\\n\\nThanks,\\n\\nOren\\n\", \"excerpt_digest\": \"12cb0a753e020ef26b5aca52f17b50d3f2b24a364537278dd98fab93208b0a9b\", \"id\": \"issue\", \"knowledge_timing\": \"issue_time_author_knowable\", \"locator\": \"sha256:0192533ff2ef0c53a600b3ef02cb9dc20bf0998d56eeaee80ca1a76c46758eec\", \"source\": \"issue\", \"source_digest\": \"0192533ff2ef0c53a600b3ef02cb9dc20bf0998d56eeaee80ca1a76c46758eec\"}, {\"cache_required\": true, \"excerpt\": \"diff --git a/requests/models.py b/requests/models.py\\n--- a/requests/models.py\\n+++ b/requests/models.py\\n@@ -386,13 +386,14 @@ def prepare_body(self, data, files):\\n         self.body = body\\n \\n     def prepare_content_length(self, body):\\n-        self.headers['Content-Length'] = '0'\\n         if hasattr(body, 'seek') and hasattr(body, 'tell'):\\n             body.seek(0, 2)\\n             self.headers['Content-Length'] = str(body.tell())\\n             body.seek(0, 0)\\n         elif body is not None:\\n             self.headers['Content-Length'] = str(len(body))\\n+        elif self.method not in ('GET', 'HEAD'):\\n+            self.headers['Content-Length'] = '0'\\n \\n     def prepare_auth(self, auth):\\n         \\\"\\\"\\\"Prepares the given HTTP auth data.\\\"\\\"\\\"\", \"excerpt_digest\": \"219fbba26c659c25e23f4506e5587e3d7cbda75f5afa5c3c6de306a647503586\", \"id\": \"gold-patch\", \"knowledge_timing\": \"hindsight_only\", \"locator\": \"sha256:c25c1f930edaf8514d3a5f2bc5631a8e8080ecb2511c789ec171f37d14e627a6\", \"source\": \"patch\", \"source_digest\": \"c25c1f930edaf8514d3a5f2bc5631a8e8080ecb2511c789ec171f37d14e627a6\"}, {\"cache_required\": true, \"excerpt\": \"diff --git a/test_requests.py b/test_requests.py\\n--- a/test_requests.py\\n+++ b/test_requests.py\\n@@ -58,6 +58,13 @@ def test_basic_building(self):\\n         assert pr.body == 'life=42'\\n \\n \\n+    def test_no_content_length(self):\\n+        get_req = requests.Request('GET', httpbin('get')).prepare()\\n+        self.assertTrue('Content-Length' not in get_req.headers)\\n+        head_req = requests.Request('HEAD', httpbin('head')).prepare()\\n+        self.assertTrue('Content-Length' not in head_req.headers)\\n+\\n+\\n     def test_path_is_not_double_encoded(self):\\n         request = requests.Request('GET', \\\"http://0.0.0.0/get/test case\\\").prepare()\\n \", \"excerpt_digest\": \"530cd5a4112da69a03987afddda07279e9c7a6ad8c038993fbb393f4bc5e2a12\", \"id\": \"test-patch\", \"knowledge_timing\": \"hindsight_only\", \"locator\": \"sha256:6671e023a6f6ed84969327ccee025cb8ab81e79c9477a7d635640c0b03836769\", \"source\": \"test\", \"source_digest\": \"6671e023a6f6ed84969327ccee025cb8ab81e79c9477a7d635640c0b03836769\"}, {\"cache_required\": true, \"excerpt\": \"[\\\"test_requests.py::RequestsTestCase::test_no_content_length\\\"]\", \"excerpt_digest\": \"1a0e89b948595c2f916c00ca458e846e4768f0d43e20986c57849709dcff7c1c\", \"id\": \"fail-to-pass\", \"knowledge_timing\": \"hindsight_only\", \"locator\": \"sha256:1a0e89b948595c2f916c00ca458e846e4768f0d43e20986c57849709dcff7c1c\", \"source\": \"test\", \"source_digest\": \"1a0e89b948595c2f916c00ca458e846e4768f0d43e20986c57849709dcff7c1c\"}, {\"cache_required\": true, \"excerpt\": \"[\\\"test_requests.py::RequestsTestCase::test_basic_building\\\",\\\"test_requests.py::RequestsTestCase::test_entry_points\\\",\\\"test_requests.py::RequestsTestCase::test_invalid_url\\\",\\\"test_requests.py::RequestsTestCase::test_params_are_added_before_fragment\\\",\\\"test_requests.py::RequestsTestCase::test_path_is_not_double_encoded\\\"]\", \"excerpt_digest\": \"af503ee59cd5ddd3f11535bdcab989f635448aac6fcf060f772cc1ffc74ac77e\", \"id\": \"pass-to-pass\", \"knowledge_timing\": \"hindsight_only\", \"locator\": \"sha256:af503ee59cd5ddd3f11535bdcab989f635448aac6fcf060f772cc1ffc74ac77e\", \"source\": \"test\", \"source_digest\": \"af503ee59cd5ddd3f11535bdcab989f635448aac6fcf060f772cc1ffc74ac77e\"}, {\"cache_required\": true, \"excerpt\": \"def get(url, **kwargs):\\n    \\\"\\\"\\\"Sends a GET request. Returns :class:`Response` object.\\n\\n    :param url: URL for the new :class:`Request` object.\\n    :param \\\\*\\\\*kwargs: Optional arguments that ``request`` takes.\\n    \\\"\\\"\\\"\\n\\n    kwargs.setdefault('allow_redirects', True)\\n    return request('get', url, **kwargs)\", \"excerpt_digest\": \"efa1a386a35d2df3dd41b0c9911bc5ef2a590703734a9bc2d08be839bb1d0cc9\", \"id\": \"repository:F1\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/api.py:L47-L55\", \"source\": \"repository\", \"source_digest\": \"a137afb51c59436543468bbfdc1959f3ad9e0a5d68652945dd034d9d86576bd6\"}, {\"cache_required\": true, \"excerpt\": \"        # Create the Request.\\n        req = Request()\\n        req.method = method.upper()\\n        req.url = url\\n        req.headers = headers\\n        req.files = files\\n        req.data = data\\n        req.params = params\\n        req.auth = auth\\n        req.cookies = cookies\\n        req.hooks = hooks\\n\\n        # Prepare the Request.\\n        prep = req.prepare()\\n\\n        # Send the request.\\n        resp = self.send(prep, stream=stream, timeout=timeout, verify=verify, cert=cert, proxies=proxies)\", \"excerpt_digest\": \"497ef5d3d2f8df892a0cf0f443930ec4247e60ff329a7d0852fd2693c665a515\", \"id\": \"repository:F2\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/sessions.py:L264-L280\", \"source\": \"repository\", \"source_digest\": \"54bc557690517b61aa392b423ada8df4fb4b5e089b2c5bb87a69d6e198ab7719\"}, {\"cache_required\": true, \"excerpt\": \"    def prepare(self):\\n        \\\"\\\"\\\"Constructs a :class:`PreparedRequest <PreparedRequest>` for transmission and returns it.\\\"\\\"\\\"\\n        p = PreparedRequest()\\n\\n        p.prepare_method(self.method)\\n        p.prepare_url(self.url, self.params)\\n        p.prepare_headers(self.headers)\\n        p.prepare_cookies(self.cookies)\\n        p.prepare_body(self.data, self.files)\\n        # Note that prepare_auth must be last to enable authentication schemes\\n        # such as OAuth to work on a fully prepared request.\\n        p.prepare_auth(self.auth)\\n        # This MUST go after prepare_auth. Authenticators could add a hook\\n        p.prepare_hooks(self.hooks)\", \"excerpt_digest\": \"3d316300da99ab8bcbd4430456aca84b65028f9bfab51a847a43ccb81227dc55\", \"id\": \"repository:F3\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L216-L229\", \"source\": \"repository\", \"source_digest\": \"d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3\"}, {\"cache_required\": true, \"excerpt\": \"        else:\\n            # Multi-part file uploads.\\n            if files:\\n                (body, content_type) = self._encode_files(files, data)\\n            else:\\n                if data:\\n                    body = self._encode_params(data)\\n                    if isinstance(data, str) or isinstance(data, builtin_str) or hasattr(data, 'read'):\\n                        content_type = None\\n                    else:\\n                        content_type = 'application/x-www-form-urlencoded'\\n\\n            self.prepare_content_length(body)\\n\\n            # Add content-type if it wasn't explicitly provided.\\n            if (content_type) and (not 'content-type' in self.headers):\\n                self.headers['Content-Type'] = content_type\\n\\n        self.body = body\", \"excerpt_digest\": \"1518ba64469e5ffb1aa2123596b7290ea32ca3699626087eae35a390fa353171\", \"id\": \"repository:F4\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L368-L386\", \"source\": \"repository\", \"source_digest\": \"d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3\"}, {\"cache_required\": true, \"excerpt\": \"    def prepare_content_length(self, body):\\n        self.headers['Content-Length'] = '0'\\n        if hasattr(body, 'seek') and hasattr(body, 'tell'):\\n            body.seek(0, 2)\\n            self.headers['Content-Length'] = str(body.tell())\\n            body.seek(0, 0)\\n        elif body is not None:\\n            self.headers['Content-Length'] = str(len(body))\", \"excerpt_digest\": \"574e946cf0925a3186555bcca197032329e59db51297fb37f6e70046a3cedfc0\", \"id\": \"repository:F5\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L388-L395\", \"source\": \"repository\", \"source_digest\": \"d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3\"}, {\"cache_required\": true, \"excerpt\": \"    def prepare_auth(self, auth):\\n        \\\"\\\"\\\"Prepares the given HTTP auth data.\\\"\\\"\\\"\\n        if auth:\\n            if isinstance(auth, tuple) and len(auth) == 2:\\n                # special-case basic HTTP auth\\n                auth = HTTPBasicAuth(*auth)\\n\\n            # Allow auth to make its changes.\\n            r = auth(self)\\n\\n            # Update self to reflect the auth changes.\\n            self.__dict__.update(r.__dict__)\\n\\n            # Recompute Content-Length\\n            self.prepare_content_length(self.body)\", \"excerpt_digest\": \"9dbfa4e1030a769c7dda417e1d490625fd4666dceae89b7794fb42ae1c565e76\", \"id\": \"repository:F6\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L397-L411\", \"source\": \"repository\", \"source_digest\": \"d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3\"}, {\"cache_required\": true, \"excerpt\": \"    def send(self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None):\\n        \\\"\\\"\\\"Sends PreparedRequest object. Returns Response object.\\\"\\\"\\\"\\n\\n        conn = self.get_connection(request.url, proxies)\\n\\n        self.cert_verify(conn, request.url, verify, cert)\\n        url = self.request_url(request, proxies)\\n\\n        chunked = not (request.body is None or 'Content-Length' in request.headers)\\n\\n        try:\\n            if not chunked:\\n                resp = conn.urlopen(\\n                    method=request.method,\\n                    url=url,\\n                    body=request.body,\\n                    headers=request.headers,\\n                    redirect=False,\\n                    assert_same_host=False,\\n                    preload_content=False,\", \"excerpt_digest\": \"c5308788e2c0a7fbf153ed8d50e00c7036bd567561301867a73d80f363b85fb4\", \"id\": \"repository:F7\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/adapters.py:L149-L169\", \"source\": \"repository\", \"source_digest\": \"0025468f820b19769978c3c92557799b5786f3754d413719d3802f70b7d82d4e\"}, {\"cache_required\": true, \"excerpt\": \"    def get(self, url, **kwargs):\\n        \\\"\\\"\\\"Sends a GET request. Returns :class:`Response` object.\\n\\n        :param url: URL for the new :class:`Request` object.\\n        :param \\\\*\\\\*kwargs: Optional arguments that ``request`` takes.\\n        \\\"\\\"\\\"\\n\\n        kwargs.setdefault('allow_redirects', True)\\n        return self.request('GET', url, **kwargs)\", \"excerpt_digest\": \"9a72a0944fa2866ffdd85d04099da7f73820d077828006285c8a4e3025eba8d9\", \"id\": \"repository:F8\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/sessions.py:L300-L308\", \"source\": \"repository\", \"source_digest\": \"54bc557690517b61aa392b423ada8df4fb4b5e089b2c5bb87a69d6e198ab7719\"}], \"sealed_inputs\": {\"fail_to_pass\": {\"cache_key\": \"sha256:1a0e89b948595c2f916c00ca458e846e4768f0d43e20986c57849709dcff7c1c\", \"digest\": \"1a0e89b948595c2f916c00ca458e846e4768f0d43e20986c57849709dcff7c1c\"}, \"gold_patch\": {\"cache_key\": \"sha256:c25c1f930edaf8514d3a5f2bc5631a8e8080ecb2511c789ec171f37d14e627a6\", \"digest\": \"c25c1f930edaf8514d3a5f2bc5631a8e8080ecb2511c789ec171f37d14e627a6\"}, \"issue\": {\"cache_key\": \"sha256:0192533ff2ef0c53a600b3ef02cb9dc20bf0998d56eeaee80ca1a76c46758eec\", \"digest\": \"0192533ff2ef0c53a600b3ef02cb9dc20bf0998d56eeaee80ca1a76c46758eec\"}, \"pass_to_pass\": {\"cache_key\": \"sha256:af503ee59cd5ddd3f11535bdcab989f635448aac6fcf060f772cc1ffc74ac77e\", \"digest\": \"af503ee59cd5ddd3f11535bdcab989f635448aac6fcf060f772cc1ffc74ac77e\"}, \"test_patch\": {\"cache_key\": \"sha256:6671e023a6f6ed84969327ccee025cb8ab81e79c9477a7d635640c0b03836769\", \"digest\": \"6671e023a6f6ed84969327ccee025cb8ab81e79c9477a7d635640c0b03836769\"}}, \"transcript\": [{\"answer\": \"GET only (Recommended)\", \"open_material_decisions\": [\"Whether an explicitly caller-supplied Content-Length header must be preserved.\", \"Which bodyless requests should stop receiving an automatically generated Content-Length: 0 header?\"], \"question\": {\"header\": \"Method scope\", \"options\": [{\"description\": \"Fixes the reported case with the smallest observable compatibility change; other bodyless methods retain current behavior.\", \"label\": \"GET only (Recommended)\", \"recommended\": true}, {\"description\": \"Suppresses the automatic header for both retrieval-oriented methods while preserving it for other bodyless methods.\", \"label\": \"GET and HEAD\", \"recommended\": false}, {\"description\": \"Suppresses the automatically generated zero-length header for every bodyless request, creating the broadest behavior change.\", \"label\": \"All methods\", \"recommended\": false}], \"prompt\": \"For requests with no body, which methods should stop receiving an automatically generated `Content-Length: 0` header?\"}, \"turn\": 1}, {\"answer\": \"Preserve it (Recommended)\", \"open_material_decisions\": [\"Whether an explicitly caller-supplied Content-Length header on a bodyless GET must be preserved.\"], \"question\": {\"header\": \"Caller header\", \"options\": [{\"description\": \"Suppress only Requests' automatically generated header while leaving an explicit caller choice unchanged.\", \"label\": \"Preserve it (Recommended)\", \"recommended\": true}, {\"description\": \"Remove an explicitly supplied `Content-Length: 0` but preserve explicit nonzero values.\", \"label\": \"Remove zero only\", \"recommended\": false}, {\"description\": \"Strip every caller-supplied Content-Length from bodyless GET requests.\", \"label\": \"Remove all\", \"recommended\": false}], \"prompt\": \"For a bodyless GET where the caller explicitly supplies `Content-Length`, what behavior should the fix require?\"}, \"turn\": 2}, {\"answer\": \"Approve\", \"open_material_decisions\": [\"Owner approval of the consolidated implementation contract.\"], \"question\": {\"header\": \"Contract\", \"options\": [{\"description\": \"Seal this contract as implementation-ready with no remaining material decisions.\", \"label\": \"Approve (Recommended)\", \"recommended\": true}, {\"description\": \"Keep the contract open so you can specify a materially different behavior or acceptance boundary.\", \"label\": \"Revise scope\", \"recommended\": false}], \"prompt\": \"Approve this implementation contract: for GET requests whose final prepared body is `None`, Requests must not automatically add `Content-Length: 0`; an explicitly caller-supplied `Content-Length` must be preserved unchanged, including through authentication preparation; GET requests with a non-`None` body and all non-GET methods retain existing content-length behavior. Add regression coverage proving omission for an ordinary bodyless GET and preservation of an explicit header on a bodyless GET. Implementation may choose the smallest repository-consistent mechanism. The Amazon 503 claim is context only and need not be externally verified or tested; residual risk is limited to integrations that depended on the automatically generated zero-length header for bodyless GETs.\"}, \"turn\": 3}, {\"interviewer\": {\"action\": \"complete\", \"contract\": {\"acceptance_checks\": [\"Preparing an ordinary GET with final body None results in no automatically generated `Content-Length` header.\", \"Preparing a bodyless GET with an explicitly supplied `Content-Length` preserves that exact header value.\", \"Authentication preparation does not introduce an automatic `Content-Length: 0` on a bodyless GET and preserves an explicit caller-supplied value.\", \"A GET with a non-None body continues to use the repository's existing content-length behavior.\", \"Non-GET methods continue to use the repository's existing content-length behavior.\", \"The repository's regression tests covering ordinary bodyless GET omission and explicit-header preservation pass.\"], \"confirmed_decisions\": [\"Automatic `Content-Length: 0` suppression is limited to bodyless GET requests.\", \"An explicitly caller-supplied `Content-Length` on a bodyless GET is preserved unchanged.\", \"Authentication preparation must not replace or remove an explicitly supplied `Content-Length` on a bodyless GET.\", \"GET requests with a non-None body retain existing content-length behavior.\", \"All non-GET methods retain existing content-length behavior.\", \"Regression coverage must prove omission for an ordinary bodyless GET.\", \"Regression coverage must prove preservation of an explicit `Content-Length` on a bodyless GET.\", \"The implementation route is delegated to the implementer, constrained to the smallest repository-consistent mechanism satisfying this contract.\", \"The Amazon 503 claim is context only and is outside required verification and acceptance.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"For GET requests whose final prepared body is None, Requests must not automatically add `Content-Length: 0`. An explicitly caller-supplied `Content-Length` must be preserved unchanged, including through authentication preparation. GET requests with a non-None body and all non-GET methods retain existing content-length behavior. Implement using the smallest repository-consistent mechanism. The Amazon 503 claim is contextual and requires neither external verification nor a test.\"}, \"open_material_decisions\": [], \"question\": null, \"reason\": \"The owner explicitly approved the consolidated contract, resolving all material behavioral and acceptance decisions.\"}, \"turn\": 4}], \"upstream\": {\"base_commit\": \"22623bd8c265b78b161542663ee980738441c307\", \"dataset\": \"princeton-nlp/SWE-bench_Verified\", \"instance_id_digest\": \"8720316e150293d4a5505364114fbb2db698069726aa7a376bc7ec4b46ddc0a8\", \"issue_cache_key\": \"sha256:0192533ff2ef0c53a600b3ef02cb9dc20bf0998d56eeaee80ca1a76c46758eec\", \"issue_digest\": \"0192533ff2ef0c53a600b3ef02cb9dc20bf0998d56eeaee80ca1a76c46758eec\", \"revision\": \"c104f840cc67f8b6eec6f759ebc8b2693d585d4a\", \"source_url\": \"https://github.com/psf/requests/pull/1142\"}}",
+  "input": {
+    "alias": "psf__requests-1142",
+    "public_request": "requests.get is ALWAYS sending content length\nHi,\n\nIt seems like that request.get always adds 'content-length' header to the request.\nI think that the right behavior is not to add this header automatically in GET requests or add the possibility to not send it.\n\nFor example http://amazon.com returns 503 for every get request that contains 'content-length' header.\n\nThanks,\n\nOren\n\n",
+    "upstream": {
+      "base_commit": "22623bd8c265b78b161542663ee980738441c307",
+      "dataset": "princeton-nlp/SWE-bench_Verified",
+      "instance_id_digest": "8720316e150293d4a5505364114fbb2db698069726aa7a376bc7ec4b46ddc0a8",
+      "issue_cache_key": "sha256:0192533ff2ef0c53a600b3ef02cb9dc20bf0998d56eeaee80ca1a76c46758eec",
+      "issue_digest": "0192533ff2ef0c53a600b3ef02cb9dc20bf0998d56eeaee80ca1a76c46758eec",
+      "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+      "source_url": "https://github.com/psf/requests/pull/1142"
+    },
+    "repository_facts": [
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "def get(url, **kwargs):\n    \"\"\"Sends a GET request. Returns :class:`Response` object.\n\n    :param url: URL for the new :class:`Request` object.\n    :param \\*\\*kwargs: Optional arguments that ``request`` takes.\n    \"\"\"\n\n    kwargs.setdefault('allow_redirects', True)\n    return request('get', url, **kwargs)",
+            "excerpt_digest": "efa1a386a35d2df3dd41b0c9911bc5ef2a590703734a9bc2d08be839bb1d0cc9",
+            "id": "repository:F1",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "requests/api.py:L47-L55",
+            "source": "repository",
+            "source_digest": "a137afb51c59436543468bbfdc1959f3ad9e0a5d68652945dd034d9d86576bd6"
+          }
+        ],
+        "id": "F1",
+        "statement": "The top-level get() helper sets allow_redirects by default and delegates to request() with method 'get'."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "        # Create the Request.\n        req = Request()\n        req.method = method.upper()\n        req.url = url\n        req.headers = headers\n        req.files = files\n        req.data = data\n        req.params = params\n        req.auth = auth\n        req.cookies = cookies\n        req.hooks = hooks\n\n        # Prepare the Request.\n        prep = req.prepare()\n\n        # Send the request.\n        resp = self.send(prep, stream=stream, timeout=timeout, verify=verify, cert=cert, proxies=proxies)",
+            "excerpt_digest": "497ef5d3d2f8df892a0cf0f443930ec4247e60ff329a7d0852fd2693c665a515",
+            "id": "repository:F2",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "requests/sessions.py:L264-L280",
+            "source": "repository",
+            "source_digest": "54bc557690517b61aa392b423ada8df4fb4b5e089b2c5bb87a69d6e198ab7719"
+          }
+        ],
+        "id": "F2",
+        "statement": "Session.request() copies the HTTP method and data into a Request, prepares it, and sends the resulting PreparedRequest."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    def prepare(self):\n        \"\"\"Constructs a :class:`PreparedRequest <PreparedRequest>` for transmission and returns it.\"\"\"\n        p = PreparedRequest()\n\n        p.prepare_method(self.method)\n        p.prepare_url(self.url, self.params)\n        p.prepare_headers(self.headers)\n        p.prepare_cookies(self.cookies)\n        p.prepare_body(self.data, self.files)\n        # Note that prepare_auth must be last to enable authentication schemes\n        # such as OAuth to work on a fully prepared request.\n        p.prepare_auth(self.auth)\n        # This MUST go after prepare_auth. Authenticators could add a hook\n        p.prepare_hooks(self.hooks)",
+            "excerpt_digest": "3d316300da99ab8bcbd4430456aca84b65028f9bfab51a847a43ccb81227dc55",
+            "id": "repository:F3",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "requests/models.py:L216-L229",
+            "source": "repository",
+            "source_digest": "d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3"
+          }
+        ],
+        "id": "F3",
+        "statement": "Request.prepare() prepares headers and then prepares the body; authentication preparation follows body preparation."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "        else:\n            # Multi-part file uploads.\n            if files:\n                (body, content_type) = self._encode_files(files, data)\n            else:\n                if data:\n                    body = self._encode_params(data)\n                    if isinstance(data, str) or isinstance(data, builtin_str) or hasattr(data, 'read'):\n                        content_type = None\n                    else:\n                        content_type = 'application/x-www-form-urlencoded'\n\n            self.prepare_content_length(body)\n\n            # Add content-type if it wasn't explicitly provided.\n            if (content_type) and (not 'content-type' in self.headers):\n                self.headers['Content-Type'] = content_type\n\n        self.body = body",
+            "excerpt_digest": "1518ba64469e5ffb1aa2123596b7290ea32ca3699626087eae35a390fa353171",
+            "id": "repository:F4",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "requests/models.py:L368-L386",
+            "source": "repository",
+            "source_digest": "d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3"
+          }
+        ],
+        "id": "F4",
+        "statement": "For non-streamed data, prepare_body() invokes prepare_content_length(body) regardless of the HTTP method."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    def prepare_content_length(self, body):\n        self.headers['Content-Length'] = '0'\n        if hasattr(body, 'seek') and hasattr(body, 'tell'):\n            body.seek(0, 2)\n            self.headers['Content-Length'] = str(body.tell())\n            body.seek(0, 0)\n        elif body is not None:\n            self.headers['Content-Length'] = str(len(body))",
+            "excerpt_digest": "574e946cf0925a3186555bcca197032329e59db51297fb37f6e70046a3cedfc0",
+            "id": "repository:F5",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "requests/models.py:L388-L395",
+            "source": "repository",
+            "source_digest": "d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3"
+          }
+        ],
+        "id": "F5",
+        "statement": "prepare_content_length() first assigns Content-Length to '0', replacing it only when the body is seekable or non-None."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    def prepare_auth(self, auth):\n        \"\"\"Prepares the given HTTP auth data.\"\"\"\n        if auth:\n            if isinstance(auth, tuple) and len(auth) == 2:\n                # special-case basic HTTP auth\n                auth = HTTPBasicAuth(*auth)\n\n            # Allow auth to make its changes.\n            r = auth(self)\n\n            # Update self to reflect the auth changes.\n            self.__dict__.update(r.__dict__)\n\n            # Recompute Content-Length\n            self.prepare_content_length(self.body)",
+            "excerpt_digest": "9dbfa4e1030a769c7dda417e1d490625fd4666dceae89b7794fb42ae1c565e76",
+            "id": "repository:F6",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "requests/models.py:L397-L411",
+            "source": "repository",
+            "source_digest": "d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3"
+          }
+        ],
+        "id": "F6",
+        "statement": "After authentication modifies a prepared request, prepare_auth() recomputes Content-Length from the request body."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    def send(self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None):\n        \"\"\"Sends PreparedRequest object. Returns Response object.\"\"\"\n\n        conn = self.get_connection(request.url, proxies)\n\n        self.cert_verify(conn, request.url, verify, cert)\n        url = self.request_url(request, proxies)\n\n        chunked = not (request.body is None or 'Content-Length' in request.headers)\n\n        try:\n            if not chunked:\n                resp = conn.urlopen(\n                    method=request.method,\n                    url=url,\n                    body=request.body,\n                    headers=request.headers,\n                    redirect=False,\n                    assert_same_host=False,\n                    preload_content=False,",
+            "excerpt_digest": "c5308788e2c0a7fbf153ed8d50e00c7036bd567561301867a73d80f363b85fb4",
+            "id": "repository:F7",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "requests/adapters.py:L149-L169",
+            "source": "repository",
+            "source_digest": "0025468f820b19769978c3c92557799b5786f3754d413719d3802f70b7d82d4e"
+          }
+        ],
+        "id": "F7",
+        "statement": "The adapter treats a request as chunked only when it has a body and lacks a Content-Length header; otherwise it passes the prepared headers directly to urllib3's urlopen()."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    def get(self, url, **kwargs):\n        \"\"\"Sends a GET request. Returns :class:`Response` object.\n\n        :param url: URL for the new :class:`Request` object.\n        :param \\*\\*kwargs: Optional arguments that ``request`` takes.\n        \"\"\"\n\n        kwargs.setdefault('allow_redirects', True)\n        return self.request('GET', url, **kwargs)",
+            "excerpt_digest": "9a72a0944fa2866ffdd85d04099da7f73820d077828006285c8a4e3025eba8d9",
+            "id": "repository:F8",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "requests/sessions.py:L300-L308",
+            "source": "repository",
+            "source_digest": "54bc557690517b61aa392b423ada8df4fb4b5e089b2c5bb87a69d6e198ab7719"
+          }
+        ],
+        "id": "F8",
+        "statement": "Session.get() delegates to Session.request() with method 'GET' and does not contain Content-Length-specific handling."
+      }
+    ],
+    "metadata": {
+      "context_mode": "repository",
+      "partition": "validation",
+      "repository_family": "psf/requests"
+    },
+    "transcript": [
+      {
+        "turn": 1,
+        "open_material_decisions": [
+          "Whether an explicitly caller-supplied Content-Length header must be preserved.",
+          "Which bodyless requests should stop receiving an automatically generated Content-Length: 0 header?"
+        ],
+        "question": {
+          "header": "Method scope",
+          "prompt": "For requests with no body, which methods should stop receiving an automatically generated `Content-Length: 0` header?",
+          "options": [
+            {
+              "label": "GET only (Recommended)",
+              "description": "Fixes the reported case with the smallest observable compatibility change; other bodyless methods retain current behavior.",
+              "recommended": true
+            },
+            {
+              "label": "GET and HEAD",
+              "description": "Suppresses the automatic header for both retrieval-oriented methods while preserving it for other bodyless methods.",
+              "recommended": false
+            },
+            {
+              "label": "All methods",
+              "description": "Suppresses the automatically generated zero-length header for every bodyless request, creating the broadest behavior change.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "GET only (Recommended)"
+      },
+      {
+        "turn": 2,
+        "open_material_decisions": [
+          "Whether an explicitly caller-supplied Content-Length header on a bodyless GET must be preserved."
+        ],
+        "question": {
+          "header": "Caller header",
+          "prompt": "For a bodyless GET where the caller explicitly supplies `Content-Length`, what behavior should the fix require?",
+          "options": [
+            {
+              "label": "Preserve it (Recommended)",
+              "description": "Suppress only Requests' automatically generated header while leaving an explicit caller choice unchanged.",
+              "recommended": true
+            },
+            {
+              "label": "Remove zero only",
+              "description": "Remove an explicitly supplied `Content-Length: 0` but preserve explicit nonzero values.",
+              "recommended": false
+            },
+            {
+              "label": "Remove all",
+              "description": "Strip every caller-supplied Content-Length from bodyless GET requests.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Preserve it (Recommended)"
+      },
+      {
+        "turn": 3,
+        "open_material_decisions": [
+          "Owner approval of the consolidated implementation contract."
+        ],
+        "question": {
+          "header": "Contract",
+          "prompt": "Approve this implementation contract: for GET requests whose final prepared body is `None`, Requests must not automatically add `Content-Length: 0`; an explicitly caller-supplied `Content-Length` must be preserved unchanged, including through authentication preparation; GET requests with a non-`None` body and all non-GET methods retain existing content-length behavior. Add regression coverage proving omission for an ordinary bodyless GET and preservation of an explicit header on a bodyless GET. Implementation may choose the smallest repository-consistent mechanism. The Amazon 503 claim is context only and need not be externally verified or tested; residual risk is limited to integrations that depended on the automatically generated zero-length header for bodyless GETs.",
+          "options": [
+            {
+              "label": "Approve (Recommended)",
+              "description": "Seal this contract as implementation-ready with no remaining material decisions.",
+              "recommended": true
+            },
+            {
+              "label": "Revise scope",
+              "description": "Keep the contract open so you can specify a materially different behavior or acceptance boundary.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Approve"
+      },
+      {
+        "turn": 4,
+        "interviewer": {
+          "action": "complete",
+          "reason": "The owner explicitly approved the consolidated contract, resolving all material behavioral and acceptance decisions.",
+          "open_material_decisions": [],
+          "question": null,
+          "contract": {
+            "summary": "For GET requests whose final prepared body is None, Requests must not automatically add `Content-Length: 0`. An explicitly caller-supplied `Content-Length` must be preserved unchanged, including through authentication preparation. GET requests with a non-None body and all non-GET methods retain existing content-length behavior. Implement using the smallest repository-consistent mechanism. The Amazon 503 claim is contextual and requires neither external verification nor a test.",
+            "implementation_ready": true,
+            "confirmed_decisions": [
+              "Automatic `Content-Length: 0` suppression is limited to bodyless GET requests.",
+              "An explicitly caller-supplied `Content-Length` on a bodyless GET is preserved unchanged.",
+              "Authentication preparation must not replace or remove an explicitly supplied `Content-Length` on a bodyless GET.",
+              "GET requests with a non-None body retain existing content-length behavior.",
+              "All non-GET methods retain existing content-length behavior.",
+              "Regression coverage must prove omission for an ordinary bodyless GET.",
+              "Regression coverage must prove preservation of an explicit `Content-Length` on a bodyless GET.",
+              "The implementation route is delegated to the implementer, constrained to the smallest repository-consistent mechanism satisfying this contract.",
+              "The Amazon 503 claim is context only and is outside required verification and acceptance."
+            ],
+            "open_material_decisions": [],
+            "acceptance_checks": [
+              "Preparing an ordinary GET with final body None results in no automatically generated `Content-Length` header.",
+              "Preparing a bodyless GET with an explicitly supplied `Content-Length` preserves that exact header value.",
+              "Authentication preparation does not introduce an automatic `Content-Length: 0` on a bodyless GET and preserves an explicit caller-supplied value.",
+              "A GET with a non-None body continues to use the repository's existing content-length behavior.",
+              "Non-GET methods continue to use the repository's existing content-length behavior.",
+              "The repository's regression tests covering ordinary bodyless GET omission and explicit-header preservation pass."
+            ]
+          }
+        }
+      }
+    ],
+    "contract": {
+      "summary": "For GET requests whose final prepared body is None, Requests must not automatically add `Content-Length: 0`. An explicitly caller-supplied `Content-Length` must be preserved unchanged, including through authentication preparation. GET requests with a non-None body and all non-GET methods retain existing content-length behavior. Implement using the smallest repository-consistent mechanism. The Amazon 503 claim is contextual and requires neither external verification nor a test.",
+      "implementation_ready": true,
+      "confirmed_decisions": [
+        "Automatic `Content-Length: 0` suppression is limited to bodyless GET requests.",
+        "An explicitly caller-supplied `Content-Length` on a bodyless GET is preserved unchanged.",
+        "Authentication preparation must not replace or remove an explicitly supplied `Content-Length` on a bodyless GET.",
+        "GET requests with a non-None body retain existing content-length behavior.",
+        "All non-GET methods retain existing content-length behavior.",
+        "Regression coverage must prove omission for an ordinary bodyless GET.",
+        "Regression coverage must prove preservation of an explicit `Content-Length` on a bodyless GET.",
+        "The implementation route is delegated to the implementer, constrained to the smallest repository-consistent mechanism satisfying this contract.",
+        "The Amazon 503 claim is context only and is outside required verification and acceptance."
+      ],
+      "open_material_decisions": [],
+      "acceptance_checks": [
+        "Preparing an ordinary GET with final body None results in no automatically generated `Content-Length` header.",
+        "Preparing a bodyless GET with an explicitly supplied `Content-Length` preserves that exact header value.",
+        "Authentication preparation does not introduce an automatic `Content-Length: 0` on a bodyless GET and preserves an explicit caller-supplied value.",
+        "A GET with a non-None body continues to use the repository's existing content-length behavior.",
+        "Non-GET methods continue to use the repository's existing content-length behavior.",
+        "The repository's regression tests covering ordinary bodyless GET omission and explicit-header preservation pass."
+      ]
+    },
+    "sealed_inputs": {
+      "fail_to_pass": {
+        "cache_key": "sha256:1a0e89b948595c2f916c00ca458e846e4768f0d43e20986c57849709dcff7c1c",
+        "digest": "1a0e89b948595c2f916c00ca458e846e4768f0d43e20986c57849709dcff7c1c"
+      },
+      "gold_patch": {
+        "cache_key": "sha256:c25c1f930edaf8514d3a5f2bc5631a8e8080ecb2511c789ec171f37d14e627a6",
+        "digest": "c25c1f930edaf8514d3a5f2bc5631a8e8080ecb2511c789ec171f37d14e627a6"
+      },
+      "issue": {
+        "cache_key": "sha256:0192533ff2ef0c53a600b3ef02cb9dc20bf0998d56eeaee80ca1a76c46758eec",
+        "digest": "0192533ff2ef0c53a600b3ef02cb9dc20bf0998d56eeaee80ca1a76c46758eec"
+      },
+      "pass_to_pass": {
+        "cache_key": "sha256:af503ee59cd5ddd3f11535bdcab989f635448aac6fcf060f772cc1ffc74ac77e",
+        "digest": "af503ee59cd5ddd3f11535bdcab989f635448aac6fcf060f772cc1ffc74ac77e"
+      },
+      "test_patch": {
+        "cache_key": "sha256:6671e023a6f6ed84969327ccee025cb8ab81e79c9477a7d635640c0b03836769",
+        "digest": "6671e023a6f6ed84969327ccee025cb8ab81e79c9477a7d635640c0b03836769"
+      }
+    },
+    "sealed_evidence": [
+      {
+        "cache_required": true,
+        "excerpt": "requests.get is ALWAYS sending content length\nHi,\n\nIt seems like that request.get always adds 'content-length' header to the request.\nI think that the right behavior is not to add this header automatically in GET requests or add the possibility to not send it.\n\nFor example http://amazon.com returns 503 for every get request that contains 'content-length' header.\n\nThanks,\n\nOren\n",
+        "excerpt_digest": "12cb0a753e020ef26b5aca52f17b50d3f2b24a364537278dd98fab93208b0a9b",
+        "id": "issue",
+        "knowledge_timing": "issue_time_author_knowable",
+        "locator": "sha256:0192533ff2ef0c53a600b3ef02cb9dc20bf0998d56eeaee80ca1a76c46758eec",
+        "source": "issue",
+        "source_digest": "0192533ff2ef0c53a600b3ef02cb9dc20bf0998d56eeaee80ca1a76c46758eec"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "diff --git a/requests/models.py b/requests/models.py\n--- a/requests/models.py\n+++ b/requests/models.py\n@@ -386,13 +386,14 @@ def prepare_body(self, data, files):\n         self.body = body\n \n     def prepare_content_length(self, body):\n-        self.headers['Content-Length'] = '0'\n         if hasattr(body, 'seek') and hasattr(body, 'tell'):\n             body.seek(0, 2)\n             self.headers['Content-Length'] = str(body.tell())\n             body.seek(0, 0)\n         elif body is not None:\n             self.headers['Content-Length'] = str(len(body))\n+        elif self.method not in ('GET', 'HEAD'):\n+            self.headers['Content-Length'] = '0'\n \n     def prepare_auth(self, auth):\n         \"\"\"Prepares the given HTTP auth data.\"\"\"",
+        "excerpt_digest": "219fbba26c659c25e23f4506e5587e3d7cbda75f5afa5c3c6de306a647503586",
+        "id": "gold-patch",
+        "knowledge_timing": "hindsight_only",
+        "locator": "sha256:c25c1f930edaf8514d3a5f2bc5631a8e8080ecb2511c789ec171f37d14e627a6",
+        "source": "patch",
+        "source_digest": "c25c1f930edaf8514d3a5f2bc5631a8e8080ecb2511c789ec171f37d14e627a6"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "diff --git a/test_requests.py b/test_requests.py\n--- a/test_requests.py\n+++ b/test_requests.py\n@@ -58,6 +58,13 @@ def test_basic_building(self):\n         assert pr.body == 'life=42'\n \n \n+    def test_no_content_length(self):\n+        get_req = requests.Request('GET', httpbin('get')).prepare()\n+        self.assertTrue('Content-Length' not in get_req.headers)\n+        head_req = requests.Request('HEAD', httpbin('head')).prepare()\n+        self.assertTrue('Content-Length' not in head_req.headers)\n+\n+\n     def test_path_is_not_double_encoded(self):\n         request = requests.Request('GET', \"http://0.0.0.0/get/test case\").prepare()\n ",
+        "excerpt_digest": "530cd5a4112da69a03987afddda07279e9c7a6ad8c038993fbb393f4bc5e2a12",
+        "id": "test-patch",
+        "knowledge_timing": "hindsight_only",
+        "locator": "sha256:6671e023a6f6ed84969327ccee025cb8ab81e79c9477a7d635640c0b03836769",
+        "source": "test",
+        "source_digest": "6671e023a6f6ed84969327ccee025cb8ab81e79c9477a7d635640c0b03836769"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "[\"test_requests.py::RequestsTestCase::test_no_content_length\"]",
+        "excerpt_digest": "1a0e89b948595c2f916c00ca458e846e4768f0d43e20986c57849709dcff7c1c",
+        "id": "fail-to-pass",
+        "knowledge_timing": "hindsight_only",
+        "locator": "sha256:1a0e89b948595c2f916c00ca458e846e4768f0d43e20986c57849709dcff7c1c",
+        "source": "test",
+        "source_digest": "1a0e89b948595c2f916c00ca458e846e4768f0d43e20986c57849709dcff7c1c"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "[\"test_requests.py::RequestsTestCase::test_basic_building\",\"test_requests.py::RequestsTestCase::test_entry_points\",\"test_requests.py::RequestsTestCase::test_invalid_url\",\"test_requests.py::RequestsTestCase::test_params_are_added_before_fragment\",\"test_requests.py::RequestsTestCase::test_path_is_not_double_encoded\"]",
+        "excerpt_digest": "af503ee59cd5ddd3f11535bdcab989f635448aac6fcf060f772cc1ffc74ac77e",
+        "id": "pass-to-pass",
+        "knowledge_timing": "hindsight_only",
+        "locator": "sha256:af503ee59cd5ddd3f11535bdcab989f635448aac6fcf060f772cc1ffc74ac77e",
+        "source": "test",
+        "source_digest": "af503ee59cd5ddd3f11535bdcab989f635448aac6fcf060f772cc1ffc74ac77e"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "def get(url, **kwargs):\n    \"\"\"Sends a GET request. Returns :class:`Response` object.\n\n    :param url: URL for the new :class:`Request` object.\n    :param \\*\\*kwargs: Optional arguments that ``request`` takes.\n    \"\"\"\n\n    kwargs.setdefault('allow_redirects', True)\n    return request('get', url, **kwargs)",
+        "excerpt_digest": "efa1a386a35d2df3dd41b0c9911bc5ef2a590703734a9bc2d08be839bb1d0cc9",
+        "id": "repository:F1",
+        "knowledge_timing": "repository_discoverable",
+        "locator": "requests/api.py:L47-L55",
+        "source": "repository",
+        "source_digest": "a137afb51c59436543468bbfdc1959f3ad9e0a5d68652945dd034d9d86576bd6"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "        # Create the Request.\n        req = Request()\n        req.method = method.upper()\n        req.url = url\n        req.headers = headers\n        req.files = files\n        req.data = data\n        req.params = params\n        req.auth = auth\n        req.cookies = cookies\n        req.hooks = hooks\n\n        # Prepare the Request.\n        prep = req.prepare()\n\n        # Send the request.\n        resp = self.send(prep, stream=stream, timeout=timeout, verify=verify, cert=cert, proxies=proxies)",
+        "excerpt_digest": "497ef5d3d2f8df892a0cf0f443930ec4247e60ff329a7d0852fd2693c665a515",
+        "id": "repository:F2",
+        "knowledge_timing": "repository_discoverable",
+        "locator": "requests/sessions.py:L264-L280",
+        "source": "repository",
+        "source_digest": "54bc557690517b61aa392b423ada8df4fb4b5e089b2c5bb87a69d6e198ab7719"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "    def prepare(self):\n        \"\"\"Constructs a :class:`PreparedRequest <PreparedRequest>` for transmission and returns it.\"\"\"\n        p = PreparedRequest()\n\n        p.prepare_method(self.method)\n        p.prepare_url(self.url, self.params)\n        p.prepare_headers(self.headers)\n        p.prepare_cookies(self.cookies)\n        p.prepare_body(self.data, self.files)\n        # Note that prepare_auth must be last to enable authentication schemes\n        # such as OAuth to work on a fully prepared request.\n        p.prepare_auth(self.auth)\n        # This MUST go after prepare_auth. Authenticators could add a hook\n        p.prepare_hooks(self.hooks)",
+        "excerpt_digest": "3d316300da99ab8bcbd4430456aca84b65028f9bfab51a847a43ccb81227dc55",
+        "id": "repository:F3",
+        "knowledge_timing": "repository_discoverable",
+        "locator": "requests/models.py:L216-L229",
+        "source": "repository",
+        "source_digest": "d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "        else:\n            # Multi-part file uploads.\n            if files:\n                (body, content_type) = self._encode_files(files, data)\n            else:\n                if data:\n                    body = self._encode_params(data)\n                    if isinstance(data, str) or isinstance(data, builtin_str) or hasattr(data, 'read'):\n                        content_type = None\n                    else:\n                        content_type = 'application/x-www-form-urlencoded'\n\n            self.prepare_content_length(body)\n\n            # Add content-type if it wasn't explicitly provided.\n            if (content_type) and (not 'content-type' in self.headers):\n                self.headers['Content-Type'] = content_type\n\n        self.body = body",
+        "excerpt_digest": "1518ba64469e5ffb1aa2123596b7290ea32ca3699626087eae35a390fa353171",
+        "id": "repository:F4",
+        "knowledge_timing": "repository_discoverable",
+        "locator": "requests/models.py:L368-L386",
+        "source": "repository",
+        "source_digest": "d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "    def prepare_content_length(self, body):\n        self.headers['Content-Length'] = '0'\n        if hasattr(body, 'seek') and hasattr(body, 'tell'):\n            body.seek(0, 2)\n            self.headers['Content-Length'] = str(body.tell())\n            body.seek(0, 0)\n        elif body is not None:\n            self.headers['Content-Length'] = str(len(body))",
+        "excerpt_digest": "574e946cf0925a3186555bcca197032329e59db51297fb37f6e70046a3cedfc0",
+        "id": "repository:F5",
+        "knowledge_timing": "repository_discoverable",
+        "locator": "requests/models.py:L388-L395",
+        "source": "repository",
+        "source_digest": "d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "    def prepare_auth(self, auth):\n        \"\"\"Prepares the given HTTP auth data.\"\"\"\n        if auth:\n            if isinstance(auth, tuple) and len(auth) == 2:\n                # special-case basic HTTP auth\n                auth = HTTPBasicAuth(*auth)\n\n            # Allow auth to make its changes.\n            r = auth(self)\n\n            # Update self to reflect the auth changes.\n            self.__dict__.update(r.__dict__)\n\n            # Recompute Content-Length\n            self.prepare_content_length(self.body)",
+        "excerpt_digest": "9dbfa4e1030a769c7dda417e1d490625fd4666dceae89b7794fb42ae1c565e76",
+        "id": "repository:F6",
+        "knowledge_timing": "repository_discoverable",
+        "locator": "requests/models.py:L397-L411",
+        "source": "repository",
+        "source_digest": "d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "    def send(self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None):\n        \"\"\"Sends PreparedRequest object. Returns Response object.\"\"\"\n\n        conn = self.get_connection(request.url, proxies)\n\n        self.cert_verify(conn, request.url, verify, cert)\n        url = self.request_url(request, proxies)\n\n        chunked = not (request.body is None or 'Content-Length' in request.headers)\n\n        try:\n            if not chunked:\n                resp = conn.urlopen(\n                    method=request.method,\n                    url=url,\n                    body=request.body,\n                    headers=request.headers,\n                    redirect=False,\n                    assert_same_host=False,\n                    preload_content=False,",
+        "excerpt_digest": "c5308788e2c0a7fbf153ed8d50e00c7036bd567561301867a73d80f363b85fb4",
+        "id": "repository:F7",
+        "knowledge_timing": "repository_discoverable",
+        "locator": "requests/adapters.py:L149-L169",
+        "source": "repository",
+        "source_digest": "0025468f820b19769978c3c92557799b5786f3754d413719d3802f70b7d82d4e"
+      },
+      {
+        "cache_required": true,
+        "excerpt": "    def get(self, url, **kwargs):\n        \"\"\"Sends a GET request. Returns :class:`Response` object.\n\n        :param url: URL for the new :class:`Request` object.\n        :param \\*\\*kwargs: Optional arguments that ``request`` takes.\n        \"\"\"\n\n        kwargs.setdefault('allow_redirects', True)\n        return self.request('GET', url, **kwargs)",
+        "excerpt_digest": "9a72a0944fa2866ffdd85d04099da7f73820d077828006285c8a4e3025eba8d9",
+        "id": "repository:F8",
+        "knowledge_timing": "repository_discoverable",
+        "locator": "requests/sessions.py:L300-L308",
+        "source": "repository",
+        "source_digest": "54bc557690517b61aa392b423ada8df4fb4b5e089b2c5bb87a69d6e198ab7719"
+      }
+    ],
+    "material_decisions": [
+      {
+        "description": "Choose whether bodyless GET requests should omit the automatically generated Content-Length header by default, or whether Requests should retain the current default and provide an explicit way for callers to suppress the header.",
+        "evidence_ids": [
+          "issue"
+        ],
+        "failure_if_missed": "Implementing only an opt-out would leave ordinary requests.get calls incompatible with servers that reject GET requests carrying Content-Length, while unconditional default suppression could be wrong if the owner intended backward-compatible caller control.",
+        "id": "D1",
+        "knowledge_timing": "issue_time_author_knowable",
+        "materiality": "This choice determines the public request behavior and whether affected callers receive compatibility automatically or must opt in at each call site.",
+        "owner_answer": "Automatically omit Content-Length for bodyless GET requests; callers should not need a separate suppression option for the reported compatibility problem.",
+        "question_intent": "Should the fix change the default behavior of bodyless GET requests, or add a caller-controlled opt-out while preserving the existing default?",
+        "sources": [
+          "issue"
+        ]
+      }
+    ],
+    "hindsight_observations": [
+      {
+        "description": "The accepted patch extended automatic omission to bodyless HEAD requests as well as GET requests, although HEAD was not mentioned in the issue-time request.",
+        "evidence_ids": [
+          "gold-patch",
+          "test-patch",
+          "fail-to-pass"
+        ],
+        "id": "H1"
+      },
+      {
+        "description": "The accepted behavior continued to generate Content-Length: 0 for bodyless methods other than GET and HEAD, and continued to calculate a length whenever a body was present.",
+        "evidence_ids": [
+          "gold-patch"
+        ],
+        "id": "H2"
+      },
+      {
+        "description": "The added regression test asserted header absence on prepared GET and HEAD requests, and that test was the designated fail-to-pass case.",
+        "evidence_ids": [
+          "test-patch",
+          "fail-to-pass"
+        ],
+        "id": "H3"
+      },
+      {
+        "description": "The selected pass-to-pass tests indicate that basic request preparation, entry points, URL validation, parameter placement, and path encoding remained regression checks, but they do not establish that this was the only valid test or implementation design.",
+        "evidence_ids": [
+          "pass-to-pass"
+        ],
+        "id": "H4"
+      }
+    ],
+    "implementation_incidentals": [
+      {
+        "description": "The gold implementation placed a method conditional inside PreparedRequest.prepare_content_length rather than changing the top-level get helper, Session.get, or the adapter.",
+        "evidence_ids": [
+          "gold-patch",
+          "repository:F1",
+          "repository:F5",
+          "repository:F8"
+        ],
+        "id": "I1"
+      },
+      {
+        "description": "The implementation used the exact tuple check self.method not in ('GET', 'HEAD') to decide when a missing body should produce Content-Length: 0.",
+        "evidence_ids": [
+          "gold-patch"
+        ],
+        "id": "I2"
+      },
+      {
+        "description": "Because authentication recomputes Content-Length through the same helper, modifying that helper also applies the selected behavior after authentication mutates a prepared request.",
+        "evidence_ids": [
+          "repository:F3",
+          "repository:F6",
+          "gold-patch"
+        ],
+        "id": "I3"
+      }
+    ],
+    "review_state": {
+      "dispositions_complete": true,
+      "status": "approved"
+    },
+    "findings": [],
+    "audited_repository_evidence": {
+      "scope_summary": "Inspected repository psf__requests-1142 at base commit 22623bd8c265b78b161542663ee980738441c307. Existing request preparation unconditionally assigns Content-Length: 0 to ordinary bodyless requests, including GET.",
+      "facts": [
+        {
+          "id": "F1",
+          "statement": "The top-level get() API delegates to request() with method 'get'.",
+          "path": "requests/api.py",
+          "line_start": 47,
+          "line_end": 55
+        },
+        {
+          "id": "F2",
+          "statement": "Session.request() uppercases the method, assigns the provided data and headers to a Request, prepares it, and sends the resulting PreparedRequest.",
+          "path": "requests/sessions.py",
+          "line_start": 264,
+          "line_end": 280
+        },
+        {
+          "id": "F3",
+          "statement": "Request initialization converts omitted data from None to an empty list.",
+          "path": "requests/models.py",
+          "line_start": 192,
+          "line_end": 207
+        },
+        {
+          "id": "F4",
+          "statement": "Request.prepare() prepares headers before preparing the body.",
+          "path": "requests/models.py",
+          "line_start": 216,
+          "line_end": 227
+        },
+        {
+          "id": "F5",
+          "statement": "For non-streamed requests, prepare_body() calls prepare_content_length(body) regardless of HTTP method.",
+          "path": "requests/models.py",
+          "line_start": 368,
+          "line_end": 380
+        },
+        {
+          "id": "F6",
+          "statement": "prepare_content_length() first assigns Content-Length to '0'; it replaces that value only when the body is seekable or non-None.",
+          "path": "requests/models.py",
+          "line_start": 388,
+          "line_end": 395
+        },
+        {
+          "id": "F7",
+          "statement": "Because an ordinary GET has no body, its body remains None before prepare_content_length() is called, leaving the automatically assigned Content-Length value as '0'.",
+          "path": "requests/models.py",
+          "line_start": 338,
+          "line_end": 380
+        },
+        {
+          "id": "F8",
+          "statement": "The HTTP adapter passes the PreparedRequest headers directly to urllib3 when sending a request whose body is None.",
+          "path": "requests/adapters.py",
+          "line_start": 149,
+          "line_end": 169
+        },
+        {
+          "id": "F9",
+          "statement": "When authentication is present, preparation recomputes Content-Length after the authenticator modifies the request, again invoking the same unconditional helper.",
+          "path": "requests/models.py",
+          "line_start": 397,
+          "line_end": 411
+        },
+        {
+          "id": "F10",
+          "statement": "The repository's single test module contains GET request coverage but no occurrence of Content-Length or content-length, so this header behavior has no explicit regression assertion there.",
+          "path": "test_requests.py",
+          "line_start": 85,
+          "line_end": 103
+        }
+      ],
+      "unknowns": [
+        "The repository does not establish Amazon's behavior for GET requests containing Content-Length; that claim is external to the supplied base-commit repository.",
+        "The repository does not state an owner-selected replacement policy for bodyless non-GET methods or for caller-supplied Content-Length headers."
+      ],
+      "audit_summary": "All ten facts are directly supported by the cited repository files and lines."
+    }
+  },
+  "exit_code": 0,
+  "stdout": "{\"verdicts\":[],\"summary\":\"No blind findings were supplied; all findings were dispositioned exactly once vacuously.\"}\n",
+  "stderr": "OpenAI Codex v0.144.6\n--------\nworkdir: /var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-adjudicator-yu7yj2w_\nmodel: gpt-5.6-sol\nprovider: openai\napproval: never\nsandbox: read-only\nreasoning effort: none\nreasoning summaries: none\nsession id: 019f7c82-7961-7533-90b8-5e221038daa8\n--------\nuser\nDisposition every blind finding independently. Approve only citation-supported material readiness failures, and state whether each is repository- and implementation-independent. Do not create replacement requirements. For every verdict, approved must equal exactly: evidence_supported AND verdict.material AND finding.material AND repository_independent AND implementation_independent AND NOT oracle_conflict. Disposition every finding exactly once.\nReturn only the JSON required by the supplied schema.\nINPUT:\n{\"alias\": \"psf__requests-1142\", \"audited_repository_evidence\": {\"audit_summary\": \"All ten facts are directly supported by the cited repository files and lines.\", \"facts\": [{\"id\": \"F1\", \"line_end\": 55, \"line_start\": 47, \"path\": \"requests/api.py\", \"statement\": \"The top-level get() API delegates to request() with method 'get'.\"}, {\"id\": \"F2\", \"line_end\": 280, \"line_start\": 264, \"path\": \"requests/sessions.py\", \"statement\": \"Session.request() uppercases the method, assigns the provided data and headers to a Request, prepares it, and sends the resulting PreparedRequest.\"}, {\"id\": \"F3\", \"line_end\": 207, \"line_start\": 192, \"path\": \"requests/models.py\", \"statement\": \"Request initialization converts omitted data from None to an empty list.\"}, {\"id\": \"F4\", \"line_end\": 227, \"line_start\": 216, \"path\": \"requests/models.py\", \"statement\": \"Request.prepare() prepares headers before preparing the body.\"}, {\"id\": \"F5\", \"line_end\": 380, \"line_start\": 368, \"path\": \"requests/models.py\", \"statement\": \"For non-streamed requests, prepare_body() calls prepare_content_length(body) regardless of HTTP method.\"}, {\"id\": \"F6\", \"line_end\": 395, \"line_start\": 388, \"path\": \"requests/models.py\", \"statement\": \"prepare_content_length() first assigns Content-Length to '0'; it replaces that value only when the body is seekable or non-None.\"}, {\"id\": \"F7\", \"line_end\": 380, \"line_start\": 338, \"path\": \"requests/models.py\", \"statement\": \"Because an ordinary GET has no body, its body remains None before prepare_content_length() is called, leaving the automatically assigned Content-Length value as '0'.\"}, {\"id\": \"F8\", \"line_end\": 169, \"line_start\": 149, \"path\": \"requests/adapters.py\", \"statement\": \"The HTTP adapter passes the PreparedRequest headers directly to urllib3 when sending a request whose body is None.\"}, {\"id\": \"F9\", \"line_end\": 411, \"line_start\": 397, \"path\": \"requests/models.py\", \"statement\": \"When authentication is present, preparation recomputes Content-Length after the authenticator modifies the request, again invoking the same unconditional helper.\"}, {\"id\": \"F10\", \"line_end\": 103, \"line_start\": 85, \"path\": \"test_requests.py\", \"statement\": \"The repository's single test module contains GET request coverage but no occurrence of Content-Length or content-length, so this header behavior has no explicit regression assertion there.\"}], \"scope_summary\": \"Inspected repository psf__requests-1142 at base commit 22623bd8c265b78b161542663ee980738441c307. Existing request preparation unconditionally assigns Content-Length: 0 to ordinary bodyless requests, including GET.\", \"unknowns\": [\"The repository does not establish Amazon's behavior for GET requests containing Content-Length; that claim is external to the supplied base-commit repository.\", \"The repository does not state an owner-selected replacement policy for bodyless non-GET methods or for caller-supplied Content-Length headers.\"]}, \"contract\": {\"acceptance_checks\": [\"Preparing an ordinary GET with final body None results in no automatically generated `Content-Length` header.\", \"Preparing a bodyless GET with an explicitly supplied `Content-Length` preserves that exact header value.\", \"Authentication preparation does not introduce an automatic `Content-Length: 0` on a bodyless GET and preserves an explicit caller-supplied value.\", \"A GET with a non-None body continues to use the repository's existing content-length behavior.\", \"Non-GET methods continue to use the repository's existing content-length behavior.\", \"The repository's regression tests covering ordinary bodyless GET omission and explicit-header preservation pass.\"], \"confirmed_decisions\": [\"Automatic `Content-Length: 0` suppression is limited to bodyless GET requests.\", \"An explicitly caller-supplied `Content-Length` on a bodyless GET is preserved unchanged.\", \"Authentication preparation must not replace or remove an explicitly supplied `Content-Length` on a bodyless GET.\", \"GET requests with a non-None body retain existing content-length behavior.\", \"All non-GET methods retain existing content-length behavior.\", \"Regression coverage must prove omission for an ordinary bodyless GET.\", \"Regression coverage must prove preservation of an explicit `Content-Length` on a bodyless GET.\", \"The implementation route is delegated to the implementer, constrained to the smallest repository-consistent mechanism satisfying this contract.\", \"The Amazon 503 claim is context only and is outside required verification and acceptance.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"For GET requests whose final prepared body is None, Requests must not automatically add `Content-Length: 0`. An explicitly caller-supplied `Content-Length` must be preserved unchanged, including through authentication preparation. GET requests with a non-None body and all non-GET methods retain existing content-length behavior. Implement using the smallest repository-consistent mechanism. The Amazon 503 claim is contextual and requires neither external verification nor a test.\"}, \"findings\": [], \"hindsight_observations\": [{\"description\": \"The accepted patch extended automatic omission to bodyless HEAD requests as well as GET requests, although HEAD was not mentioned in the issue-time request.\", \"evidence_ids\": [\"gold-patch\", \"test-patch\", \"fail-to-pass\"], \"id\": \"H1\"}, {\"description\": \"The accepted behavior continued to generate Content-Length: 0 for bodyless methods other than GET and HEAD, and continued to calculate a length whenever a body was present.\", \"evidence_ids\": [\"gold-patch\"], \"id\": \"H2\"}, {\"description\": \"The added regression test asserted header absence on prepared GET and HEAD requests, and that test was the designated fail-to-pass case.\", \"evidence_ids\": [\"test-patch\", \"fail-to-pass\"], \"id\": \"H3\"}, {\"description\": \"The selected pass-to-pass tests indicate that basic request preparation, entry points, URL validation, parameter placement, and path encoding remained regression checks, but they do not establish that this was the only valid test or implementation design.\", \"evidence_ids\": [\"pass-to-pass\"], \"id\": \"H4\"}], \"implementation_incidentals\": [{\"description\": \"The gold implementation placed a method conditional inside PreparedRequest.prepare_content_length rather than changing the top-level get helper, Session.get, or the adapter.\", \"evidence_ids\": [\"gold-patch\", \"repository:F1\", \"repository:F5\", \"repository:F8\"], \"id\": \"I1\"}, {\"description\": \"The implementation used the exact tuple check self.method not in ('GET', 'HEAD') to decide when a missing body should produce Content-Length: 0.\", \"evidence_ids\": [\"gold-patch\"], \"id\": \"I2\"}, {\"description\": \"Because authentication recomputes Content-Length through the same helper, modifying that helper also applies the selected behavior after authentication mutates a prepared request.\", \"evidence_ids\": [\"repository:F3\", \"repository:F6\", \"gold-patch\"], \"id\": \"I3\"}], \"material_decisions\": [{\"description\": \"Choose whether bodyless GET requests should omit the automatically generated Content-Length header by default, or whether Requests should retain the current default and provide an explicit way for callers to suppress the header.\", \"evidence_ids\": [\"issue\"], \"failure_if_missed\": \"Implementing only an opt-out would leave ordinary requests.get calls incompatible with servers that reject GET requests carrying Content-Length, while unconditional default suppression could be wrong if the owner intended backward-compatible caller control.\", \"id\": \"D1\", \"knowledge_timing\": \"issue_time_author_knowable\", \"materiality\": \"This choice determines the public request behavior and whether affected callers receive compatibility automatically or must opt in at each call site.\", \"owner_answer\": \"Automatically omit Content-Length for bodyless GET requests; callers should not need a separate suppression option for the reported compatibility problem.\", \"question_intent\": \"Should the fix change the default behavior of bodyless GET requests, or add a caller-controlled opt-out while preserving the existing default?\", \"sources\": [\"issue\"]}], \"metadata\": {\"context_mode\": \"repository\", \"partition\": \"validation\", \"repository_family\": \"psf/requests\"}, \"public_request\": \"requests.get is ALWAYS sending content length\\nHi,\\n\\nIt seems like that request.get always adds 'content-length' header to the request.\\nI think that the right behavior is not to add this header automatically in GET requests or add the possibility to not send it.\\n\\nFor example http://amazon.com returns 503 for every get request that contains 'content-length' header.\\n\\nThanks,\\n\\nOren\\n\\n\", \"repository_facts\": [{\"evidence\": [{\"cache_required\": true, \"excerpt\": \"def get(url, **kwargs):\\n    \\\"\\\"\\\"Sends a GET request. Returns :class:`Response` object.\\n\\n    :param url: URL for the new :class:`Request` object.\\n    :param \\\\*\\\\*kwargs: Optional arguments that ``request`` takes.\\n    \\\"\\\"\\\"\\n\\n    kwargs.setdefault('allow_redirects', True)\\n    return request('get', url, **kwargs)\", \"excerpt_digest\": \"efa1a386a35d2df3dd41b0c9911bc5ef2a590703734a9bc2d08be839bb1d0cc9\", \"id\": \"repository:F1\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/api.py:L47-L55\", \"source\": \"repository\", \"source_digest\": \"a137afb51c59436543468bbfdc1959f3ad9e0a5d68652945dd034d9d86576bd6\"}], \"id\": \"F1\", \"statement\": \"The top-level get() helper sets allow_redirects by default and delegates to request() with method 'get'.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        # Create the Request.\\n        req = Request()\\n        req.method = method.upper()\\n        req.url = url\\n        req.headers = headers\\n        req.files = files\\n        req.data = data\\n        req.params = params\\n        req.auth = auth\\n        req.cookies = cookies\\n        req.hooks = hooks\\n\\n        # Prepare the Request.\\n        prep = req.prepare()\\n\\n        # Send the request.\\n        resp = self.send(prep, stream=stream, timeout=timeout, verify=verify, cert=cert, proxies=proxies)\", \"excerpt_digest\": \"497ef5d3d2f8df892a0cf0f443930ec4247e60ff329a7d0852fd2693c665a515\", \"id\": \"repository:F2\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/sessions.py:L264-L280\", \"source\": \"repository\", \"source_digest\": \"54bc557690517b61aa392b423ada8df4fb4b5e089b2c5bb87a69d6e198ab7719\"}], \"id\": \"F2\", \"statement\": \"Session.request() copies the HTTP method and data into a Request, prepares it, and sends the resulting PreparedRequest.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def prepare(self):\\n        \\\"\\\"\\\"Constructs a :class:`PreparedRequest <PreparedRequest>` for transmission and returns it.\\\"\\\"\\\"\\n        p = PreparedRequest()\\n\\n        p.prepare_method(self.method)\\n        p.prepare_url(self.url, self.params)\\n        p.prepare_headers(self.headers)\\n        p.prepare_cookies(self.cookies)\\n        p.prepare_body(self.data, self.files)\\n        # Note that prepare_auth must be last to enable authentication schemes\\n        # such as OAuth to work on a fully prepared request.\\n        p.prepare_auth(self.auth)\\n        # This MUST go after prepare_auth. Authenticators could add a hook\\n        p.prepare_hooks(self.hooks)\", \"excerpt_digest\": \"3d316300da99ab8bcbd4430456aca84b65028f9bfab51a847a43ccb81227dc55\", \"id\": \"repository:F3\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L216-L229\", \"source\": \"repository\", \"source_digest\": \"d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3\"}], \"id\": \"F3\", \"statement\": \"Request.prepare() prepares headers and then prepares the body; authentication preparation follows body preparation.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        else:\\n            # Multi-part file uploads.\\n            if files:\\n                (body, content_type) = self._encode_files(files, data)\\n            else:\\n                if data:\\n                    body = self._encode_params(data)\\n                    if isinstance(data, str) or isinstance(data, builtin_str) or hasattr(data, 'read'):\\n                        content_type = None\\n                    else:\\n                        content_type = 'application/x-www-form-urlencoded'\\n\\n            self.prepare_content_length(body)\\n\\n            # Add content-type if it wasn't explicitly provided.\\n            if (content_type) and (not 'content-type' in self.headers):\\n                self.headers['Content-Type'] = content_type\\n\\n        self.body = body\", \"excerpt_digest\": \"1518ba64469e5ffb1aa2123596b7290ea32ca3699626087eae35a390fa353171\", \"id\": \"repository:F4\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L368-L386\", \"source\": \"repository\", \"source_digest\": \"d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3\"}], \"id\": \"F4\", \"statement\": \"For non-streamed data, prepare_body() invokes prepare_content_length(body) regardless of the HTTP method.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def prepare_content_length(self, body):\\n        self.headers['Content-Length'] = '0'\\n        if hasattr(body, 'seek') and hasattr(body, 'tell'):\\n            body.seek(0, 2)\\n            self.headers['Content-Length'] = str(body.tell())\\n            body.seek(0, 0)\\n        elif body is not None:\\n            self.headers['Content-Length'] = str(len(body))\", \"excerpt_digest\": \"574e946cf0925a3186555bcca197032329e59db51297fb37f6e70046a3cedfc0\", \"id\": \"repository:F5\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L388-L395\", \"source\": \"repository\", \"source_digest\": \"d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3\"}], \"id\": \"F5\", \"statement\": \"prepare_content_length() first assigns Content-Length to '0', replacing it only when the body is seekable or non-None.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def prepare_auth(self, auth):\\n        \\\"\\\"\\\"Prepares the given HTTP auth data.\\\"\\\"\\\"\\n        if auth:\\n            if isinstance(auth, tuple) and len(auth) == 2:\\n                # special-case basic HTTP auth\\n                auth = HTTPBasicAuth(*auth)\\n\\n            # Allow auth to make its changes.\\n            r = auth(self)\\n\\n            # Update self to reflect the auth changes.\\n            self.__dict__.update(r.__dict__)\\n\\n            # Recompute Content-Length\\n            self.prepare_content_length(self.body)\", \"excerpt_digest\": \"9dbfa4e1030a769c7dda417e1d490625fd4666dceae89b7794fb42ae1c565e76\", \"id\": \"repository:F6\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L397-L411\", \"source\": \"repository\", \"source_digest\": \"d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3\"}], \"id\": \"F6\", \"statement\": \"After authentication modifies a prepared request, prepare_auth() recomputes Content-Length from the request body.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def send(self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None):\\n        \\\"\\\"\\\"Sends PreparedRequest object. Returns Response object.\\\"\\\"\\\"\\n\\n        conn = self.get_connection(request.url, proxies)\\n\\n        self.cert_verify(conn, request.url, verify, cert)\\n        url = self.request_url(request, proxies)\\n\\n        chunked = not (request.body is None or 'Content-Length' in request.headers)\\n\\n        try:\\n            if not chunked:\\n                resp = conn.urlopen(\\n                    method=request.method,\\n                    url=url,\\n                    body=request.body,\\n                    headers=request.headers,\\n                    redirect=False,\\n                    assert_same_host=False,\\n                    preload_content=False,\", \"excerpt_digest\": \"c5308788e2c0a7fbf153ed8d50e00c7036bd567561301867a73d80f363b85fb4\", \"id\": \"repository:F7\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/adapters.py:L149-L169\", \"source\": \"repository\", \"source_digest\": \"0025468f820b19769978c3c92557799b5786f3754d413719d3802f70b7d82d4e\"}], \"id\": \"F7\", \"statement\": \"The adapter treats a request as chunked only when it has a body and lacks a Content-Length header; otherwise it passes the prepared headers directly to urllib3's urlopen().\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def get(self, url, **kwargs):\\n        \\\"\\\"\\\"Sends a GET request. Returns :class:`Response` object.\\n\\n        :param url: URL for the new :class:`Request` object.\\n        :param \\\\*\\\\*kwargs: Optional arguments that ``request`` takes.\\n        \\\"\\\"\\\"\\n\\n        kwargs.setdefault('allow_redirects', True)\\n        return self.request('GET', url, **kwargs)\", \"excerpt_digest\": \"9a72a0944fa2866ffdd85d04099da7f73820d077828006285c8a4e3025eba8d9\", \"id\": \"repository:F8\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/sessions.py:L300-L308\", \"source\": \"repository\", \"source_digest\": \"54bc557690517b61aa392b423ada8df4fb4b5e089b2c5bb87a69d6e198ab7719\"}], \"id\": \"F8\", \"statement\": \"Session.get() delegates to Session.request() with method 'GET' and does not contain Content-Length-specific handling.\"}], \"review_state\": {\"dispositions_complete\": true, \"status\": \"approved\"}, \"sealed_evidence\": [{\"cache_required\": true, \"excerpt\": \"requests.get is ALWAYS sending content length\\nHi,\\n\\nIt seems like that request.get always adds 'content-length' header to the request.\\nI think that the right behavior is not to add this header automatically in GET requests or add the possibility to not send it.\\n\\nFor example http://amazon.com returns 503 for every get request that contains 'content-length' header.\\n\\nThanks,\\n\\nOren\\n\", \"excerpt_digest\": \"12cb0a753e020ef26b5aca52f17b50d3f2b24a364537278dd98fab93208b0a9b\", \"id\": \"issue\", \"knowledge_timing\": \"issue_time_author_knowable\", \"locator\": \"sha256:0192533ff2ef0c53a600b3ef02cb9dc20bf0998d56eeaee80ca1a76c46758eec\", \"source\": \"issue\", \"source_digest\": \"0192533ff2ef0c53a600b3ef02cb9dc20bf0998d56eeaee80ca1a76c46758eec\"}, {\"cache_required\": true, \"excerpt\": \"diff --git a/requests/models.py b/requests/models.py\\n--- a/requests/models.py\\n+++ b/requests/models.py\\n@@ -386,13 +386,14 @@ def prepare_body(self, data, files):\\n         self.body = body\\n \\n     def prepare_content_length(self, body):\\n-        self.headers['Content-Length'] = '0'\\n         if hasattr(body, 'seek') and hasattr(body, 'tell'):\\n             body.seek(0, 2)\\n             self.headers['Content-Length'] = str(body.tell())\\n             body.seek(0, 0)\\n         elif body is not None:\\n             self.headers['Content-Length'] = str(len(body))\\n+        elif self.method not in ('GET', 'HEAD'):\\n+            self.headers['Content-Length'] = '0'\\n \\n     def prepare_auth(self, auth):\\n         \\\"\\\"\\\"Prepares the given HTTP auth data.\\\"\\\"\\\"\", \"excerpt_digest\": \"219fbba26c659c25e23f4506e5587e3d7cbda75f5afa5c3c6de306a647503586\", \"id\": \"gold-patch\", \"knowledge_timing\": \"hindsight_only\", \"locator\": \"sha256:c25c1f930edaf8514d3a5f2bc5631a8e8080ecb2511c789ec171f37d14e627a6\", \"source\": \"patch\", \"source_digest\": \"c25c1f930edaf8514d3a5f2bc5631a8e8080ecb2511c789ec171f37d14e627a6\"}, {\"cache_required\": true, \"excerpt\": \"diff --git a/test_requests.py b/test_requests.py\\n--- a/test_requests.py\\n+++ b/test_requests.py\\n@@ -58,6 +58,13 @@ def test_basic_building(self):\\n         assert pr.body == 'life=42'\\n \\n \\n+    def test_no_content_length(self):\\n+        get_req = requests.Request('GET', httpbin('get')).prepare()\\n+        self.assertTrue('Content-Length' not in get_req.headers)\\n+        head_req = requests.Request('HEAD', httpbin('head')).prepare()\\n+        self.assertTrue('Content-Length' not in head_req.headers)\\n+\\n+\\n     def test_path_is_not_double_encoded(self):\\n         request = requests.Request('GET', \\\"http://0.0.0.0/get/test case\\\").prepare()\\n \", \"excerpt_digest\": \"530cd5a4112da69a03987afddda07279e9c7a6ad8c038993fbb393f4bc5e2a12\", \"id\": \"test-patch\", \"knowledge_timing\": \"hindsight_only\", \"locator\": \"sha256:6671e023a6f6ed84969327ccee025cb8ab81e79c9477a7d635640c0b03836769\", \"source\": \"test\", \"source_digest\": \"6671e023a6f6ed84969327ccee025cb8ab81e79c9477a7d635640c0b03836769\"}, {\"cache_required\": true, \"excerpt\": \"[\\\"test_requests.py::RequestsTestCase::test_no_content_length\\\"]\", \"excerpt_digest\": \"1a0e89b948595c2f916c00ca458e846e4768f0d43e20986c57849709dcff7c1c\", \"id\": \"fail-to-pass\", \"knowledge_timing\": \"hindsight_only\", \"locator\": \"sha256:1a0e89b948595c2f916c00ca458e846e4768f0d43e20986c57849709dcff7c1c\", \"source\": \"test\", \"source_digest\": \"1a0e89b948595c2f916c00ca458e846e4768f0d43e20986c57849709dcff7c1c\"}, {\"cache_required\": true, \"excerpt\": \"[\\\"test_requests.py::RequestsTestCase::test_basic_building\\\",\\\"test_requests.py::RequestsTestCase::test_entry_points\\\",\\\"test_requests.py::RequestsTestCase::test_invalid_url\\\",\\\"test_requests.py::RequestsTestCase::test_params_are_added_before_fragment\\\",\\\"test_requests.py::RequestsTestCase::test_path_is_not_double_encoded\\\"]\", \"excerpt_digest\": \"af503ee59cd5ddd3f11535bdcab989f635448aac6fcf060f772cc1ffc74ac77e\", \"id\": \"pass-to-pass\", \"knowledge_timing\": \"hindsight_only\", \"locator\": \"sha256:af503ee59cd5ddd3f11535bdcab989f635448aac6fcf060f772cc1ffc74ac77e\", \"source\": \"test\", \"source_digest\": \"af503ee59cd5ddd3f11535bdcab989f635448aac6fcf060f772cc1ffc74ac77e\"}, {\"cache_required\": true, \"excerpt\": \"def get(url, **kwargs):\\n    \\\"\\\"\\\"Sends a GET request. Returns :class:`Response` object.\\n\\n    :param url: URL for the new :class:`Request` object.\\n    :param \\\\*\\\\*kwargs: Optional arguments that ``request`` takes.\\n    \\\"\\\"\\\"\\n\\n    kwargs.setdefault('allow_redirects', True)\\n    return request('get', url, **kwargs)\", \"excerpt_digest\": \"efa1a386a35d2df3dd41b0c9911bc5ef2a590703734a9bc2d08be839bb1d0cc9\", \"id\": \"repository:F1\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/api.py:L47-L55\", \"source\": \"repository\", \"source_digest\": \"a137afb51c59436543468bbfdc1959f3ad9e0a5d68652945dd034d9d86576bd6\"}, {\"cache_required\": true, \"excerpt\": \"        # Create the Request.\\n        req = Request()\\n        req.method = method.upper()\\n        req.url = url\\n        req.headers = headers\\n        req.files = files\\n        req.data = data\\n        req.params = params\\n        req.auth = auth\\n        req.cookies = cookies\\n        req.hooks = hooks\\n\\n        # Prepare the Request.\\n        prep = req.prepare()\\n\\n        # Send the request.\\n        resp = self.send(prep, stream=stream, timeout=timeout, verify=verify, cert=cert, proxies=proxies)\", \"excerpt_digest\": \"497ef5d3d2f8df892a0cf0f443930ec4247e60ff329a7d0852fd2693c665a515\", \"id\": \"repository:F2\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/sessions.py:L264-L280\", \"source\": \"repository\", \"source_digest\": \"54bc557690517b61aa392b423ada8df4fb4b5e089b2c5bb87a69d6e198ab7719\"}, {\"cache_required\": true, \"excerpt\": \"    def prepare(self):\\n        \\\"\\\"\\\"Constructs a :class:`PreparedRequest <PreparedRequest>` for transmission and returns it.\\\"\\\"\\\"\\n        p = PreparedRequest()\\n\\n        p.prepare_method(self.method)\\n        p.prepare_url(self.url, self.params)\\n        p.prepare_headers(self.headers)\\n        p.prepare_cookies(self.cookies)\\n        p.prepare_body(self.data, self.files)\\n        # Note that prepare_auth must be last to enable authentication schemes\\n        # such as OAuth to work on a fully prepared request.\\n        p.prepare_auth(self.auth)\\n        # This MUST go after prepare_auth. Authenticators could add a hook\\n        p.prepare_hooks(self.hooks)\", \"excerpt_digest\": \"3d316300da99ab8bcbd4430456aca84b65028f9bfab51a847a43ccb81227dc55\", \"id\": \"repository:F3\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L216-L229\", \"source\": \"repository\", \"source_digest\": \"d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3\"}, {\"cache_required\": true, \"excerpt\": \"        else:\\n            # Multi-part file uploads.\\n            if files:\\n                (body, content_type) = self._encode_files(files, data)\\n            else:\\n                if data:\\n                    body = self._encode_params(data)\\n                    if isinstance(data, str) or isinstance(data, builtin_str) or hasattr(data, 'read'):\\n                        content_type = None\\n                    else:\\n                        content_type = 'application/x-www-form-urlencoded'\\n\\n            self.prepare_content_length(body)\\n\\n            # Add content-type if it wasn't explicitly provided.\\n            if (content_type) and (not 'content-type' in self.headers):\\n                self.headers['Content-Type'] = content_type\\n\\n        self.body = body\", \"excerpt_digest\": \"1518ba64469e5ffb1aa2123596b7290ea32ca3699626087eae35a390fa353171\", \"id\": \"repository:F4\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L368-L386\", \"source\": \"repository\", \"source_digest\": \"d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3\"}, {\"cache_required\": true, \"excerpt\": \"    def prepare_content_length(self, body):\\n        self.headers['Content-Length'] = '0'\\n        if hasattr(body, 'seek') and hasattr(body, 'tell'):\\n            body.seek(0, 2)\\n            self.headers['Content-Length'] = str(body.tell())\\n            body.seek(0, 0)\\n        elif body is not None:\\n            self.headers['Content-Length'] = str(len(body))\", \"excerpt_digest\": \"574e946cf0925a3186555bcca197032329e59db51297fb37f6e70046a3cedfc0\", \"id\": \"repository:F5\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L388-L395\", \"source\": \"repository\", \"source_digest\": \"d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3\"}, {\"cache_required\": true, \"excerpt\": \"    def prepare_auth(self, auth):\\n        \\\"\\\"\\\"Prepares the given HTTP auth data.\\\"\\\"\\\"\\n        if auth:\\n            if isinstance(auth, tuple) and len(auth) == 2:\\n                # special-case basic HTTP auth\\n                auth = HTTPBasicAuth(*auth)\\n\\n            # Allow auth to make its changes.\\n            r = auth(self)\\n\\n            # Update self to reflect the auth changes.\\n            self.__dict__.update(r.__dict__)\\n\\n            # Recompute Content-Length\\n            self.prepare_content_length(self.body)\", \"excerpt_digest\": \"9dbfa4e1030a769c7dda417e1d490625fd4666dceae89b7794fb42ae1c565e76\", \"id\": \"repository:F6\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L397-L411\", \"source\": \"repository\", \"source_digest\": \"d9214453d8c7844deb50d985c79b89a30bacab6b3ffbd4079bcb81f7709da0b3\"}, {\"cache_required\": true, \"excerpt\": \"    def send(self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None):\\n        \\\"\\\"\\\"Sends PreparedRequest object. Returns Response object.\\\"\\\"\\\"\\n\\n        conn = self.get_connection(request.url, proxies)\\n\\n        self.cert_verify(conn, request.url, verify, cert)\\n        url = self.request_url(request, proxies)\\n\\n        chunked = not (request.body is None or 'Content-Length' in request.headers)\\n\\n        try:\\n            if not chunked:\\n                resp = conn.urlopen(\\n                    method=request.method,\\n                    url=url,\\n                    body=request.body,\\n                    headers=request.headers,\\n                    redirect=False,\\n                    assert_same_host=False,\\n                    preload_content=False,\", \"excerpt_digest\": \"c5308788e2c0a7fbf153ed8d50e00c7036bd567561301867a73d80f363b85fb4\", \"id\": \"repository:F7\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/adapters.py:L149-L169\", \"source\": \"repository\", \"source_digest\": \"0025468f820b19769978c3c92557799b5786f3754d413719d3802f70b7d82d4e\"}, {\"cache_required\": true, \"excerpt\": \"    def get(self, url, **kwargs):\\n        \\\"\\\"\\\"Sends a GET request. Returns :class:`Response` object.\\n\\n        :param url: URL for the new :class:`Request` object.\\n        :param \\\\*\\\\*kwargs: Optional arguments that ``request`` takes.\\n        \\\"\\\"\\\"\\n\\n        kwargs.setdefault('allow_redirects', True)\\n        return self.request('GET', url, **kwargs)\", \"excerpt_digest\": \"9a72a0944fa2866ffdd85d04099da7f73820d077828006285c8a4e3025eba8d9\", \"id\": \"repository:F8\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/sessions.py:L300-L308\", \"source\": \"repository\", \"source_digest\": \"54bc557690517b61aa392b423ada8df4fb4b5e089b2c5bb87a69d6e198ab7719\"}], \"sealed_inputs\": {\"fail_to_pass\": {\"cache_key\": \"sha256:1a0e89b948595c2f916c00ca458e846e4768f0d43e20986c57849709dcff7c1c\", \"digest\": \"1a0e89b948595c2f916c00ca458e846e4768f0d43e20986c57849709dcff7c1c\"}, \"gold_patch\": {\"cache_key\": \"sha256:c25c1f930edaf8514d3a5f2bc5631a8e8080ecb2511c789ec171f37d14e627a6\", \"digest\": \"c25c1f930edaf8514d3a5f2bc5631a8e8080ecb2511c789ec171f37d14e627a6\"}, \"issue\": {\"cache_key\": \"sha256:0192533ff2ef0c53a600b3ef02cb9dc20bf0998d56eeaee80ca1a76c46758eec\", \"digest\": \"0192533ff2ef0c53a600b3ef02cb9dc20bf0998d56eeaee80ca1a76c46758eec\"}, \"pass_to_pass\": {\"cache_key\": \"sha256:af503ee59cd5ddd3f11535bdcab989f635448aac6fcf060f772cc1ffc74ac77e\", \"digest\": \"af503ee59cd5ddd3f11535bdcab989f635448aac6fcf060f772cc1ffc74ac77e\"}, \"test_patch\": {\"cache_key\": \"sha256:6671e023a6f6ed84969327ccee025cb8ab81e79c9477a7d635640c0b03836769\", \"digest\": \"6671e023a6f6ed84969327ccee025cb8ab81e79c9477a7d635640c0b03836769\"}}, \"transcript\": [{\"answer\": \"GET only (Recommended)\", \"open_material_decisions\": [\"Whether an explicitly caller-supplied Content-Length header must be preserved.\", \"Which bodyless requests should stop receiving an automatically generated Content-Length: 0 header?\"], \"question\": {\"header\": \"Method scope\", \"options\": [{\"description\": \"Fixes the reported case with the smallest observable compatibility change; other bodyless methods retain current behavior.\", \"label\": \"GET only (Recommended)\", \"recommended\": true}, {\"description\": \"Suppresses the automatic header for both retrieval-oriented methods while preserving it for other bodyless methods.\", \"label\": \"GET and HEAD\", \"recommended\": false}, {\"description\": \"Suppresses the automatically generated zero-length header for every bodyless request, creating the broadest behavior change.\", \"label\": \"All methods\", \"recommended\": false}], \"prompt\": \"For requests with no body, which methods should stop receiving an automatically generated `Content-Length: 0` header?\"}, \"turn\": 1}, {\"answer\": \"Preserve it (Recommended)\", \"open_material_decisions\": [\"Whether an explicitly caller-supplied Content-Length header on a bodyless GET must be preserved.\"], \"question\": {\"header\": \"Caller header\", \"options\": [{\"description\": \"Suppress only Requests' automatically generated header while leaving an explicit caller choice unchanged.\", \"label\": \"Preserve it (Recommended)\", \"recommended\": true}, {\"description\": \"Remove an explicitly supplied `Content-Length: 0` but preserve explicit nonzero values.\", \"label\": \"Remove zero only\", \"recommended\": false}, {\"description\": \"Strip every caller-supplied Content-Length from bodyless GET requests.\", \"label\": \"Remove all\", \"recommended\": false}], \"prompt\": \"For a bodyless GET where the caller explicitly supplies `Content-Length`, what behavior should the fix require?\"}, \"turn\": 2}, {\"answer\": \"Approve\", \"open_material_decisions\": [\"Owner approval of the consolidated implementation contract.\"], \"question\": {\"header\": \"Contract\", \"options\": [{\"description\": \"Seal this contract as implementation-ready with no remaining material decisions.\", \"label\": \"Approve (Recommended)\", \"recommended\": true}, {\"description\": \"Keep the contract open so you can specify a materially different behavior or acceptance boundary.\", \"label\": \"Revise scope\", \"recommended\": false}], \"prompt\": \"Approve this implementation contract: for GET requests whose final prepared body is `None`, Requests must not automatically add `Content-Length: 0`; an explicitly caller-supplied `Content-Length` must be preserved unchanged, including through authentication preparation; GET requests with a non-`None` body and all non-GET methods retain existing content-length behavior. Add regression coverage proving omission for an ordinary bodyless GET and preservation of an explicit header on a bodyless GET. Implementation may choose the smallest repository-consistent mechanism. The Amazon 503 claim is context only and need not be externally verified or tested; residual risk is limited to integrations that depended on the automatically generated zero-length header for bodyless GETs.\"}, \"turn\": 3}, {\"interviewer\": {\"action\": \"complete\", \"contract\": {\"acceptance_checks\": [\"Preparing an ordinary GET with final body None results in no automatically generated `Content-Length` header.\", \"Preparing a bodyless GET with an explicitly supplied `Content-Length` preserves that exact header value.\", \"Authentication preparation does not introduce an automatic `Content-Length: 0` on a bodyless GET and preserves an explicit caller-supplied value.\", \"A GET with a non-None body continues to use the repository's existing content-length behavior.\", \"Non-GET methods continue to use the repository's existing content-length behavior.\", \"The repository's regression tests covering ordinary bodyless GET omission and explicit-header preservation pass.\"], \"confirmed_decisions\": [\"Automatic `Content-Length: 0` suppression is limited to bodyless GET requests.\", \"An explicitly caller-supplied `Content-Length` on a bodyless GET is preserved unchanged.\", \"Authentication preparation must not replace or remove an explicitly supplied `Content-Length` on a bodyless GET.\", \"GET requests with a non-None body retain existing content-length behavior.\", \"All non-GET methods retain existing content-length behavior.\", \"Regression coverage must prove omission for an ordinary bodyless GET.\", \"Regression coverage must prove preservation of an explicit `Content-Length` on a bodyless GET.\", \"The implementation route is delegated to the implementer, constrained to the smallest repository-consistent mechanism satisfying this contract.\", \"The Amazon 503 claim is context only and is outside required verification and acceptance.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"For GET requests whose final prepared body is None, Requests must not automatically add `Content-Length: 0`. An explicitly caller-supplied `Content-Length` must be preserved unchanged, including through authentication preparation. GET requests with a non-None body and all non-GET methods retain existing content-length behavior. Implement using the smallest repository-consistent mechanism. The Amazon 503 claim is contextual and requires neither external verification nor a test.\"}, \"open_material_decisions\": [], \"question\": null, \"reason\": \"The owner explicitly approved the consolidated contract, resolving all material behavioral and acceptance decisions.\"}, \"turn\": 4}], \"upstream\": {\"base_commit\": \"22623bd8c265b78b161542663ee980738441c307\", \"dataset\": \"princeton-nlp/SWE-bench_Verified\", \"instance_id_digest\": \"8720316e150293d4a5505364114fbb2db698069726aa7a376bc7ec4b46ddc0a8\", \"issue_cache_key\": \"sha256:0192533ff2ef0c53a600b3ef02cb9dc20bf0998d56eeaee80ca1a76c46758eec\", \"issue_digest\": \"0192533ff2ef0c53a600b3ef02cb9dc20bf0998d56eeaee80ca1a76c46758eec\", \"revision\": \"c104f840cc67f8b6eec6f759ebc8b2693d585d4a\", \"source_url\": \"https://github.com/psf/requests/pull/1142\"}}\ncodex\n{\"verdicts\":[],\"summary\":\"No blind findings were supplied; all findings were dispositioned exactly once vacuously.\"}\ntokens used\n31,097\n"
+}

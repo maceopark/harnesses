@@ -1,0 +1,103 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..b814638 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1470,6 +1470,12 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+                 self.doc_as_attr = True
+         return ret
+ 
++    def get_real_modname(self) -> str:
++        if self.doc_as_attr:
++            return self.modname
++        else:
++            return super().get_real_modname()
++
+     def _get_signature(self) -> Tuple[Optional[Any], Optional[str], Optional[Signature]]:
+         def get_user_defined_function_or_method(obj: Any, attr: str) -> Any:
+             """ Get the `attr` function or method from `obj`, if it is user-defined. """
+@@ -1738,11 +1744,11 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+ 
+     def generate(self, more_content: Optional[StringList] = None, real_modname: str = None,
+                  check_module: bool = False, all_members: bool = False) -> None:
+-        # Do not pass real_modname and use the name from the __module__
+-        # attribute of the class.
++        # Do not pass real_modname and use the name from get_real_modname().
+         # If a class gets imported into the module real_modname
+         # the analyzer won't find the source of the class, if
+-        # it looks in real_modname.
++        # it looks in real_modname.  Classes documented as aliases are an
++        # exception: their attribute documentation belongs to self.modname.
+         return super().generate(more_content=more_content,
+                                 check_module=check_module,
+                                 all_members=all_members)
+diff --git a/tests/roots/test-ext-autodoc/target/legacy_type_aliases.py b/tests/roots/test-ext-autodoc/target/legacy_type_aliases.py
+new file mode 100644
+index 0000000..60d944d
+--- /dev/null
++++ b/tests/roots/test-ext-autodoc/target/legacy_type_aliases.py
+@@ -0,0 +1,23 @@
++from pathlib import Path
++from typing import Any, Callable, Dict, Union
++
++
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary of scaffold options.
++
++Treat these options as immutable.
++"""
++
++FileContents = Union[str, None]
++"""File contents to write.
++
++``None`` means that no file should be written.
++"""
++
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of a file operation.
++
++File operations may have side effects.
++"""
++
++Undocumented = Callable[[Path], None]
+diff --git a/tests/test_ext_autodoc.py b/tests/test_ext_autodoc.py
+index 4c16886..263659e 100644
+--- a/tests/test_ext_autodoc.py
++++ b/tests/test_ext_autodoc.py
+@@ -1956,6 +1956,37 @@ def test_autodoc_GenericAlias(app):
+         ]
+ 
+ 
++@pytest.mark.skipif(sys.version_info >= (3, 7), reason='legacy typing aliases are py36 only')
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_legacy_type_alias_documentation(app):
++    options = {'members': None, 'undoc-members': None}
++    actual = list(do_autodoc(app, 'module', 'target.legacy_type_aliases', options))
++
++    for name, documentation in [
++        ('ScaffoldOpts', ['Dictionary of scaffold options.',
++                          'Treat these options as immutable.']),
++        ('FileContents', ['File contents to write.',
++                          '``None`` means that no file should be written.']),
++        ('FileOp', ['Signature of a file operation.',
++                    'File operations may have side effects.']),
++    ]:
++        start = actual.index('.. py:attribute:: %s' % name)
++        end = next((i for i in range(start + 1, len(actual))
++                    if actual[i].startswith('.. py:')), len(actual))
++        section = actual[start:end]
++        for line in documentation:
++            assert any(item.strip() == line for item in section)
++        assert next(i for i, item in enumerate(section)
++                    if item.strip() == documentation[0]) < next(
++                        i for i, item in enumerate(section)
++                        if item.strip().startswith('alias of '))
++
++    undocumented = actual[actual.index('.. py:attribute:: Undocumented'):]
++    assert not any('scaffold options' in line or 'File contents' in line or
++                   'file operation' in line for line in undocumented)
++    assert any(line.strip().startswith('alias of ') for line in undocumented)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodoc_TypeVar(app):
+     options = {"members": None,

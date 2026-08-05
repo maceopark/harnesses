@@ -1,0 +1,59 @@
+[
+  {
+    "answer": "Translate parse error",
+    "open_material_decisions": [
+      "Whether Requests should narrowly translate UnicodeError raised by parse_url, or add broader empty-label validation in its own hostname checks."
+    ],
+    "question": {
+      "header": "Fix boundary",
+      "options": [
+        {
+          "description": "Catch UnicodeError from `parse_url` and raise `InvalidURL('URL has an invalid label.')`, with a focused regression test.",
+          "label": "Translate parse error",
+          "recommended": true
+        },
+        {
+          "description": "Add Requests-side validation for empty ASCII hostname labels, potentially covering leading, trailing, or consecutive dots.",
+          "label": "Validate host labels",
+          "recommended": false
+        },
+        {
+          "description": "Translate parser UnicodeError and also explicitly validate empty ASCII hostname labels for defense in depth.",
+          "label": "Both layers",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should Requests handle `http://.example.com` and equivalent empty-label hosts?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Calling `requests.get('http://.example.com')` raises `requests.exceptions.InvalidURL`, not `UnicodeError`.",
+          "The raised exception’s message is exactly `URL has an invalid label.`.",
+          "Preparing a request with the malformed URL exercises the failure during URL preparation, before network I/O.",
+          "Existing invalid-URL and bad-URL preparation tests continue to pass.",
+          "The new regression test fails against the base implementation and passes after the exception translation.",
+          "The implementation catches only the intended `UnicodeError` from `parse_url`; it does not broadly catch unrelated exceptions or add new hostname-validation semantics."
+        ],
+        "confirmed_decisions": [
+          "Use the selected “Translate parse error” approach: catch `UnicodeError` at the `parse_url` call boundary in `requests/models.py`.",
+          "Raise `InvalidURL('URL has an invalid label.')`, matching the existing invalid-label behavior and the issue’s expected result.",
+          "Limit the behavior change to exception translation; do not introduce general validation for leading, trailing, or consecutive-dot hostname labels.",
+          "Add `http://.example.com` to the relevant invalid-URL regression coverage in `tests/test_requests.py`.",
+          "Preserve existing handling of `LocationParseError`, missing schemes, absent hosts, wildcard ASCII hosts, and non-ASCII IDNA failures."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "In `PreparedRequest.prepare_url`, narrowly translate a `UnicodeError` raised by urllib3’s `parse_url(url)` into `requests.exceptions.InvalidURL` with the message `URL has an invalid label.` Keep the existing `LocationParseError` translation unchanged and do not add broader Requests-side hostname-label validation. Add a focused regression case proving that preparing or requesting `http://.example.com` raises the Requests exception instead of leaking `UnicodeError`."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The selected fix boundary is precise and the public request supplies the expected exception type and message. Repository evidence identifies the implementation and regression-test locations, so no material decision remains open."
+    },
+    "turn": 2
+  }
+]

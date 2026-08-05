@@ -1,0 +1,201 @@
+{
+  "alias": "django__django-15268",
+  "metadata": {
+    "context_mode": "repository",
+    "partition": "development",
+    "repository_family": "django/django"
+  },
+  "public_request": {
+    "cache_key": "sha256:d924c4fce88325ef036717d83eec6886a45e706bcdb2990f20049ed3d6377f07",
+    "digest": "d924c4fce88325ef036717d83eec6886a45e706bcdb2990f20049ed3d6377f07"
+  },
+  "repository_facts": [
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "        The inner loop is run until the starting list is the same as the result\n        list, and then the result is returned. This means that operation\n        optimization must be stable and always return an equal or shorter list.\n        \"\"\"\n        # Internal tracking variable for test assertions about # of loops\n        if app_label is None:\n            raise TypeError('app_label must be a str.')\n        self._iterations = 0\n        while True:\n            result = self.optimize_inner(operations, app_label)\n            self._iterations += 1\n            if result == operations:\n                return result\n            operations = result",
+          "excerpt_digest": "c825162145878a04fb2697375965928dc1d810a7dd583033a0ddd4a3cd15029b",
+          "id": "repository:fact-1",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "django/db/migrations/optimizer.py:L25-L38",
+          "source": "repository",
+          "source_digest": "f6d6aa66ce6224b5e782da60a4dfc32ce4fc87ad5b8a614668fe3ac8a8cbffda"
+        }
+      ],
+      "id": "fact-1",
+      "statement": "The migration optimizer repeatedly runs optimize_inner() until the resulting operation list is unchanged."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "    def optimize_inner(self, operations, app_label):\n        \"\"\"Inner optimization loop.\"\"\"\n        new_operations = []\n        for i, operation in enumerate(operations):\n            right = True  # Should we reduce on the right or on the left.\n            # Compare it to each operation after it\n            for j, other in enumerate(operations[i + 1:]):\n                result = operation.reduce(other, app_label)\n                if isinstance(result, list):\n                    in_between = operations[i + 1:i + j + 1]\n                    if right:\n                        new_operations.extend(in_between)\n                        new_operations.extend(result)\n                    elif all(op.reduce(other, app_label) is True for op in in_between):\n                        # Perform a left reduction if all of the in-between\n                        # operations can optimize through other.\n                        new_operations.extend(result)\n                        new_operations.extend(in_between)\n                    else:",
+          "excerpt_digest": "5d299e4c95ff62dea68f4e79cd6b569508e34f71c30f87d1d8ba79c8d0cd11d4",
+          "id": "repository:fact-2",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "django/db/migrations/optimizer.py:L40-L58",
+          "source": "repository",
+          "source_digest": "f6d6aa66ce6224b5e782da60a4dfc32ce4fc87ad5b8a614668fe3ac8a8cbffda"
+        }
+      ],
+      "id": "fact-2",
+      "statement": "For each operation, optimize_inner() scans later operations and delegates combination or traversal decisions to operation.reduce(other, app_label)."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "class ModelOperation(Operation):\n    def __init__(self, name):\n        self.name = name\n\n    @cached_property\n    def name_lower(self):\n        return self.name.lower()\n\n    def references_model(self, name, app_label):\n        return name.lower() == self.name_lower\n\n    def reduce(self, operation, app_label):\n        return (\n            super().reduce(operation, app_label) or\n            not operation.references_model(self.name, app_label)\n        )",
+          "excerpt_digest": "5ac9b8c7e500b11cce2f6631fef8a7736a619b712eede5303de6d394d25820a3",
+          "id": "repository:fact-3",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "django/db/migrations/operations/models.py:L23-L38",
+          "source": "repository",
+          "source_digest": "1bcdde304239f94742cc170090e5a4bec45a27af80ae7f81611a8a9998d29903"
+        }
+      ],
+      "id": "fact-3",
+      "statement": "ModelOperation.reduce() permits traversal when the later operation does not reference the same model; operations referencing the same model otherwise fall back to the base reduction result."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "class AlterTogetherOptionOperation(ModelOptionOperation):\n    option_name = None\n\n    def __init__(self, name, option_value):\n        if option_value:\n            option_value = set(normalize_together(option_value))\n        setattr(self, self.option_name, option_value)\n        super().__init__(name)\n\n    @cached_property\n    def option_value(self):\n        return getattr(self, self.option_name)",
+          "excerpt_digest": "d68cdf4f1f19851173fedd594efc300fb3ebdad88f20d0693e9c222b96a15c69",
+          "id": "repository:fact-5",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "django/db/migrations/operations/models.py:L470-L481",
+          "source": "repository",
+          "source_digest": "1bcdde304239f94742cc170090e5a4bec45a27af80ae7f81611a8a9998d29903"
+        }
+      ],
+      "id": "fact-5",
+      "statement": "AlterTogetherOptionOperation stores its option under the subclass's option_name and exposes that stored value through option_value."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "class AlterUniqueTogether(AlterTogetherOptionOperation):\n    \"\"\"\n    Change the value of unique_together to the target one.\n    Input value of unique_together must be a set of tuples.\n    \"\"\"\n    option_name = 'unique_together'\n\n    def __init__(self, name, unique_together):\n        super().__init__(name, unique_together)\n\n\nclass AlterIndexTogether(AlterTogetherOptionOperation):\n    \"\"\"\n    Change the value of index_together to the target one.\n    Input value of index_together must be a set of tuples.\n    \"\"\"\n    option_name = \"index_together\"\n\n    def __init__(self, name, index_together):\n        super().__init__(name, index_together)",
+          "excerpt_digest": "83e76168933e9ea81698dc99b97cf406709c55ba076c6b16328dccc0278b6f34",
+          "id": "repository:fact-6",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "django/db/migrations/operations/models.py:L532-L551",
+          "source": "repository",
+          "source_digest": "1bcdde304239f94742cc170090e5a4bec45a27af80ae7f81611a8a9998d29903"
+        }
+      ],
+      "id": "fact-6",
+      "statement": "AlterUniqueTogether and AlterIndexTogether are sibling subclasses of AlterTogetherOptionOperation with distinct option_name values, unique_together and index_together."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "            app_label,\n            model_name,\n            dependencies,\n        ) in self._get_altered_foo_together_operations(operation.option_name):\n            removal_value = new_value.intersection(old_value)\n            if removal_value or old_value:\n                self.add_operation(\n                    app_label,\n                    operation(name=model_name, **{operation.option_name: removal_value}),\n                    dependencies=dependencies,\n                )\n\n    def generate_removed_altered_unique_together(self):\n        self._generate_removed_altered_foo_together(operations.AlterUniqueTogether)\n\n    def generate_removed_altered_index_together(self):\n        self._generate_removed_altered_foo_together(operations.AlterIndexTogether)",
+          "excerpt_digest": "66eb697249c437a34a065e14378687bce2245137bb3ba84bd99083cb377ce402",
+          "id": "repository:fact-7",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "django/db/migrations/autodetector.py:L1175-L1191",
+          "source": "repository",
+          "source_digest": "334273ebb68f6fc80c7e80b08edcb585616ed5a7c49a91a85045a1a8254998e2"
+        }
+      ],
+      "id": "fact-7",
+      "statement": "The autodetector's removal phase computes the intersection of old and new together values and emits an AlterFooTogether operation when that intersection or the old value is nonempty."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "    def _generate_altered_foo_together(self, operation):\n        for (\n            old_value,\n            new_value,\n            app_label,\n            model_name,\n            dependencies,\n        ) in self._get_altered_foo_together_operations(operation.option_name):\n            removal_value = new_value.intersection(old_value)\n            if new_value != removal_value:\n                self.add_operation(\n                    app_label,\n                    operation(name=model_name, **{operation.option_name: new_value}),\n                    dependencies=dependencies,\n                )\n\n    def generate_altered_unique_together(self):\n        self._generate_altered_foo_together(operations.AlterUniqueTogether)\n\n    def generate_altered_index_together(self):",
+          "excerpt_digest": "f21aa7a9435e8869d038da7ba6bd46546980203469b6f2179a1ad1abfcee7ee9",
+          "id": "repository:fact-8",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "django/db/migrations/autodetector.py:L1193-L1213",
+          "source": "repository",
+          "source_digest": "334273ebb68f6fc80c7e80b08edcb585616ed5a7c49a91a85045a1a8254998e2"
+        }
+      ],
+      "id": "fact-8",
+      "statement": "The autodetector's addition phase emits the full new together value when it differs from the removal-phase intersection."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "    def test_foo_together_ordering(self):\n        \"\"\"\n        index/unique_together also triggers on ordering changes.\n        \"\"\"\n        changes = self.get_changes(\n            [self.author_empty, self.book_foo_together], [self.author_empty, self.book_foo_together_2]\n        )\n        # Right number/type of migrations?\n        self.assertNumberMigrations(changes, \"otherapp\", 1)\n        self.assertOperationTypes(changes, 'otherapp', 0, [\n            'AlterUniqueTogether',\n            'AlterIndexTogether',\n            'AlterUniqueTogether',\n            'AlterIndexTogether',\n        ])",
+          "excerpt_digest": "228786abc65c5b69172c30a164fc726a044bf49594e76d460d4f3dea9280b6f1",
+          "id": "repository:fact-9",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "tests/migrations/test_autodetector.py:L1564-L1578",
+          "source": "repository",
+          "source_digest": "c26b5a87996b8b15480b0f7bfc2929d3a3dd865606b56980267a37bdcdcb45e7"
+        }
+      ],
+      "id": "fact-9",
+      "statement": "The foo-together ordering test expects the autodetector to produce AlterUniqueTogether, AlterIndexTogether, AlterUniqueTogether, and AlterIndexTogether in that order."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "        self.assertOperationAttributes(\n            changes, 'otherapp', 0, 0, name='book', unique_together=set(),\n        )\n        self.assertOperationAttributes(\n            changes, 'otherapp', 0, 1, name='book', index_together=set(),\n        )\n        self.assertOperationAttributes(\n            changes, 'otherapp', 0, 2, name='book',\n            unique_together={('title', 'author')},\n        )\n        self.assertOperationAttributes(\n            changes, 'otherapp', 0, 3, name='book',\n            index_together={('title', 'author')},\n        )",
+          "excerpt_digest": "312b3dc0c00f7b9cd6314c8e02da170e8d1e17fde89951730c284ed25895c2f6",
+          "id": "repository:fact-10",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "tests/migrations/test_autodetector.py:L1579-L1592",
+          "source": "repository",
+          "source_digest": "c26b5a87996b8b15480b0f7bfc2929d3a3dd865606b56980267a37bdcdcb45e7"
+        }
+      ],
+      "id": "fact-10",
+      "statement": "The same test records empty sets in the first unique/index operations and {('title', 'author')} in the later unique/index operations."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "    def _test_alter_alter_model(self, alter_foo, alter_bar):\n        \"\"\"\n        Two AlterUniqueTogether/AlterIndexTogether/AlterOrderWithRespectTo\n        should collapse into the second.\n        \"\"\"\n        self.assertOptimizesTo(\n            [\n                alter_foo,\n                alter_bar,\n            ],\n            [\n                alter_bar,\n            ],\n        )",
+          "excerpt_digest": "753cb67afcf5c20c2cac60f90a1439632b7e15537663c489b68ba9e0144f6a92",
+          "id": "repository:fact-11",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "tests/migrations/test_optimizer.py:L182-L195",
+          "source": "repository",
+          "source_digest": "81f5e29937bd1302d9049ae99c928e27a2ff0310df89f3d9465d7d92b4736356"
+        }
+      ],
+      "id": "fact-11",
+      "statement": "The optimizer test helper specifies that two AlterUniqueTogether, AlterIndexTogether, or AlterOrderWithRespectTo operations should collapse into the second operation."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "    def test_alter_alter_unique_model(self):\n        self._test_alter_alter_model(\n            migrations.AlterUniqueTogether(\"Foo\", [[\"a\", \"b\"]]),\n            migrations.AlterUniqueTogether(\"Foo\", [[\"a\", \"c\"]]),\n        )\n\n    def test_alter_alter_index_model(self):\n        self._test_alter_alter_model(\n            migrations.AlterIndexTogether(\"Foo\", [[\"a\", \"b\"]]),\n            migrations.AlterIndexTogether(\"Foo\", [[\"a\", \"c\"]]),\n        )",
+          "excerpt_digest": "6fa505dda0bb01a6b7aa4a7f753189973447f985fe046985cad7d6deaf37dd70",
+          "id": "repository:fact-12",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "tests/migrations/test_optimizer.py:L203-L213",
+          "source": "repository",
+          "source_digest": "81f5e29937bd1302d9049ae99c928e27a2ff0310df89f3d9465d7d92b4736356"
+        }
+      ],
+      "id": "fact-12",
+      "statement": "Existing optimizer cases exercise two adjacent AlterUniqueTogether operations and two adjacent AlterIndexTogether operations separately."
+    }
+  ],
+  "schema": "InterviewerSafeCase.v1",
+  "sealed_source_digest": "bda5bd4d219dfddfacdd09d4048847448a4ed831326f0620a15208428ad13cc7",
+  "upstream": {
+    "base_commit": "0ab58c120939093fea90822f376e1866fc714d1f",
+    "dataset": "princeton-nlp/SWE-bench_Verified",
+    "instance_id_digest": "a92d777df53ea44433fe66fd09801b9eee18a89459df662c2d25d133e7f7dffa",
+    "issue_cache_key": "sha256:d924c4fce88325ef036717d83eec6886a45e706bcdb2990f20049ed3d6377f07",
+    "issue_digest": "d924c4fce88325ef036717d83eec6886a45e706bcdb2990f20049ed3d6377f07",
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "source_url": "https://github.com/django/django/pull/15268"
+  }
+}

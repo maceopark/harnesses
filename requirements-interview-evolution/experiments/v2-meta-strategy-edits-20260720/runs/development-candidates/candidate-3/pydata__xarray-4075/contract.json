@@ -1,0 +1,25 @@
+{
+  "acceptance_checks": [
+    "The reported DataArray case with values [1.0, 1.0, 1.0] and weights [True, True, False] returns a weighted mean of 1.0.",
+    "Focused DataArray tests verify boolean-weight sum_of_weights returns the correct integer count and weighted mean uses that denominator.",
+    "Focused Dataset tests verify the same boolean-weight sum_of_weights and mean behavior through the shared path.",
+    "Tests verify boolean weights corresponding to missing data are excluded from sum_of_weights.",
+    "Tests verify an all-false or otherwise zero-total boolean weight result retains the existing missing-result behavior.",
+    "Existing numeric-weight tests continue to pass unchanged.",
+    "No public API changes or global dot/einsum semantic changes are introduced."
+  ],
+  "confirmed_decisions": [
+    "Apply the fix through the shared weighted path for both DataArray and Dataset.",
+    "Treat boolean weights as numeric 0/1 for sum_of_weights and weighted mean.",
+    "Require sum_of_weights from boolean weights to have an integer dtype, without requiring a specific integer width.",
+    "Exclude weights where corresponding data values are missing.",
+    "Preserve zero-total-to-missing behavior.",
+    "Preserve existing behavior for numeric weights.",
+    "Do not change the public weighted API.",
+    "Do not globally change xarray.dot or einsum semantics.",
+    "Allow the implementer to choose the specific localized implementation within xarray/core/weighted.py."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "In the shared DataArray/Dataset weighted-reduction path, boolean weights must behave as numeric 0/1. For boolean weights, sum_of_weights must produce integer counts, exclude weights corresponding to missing data, and preserve the existing behavior that converts a zero total to missing. Weighted mean must use the corrected denominator, so DataArray([1.0, 1.0, 1.0]).weighted(DataArray([True, True, False])).mean() returns 1.0. Existing numeric-weight behavior must remain unchanged. The implementation is bounded to xarray/core/weighted.py; it must not change the public API or globally alter xarray.dot/einsum semantics. Exact backend-specific integer width is not contracted."
+}

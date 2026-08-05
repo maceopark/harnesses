@@ -1,0 +1,187 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..ba81412 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -11,6 +11,7 @@
+ """
+ 
+ import re
++import sys
+ import warnings
+ from inspect import Parameter, Signature
+ from types import ModuleType
+@@ -1785,6 +1786,21 @@ class DataDocumenterMixinBase:
+         """Update docstring for the NewType object."""
+         pass
+ 
++    def get_variable_comment(self) -> Optional[List[str]]:
++        """Return source documentation for the variable, if available."""
++        return None
++
++
++def _is_typing_alias(obj: Any) -> bool:
++    """Check for aliases from typing, including their Python 3.6 implementation."""
++    if inspect.isgenericalias(obj):
++        return True
++    elif sys.version_info < (3, 7):
++        return (type(obj).__module__ == 'typing' and
++                not inspect.isNewType(obj) and not isinstance(obj, TypeVar))
++    else:
++        return False
++
+ 
+ class GenericAliasMixin(DataDocumenterMixinBase):
+     """
+@@ -1793,11 +1809,13 @@ class GenericAliasMixin(DataDocumenterMixinBase):
+     """
+ 
+     def should_suppress_directive_header(self) -> bool:
+-        return (inspect.isgenericalias(self.object) or
++        return (_is_typing_alias(self.object) or
+                 super().should_suppress_directive_header())
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if inspect.isgenericalias(self.object):
++        comment = self.get_variable_comment()
++        has_comment = comment is not None and any(line.strip() for line in comment)
++        if _is_typing_alias(self.object) and not has_comment:
+             more_content.append(_('alias of %s') % restify(self.object), '')
+             more_content.append('', '')
+ 
+@@ -1998,9 +2016,12 @@ class DataDocumenter(GenericAliasMixin, NewTypeMixin, TypeVarMixin,
+ 
+         return None
+ 
++    def get_variable_comment(self) -> Optional[List[str]]:
++        return self.get_module_comment(self.objpath[-1])
++
+     def get_doc(self, ignore: int = None) -> Optional[List[List[str]]]:
+         # Check the variable has a docstring-comment
+-        comment = self.get_module_comment(self.objpath[-1])
++        comment = self.get_variable_comment()
+         if comment:
+             return [comment]
+         else:
+@@ -2571,9 +2592,12 @@ class AttributeDocumenter(GenericAliasMixin, NewTypeMixin, SlotsMixin,  # type:
+ 
+         return None
+ 
++    def get_variable_comment(self) -> Optional[List[str]]:
++        return self.get_attribute_comment(self.parent, self.objpath[-1])
++
+     def get_doc(self, ignore: int = None) -> Optional[List[List[str]]]:
+         # Check the attribute has a docstring-comment
+-        comment = self.get_attribute_comment(self.parent, self.objpath[-1])
++        comment = self.get_variable_comment()
+         if comment:
+             return [comment]
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/genericalias.py b/tests/roots/test-ext-autodoc/target/genericalias.py
+index 9909efc..c8a28f5 100644
+--- a/tests/roots/test-ext-autodoc/target/genericalias.py
++++ b/tests/roots/test-ext-autodoc/target/genericalias.py
+@@ -1,11 +1,34 @@
+-from typing import Callable, List
++from typing import Any, Callable, Dict, List, Union
+ 
+ #: A list of int
+ T = List[int]
+ 
+ C = Callable[[int], None]  # a generic alias not having a doccomment
+ 
++DictAlias = Dict[str, Any]
++"""Dictionary alias documentation.
++
++This paragraph must not be replaced by generated alias text.
++"""
++
++UnionAlias = Union[str, None]
++"""Union alias documentation
++continued on a second line.
++"""
++
++CallableAlias = Callable[[str], None]
++"""Callable alias documentation::
++
++    Callable[[str], None]
++"""
++
++#:
++Empty = List[str]
++
+ 
+ class Class:
+     #: A list of int
+     T = List[int]
++
++    CallableAlias = Callable[[str], None]
++    """Class attribute alias documentation."""
+diff --git a/tests/test_ext_autodoc_autoattribute.py b/tests/test_ext_autodoc_autoattribute.py
+index 5e72202..ed43e26 100644
+--- a/tests/test_ext_autodoc_autoattribute.py
++++ b/tests/test_ext_autodoc_autoattribute.py
+@@ -156,11 +156,17 @@ def test_autoattribute_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autoattribute_GenericAlias_string_doc(app):
++    actual = list(do_autodoc(app, 'attribute',
++                             'target.genericalias.Class.CallableAlias'))
++    assert '   Class attribute alias documentation.' in actual
++    assert not any('alias of ' in line for line in actual)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autoattribute_NewType(app):
+     actual = do_autodoc(app, 'attribute', 'target.typevar.Class.T6')
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..c4ce28e 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -96,11 +96,38 @@ def test_autodata_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++@pytest.mark.parametrize(('name', 'documentation'), [
++    ('DictAlias', ['Dictionary alias documentation.', '',
++                   'This paragraph must not be replaced by generated alias text.']),
++    ('UnionAlias', ['Union alias documentation', 'continued on a second line.']),
++    ('CallableAlias', ['Callable alias documentation::', '',
++                       '    Callable[[str], None]']),
++])
++def test_autodata_typing_alias_string_doc(app, name, documentation):
++    actual = list(do_autodoc(app, 'data', 'target.genericalias.' + name))
++    expected = ['   ' + line if line else '' for line in documentation]
++    assert actual[5:-1] == expected
++    assert not any('alias of ' in line for line in actual)
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodata_undocumented_GenericAlias(app):
++    actual = list(do_autodoc(app, 'data', 'target.genericalias.C'))
++    if sys.version_info >= (3, 6):
++        assert any('alias of ' in line for line in actual)
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodata_empty_comment_GenericAlias(app):
++    actual = list(do_autodoc(app, 'data', 'target.genericalias.Empty'))
++    if sys.version_info >= (3, 6):
++        assert any('alias of ' in line for line in actual)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_NewType(app):
+     actual = do_autodoc(app, 'data', 'target.typevar.T6')

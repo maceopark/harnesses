@@ -1,0 +1,18 @@
+{
+  "acceptance_checks": [
+    "strip_accents_unicode(\"\\u00f1\") returns \"n\".",
+    "strip_accents_unicode(\"n\\u0303\") returns \"n\".",
+    "Equivalent composed and decomposed accented inputs return identical unaccented strings.",
+    "A vectorizer analyzer configured with strip_accents='unicode' emits the same unaccented tokens for equivalent composed and decomposed input.",
+    "Previously supported composed-accent stripping behavior continues to produce the expected unaccented results."
+  ],
+  "confirmed_decisions": [
+    "Already-NFKD input containing combining accent marks must not be returned with those marks intact.",
+    "Canonically equivalent composed and decomposed accented strings must produce the same unaccented output from strip_accents_unicode.",
+    "CountVectorizer and related vectorizers using strip_accents='unicode' must apply the corrected behavior through existing preprocessing.",
+    "Existing behavior for composed accented Latin text, composed Arabic text, mixed accented text, and unaccented text must remain compatible."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Ensure Unicode accent stripping produces the same unaccented result for canonically equivalent composed and already-NFKD/decomposed input. In particular, strip_accents_unicode must transform both U+00F1 (LATIN SMALL LETTER N WITH TILDE) and U+006E U+0303 (LATIN SMALL LETTER N followed by COMBINING TILDE) to \"n\". Vectorizers configured with strip_accents='unicode' must exhibit the corrected behavior through their existing preprocessing paths."
+}

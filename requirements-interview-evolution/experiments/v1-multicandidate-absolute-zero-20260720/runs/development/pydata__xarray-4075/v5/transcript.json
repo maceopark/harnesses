@@ -1,0 +1,89 @@
+[
+  {
+    "answer": "Denominator only",
+    "open_material_decisions": [
+      "Choose whether boolean-weight handling is limited to denominator accumulation or applies globally to all weighted reductions."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Make sum_of_weights numerically accumulate boolean weights, fixing weighted mean while leaving the supplied weights and other weighted reductions unchanged.",
+          "label": "Denominator only",
+          "recommended": true
+        },
+        {
+          "description": "Convert boolean weights for every weighted reduction, potentially changing dtype behavior beyond the reported mean bug.",
+          "label": "All reductions",
+          "recommended": false
+        },
+        {
+          "description": "Treat boolean weights as invalid and raise an error instead of supporting the reported use case.",
+          "label": "Reject booleans",
+          "recommended": false
+        }
+      ],
+      "prompt": "What compatibility boundary should the implementation use for boolean weights?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Owner approval of the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Approve fix",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with the stated scope, tests, delegation boundary, and residual risk.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a materially different behavior or acceptance boundary.",
+          "label": "Revise",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: update only sum-of-weights denominator accumulation so boolean weights are counted numerically; the reported `[True, True, False]` weighted mean must return `1.0`; add focused regression coverage for boolean-weight `sum_of_weights` and `mean`, including the reported case and preservation of existing zero-denominator-to-missing behavior; leave stored weights, weighted numerators, other reductions, and non-boolean-weight behavior unchanged; delegate the exact minimal coercion/casting technique to the implementer subject to those constraints; acknowledge bounded residual risk for untested duck-array backends while requiring the existing weighted test suite to pass?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "For DataArray([1.0, 1.0, 1.0]) weighted by DataArray([True, True, False]), mean() returns DataArray(1.0).",
+          "For the reported boolean weights, sum_of_weights() numerically returns 2 rather than boolean True.",
+          "Boolean weights whose effective denominator is zero still yield a missing denominator and weighted mean.",
+          "Focused regression tests exercise boolean-weight sum_of_weights and mean.",
+          "Existing tests confirm that numeric-weight behavior is unchanged.",
+          "The existing weighted test suite passes.",
+          "The implementation changes only denominator accumulation and does not globally convert or replace the stored weights."
+        ],
+        "confirmed_decisions": [
+          "Boolean-weight handling is limited to sum-of-weights denominator accumulation.",
+          "Boolean weights are supported and counted numerically rather than rejected.",
+          "The reported boolean-weight weighted mean must return 1.0.",
+          "Stored weights remain unchanged.",
+          "Weighted numerators and other weighted reductions remain unchanged.",
+          "Non-boolean-weight behavior remains unchanged.",
+          "Existing zero-denominator results must continue to become missing values.",
+          "Focused regression tests must cover boolean-weight sum_of_weights and mean.",
+          "The exact minimal coercion or casting technique is delegated to the implementer.",
+          "Untested duck-array backends are an acknowledged bounded residual risk.",
+          "The existing weighted test suite must pass."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update only the sum-of-weights denominator path so boolean weights are accumulated numerically. The reported DataArray values [1.0, 1.0, 1.0] with weights [True, True, False] must produce weighted mean 1.0 instead of 2.0. Add focused regression coverage for boolean-weight sum_of_weights and mean, including the reported case and zero-denominator behavior. Do not alter stored weights, weighted numerators, other weighted reductions, or behavior for non-boolean weights. The implementer may choose the exact minimal coercion or casting technique within these constraints."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner approved an executable contract, and no material decisions remain unresolved."
+    },
+    "turn": 3
+  }
+]

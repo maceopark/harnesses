@@ -1,0 +1,19 @@
+{
+  "acceptance_checks": [
+    "A direct regression assertion demonstrates that `strip_accents_unicode(chr(110) + chr(771)) == 'n'`.",
+    "The direct test demonstrates equivalent precomposed and decomposed inputs produce the same accent-free output.",
+    "A `CountVectorizer` analyzer configured with `strip_accents='unicode'` converts text containing an already-decomposed accented character into the expected unaccented token or tokens.",
+    "Existing composed Latin, Arabic, mixed-text, and French vectorizer accent-stripping tests continue to pass.",
+    "The targeted feature-extraction text test module passes after the implementation."
+  ],
+  "confirmed_decisions": [
+    "Both precomposed and already-decomposed equivalent accented strings must normalize to the same accent-free result; specifically, `ñ` and `n` followed by COMBINING TILDE must both produce `n`.",
+    "The implementation must not return an already-NFKD string unchanged when it contains combining characters that should be stripped.",
+    "The change belongs in `sklearn/feature_extraction/text.py` within `strip_accents_unicode`; the established vectorizer preprocessing wiring should remain intact.",
+    "Regression coverage must include both a direct `strip_accents_unicode` test and an end-to-end `CountVectorizer` analyzer test using `strip_accents='unicode'`.",
+    "No public API signature or parameter behavior should change beyond correcting already-NFKD combining-mark handling."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update `strip_accents_unicode` so that it removes combining characters after NFKD normalization even when the input was already in NFKD form. Preserve the existing behavior for precomposed accented Unicode text and ensure the corrected behavior flows through `CountVectorizer` when `strip_accents='unicode'`. Add regression coverage at both the public function and vectorizer analyzer levels."
+}

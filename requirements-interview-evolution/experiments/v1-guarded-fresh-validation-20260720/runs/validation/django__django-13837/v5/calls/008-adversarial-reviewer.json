@@ -1,0 +1,428 @@
+{
+  "role": "adversarial-reviewer",
+  "model": "gpt-5.6-sol",
+  "command": [
+    "codex",
+    "exec",
+    "--model",
+    "gpt-5.6-sol",
+    "--ephemeral",
+    "--sandbox",
+    "read-only",
+    "--skip-git-repo-check",
+    "--ignore-user-config",
+    "--color",
+    "never",
+    "--output-schema",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-adversarial-reviewer-5i8zs8ca/schema.json",
+    "--output-last-message",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-adversarial-reviewer-5i8zs8ca/output.json",
+    "-C",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-adversarial-reviewer-5i8zs8ca",
+    "<stdin>"
+  ],
+  "prompt": "Blindly review only public request, audited repository evidence, transcript, and contract. Use only the fixed failure taxonomy. Report material readiness failures with exact JSON-pointer citations to scalar leaves; do not quote arrays or objects and do not infer gold behavior. Citation artifact roots are exact: contract uses /summary, /implementation_ready, /confirmed_decisions/N, /open_material_decisions/N, or /acceptance_checks/N; transcript uses /N/...; evidence uses /scope_summary, /facts/N/..., /unknowns/N, or /audit_summary. Never cite /repository_facts or another public-case path as an evidence artifact.\nReturn only the JSON required by the supplied schema.\nINPUT:\n{\"alias\": \"django__django-13837\", \"audited_repository_evidence\": {\"audit_summary\": \"All nine facts are directly supported by the cited repository files and line ranges.\", \"facts\": [{\"id\": \"F1\", \"line_end\": 224, \"line_start\": 213, \"path\": \"django/utils/autoreload.py\", \"statement\": \"`get_child_arguments()` imports `django.__main__`, reads `django.__main__.__file__`, converts it to a path, and compares that path with `sys.argv[0]`.\"}, {\"id\": \"F2\", \"line_end\": 227, \"line_start\": 224, \"path\": \"django/utils/autoreload.py\", \"statement\": \"Only when `sys.argv[0]` equals the path of `django.__main__` does the function reconstruct the child command with `-m django`; the package name is hard-coded as `django`.\"}, {\"id\": \"F3\", \"line_end\": 246, \"line_start\": 244, \"path\": \"django/utils/autoreload.py\", \"statement\": \"For an existing script path that is not `django.__main__`, the function appends the original `sys.argv` to the Python executable and warning options, without reconstructing a `-m <package>` invocation.\"}, {\"id\": \"F4\", \"line_end\": 260, \"line_start\": 254, \"path\": \"django/utils/autoreload.py\", \"statement\": \"`restart_with_reloader()` obtains its subprocess arguments exclusively from `get_child_arguments()` and repeatedly launches that command with the autoreload environment marker set.\"}, {\"id\": \"F5\", \"line_end\": 166, \"line_start\": 159, \"path\": \"tests/utils_tests/test_autoreload.py\", \"statement\": \"The direct unit test for module execution patches `sys.argv` to start with `django.__main__.__file__` and expects `[sys.executable, '-m', 'django', 'runserver']`.\"}, {\"id\": \"F6\", \"line_end\": 174, \"line_start\": 168, \"path\": \"tests/utils_tests/test_autoreload.py\", \"statement\": \"The direct unit test for ordinary script execution expects the script filename itself to be retained after the executable and warning option.\"}, {\"id\": \"F7\", \"line_end\": 452, \"line_start\": 445, \"path\": \"tests/utils_tests/test_autoreload.py\", \"statement\": \"The restart integration-style test for `python -m django` supplies a mocked `django.__main__.__file__` matching `argv[0]` and expects the relaunched command to contain `-m django`.\"}, {\"id\": \"F8\", \"line_end\": 9, \"line_start\": 1, \"path\": \"django/__main__.py\", \"statement\": \"Django's own `__main__` module delegates to `management.execute_from_command_line()` when executed as the program entry point.\"}, {\"id\": \"F9\", \"line_end\": 243, \"line_start\": 228, \"path\": \"django/utils/autoreload.py\", \"statement\": \"When `sys.argv[0]` does not exist, `get_child_arguments()` contains separate Windows fallbacks for a matching `.exe` or `-script.py` entry point and otherwise raises `RuntimeError`.\"}], \"scope_summary\": \"Base commit 415f50298f97fb17f841a9df38d995ccf347dfcc contains path-based detection specialized to `python -m django`; autoreloader tests cover that invocation, ordinary script invocation, and Windows entry-point fallbacks, but no non-Django `-m` package case is present in the inspected test section.\", \"unknowns\": [\"The inspected repository facts do not establish how every supported Python runtime populates `__main__.__spec__`, because the current implementation and cited tests do not inspect it.\", \"The inspected test section contains no case for launching a package other than Django with `python -m <package> runserver`.\"]}, \"contract\": {\"acceptance_checks\": [\"A `python -m django runserver` context produces `[sys.executable, *warning_options, '-m', 'django', 'runserver']`.\", \"A `python -m pkg_other_than_django runserver` context produces `[sys.executable, *warning_options, '-m', 'pkg_other_than_django', 'runserver']`.\", \"Module relaunch detection succeeds without reading or requiring `django.__main__.__file__`.\", \"Multiple or existing Python warning options remain ordered between `sys.executable` and `-m`.\", \"If `__main__.__spec__` is absent or `None`, existing ordinary-script behavior remains unchanged.\", \"If `__main__.__spec__.parent` is empty, the invocation is not reconstructed as `-m`; existing directory/zip or applicable fallback behavior remains unchanged.\", \"Existing missing-path and Windows `.exe` and `-script.py` fallback tests continue to pass.\", \"Targeted tests in `tests/utils_tests/test_autoreload.py` pass.\"], \"confirmed_decisions\": [\"Generalize module detection using the documented top-level `__main__.__spec__.parent` value.\", \"Treat only a non-empty `__main__.__spec__.parent` as a `-m <package>` invocation; an empty parent does not trigger module reconstruction.\", \"Preserve Python warning options before `-m` in the reconstructed command.\", \"Preserve `sys.argv[1:]` after the detected module package.\", \"Remove the module-detection dependency on `django.__main__.__file__`.\", \"Keep ordinary-script, directory/zip, missing-path, and Windows entry-point fallback behavior unchanged.\", \"Limit scope to autoreloader child-command reconstruction; do not alter management-command dispatch or display naming.\", \"Add focused coverage for Django and non-Django module relaunch, warning-option preservation, and unchanged fallback behavior.\", \"Acceptance requires the targeted autoreload tests to pass.\", \"Acknowledge bounded residual risk only for Python runtimes that violate documented `__main__.__spec__.parent` semantics.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"Update `django.utils.autoreload.get_child_arguments()` to inspect the top-level `__main__.__spec__`. When `__main__.__spec__.parent` is a non-empty string, reconstruct the child command as `[sys.executable, *warning_options, '-m', parent, *sys.argv[1:]]`. This must support both `python -m django` and `python -m <other_package>` without relying on `__file__`. When the spec is absent or its parent is empty, preserve existing behavior for ordinary scripts, directory/zip execution, missing paths, and Windows `.exe` and `-script.py` fallbacks. Do not change management-command dispatch or display naming.\"}, \"failure_taxonomy\": [\"omission\", \"invention\", \"repository-delegation\", \"synthesis-loss\", \"unverifiable-acceptance\", \"compatibility-regression\", \"implementation-leakage\", \"redundant-question\"], \"metadata\": {\"context_mode\": \"repository\", \"partition\": \"validation\", \"repository_family\": \"django/django\"}, \"public_request\": \"Allow autoreloading of `python -m pkg_other_than_django runserver`\\nDescription\\n\\t \\n\\t\\t(last modified by William Schwartz)\\n\\t \\n​django.utils.autoreload.get_child_arguments detects if Python was launched as python -m django. Currently it detects only when ​-m was passed specifically django (and only in Python environments in which __file__ is set on modules, which is ​not true of all Python environments). Like #32177, this ticket aims to remove one impediment to creating Django-based command-line utilities that have their own ​__main__ sub-module while overriding Django's built-in management commands—in this case, runserver.\\nThe fix, which I have submitted in the ​attached PR, is to use Python's ​documented way of determining if -m was used in get_child_arguments:\\nThe top-level __main__ module is always the entry point of a ​complete Python program.\\n __main__.__spec__ is not None ​if and only if Python was launched with -m or the name of a \\\"directory, zipfile or other sys.path entry.\\\" In the latter cases, the ​documentation says\\nIf the script name refers to a directory or zipfile, the script name is added to the start of sys.path and the __main__.py file in that location is executed as the __main__ module.\\nHence __main__.__spec__.parent (which is ​usually but not always __main__.__package__) exists and is the empty string when Python is started with the name of a directory or zip file.\\nTherefore Python was started with -m pkg if and only if __main__.__spec__.parent == \\\"pkg\\\".\\nFollowing this algorithm is guaranteed to work as long as Python obeys its own documentation, and has the side benefit of avoiding use of __file__.\\n\", \"repository_facts\": [{\"evidence\": [{\"cache_required\": true, \"excerpt\": \"def get_child_arguments():\\n    \\\"\\\"\\\"\\n    Return the executable. This contains a workaround for Windows if the\\n    executable is reported to not have the .exe extension which can cause bugs\\n    on reloading.\\n    \\\"\\\"\\\"\\n    import django.__main__\\n    django_main_path = Path(django.__main__.__file__)\\n    py_script = Path(sys.argv[0])\\n\\n    args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]\\n    if py_script == django_main_path:\", \"excerpt_digest\": \"2bfcb76d1811b823c029d740a6704f4d99bdc4bdcde9af4396724202bb895a23\", \"id\": \"repository:F1\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"django/utils/autoreload.py:L213-L224\", \"source\": \"repository\", \"source_digest\": \"36a1b2bda60513950029d07b688263d6dc6c69adc7f3efaceb63eeb54626c46e\"}], \"id\": \"F1\", \"statement\": \"`get_child_arguments()` imports `django.__main__`, reads its `__file__` into a `Path`, and compares that path with `sys.argv[0]`.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]\\n    if py_script == django_main_path:\\n        # The server was started with `python -m django runserver`.\\n        args += ['-m', 'django']\\n        args += sys.argv[1:]\", \"excerpt_digest\": \"2ecdb538b2e2738f3aa2c417427d2bda05f27a257c55283009fe255ed6023d9b\", \"id\": \"repository:F2\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"django/utils/autoreload.py:L223-L227\", \"source\": \"repository\", \"source_digest\": \"36a1b2bda60513950029d07b688263d6dc6c69adc7f3efaceb63eeb54626c46e\"}], \"id\": \"F2\", \"statement\": \"When `sys.argv[0]` equals the path of `django.__main__.__file__`, the child command is constructed with `sys.executable`, warning options, `-m django`, and the remaining original arguments.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        raise RuntimeError('Script %s does not exist.' % py_script)\\n    else:\\n        args += sys.argv\\n    return args\", \"excerpt_digest\": \"a7537bd7b4e562af70a5b48560af6b5d25a2125d9c8ee77e1430149518a2beaa\", \"id\": \"repository:F3\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"django/utils/autoreload.py:L243-L246\", \"source\": \"repository\", \"source_digest\": \"36a1b2bda60513950029d07b688263d6dc6c69adc7f3efaceb63eeb54626c46e\"}], \"id\": \"F3\", \"statement\": \"For an existing script path that is not Django's `__main__.py`, the function appends the complete original `sys.argv` to the executable and warning options.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    elif not py_script.exists():\\n        # sys.argv[0] may not exist for several reasons on Windows.\\n        # It may exist with a .exe extension or have a -script.py suffix.\\n        exe_entrypoint = py_script.with_suffix('.exe')\\n        if exe_entrypoint.exists():\\n            # Should be executed directly, ignoring sys.executable.\\n            # TODO: Remove str() when dropping support for PY37.\\n            # args parameter accepts path-like on Windows from Python 3.8.\\n            return [str(exe_entrypoint), *sys.argv[1:]]\\n        script_entrypoint = py_script.with_name('%s-script.py' % py_script.name)\\n        if script_entrypoint.exists():\\n            # Should be executed as usual.\\n            # TODO: Remove str() when dropping support for PY37.\\n            # args parameter accepts path-like on Windows from Python 3.8.\\n            return [*args, str(script_entrypoint), *sys.argv[1:]]\\n        raise RuntimeError('Script %s does not exist.' % py_script)\", \"excerpt_digest\": \"04408cc3c3e0ed4f687ba97e84d10e77ed3b81acc56e422b262db3ad69ee3e37\", \"id\": \"repository:F4\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"django/utils/autoreload.py:L228-L243\", \"source\": \"repository\", \"source_digest\": \"36a1b2bda60513950029d07b688263d6dc6c69adc7f3efaceb63eeb54626c46e\"}], \"id\": \"F4\", \"statement\": \"For a nonexistent `sys.argv[0]`, the function checks Windows `.exe` and `-script.py` entry-point variants and raises `RuntimeError` if neither exists.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"class TestChildArguments(SimpleTestCase):\\n    @mock.patch('sys.argv', [django.__main__.__file__, 'runserver'])\\n    @mock.patch('sys.warnoptions', [])\\n    def test_run_as_module(self):\\n        self.assertEqual(\\n            autoreload.get_child_arguments(),\\n            [sys.executable, '-m', 'django', 'runserver']\\n        )\", \"excerpt_digest\": \"cb11e0aa40ef49fae1321e875537b674d07f5535098620dc91a48861a9b38bb3\", \"id\": \"repository:F5\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/utils_tests/test_autoreload.py:L159-L166\", \"source\": \"repository\", \"source_digest\": \"6dfb819e68a0e5e30662f5a4d0bda12b1be415c2e49ce675c8c380f61bbc4fe9\"}], \"id\": \"F5\", \"statement\": \"The child-argument test for module execution patches `sys.argv[0]` to `django.__main__.__file__` and expects `[sys.executable, '-m', 'django', 'runserver']`.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    @mock.patch('sys.argv', [__file__, 'runserver'])\\n    @mock.patch('sys.warnoptions', ['error'])\\n    def test_warnoptions(self):\\n        self.assertEqual(\\n            autoreload.get_child_arguments(),\\n            [sys.executable, '-Werror', __file__, 'runserver']\\n        )\", \"excerpt_digest\": \"29dd3ee6660e5cdfa5c85c9b0afb4b1f022fc41a2c10e9bb18fe41d281e86ecc\", \"id\": \"repository:F6\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/utils_tests/test_autoreload.py:L168-L174\", \"source\": \"repository\", \"source_digest\": \"6dfb819e68a0e5e30662f5a4d0bda12b1be415c2e49ce675c8c380f61bbc4fe9\"}], \"id\": \"F6\", \"statement\": \"The ordinary-script test expects Python warning options to precede the original script path and command arguments.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def test_python_m_django(self):\\n        main = '/usr/lib/pythonX.Y/site-packages/django/__main__.py'\\n        argv = [main, 'runserver']\\n        mock_call = self.patch_autoreload(argv)\\n        with mock.patch('django.__main__.__file__', main):\\n            autoreload.restart_with_reloader()\\n            self.assertEqual(mock_call.call_count, 1)\\n            self.assertEqual(mock_call.call_args[0][0], [self.executable, '-Wall', '-m', 'django'] + argv[1:])\", \"excerpt_digest\": \"3c8e04a521189d6766c03a5d553f07ea46532d3d6c840aee6fd8f7dd12ac0277\", \"id\": \"repository:F7\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/utils_tests/test_autoreload.py:L445-L452\", \"source\": \"repository\", \"source_digest\": \"6dfb819e68a0e5e30662f5a4d0bda12b1be415c2e49ce675c8c380f61bbc4fe9\"}], \"id\": \"F7\", \"statement\": \"A restart-level test represents `python -m django` using a Django `__main__.py` path, patches `django.__main__.__file__` to that path, and expects the subprocess command to contain `-m django`.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"def restart_with_reloader():\\n    new_environ = {**os.environ, DJANGO_AUTORELOAD_ENV: 'true'}\\n    args = get_child_arguments()\\n    while True:\\n        p = subprocess.run(args, env=new_environ, close_fds=False)\\n        if p.returncode != 3:\\n            return p.returncode\", \"excerpt_digest\": \"e099a28dbfebed32c3ef26ceb259e91c753529f586bbd363cf9060a6d0df57e1\", \"id\": \"repository:F8\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"django/utils/autoreload.py:L254-L260\", \"source\": \"repository\", \"source_digest\": \"36a1b2bda60513950029d07b688263d6dc6c69adc7f3efaceb63eeb54626c46e\"}], \"id\": \"F8\", \"statement\": \"`restart_with_reloader()` obtains its subprocess arguments from `get_child_arguments()` and repeatedly runs them until the child return code is not 3.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"\\\"\\\"\\\"\\nInvokes django-admin when the django module is run as a script.\\n\\nExample: python -m django check\\n\\\"\\\"\\\"\\nfrom django.core import management\\n\\nif __name__ == \\\"__main__\\\":\\n    management.execute_from_command_line()\", \"excerpt_digest\": \"b624fa22ef678009ea0b03416b93c99045f980e6592177394caea296c0766f2a\", \"id\": \"repository:F9\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"django/__main__.py:L1-L9\", \"source\": \"repository\", \"source_digest\": \"f5ae53a35bd05ea7f6260fde87c9cbbc87341979838c45efe2313541912a0459\"}], \"id\": \"F9\", \"statement\": \"Django's package `__main__.py` invokes `management.execute_from_command_line()` when executed as `__main__`.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"class ManagementUtility:\\n    \\\"\\\"\\\"\\n    Encapsulate the logic of the django-admin and manage.py utilities.\\n    \\\"\\\"\\\"\\n    def __init__(self, argv=None):\\n        self.argv = argv or sys.argv[:]\\n        self.prog_name = os.path.basename(self.argv[0])\\n        if self.prog_name == '__main__.py':\\n            self.prog_name = 'python -m django'\\n        self.settings_exception = None\", \"excerpt_digest\": \"8220c010d6d59385540f21e938a1aa1da36a15e0382523f06e9550482594423b\", \"id\": \"repository:F10\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"django/core/management/__init__.py:L184-L193\", \"source\": \"repository\", \"source_digest\": \"56acc372ce8053436d6958d13e675aa5d31416c2325749bd375863205926afe3\"}], \"id\": \"F10\", \"statement\": \"`ManagementUtility` converts a program basename of `__main__.py` to the display name `python -m django`.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        if module.__name__ == '__main__':\\n            # __main__ (usually manage.py) doesn't always have a __spec__ set.\\n            # Handle this by falling back to using __file__, resolved below.\\n            # See https://docs.python.org/reference/import.html#main-spec\\n            # __file__ may not exists, e.g. when running ipdb debugger.\\n            if hasattr(module, '__file__'):\\n                sys_file_paths.append(module.__file__)\\n            continue\\n        if getattr(module, '__spec__', None) is None:\\n            continue\", \"excerpt_digest\": \"17105daa4694f45f4c7c2c114b474444bb174974919cfb8eaf8ac25c0a0f6070\", \"id\": \"repository:F11\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"django/utils/autoreload.py:L129-L138\", \"source\": \"repository\", \"source_digest\": \"36a1b2bda60513950029d07b688263d6dc6c69adc7f3efaceb63eeb54626c46e\"}], \"id\": \"F11\", \"statement\": \"The autoreload module-file iterator treats `__main__` specially: it uses `__file__` when present and does not use that module's `__spec__`.\"}], \"transcript\": [{\"answer\": \"Approve boundary\", \"open_material_decisions\": [\"Approve the compatibility boundary and acceptance scope for generalized `-m` detection.\"], \"question\": {\"header\": \"Compatibility\", \"options\": [{\"description\": \"Support Django and non-Django `-m` packages, preserve warning arguments, and leave ordinary scripts, directory/zip execution, and Windows fallbacks unchanged.\", \"label\": \"Approve boundary\", \"recommended\": true}, {\"description\": \"Also reconstruct directory or zipfile execution as a module invocation, expanding behavior beyond the reported package case.\", \"label\": \"Treat empty as module\", \"recommended\": false}, {\"description\": \"Redesign child-command reconstruction for all entry-point forms, materially expanding scope and compatibility requirements.\", \"label\": \"Broader redesign\", \"recommended\": false}], \"prompt\": \"Should the contract require `get_child_arguments()` to relaunch as `python -m <parent>` only when `__main__.__spec__.parent` is non-empty, while preserving existing script and Windows fallback behavior when the spec is absent or its parent is empty?\"}, \"turn\": 1}, {\"answer\": \"{\\\"selection\\\":\\\"Approve contract\\\"}\", \"open_material_decisions\": [\"Approve the complete executable contract.\"], \"question\": {\"header\": \"Contract\", \"options\": [{\"description\": \"Seal this scope and acceptance criteria as implementation-ready.\", \"label\": \"Approve contract\", \"recommended\": true}, {\"description\": \"Change the required acceptance evidence while retaining the approved behavior boundary.\", \"label\": \"Revise tests\", \"recommended\": false}, {\"description\": \"Reopen the approved compatibility boundary and change observable behavior.\", \"label\": \"Revise behavior\", \"recommended\": false}], \"prompt\": \"Approve this implementation contract: update `get_child_arguments()` to inspect the top-level `__main__.__spec__`; when its `parent` is a non-empty string, relaunch with `[sys.executable, warning options, '-m', parent, *sys.argv[1:]]`, supporting both `django` and other packages without relying on `__file__`; when the spec is absent or its parent is empty, preserve the existing ordinary-script, directory/zip, missing-path, and Windows entry-point behavior; add focused tests proving Django and non-Django module relaunch, warning-option preservation, and unchanged fallback behavior; no changes to management-command dispatch or display naming. Acceptance requires the targeted autoreload tests to pass. Residual risk is bounded to Python runtimes violating the documented `__main__.__spec__.parent` semantics.\"}, \"turn\": 2}, {\"interviewer\": {\"action\": \"complete\", \"contract\": {\"acceptance_checks\": [\"A `python -m django runserver` context produces `[sys.executable, *warning_options, '-m', 'django', 'runserver']`.\", \"A `python -m pkg_other_than_django runserver` context produces `[sys.executable, *warning_options, '-m', 'pkg_other_than_django', 'runserver']`.\", \"Module relaunch detection succeeds without reading or requiring `django.__main__.__file__`.\", \"Multiple or existing Python warning options remain ordered between `sys.executable` and `-m`.\", \"If `__main__.__spec__` is absent or `None`, existing ordinary-script behavior remains unchanged.\", \"If `__main__.__spec__.parent` is empty, the invocation is not reconstructed as `-m`; existing directory/zip or applicable fallback behavior remains unchanged.\", \"Existing missing-path and Windows `.exe` and `-script.py` fallback tests continue to pass.\", \"Targeted tests in `tests/utils_tests/test_autoreload.py` pass.\"], \"confirmed_decisions\": [\"Generalize module detection using the documented top-level `__main__.__spec__.parent` value.\", \"Treat only a non-empty `__main__.__spec__.parent` as a `-m <package>` invocation; an empty parent does not trigger module reconstruction.\", \"Preserve Python warning options before `-m` in the reconstructed command.\", \"Preserve `sys.argv[1:]` after the detected module package.\", \"Remove the module-detection dependency on `django.__main__.__file__`.\", \"Keep ordinary-script, directory/zip, missing-path, and Windows entry-point fallback behavior unchanged.\", \"Limit scope to autoreloader child-command reconstruction; do not alter management-command dispatch or display naming.\", \"Add focused coverage for Django and non-Django module relaunch, warning-option preservation, and unchanged fallback behavior.\", \"Acceptance requires the targeted autoreload tests to pass.\", \"Acknowledge bounded residual risk only for Python runtimes that violate documented `__main__.__spec__.parent` semantics.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"Update `django.utils.autoreload.get_child_arguments()` to inspect the top-level `__main__.__spec__`. When `__main__.__spec__.parent` is a non-empty string, reconstruct the child command as `[sys.executable, *warning_options, '-m', parent, *sys.argv[1:]]`. This must support both `python -m django` and `python -m <other_package>` without relying on `__file__`. When the spec is absent or its parent is empty, preserve existing behavior for ordinary scripts, directory/zip execution, missing paths, and Windows `.exe` and `-script.py` fallbacks. Do not change management-command dispatch or display naming.\"}, \"open_material_decisions\": [], \"question\": null, \"reason\": \"The owner explicitly approved both the compatibility boundary and the complete executable contract. No material decisions remain open.\"}, \"turn\": 3}], \"upstream\": {\"base_commit\": \"415f50298f97fb17f841a9df38d995ccf347dfcc\", \"dataset\": \"princeton-nlp/SWE-bench_Verified\", \"instance_id_digest\": \"4855f24730e91ecf04c224c123ca03d88cae9c68b5e3c3d3231fbc6e69dc2a17\", \"issue_cache_key\": \"sha256:34e44d1cfd0354cf9ed68afafef69789c59418e2ea0620e23b6402522a2ae4ac\", \"issue_digest\": \"34e44d1cfd0354cf9ed68afafef69789c59418e2ea0620e23b6402522a2ae4ac\", \"revision\": \"c104f840cc67f8b6eec6f759ebc8b2693d585d4a\", \"source_url\": \"https://github.com/django/django/pull/13837\"}}",
+  "input": {
+    "alias": "django__django-13837",
+    "public_request": "Allow autoreloading of `python -m pkg_other_than_django runserver`\nDescription\n\t \n\t\t(last modified by William Schwartz)\n\t \n​django.utils.autoreload.get_child_arguments detects if Python was launched as python -m django. Currently it detects only when ​-m was passed specifically django (and only in Python environments in which __file__ is set on modules, which is ​not true of all Python environments). Like #32177, this ticket aims to remove one impediment to creating Django-based command-line utilities that have their own ​__main__ sub-module while overriding Django's built-in management commands—in this case, runserver.\nThe fix, which I have submitted in the ​attached PR, is to use Python's ​documented way of determining if -m was used in get_child_arguments:\nThe top-level __main__ module is always the entry point of a ​complete Python program.\n __main__.__spec__ is not None ​if and only if Python was launched with -m or the name of a \"directory, zipfile or other sys.path entry.\" In the latter cases, the ​documentation says\nIf the script name refers to a directory or zipfile, the script name is added to the start of sys.path and the __main__.py file in that location is executed as the __main__ module.\nHence __main__.__spec__.parent (which is ​usually but not always __main__.__package__) exists and is the empty string when Python is started with the name of a directory or zip file.\nTherefore Python was started with -m pkg if and only if __main__.__spec__.parent == \"pkg\".\nFollowing this algorithm is guaranteed to work as long as Python obeys its own documentation, and has the side benefit of avoiding use of __file__.\n",
+    "upstream": {
+      "base_commit": "415f50298f97fb17f841a9df38d995ccf347dfcc",
+      "dataset": "princeton-nlp/SWE-bench_Verified",
+      "instance_id_digest": "4855f24730e91ecf04c224c123ca03d88cae9c68b5e3c3d3231fbc6e69dc2a17",
+      "issue_cache_key": "sha256:34e44d1cfd0354cf9ed68afafef69789c59418e2ea0620e23b6402522a2ae4ac",
+      "issue_digest": "34e44d1cfd0354cf9ed68afafef69789c59418e2ea0620e23b6402522a2ae4ac",
+      "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+      "source_url": "https://github.com/django/django/pull/13837"
+    },
+    "repository_facts": [
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "def get_child_arguments():\n    \"\"\"\n    Return the executable. This contains a workaround for Windows if the\n    executable is reported to not have the .exe extension which can cause bugs\n    on reloading.\n    \"\"\"\n    import django.__main__\n    django_main_path = Path(django.__main__.__file__)\n    py_script = Path(sys.argv[0])\n\n    args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]\n    if py_script == django_main_path:",
+            "excerpt_digest": "2bfcb76d1811b823c029d740a6704f4d99bdc4bdcde9af4396724202bb895a23",
+            "id": "repository:F1",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "django/utils/autoreload.py:L213-L224",
+            "source": "repository",
+            "source_digest": "36a1b2bda60513950029d07b688263d6dc6c69adc7f3efaceb63eeb54626c46e"
+          }
+        ],
+        "id": "F1",
+        "statement": "`get_child_arguments()` imports `django.__main__`, reads its `__file__` into a `Path`, and compares that path with `sys.argv[0]`."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]\n    if py_script == django_main_path:\n        # The server was started with `python -m django runserver`.\n        args += ['-m', 'django']\n        args += sys.argv[1:]",
+            "excerpt_digest": "2ecdb538b2e2738f3aa2c417427d2bda05f27a257c55283009fe255ed6023d9b",
+            "id": "repository:F2",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "django/utils/autoreload.py:L223-L227",
+            "source": "repository",
+            "source_digest": "36a1b2bda60513950029d07b688263d6dc6c69adc7f3efaceb63eeb54626c46e"
+          }
+        ],
+        "id": "F2",
+        "statement": "When `sys.argv[0]` equals the path of `django.__main__.__file__`, the child command is constructed with `sys.executable`, warning options, `-m django`, and the remaining original arguments."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "        raise RuntimeError('Script %s does not exist.' % py_script)\n    else:\n        args += sys.argv\n    return args",
+            "excerpt_digest": "a7537bd7b4e562af70a5b48560af6b5d25a2125d9c8ee77e1430149518a2beaa",
+            "id": "repository:F3",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "django/utils/autoreload.py:L243-L246",
+            "source": "repository",
+            "source_digest": "36a1b2bda60513950029d07b688263d6dc6c69adc7f3efaceb63eeb54626c46e"
+          }
+        ],
+        "id": "F3",
+        "statement": "For an existing script path that is not Django's `__main__.py`, the function appends the complete original `sys.argv` to the executable and warning options."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    elif not py_script.exists():\n        # sys.argv[0] may not exist for several reasons on Windows.\n        # It may exist with a .exe extension or have a -script.py suffix.\n        exe_entrypoint = py_script.with_suffix('.exe')\n        if exe_entrypoint.exists():\n            # Should be executed directly, ignoring sys.executable.\n            # TODO: Remove str() when dropping support for PY37.\n            # args parameter accepts path-like on Windows from Python 3.8.\n            return [str(exe_entrypoint), *sys.argv[1:]]\n        script_entrypoint = py_script.with_name('%s-script.py' % py_script.name)\n        if script_entrypoint.exists():\n            # Should be executed as usual.\n            # TODO: Remove str() when dropping support for PY37.\n            # args parameter accepts path-like on Windows from Python 3.8.\n            return [*args, str(script_entrypoint), *sys.argv[1:]]\n        raise RuntimeError('Script %s does not exist.' % py_script)",
+            "excerpt_digest": "04408cc3c3e0ed4f687ba97e84d10e77ed3b81acc56e422b262db3ad69ee3e37",
+            "id": "repository:F4",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "django/utils/autoreload.py:L228-L243",
+            "source": "repository",
+            "source_digest": "36a1b2bda60513950029d07b688263d6dc6c69adc7f3efaceb63eeb54626c46e"
+          }
+        ],
+        "id": "F4",
+        "statement": "For a nonexistent `sys.argv[0]`, the function checks Windows `.exe` and `-script.py` entry-point variants and raises `RuntimeError` if neither exists."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "class TestChildArguments(SimpleTestCase):\n    @mock.patch('sys.argv', [django.__main__.__file__, 'runserver'])\n    @mock.patch('sys.warnoptions', [])\n    def test_run_as_module(self):\n        self.assertEqual(\n            autoreload.get_child_arguments(),\n            [sys.executable, '-m', 'django', 'runserver']\n        )",
+            "excerpt_digest": "cb11e0aa40ef49fae1321e875537b674d07f5535098620dc91a48861a9b38bb3",
+            "id": "repository:F5",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "tests/utils_tests/test_autoreload.py:L159-L166",
+            "source": "repository",
+            "source_digest": "6dfb819e68a0e5e30662f5a4d0bda12b1be415c2e49ce675c8c380f61bbc4fe9"
+          }
+        ],
+        "id": "F5",
+        "statement": "The child-argument test for module execution patches `sys.argv[0]` to `django.__main__.__file__` and expects `[sys.executable, '-m', 'django', 'runserver']`."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    @mock.patch('sys.argv', [__file__, 'runserver'])\n    @mock.patch('sys.warnoptions', ['error'])\n    def test_warnoptions(self):\n        self.assertEqual(\n            autoreload.get_child_arguments(),\n            [sys.executable, '-Werror', __file__, 'runserver']\n        )",
+            "excerpt_digest": "29dd3ee6660e5cdfa5c85c9b0afb4b1f022fc41a2c10e9bb18fe41d281e86ecc",
+            "id": "repository:F6",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "tests/utils_tests/test_autoreload.py:L168-L174",
+            "source": "repository",
+            "source_digest": "6dfb819e68a0e5e30662f5a4d0bda12b1be415c2e49ce675c8c380f61bbc4fe9"
+          }
+        ],
+        "id": "F6",
+        "statement": "The ordinary-script test expects Python warning options to precede the original script path and command arguments."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    def test_python_m_django(self):\n        main = '/usr/lib/pythonX.Y/site-packages/django/__main__.py'\n        argv = [main, 'runserver']\n        mock_call = self.patch_autoreload(argv)\n        with mock.patch('django.__main__.__file__', main):\n            autoreload.restart_with_reloader()\n            self.assertEqual(mock_call.call_count, 1)\n            self.assertEqual(mock_call.call_args[0][0], [self.executable, '-Wall', '-m', 'django'] + argv[1:])",
+            "excerpt_digest": "3c8e04a521189d6766c03a5d553f07ea46532d3d6c840aee6fd8f7dd12ac0277",
+            "id": "repository:F7",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "tests/utils_tests/test_autoreload.py:L445-L452",
+            "source": "repository",
+            "source_digest": "6dfb819e68a0e5e30662f5a4d0bda12b1be415c2e49ce675c8c380f61bbc4fe9"
+          }
+        ],
+        "id": "F7",
+        "statement": "A restart-level test represents `python -m django` using a Django `__main__.py` path, patches `django.__main__.__file__` to that path, and expects the subprocess command to contain `-m django`."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "def restart_with_reloader():\n    new_environ = {**os.environ, DJANGO_AUTORELOAD_ENV: 'true'}\n    args = get_child_arguments()\n    while True:\n        p = subprocess.run(args, env=new_environ, close_fds=False)\n        if p.returncode != 3:\n            return p.returncode",
+            "excerpt_digest": "e099a28dbfebed32c3ef26ceb259e91c753529f586bbd363cf9060a6d0df57e1",
+            "id": "repository:F8",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "django/utils/autoreload.py:L254-L260",
+            "source": "repository",
+            "source_digest": "36a1b2bda60513950029d07b688263d6dc6c69adc7f3efaceb63eeb54626c46e"
+          }
+        ],
+        "id": "F8",
+        "statement": "`restart_with_reloader()` obtains its subprocess arguments from `get_child_arguments()` and repeatedly runs them until the child return code is not 3."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "\"\"\"\nInvokes django-admin when the django module is run as a script.\n\nExample: python -m django check\n\"\"\"\nfrom django.core import management\n\nif __name__ == \"__main__\":\n    management.execute_from_command_line()",
+            "excerpt_digest": "b624fa22ef678009ea0b03416b93c99045f980e6592177394caea296c0766f2a",
+            "id": "repository:F9",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "django/__main__.py:L1-L9",
+            "source": "repository",
+            "source_digest": "f5ae53a35bd05ea7f6260fde87c9cbbc87341979838c45efe2313541912a0459"
+          }
+        ],
+        "id": "F9",
+        "statement": "Django's package `__main__.py` invokes `management.execute_from_command_line()` when executed as `__main__`."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "class ManagementUtility:\n    \"\"\"\n    Encapsulate the logic of the django-admin and manage.py utilities.\n    \"\"\"\n    def __init__(self, argv=None):\n        self.argv = argv or sys.argv[:]\n        self.prog_name = os.path.basename(self.argv[0])\n        if self.prog_name == '__main__.py':\n            self.prog_name = 'python -m django'\n        self.settings_exception = None",
+            "excerpt_digest": "8220c010d6d59385540f21e938a1aa1da36a15e0382523f06e9550482594423b",
+            "id": "repository:F10",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "django/core/management/__init__.py:L184-L193",
+            "source": "repository",
+            "source_digest": "56acc372ce8053436d6958d13e675aa5d31416c2325749bd375863205926afe3"
+          }
+        ],
+        "id": "F10",
+        "statement": "`ManagementUtility` converts a program basename of `__main__.py` to the display name `python -m django`."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "        if module.__name__ == '__main__':\n            # __main__ (usually manage.py) doesn't always have a __spec__ set.\n            # Handle this by falling back to using __file__, resolved below.\n            # See https://docs.python.org/reference/import.html#main-spec\n            # __file__ may not exists, e.g. when running ipdb debugger.\n            if hasattr(module, '__file__'):\n                sys_file_paths.append(module.__file__)\n            continue\n        if getattr(module, '__spec__', None) is None:\n            continue",
+            "excerpt_digest": "17105daa4694f45f4c7c2c114b474444bb174974919cfb8eaf8ac25c0a0f6070",
+            "id": "repository:F11",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "django/utils/autoreload.py:L129-L138",
+            "source": "repository",
+            "source_digest": "36a1b2bda60513950029d07b688263d6dc6c69adc7f3efaceb63eeb54626c46e"
+          }
+        ],
+        "id": "F11",
+        "statement": "The autoreload module-file iterator treats `__main__` specially: it uses `__file__` when present and does not use that module's `__spec__`."
+      }
+    ],
+    "metadata": {
+      "context_mode": "repository",
+      "partition": "validation",
+      "repository_family": "django/django"
+    },
+    "transcript": [
+      {
+        "turn": 1,
+        "open_material_decisions": [
+          "Approve the compatibility boundary and acceptance scope for generalized `-m` detection."
+        ],
+        "question": {
+          "header": "Compatibility",
+          "prompt": "Should the contract require `get_child_arguments()` to relaunch as `python -m <parent>` only when `__main__.__spec__.parent` is non-empty, while preserving existing script and Windows fallback behavior when the spec is absent or its parent is empty?",
+          "options": [
+            {
+              "label": "Approve boundary",
+              "description": "Support Django and non-Django `-m` packages, preserve warning arguments, and leave ordinary scripts, directory/zip execution, and Windows fallbacks unchanged.",
+              "recommended": true
+            },
+            {
+              "label": "Treat empty as module",
+              "description": "Also reconstruct directory or zipfile execution as a module invocation, expanding behavior beyond the reported package case.",
+              "recommended": false
+            },
+            {
+              "label": "Broader redesign",
+              "description": "Redesign child-command reconstruction for all entry-point forms, materially expanding scope and compatibility requirements.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Approve boundary"
+      },
+      {
+        "turn": 2,
+        "open_material_decisions": [
+          "Approve the complete executable contract."
+        ],
+        "question": {
+          "header": "Contract",
+          "prompt": "Approve this implementation contract: update `get_child_arguments()` to inspect the top-level `__main__.__spec__`; when its `parent` is a non-empty string, relaunch with `[sys.executable, warning options, '-m', parent, *sys.argv[1:]]`, supporting both `django` and other packages without relying on `__file__`; when the spec is absent or its parent is empty, preserve the existing ordinary-script, directory/zip, missing-path, and Windows entry-point behavior; add focused tests proving Django and non-Django module relaunch, warning-option preservation, and unchanged fallback behavior; no changes to management-command dispatch or display naming. Acceptance requires the targeted autoreload tests to pass. Residual risk is bounded to Python runtimes violating the documented `__main__.__spec__.parent` semantics.",
+          "options": [
+            {
+              "label": "Approve contract",
+              "description": "Seal this scope and acceptance criteria as implementation-ready.",
+              "recommended": true
+            },
+            {
+              "label": "Revise tests",
+              "description": "Change the required acceptance evidence while retaining the approved behavior boundary.",
+              "recommended": false
+            },
+            {
+              "label": "Revise behavior",
+              "description": "Reopen the approved compatibility boundary and change observable behavior.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "{\"selection\":\"Approve contract\"}"
+      },
+      {
+        "turn": 3,
+        "interviewer": {
+          "action": "complete",
+          "reason": "The owner explicitly approved both the compatibility boundary and the complete executable contract. No material decisions remain open.",
+          "open_material_decisions": [],
+          "question": null,
+          "contract": {
+            "summary": "Update `django.utils.autoreload.get_child_arguments()` to inspect the top-level `__main__.__spec__`. When `__main__.__spec__.parent` is a non-empty string, reconstruct the child command as `[sys.executable, *warning_options, '-m', parent, *sys.argv[1:]]`. This must support both `python -m django` and `python -m <other_package>` without relying on `__file__`. When the spec is absent or its parent is empty, preserve existing behavior for ordinary scripts, directory/zip execution, missing paths, and Windows `.exe` and `-script.py` fallbacks. Do not change management-command dispatch or display naming.",
+            "implementation_ready": true,
+            "confirmed_decisions": [
+              "Generalize module detection using the documented top-level `__main__.__spec__.parent` value.",
+              "Treat only a non-empty `__main__.__spec__.parent` as a `-m <package>` invocation; an empty parent does not trigger module reconstruction.",
+              "Preserve Python warning options before `-m` in the reconstructed command.",
+              "Preserve `sys.argv[1:]` after the detected module package.",
+              "Remove the module-detection dependency on `django.__main__.__file__`.",
+              "Keep ordinary-script, directory/zip, missing-path, and Windows entry-point fallback behavior unchanged.",
+              "Limit scope to autoreloader child-command reconstruction; do not alter management-command dispatch or display naming.",
+              "Add focused coverage for Django and non-Django module relaunch, warning-option preservation, and unchanged fallback behavior.",
+              "Acceptance requires the targeted autoreload tests to pass.",
+              "Acknowledge bounded residual risk only for Python runtimes that violate documented `__main__.__spec__.parent` semantics."
+            ],
+            "open_material_decisions": [],
+            "acceptance_checks": [
+              "A `python -m django runserver` context produces `[sys.executable, *warning_options, '-m', 'django', 'runserver']`.",
+              "A `python -m pkg_other_than_django runserver` context produces `[sys.executable, *warning_options, '-m', 'pkg_other_than_django', 'runserver']`.",
+              "Module relaunch detection succeeds without reading or requiring `django.__main__.__file__`.",
+              "Multiple or existing Python warning options remain ordered between `sys.executable` and `-m`.",
+              "If `__main__.__spec__` is absent or `None`, existing ordinary-script behavior remains unchanged.",
+              "If `__main__.__spec__.parent` is empty, the invocation is not reconstructed as `-m`; existing directory/zip or applicable fallback behavior remains unchanged.",
+              "Existing missing-path and Windows `.exe` and `-script.py` fallback tests continue to pass.",
+              "Targeted tests in `tests/utils_tests/test_autoreload.py` pass."
+            ]
+          }
+        }
+      }
+    ],
+    "contract": {
+      "summary": "Update `django.utils.autoreload.get_child_arguments()` to inspect the top-level `__main__.__spec__`. When `__main__.__spec__.parent` is a non-empty string, reconstruct the child command as `[sys.executable, *warning_options, '-m', parent, *sys.argv[1:]]`. This must support both `python -m django` and `python -m <other_package>` without relying on `__file__`. When the spec is absent or its parent is empty, preserve existing behavior for ordinary scripts, directory/zip execution, missing paths, and Windows `.exe` and `-script.py` fallbacks. Do not change management-command dispatch or display naming.",
+      "implementation_ready": true,
+      "confirmed_decisions": [
+        "Generalize module detection using the documented top-level `__main__.__spec__.parent` value.",
+        "Treat only a non-empty `__main__.__spec__.parent` as a `-m <package>` invocation; an empty parent does not trigger module reconstruction.",
+        "Preserve Python warning options before `-m` in the reconstructed command.",
+        "Preserve `sys.argv[1:]` after the detected module package.",
+        "Remove the module-detection dependency on `django.__main__.__file__`.",
+        "Keep ordinary-script, directory/zip, missing-path, and Windows entry-point fallback behavior unchanged.",
+        "Limit scope to autoreloader child-command reconstruction; do not alter management-command dispatch or display naming.",
+        "Add focused coverage for Django and non-Django module relaunch, warning-option preservation, and unchanged fallback behavior.",
+        "Acceptance requires the targeted autoreload tests to pass.",
+        "Acknowledge bounded residual risk only for Python runtimes that violate documented `__main__.__spec__.parent` semantics."
+      ],
+      "open_material_decisions": [],
+      "acceptance_checks": [
+        "A `python -m django runserver` context produces `[sys.executable, *warning_options, '-m', 'django', 'runserver']`.",
+        "A `python -m pkg_other_than_django runserver` context produces `[sys.executable, *warning_options, '-m', 'pkg_other_than_django', 'runserver']`.",
+        "Module relaunch detection succeeds without reading or requiring `django.__main__.__file__`.",
+        "Multiple or existing Python warning options remain ordered between `sys.executable` and `-m`.",
+        "If `__main__.__spec__` is absent or `None`, existing ordinary-script behavior remains unchanged.",
+        "If `__main__.__spec__.parent` is empty, the invocation is not reconstructed as `-m`; existing directory/zip or applicable fallback behavior remains unchanged.",
+        "Existing missing-path and Windows `.exe` and `-script.py` fallback tests continue to pass.",
+        "Targeted tests in `tests/utils_tests/test_autoreload.py` pass."
+      ]
+    },
+    "audited_repository_evidence": {
+      "scope_summary": "Base commit 415f50298f97fb17f841a9df38d995ccf347dfcc contains path-based detection specialized to `python -m django`; autoreloader tests cover that invocation, ordinary script invocation, and Windows entry-point fallbacks, but no non-Django `-m` package case is present in the inspected test section.",
+      "facts": [
+        {
+          "id": "F1",
+          "statement": "`get_child_arguments()` imports `django.__main__`, reads `django.__main__.__file__`, converts it to a path, and compares that path with `sys.argv[0]`.",
+          "path": "django/utils/autoreload.py",
+          "line_start": 213,
+          "line_end": 224
+        },
+        {
+          "id": "F2",
+          "statement": "Only when `sys.argv[0]` equals the path of `django.__main__` does the function reconstruct the child command with `-m django`; the package name is hard-coded as `django`.",
+          "path": "django/utils/autoreload.py",
+          "line_start": 224,
+          "line_end": 227
+        },
+        {
+          "id": "F3",
+          "statement": "For an existing script path that is not `django.__main__`, the function appends the original `sys.argv` to the Python executable and warning options, without reconstructing a `-m <package>` invocation.",
+          "path": "django/utils/autoreload.py",
+          "line_start": 244,
+          "line_end": 246
+        },
+        {
+          "id": "F4",
+          "statement": "`restart_with_reloader()` obtains its subprocess arguments exclusively from `get_child_arguments()` and repeatedly launches that command with the autoreload environment marker set.",
+          "path": "django/utils/autoreload.py",
+          "line_start": 254,
+          "line_end": 260
+        },
+        {
+          "id": "F5",
+          "statement": "The direct unit test for module execution patches `sys.argv` to start with `django.__main__.__file__` and expects `[sys.executable, '-m', 'django', 'runserver']`.",
+          "path": "tests/utils_tests/test_autoreload.py",
+          "line_start": 159,
+          "line_end": 166
+        },
+        {
+          "id": "F6",
+          "statement": "The direct unit test for ordinary script execution expects the script filename itself to be retained after the executable and warning option.",
+          "path": "tests/utils_tests/test_autoreload.py",
+          "line_start": 168,
+          "line_end": 174
+        },
+        {
+          "id": "F7",
+          "statement": "The restart integration-style test for `python -m django` supplies a mocked `django.__main__.__file__` matching `argv[0]` and expects the relaunched command to contain `-m django`.",
+          "path": "tests/utils_tests/test_autoreload.py",
+          "line_start": 445,
+          "line_end": 452
+        },
+        {
+          "id": "F8",
+          "statement": "Django's own `__main__` module delegates to `management.execute_from_command_line()` when executed as the program entry point.",
+          "path": "django/__main__.py",
+          "line_start": 1,
+          "line_end": 9
+        },
+        {
+          "id": "F9",
+          "statement": "When `sys.argv[0]` does not exist, `get_child_arguments()` contains separate Windows fallbacks for a matching `.exe` or `-script.py` entry point and otherwise raises `RuntimeError`.",
+          "path": "django/utils/autoreload.py",
+          "line_start": 228,
+          "line_end": 243
+        }
+      ],
+      "unknowns": [
+        "The inspected repository facts do not establish how every supported Python runtime populates `__main__.__spec__`, because the current implementation and cited tests do not inspect it.",
+        "The inspected test section contains no case for launching a package other than Django with `python -m <package> runserver`."
+      ],
+      "audit_summary": "All nine facts are directly supported by the cited repository files and line ranges."
+    },
+    "failure_taxonomy": [
+      "omission",
+      "invention",
+      "repository-delegation",
+      "synthesis-loss",
+      "unverifiable-acceptance",
+      "compatibility-regression",
+      "implementation-leakage",
+      "redundant-question"
+    ]
+  },
+  "exit_code": 0,
+  "stdout": "{\"findings\":[],\"summary\":\"No material readiness failures identified. The contract is implementation-ready, resolves the approved compatibility boundary, preserves evidenced fallback behavior, and provides concrete acceptance checks for generalized module relaunch and regression coverage.\"}\n",
+  "stderr": "OpenAI Codex v0.144.6\n--------\nworkdir: /var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-adversarial-reviewer-5i8zs8ca\nmodel: gpt-5.6-sol\nprovider: openai\napproval: never\nsandbox: read-only\nreasoning effort: none\nreasoning summaries: none\nsession id: 019f7c7c-3659-7851-a981-3f112622d8b3\n--------\nuser\nBlindly review only public request, audited repository evidence, transcript, and contract. Use only the fixed failure taxonomy. Report material readiness failures with exact JSON-pointer citations to scalar leaves; do not quote arrays or objects and do not infer gold behavior. Citation artifact roots are exact: contract uses /summary, /implementation_ready, /confirmed_decisions/N, /open_material_decisions/N, or /acceptance_checks/N; transcript uses /N/...; evidence uses /scope_summary, /facts/N/..., /unknowns/N, or /audit_summary. Never cite /repository_facts or another public-case path as an evidence artifact.\nReturn only the JSON required by the supplied schema.\nINPUT:\n{\"alias\": \"django__django-13837\", \"audited_repository_evidence\": {\"audit_summary\": \"All nine facts are directly supported by the cited repository files and line ranges.\", \"facts\": [{\"id\": \"F1\", \"line_end\": 224, \"line_start\": 213, \"path\": \"django/utils/autoreload.py\", \"statement\": \"`get_child_arguments()` imports `django.__main__`, reads `django.__main__.__file__`, converts it to a path, and compares that path with `sys.argv[0]`.\"}, {\"id\": \"F2\", \"line_end\": 227, \"line_start\": 224, \"path\": \"django/utils/autoreload.py\", \"statement\": \"Only when `sys.argv[0]` equals the path of `django.__main__` does the function reconstruct the child command with `-m django`; the package name is hard-coded as `django`.\"}, {\"id\": \"F3\", \"line_end\": 246, \"line_start\": 244, \"path\": \"django/utils/autoreload.py\", \"statement\": \"For an existing script path that is not `django.__main__`, the function appends the original `sys.argv` to the Python executable and warning options, without reconstructing a `-m <package>` invocation.\"}, {\"id\": \"F4\", \"line_end\": 260, \"line_start\": 254, \"path\": \"django/utils/autoreload.py\", \"statement\": \"`restart_with_reloader()` obtains its subprocess arguments exclusively from `get_child_arguments()` and repeatedly launches that command with the autoreload environment marker set.\"}, {\"id\": \"F5\", \"line_end\": 166, \"line_start\": 159, \"path\": \"tests/utils_tests/test_autoreload.py\", \"statement\": \"The direct unit test for module execution patches `sys.argv` to start with `django.__main__.__file__` and expects `[sys.executable, '-m', 'django', 'runserver']`.\"}, {\"id\": \"F6\", \"line_end\": 174, \"line_start\": 168, \"path\": \"tests/utils_tests/test_autoreload.py\", \"statement\": \"The direct unit test for ordinary script execution expects the script filename itself to be retained after the executable and warning option.\"}, {\"id\": \"F7\", \"line_end\": 452, \"line_start\": 445, \"path\": \"tests/utils_tests/test_autoreload.py\", \"statement\": \"The restart integration-style test for `python -m django` supplies a mocked `django.__main__.__file__` matching `argv[0]` and expects the relaunched command to contain `-m django`.\"}, {\"id\": \"F8\", \"line_end\": 9, \"line_start\": 1, \"path\": \"django/__main__.py\", \"statement\": \"Django's own `__main__` module delegates to `management.execute_from_command_line()` when executed as the program entry point.\"}, {\"id\": \"F9\", \"line_end\": 243, \"line_start\": 228, \"path\": \"django/utils/autoreload.py\", \"statement\": \"When `sys.argv[0]` does not exist, `get_child_arguments()` contains separate Windows fallbacks for a matching `.exe` or `-script.py` entry point and otherwise raises `RuntimeError`.\"}], \"scope_summary\": \"Base commit 415f50298f97fb17f841a9df38d995ccf347dfcc contains path-based detection specialized to `python -m django`; autoreloader tests cover that invocation, ordinary script invocation, and Windows entry-point fallbacks, but no non-Django `-m` package case is present in the inspected test section.\", \"unknowns\": [\"The inspected repository facts do not establish how every supported Python runtime populates `__main__.__spec__`, because the current implementation and cited tests do not inspect it.\", \"The inspected test section contains no case for launching a package other than Django with `python -m <package> runserver`.\"]}, \"contract\": {\"acceptance_checks\": [\"A `python -m django runserver` context produces `[sys.executable, *warning_options, '-m', 'django', 'runserver']`.\", \"A `python -m pkg_other_than_django runserver` context produces `[sys.executable, *warning_options, '-m', 'pkg_other_than_django', 'runserver']`.\", \"Module relaunch detection succeeds without reading or requiring `django.__main__.__file__`.\", \"Multiple or existing Python warning options remain ordered between `sys.executable` and `-m`.\", \"If `__main__.__spec__` is absent or `None`, existing ordinary-script behavior remains unchanged.\", \"If `__main__.__spec__.parent` is empty, the invocation is not reconstructed as `-m`; existing directory/zip or applicable fallback behavior remains unchanged.\", \"Existing missing-path and Windows `.exe` and `-script.py` fallback tests continue to pass.\", \"Targeted tests in `tests/utils_tests/test_autoreload.py` pass.\"], \"confirmed_decisions\": [\"Generalize module detection using the documented top-level `__main__.__spec__.parent` value.\", \"Treat only a non-empty `__main__.__spec__.parent` as a `-m <package>` invocation; an empty parent does not trigger module reconstruction.\", \"Preserve Python warning options before `-m` in the reconstructed command.\", \"Preserve `sys.argv[1:]` after the detected module package.\", \"Remove the module-detection dependency on `django.__main__.__file__`.\", \"Keep ordinary-script, directory/zip, missing-path, and Windows entry-point fallback behavior unchanged.\", \"Limit scope to autoreloader child-command reconstruction; do not alter management-command dispatch or display naming.\", \"Add focused coverage for Django and non-Django module relaunch, warning-option preservation, and unchanged fallback behavior.\", \"Acceptance requires the targeted autoreload tests to pass.\", \"Acknowledge bounded residual risk only for Python runtimes that violate documented `__main__.__spec__.parent` semantics.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"Update `django.utils.autoreload.get_child_arguments()` to inspect the top-level `__main__.__spec__`. When `__main__.__spec__.parent` is a non-empty string, reconstruct the child command as `[sys.executable, *warning_options, '-m', parent, *sys.argv[1:]]`. This must support both `python -m django` and `python -m <other_package>` without relying on `__file__`. When the spec is absent or its parent is empty, preserve existing behavior for ordinary scripts, directory/zip execution, missing paths, and Windows `.exe` and `-script.py` fallbacks. Do not change management-command dispatch or display naming.\"}, \"failure_taxonomy\": [\"omission\", \"invention\", \"repository-delegation\", \"synthesis-loss\", \"unverifiable-acceptance\", \"compatibility-regression\", \"implementation-leakage\", \"redundant-question\"], \"metadata\": {\"context_mode\": \"repository\", \"partition\": \"validation\", \"repository_family\": \"django/django\"}, \"public_request\": \"Allow autoreloading of `python -m pkg_other_than_django runserver`\\nDescription\\n\\t \\n\\t\\t(last modified by William Schwartz)\\n\\t \\n​django.utils.autoreload.get_child_arguments detects if Python was launched as python -m django. Currently it detects only when ​-m was passed specifically django (and only in Python environments in which __file__ is set on modules, which is ​not true of all Python environments). Like #32177, this ticket aims to remove one impediment to creating Django-based command-line utilities that have their own ​__main__ sub-module while overriding Django's built-in management commands—in this case, runserver.\\nThe fix, which I have submitted in the ​attached PR, is to use Python's ​documented way of determining if -m was used in get_child_arguments:\\nThe top-level __main__ module is always the entry point of a ​complete Python program.\\n __main__.__spec__ is not None ​if and only if Python was launched with -m or the name of a \\\"directory, zipfile or other sys.path entry.\\\" In the latter cases, the ​documentation says\\nIf the script name refers to a directory or zipfile, the script name is added to the start of sys.path and the __main__.py file in that location is executed as the __main__ module.\\nHence __main__.__spec__.parent (which is ​usually but not always __main__.__package__) exists and is the empty string when Python is started with the name of a directory or zip file.\\nTherefore Python was started with -m pkg if and only if __main__.__spec__.parent == \\\"pkg\\\".\\nFollowing this algorithm is guaranteed to work as long as Python obeys its own documentation, and has the side benefit of avoiding use of __file__.\\n\", \"repository_facts\": [{\"evidence\": [{\"cache_required\": true, \"excerpt\": \"def get_child_arguments():\\n    \\\"\\\"\\\"\\n    Return the executable. This contains a workaround for Windows if the\\n    executable is reported to not have the .exe extension which can cause bugs\\n    on reloading.\\n    \\\"\\\"\\\"\\n    import django.__main__\\n    django_main_path = Path(django.__main__.__file__)\\n    py_script = Path(sys.argv[0])\\n\\n    args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]\\n    if py_script == django_main_path:\", \"excerpt_digest\": \"2bfcb76d1811b823c029d740a6704f4d99bdc4bdcde9af4396724202bb895a23\", \"id\": \"repository:F1\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"django/utils/autoreload.py:L213-L224\", \"source\": \"repository\", \"source_digest\": \"36a1b2bda60513950029d07b688263d6dc6c69adc7f3efaceb63eeb54626c46e\"}], \"id\": \"F1\", \"statement\": \"`get_child_arguments()` imports `django.__main__`, reads its `__file__` into a `Path`, and compares that path with `sys.argv[0]`.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]\\n    if py_script == django_main_path:\\n        # The server was started with `python -m django runserver`.\\n        args += ['-m', 'django']\\n        args += sys.argv[1:]\", \"excerpt_digest\": \"2ecdb538b2e2738f3aa2c417427d2bda05f27a257c55283009fe255ed6023d9b\", \"id\": \"repository:F2\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"django/utils/autoreload.py:L223-L227\", \"source\": \"repository\", \"source_digest\": \"36a1b2bda60513950029d07b688263d6dc6c69adc7f3efaceb63eeb54626c46e\"}], \"id\": \"F2\", \"statement\": \"When `sys.argv[0]` equals the path of `django.__main__.__file__`, the child command is constructed with `sys.executable`, warning options, `-m django`, and the remaining original arguments.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        raise RuntimeError('Script %s does not exist.' % py_script)\\n    else:\\n        args += sys.argv\\n    return args\", \"excerpt_digest\": \"a7537bd7b4e562af70a5b48560af6b5d25a2125d9c8ee77e1430149518a2beaa\", \"id\": \"repository:F3\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"django/utils/autoreload.py:L243-L246\", \"source\": \"repository\", \"source_digest\": \"36a1b2bda60513950029d07b688263d6dc6c69adc7f3efaceb63eeb54626c46e\"}], \"id\": \"F3\", \"statement\": \"For an existing script path that is not Django's `__main__.py`, the function appends the complete original `sys.argv` to the executable and warning options.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    elif not py_script.exists():\\n        # sys.argv[0] may not exist for several reasons on Windows.\\n        # It may exist with a .exe extension or have a -script.py suffix.\\n        exe_entrypoint = py_script.with_suffix('.exe')\\n        if exe_entrypoint.exists():\\n            # Should be executed directly, ignoring sys.executable.\\n            # TODO: Remove str() when dropping support for PY37.\\n            # args parameter accepts path-like on Windows from Python 3.8.\\n            return [str(exe_entrypoint), *sys.argv[1:]]\\n        script_entrypoint = py_script.with_name('%s-script.py' % py_script.name)\\n        if script_entrypoint.exists():\\n            # Should be executed as usual.\\n            # TODO: Remove str() when dropping support for PY37.\\n            # args parameter accepts path-like on Windows from Python 3.8.\\n            return [*args, str(script_entrypoint), *sys.argv[1:]]\\n        raise RuntimeError('Script %s does not exist.' % py_script)\", \"excerpt_digest\": \"04408cc3c3e0ed4f687ba97e84d10e77ed3b81acc56e422b262db3ad69ee3e37\", \"id\": \"repository:F4\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"django/utils/autoreload.py:L228-L243\", \"source\": \"repository\", \"source_digest\": \"36a1b2bda60513950029d07b688263d6dc6c69adc7f3efaceb63eeb54626c46e\"}], \"id\": \"F4\", \"statement\": \"For a nonexistent `sys.argv[0]`, the function checks Windows `.exe` and `-script.py` entry-point variants and raises `RuntimeError` if neither exists.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"class TestChildArguments(SimpleTestCase):\\n    @mock.patch('sys.argv', [django.__main__.__file__, 'runserver'])\\n    @mock.patch('sys.warnoptions', [])\\n    def test_run_as_module(self):\\n        self.assertEqual(\\n            autoreload.get_child_arguments(),\\n            [sys.executable, '-m', 'django', 'runserver']\\n        )\", \"excerpt_digest\": \"cb11e0aa40ef49fae1321e875537b674d07f5535098620dc91a48861a9b38bb3\", \"id\": \"repository:F5\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/utils_tests/test_autoreload.py:L159-L166\", \"source\": \"repository\", \"source_digest\": \"6dfb819e68a0e5e30662f5a4d0bda12b1be415c2e49ce675c8c380f61bbc4fe9\"}], \"id\": \"F5\", \"statement\": \"The child-argument test for module execution patches `sys.argv[0]` to `django.__main__.__file__` and expects `[sys.executable, '-m', 'django', 'runserver']`.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    @mock.patch('sys.argv', [__file__, 'runserver'])\\n    @mock.patch('sys.warnoptions', ['error'])\\n    def test_warnoptions(self):\\n        self.assertEqual(\\n            autoreload.get_child_arguments(),\\n            [sys.executable, '-Werror', __file__, 'runserver']\\n        )\", \"excerpt_digest\": \"29dd3ee6660e5cdfa5c85c9b0afb4b1f022fc41a2c10e9bb18fe41d281e86ecc\", \"id\": \"repository:F6\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/utils_tests/test_autoreload.py:L168-L174\", \"source\": \"repository\", \"source_digest\": \"6dfb819e68a0e5e30662f5a4d0bda12b1be415c2e49ce675c8c380f61bbc4fe9\"}], \"id\": \"F6\", \"statement\": \"The ordinary-script test expects Python warning options to precede the original script path and command arguments.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def test_python_m_django(self):\\n        main = '/usr/lib/pythonX.Y/site-packages/django/__main__.py'\\n        argv = [main, 'runserver']\\n        mock_call = self.patch_autoreload(argv)\\n        with mock.patch('django.__main__.__file__', main):\\n            autoreload.restart_with_reloader()\\n            self.assertEqual(mock_call.call_count, 1)\\n            self.assertEqual(mock_call.call_args[0][0], [self.executable, '-Wall', '-m', 'django'] + argv[1:])\", \"excerpt_digest\": \"3c8e04a521189d6766c03a5d553f07ea46532d3d6c840aee6fd8f7dd12ac0277\", \"id\": \"repository:F7\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/utils_tests/test_autoreload.py:L445-L452\", \"source\": \"repository\", \"source_digest\": \"6dfb819e68a0e5e30662f5a4d0bda12b1be415c2e49ce675c8c380f61bbc4fe9\"}], \"id\": \"F7\", \"statement\": \"A restart-level test represents `python -m django` using a Django `__main__.py` path, patches `django.__main__.__file__` to that path, and expects the subprocess command to contain `-m django`.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"def restart_with_reloader():\\n    new_environ = {**os.environ, DJANGO_AUTORELOAD_ENV: 'true'}\\n    args = get_child_arguments()\\n    while True:\\n        p = subprocess.run(args, env=new_environ, close_fds=False)\\n        if p.returncode != 3:\\n            return p.returncode\", \"excerpt_digest\": \"e099a28dbfebed32c3ef26ceb259e91c753529f586bbd363cf9060a6d0df57e1\", \"id\": \"repository:F8\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"django/utils/autoreload.py:L254-L260\", \"source\": \"repository\", \"source_digest\": \"36a1b2bda60513950029d07b688263d6dc6c69adc7f3efaceb63eeb54626c46e\"}], \"id\": \"F8\", \"statement\": \"`restart_with_reloader()` obtains its subprocess arguments from `get_child_arguments()` and repeatedly runs them until the child return code is not 3.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"\\\"\\\"\\\"\\nInvokes django-admin when the django module is run as a script.\\n\\nExample: python -m django check\\n\\\"\\\"\\\"\\nfrom django.core import management\\n\\nif __name__ == \\\"__main__\\\":\\n    management.execute_from_command_line()\", \"excerpt_digest\": \"b624fa22ef678009ea0b03416b93c99045f980e6592177394caea296c0766f2a\", \"id\": \"repository:F9\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"django/__main__.py:L1-L9\", \"source\": \"repository\", \"source_digest\": \"f5ae53a35bd05ea7f6260fde87c9cbbc87341979838c45efe2313541912a0459\"}], \"id\": \"F9\", \"statement\": \"Django's package `__main__.py` invokes `management.execute_from_command_line()` when executed as `__main__`.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"class ManagementUtility:\\n    \\\"\\\"\\\"\\n    Encapsulate the logic of the django-admin and manage.py utilities.\\n    \\\"\\\"\\\"\\n    def __init__(self, argv=None):\\n        self.argv = argv or sys.argv[:]\\n        self.prog_name = os.path.basename(self.argv[0])\\n        if self.prog_name == '__main__.py':\\n            self.prog_name = 'python -m django'\\n        self.settings_exception = None\", \"excerpt_digest\": \"8220c010d6d59385540f21e938a1aa1da36a15e0382523f06e9550482594423b\", \"id\": \"repository:F10\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"django/core/management/__init__.py:L184-L193\", \"source\": \"repository\", \"source_digest\": \"56acc372ce8053436d6958d13e675aa5d31416c2325749bd375863205926afe3\"}], \"id\": \"F10\", \"statement\": \"`ManagementUtility` converts a program basename of `__main__.py` to the display name `python -m django`.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        if module.__name__ == '__main__':\\n            # __main__ (usually manage.py) doesn't always have a __spec__ set.\\n            # Handle this by falling back to using __file__, resolved below.\\n            # See https://docs.python.org/reference/import.html#main-spec\\n            # __file__ may not exists, e.g. when running ipdb debugger.\\n            if hasattr(module, '__file__'):\\n                sys_file_paths.append(module.__file__)\\n            continue\\n        if getattr(module, '__spec__', None) is None:\\n            continue\", \"excerpt_digest\": \"17105daa4694f45f4c7c2c114b474444bb174974919cfb8eaf8ac25c0a0f6070\", \"id\": \"repository:F11\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"django/utils/autoreload.py:L129-L138\", \"source\": \"repository\", \"source_digest\": \"36a1b2bda60513950029d07b688263d6dc6c69adc7f3efaceb63eeb54626c46e\"}], \"id\": \"F11\", \"statement\": \"The autoreload module-file iterator treats `__main__` specially: it uses `__file__` when present and does not use that module's `__spec__`.\"}], \"transcript\": [{\"answer\": \"Approve boundary\", \"open_material_decisions\": [\"Approve the compatibility boundary and acceptance scope for generalized `-m` detection.\"], \"question\": {\"header\": \"Compatibility\", \"options\": [{\"description\": \"Support Django and non-Django `-m` packages, preserve warning arguments, and leave ordinary scripts, directory/zip execution, and Windows fallbacks unchanged.\", \"label\": \"Approve boundary\", \"recommended\": true}, {\"description\": \"Also reconstruct directory or zipfile execution as a module invocation, expanding behavior beyond the reported package case.\", \"label\": \"Treat empty as module\", \"recommended\": false}, {\"description\": \"Redesign child-command reconstruction for all entry-point forms, materially expanding scope and compatibility requirements.\", \"label\": \"Broader redesign\", \"recommended\": false}], \"prompt\": \"Should the contract require `get_child_arguments()` to relaunch as `python -m <parent>` only when `__main__.__spec__.parent` is non-empty, while preserving existing script and Windows fallback behavior when the spec is absent or its parent is empty?\"}, \"turn\": 1}, {\"answer\": \"{\\\"selection\\\":\\\"Approve contract\\\"}\", \"open_material_decisions\": [\"Approve the complete executable contract.\"], \"question\": {\"header\": \"Contract\", \"options\": [{\"description\": \"Seal this scope and acceptance criteria as implementation-ready.\", \"label\": \"Approve contract\", \"recommended\": true}, {\"description\": \"Change the required acceptance evidence while retaining the approved behavior boundary.\", \"label\": \"Revise tests\", \"recommended\": false}, {\"description\": \"Reopen the approved compatibility boundary and change observable behavior.\", \"label\": \"Revise behavior\", \"recommended\": false}], \"prompt\": \"Approve this implementation contract: update `get_child_arguments()` to inspect the top-level `__main__.__spec__`; when its `parent` is a non-empty string, relaunch with `[sys.executable, warning options, '-m', parent, *sys.argv[1:]]`, supporting both `django` and other packages without relying on `__file__`; when the spec is absent or its parent is empty, preserve the existing ordinary-script, directory/zip, missing-path, and Windows entry-point behavior; add focused tests proving Django and non-Django module relaunch, warning-option preservation, and unchanged fallback behavior; no changes to management-command dispatch or display naming. Acceptance requires the targeted autoreload tests to pass. Residual risk is bounded to Python runtimes violating the documented `__main__.__spec__.parent` semantics.\"}, \"turn\": 2}, {\"interviewer\": {\"action\": \"complete\", \"contract\": {\"acceptance_checks\": [\"A `python -m django runserver` context produces `[sys.executable, *warning_options, '-m', 'django', 'runserver']`.\", \"A `python -m pkg_other_than_django runserver` context produces `[sys.executable, *warning_options, '-m', 'pkg_other_than_django', 'runserver']`.\", \"Module relaunch detection succeeds without reading or requiring `django.__main__.__file__`.\", \"Multiple or existing Python warning options remain ordered between `sys.executable` and `-m`.\", \"If `__main__.__spec__` is absent or `None`, existing ordinary-script behavior remains unchanged.\", \"If `__main__.__spec__.parent` is empty, the invocation is not reconstructed as `-m`; existing directory/zip or applicable fallback behavior remains unchanged.\", \"Existing missing-path and Windows `.exe` and `-script.py` fallback tests continue to pass.\", \"Targeted tests in `tests/utils_tests/test_autoreload.py` pass.\"], \"confirmed_decisions\": [\"Generalize module detection using the documented top-level `__main__.__spec__.parent` value.\", \"Treat only a non-empty `__main__.__spec__.parent` as a `-m <package>` invocation; an empty parent does not trigger module reconstruction.\", \"Preserve Python warning options before `-m` in the reconstructed command.\", \"Preserve `sys.argv[1:]` after the detected module package.\", \"Remove the module-detection dependency on `django.__main__.__file__`.\", \"Keep ordinary-script, directory/zip, missing-path, and Windows entry-point fallback behavior unchanged.\", \"Limit scope to autoreloader child-command reconstruction; do not alter management-command dispatch or display naming.\", \"Add focused coverage for Django and non-Django module relaunch, warning-option preservation, and unchanged fallback behavior.\", \"Acceptance requires the targeted autoreload tests to pass.\", \"Acknowledge bounded residual risk only for Python runtimes that violate documented `__main__.__spec__.parent` semantics.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"Update `django.utils.autoreload.get_child_arguments()` to inspect the top-level `__main__.__spec__`. When `__main__.__spec__.parent` is a non-empty string, reconstruct the child command as `[sys.executable, *warning_options, '-m', parent, *sys.argv[1:]]`. This must support both `python -m django` and `python -m <other_package>` without relying on `__file__`. When the spec is absent or its parent is empty, preserve existing behavior for ordinary scripts, directory/zip execution, missing paths, and Windows `.exe` and `-script.py` fallbacks. Do not change management-command dispatch or display naming.\"}, \"open_material_decisions\": [], \"question\": null, \"reason\": \"The owner explicitly approved both the compatibility boundary and the complete executable contract. No material decisions remain open.\"}, \"turn\": 3}], \"upstream\": {\"base_commit\": \"415f50298f97fb17f841a9df38d995ccf347dfcc\", \"dataset\": \"princeton-nlp/SWE-bench_Verified\", \"instance_id_digest\": \"4855f24730e91ecf04c224c123ca03d88cae9c68b5e3c3d3231fbc6e69dc2a17\", \"issue_cache_key\": \"sha256:34e44d1cfd0354cf9ed68afafef69789c59418e2ea0620e23b6402522a2ae4ac\", \"issue_digest\": \"34e44d1cfd0354cf9ed68afafef69789c59418e2ea0620e23b6402522a2ae4ac\", \"revision\": \"c104f840cc67f8b6eec6f759ebc8b2693d585d4a\", \"source_url\": \"https://github.com/django/django/pull/13837\"}}\ncodex\n{\"findings\":[],\"summary\":\"No material readiness failures identified. The contract is implementation-ready, resolves the approved compatibility boundary, preserves evidenced fallback behavior, and provides concrete acceptance checks for generalized module relaunch and regression coverage.\"}\ntokens used\n28,319\n"
+}

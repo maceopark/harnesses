@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "minversion on a module whose version is 1.14.3 with requested version 1.14dev returns True and does not raise TypeError.",
+    "The regression is exercised through astropy.utils.minversion or the same public function implementation, not by testing pkg_resources in isolation.",
+    "Existing accepted comparisons for installed version 0.12.2 against 0.12, 0.12.1, and 0.12.0.dev remain True.",
+    "Existing rejected comparisons for installed version 0.12.2 against 1 and 1.2rc1 remain False.",
+    "inclusive=False continues to use a strict greater-than comparison between parsed versions.",
+    "A missing module-name string continues to return False, and existing module/version_path behavior remains unchanged.",
+    "The targeted introspection test suite passes without LooseVersion comparison warnings or the reported int-versus-str TypeError."
+  ],
+  "confirmed_decisions": [
+    "Use pkg_resources.parse_version as the version-comparison implementation.",
+    "Remove the LooseVersion import from astropy/utils/introspection.py and import parse_version from pkg_resources.",
+    "Parse both the installed version and requested minimum before comparison.",
+    "Preserve inclusive=True semantics as installed >= requested.",
+    "Preserve inclusive=False semantics as installed > requested.",
+    "Do not change accepted module argument forms, failed-import behavior, version_path resolution, or unrelated NumPy compatibility call sites.",
+    "Extend astropy/utils/tests/test_introspection.py with the reported 1.14.3 versus 1.14dev regression shape while retaining existing minversion expectations."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Replace distutils.version.LooseVersion usage in astropy.utils.introspection.minversion with pkg_resources.parse_version. Preserve minversion's existing module resolution, version_path handling, return behavior, and inclusive/exclusive operators. Add regression coverage proving that a multi-component installed release such as 1.14.3 compares successfully against a shorter development minimum such as 1.14dev instead of raising TypeError."
+}

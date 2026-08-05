@@ -1,0 +1,60 @@
+[
+  {
+    "answer": "pkg_resources",
+    "open_material_decisions": [
+      "Choose the version parser and compatibility policy that will replace `distutils.version.LooseVersion` in `minversion`."
+    ],
+    "question": {
+      "header": "Version parser",
+      "options": [
+        {
+          "description": "Restore the parser explicitly shown in the issue to handle `1.14.3 >= 1.14dev`, using setuptools already present in the setup path.",
+          "label": "pkg_resources (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Add or reuse an Astropy-local parser, avoiding a runtime setuptools API dependency but increasing implementation and maintenance scope.",
+          "label": "Vendored parser",
+          "recommended": false
+        },
+        {
+          "description": "Keep `LooseVersion` and special-case incompatible token comparisons, minimizing dependency changes but retaining its broader parsing defects.",
+          "label": "Targeted workaround",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which parser should `minversion` use for version comparisons?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "astropy.utils.minversion remains publicly importable through astropy.utils.",
+          "minversion on a synthetic or imported module reporting version 1.14.3 returns True for requirement 1.14dev with the default inclusive comparison and does not raise TypeError.",
+          "The exclusive branch uses parsed versions with > and retains its existing meaning.",
+          "Existing test_minversion expectations for installed version 0.12.2 against 0.12, 0.12.1, 0.12.0.dev, 1, and 1.2rc1 continue to pass.",
+          "A missing module-name string still returns False, and unsupported module argument types still raise ValueError.",
+          "The targeted astropy/utils/tests/test_introspection.py test suite passes."
+        ],
+        "confirmed_decisions": [
+          "Use pkg_resources.parse_version as the replacement version parser.",
+          "Remove the distutils.version.LooseVersion dependency from astropy/utils/introspection.py.",
+          "Apply the new parser to both comparison branches: inclusive remains >= and exclusive remains >.",
+          "Do not change minversion's public signature, module-name/module-object handling, version_path lookup, failed-import result, or invalid-argument error behavior.",
+          "Retain the existing minversion assertions and add focused coverage for the reported multi-component-release versus development-version case.",
+          "Keep the change localized to the minversion implementation and its introspection tests; no vendored parser or targeted LooseVersion workaround is required."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update astropy.utils.introspection.minversion to compare installed and requested version strings using pkg_resources.parse_version instead of distutils.version.LooseVersion. Preserve module resolution, version_path handling, missing-module behavior, argument validation, and inclusive/exclusive semantics. Add a regression test proving that an installed version of 1.14.3 satisfies a requested version of 1.14dev without raising TypeError."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The parser choice is confirmed, and repository evidence plus the reported failure fully determines a minimal implementation: replace LooseVersion comparisons with pkg_resources.parse_version while preserving minversion's existing API and comparison branches, and add focused regression coverage."
+    },
+    "turn": 2
+  }
+]

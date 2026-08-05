@@ -1,0 +1,35 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/0",
+          "quoted_value": "Q-format VLAs must match P-format VLA comparison behavior exactly, including row-by-row comparison and rtol/atol semantics."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/0",
+          "quoted_value": "A regression test constructs the reported QD variable-length column with rows [[0], [0, 0]], writes it to FITS, and compares that file with itself using FITSDiff."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/1",
+          "quoted_value": "The QD self-comparison has identical equal to true."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/4/statement",
+          "quoted_value": "TableDataDiff has a row-by-row variable-length-array comparison branch guarded specifically by the condition that \"P\" occurs in col.format; otherwise non-floating columns use np.where(arra != arrb)."
+        }
+      ],
+      "description": "An implementation could make identical QD rows compare successfully yet still ignore or incorrectly apply rtol/atol for Q-format VLAs and pass every stated acceptance check. Add a Q-format regression with distinct values that are equal under configured tolerance, ideally paired with an outside-tolerance case, to verify the approved P-equivalent semantics.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The acceptance checks do not operationalize the confirmed requirement that Q-format VLAs inherit P-format rtol/atol behavior.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "The Q regression checks only identical self-comparison, while the only tolerance requirement appears in a confirmed decision; no acceptance check compares distinct Q-format values under nonzero rtol or atol."
+    }
+  ],
+  "summary": "The contract is not fully implementation-ready because its acceptance suite proves the reported QD self-comparison fix but does not verify the separately confirmed requirement that Q-format VLAs adopt P-format rtol/atol semantics."
+}

@@ -1,0 +1,44 @@
+{
+  "lenses": [
+    {
+      "id": "selection-scope-mismatch",
+      "stage": "discovery",
+      "failure_description": "The requirements do not establish which notes qualify as selected, especially when selection includes filters, folders, tags, hidden items, deleted items, or an empty result.",
+      "observable_signal": "Two implementers given the same user invocation export different note sets, or the command exports notes the user did not intend to archive.",
+      "why_material": "Selection determines the archive’s contents; ambiguity can cause silent omission or unintended disclosure of personal notes.",
+      "minimal_test_shape": "Provide a collection containing ordinary, hidden, deleted, tagged, and folder-scoped notes, then evaluate which note identifiers the handoff says must be exported for several representative selections."
+    },
+    {
+      "id": "archive-representation-ambiguity",
+      "stage": "synthesis",
+      "failure_description": "The handoff leaves the export artifact’s structure, note encoding, attachment treatment, filename rules, and metadata representation materially unspecified.",
+      "observable_signal": "Independent implementations produce archives that cannot be interpreted consistently or that lose different parts of the same note.",
+      "why_material": "Offline archiving requires a stable, inspectable artifact whose content and metadata remain usable outside the live application.",
+      "minimal_test_shape": "Use one note containing formatted text, timestamps, tags, special characters, duplicate titles, and an attachment, then determine the exact externally visible archive entries and metadata fields required by the handoff."
+    },
+    {
+      "id": "metadata-fidelity-loss",
+      "stage": "implementation",
+      "failure_description": "Exported notes omit, alter, or conflate metadata needed to identify and reconstruct the archived records.",
+      "observable_signal": "The archive shows changed timestamps, missing tags, unstable identifiers, incorrect ordering fields, or indistinguishable notes with the same title.",
+      "why_material": "An archive that preserves note bodies but not reliable metadata may be insufficient for audit, recovery, migration, or deduplication.",
+      "minimal_test_shape": "Export notes with identical titles but different identifiers, creation times, modification times, tags, and source locations, then compare each archived metadata value with its source value."
+    },
+    {
+      "id": "partial-failure-opacity",
+      "stage": "interaction",
+      "failure_description": "When some notes cannot be exported, the command’s completion status and report do not clearly distinguish exported, skipped, and failed items or explain the scope of the failure.",
+      "observable_signal": "The command appears successful despite missing notes, reports only a generic error, or leaves the user unable to identify which items require attention.",
+      "why_material": "Partial failure is an expected boundary condition, and an ambiguous outcome can create false confidence that an offline archive is complete.",
+      "minimal_test_shape": "Run an export where one selected note succeeds, one is unreadable, and one attachment cannot be copied, then inspect the artifact, process status, and user-visible report for item-level outcome distinctions."
+    },
+    {
+      "id": "verification-without-completeness-evidence",
+      "stage": "verification",
+      "failure_description": "The handoff provides no observable basis for determining whether the resulting archive is complete and internally consistent after the command finishes.",
+      "observable_signal": "A missing or truncated note cannot be detected from the command outcome or archive contents without manually comparing every source record.",
+      "why_material": "The fixed goal requires an implementable handoff whose success can be verified; unverifiable completeness allows silent archival loss to pass acceptance.",
+      "minimal_test_shape": "Export a known set of notes, remove or truncate one produced entry, and assess whether the specified observable outputs allow the discrepancy to be detected."
+    }
+  ]
+}

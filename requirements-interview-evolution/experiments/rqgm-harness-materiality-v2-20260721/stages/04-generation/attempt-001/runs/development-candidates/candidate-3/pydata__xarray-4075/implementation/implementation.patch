@@ -1,0 +1,55 @@
+diff --git a/xarray/core/weighted.py b/xarray/core/weighted.py
+index 996d2e4..1931239 100644
+--- a/xarray/core/weighted.py
++++ b/xarray/core/weighted.py
+@@ -142,7 +142,14 @@ class Weighted:
+         # we need to mask data values that are nan; else the weights are wrong
+         mask = da.notnull()
+ 
+-        sum_of_weights = self._reduce(mask, self.weights, dim=dim, skipna=False)
++        # bool-bool multiplication returns boolean, so coerce boolean weights to
++        # integers to ensure that True weights are counted as 1.
++        weights = (
++            self.weights.astype(int)
++            if self.weights.dtype.kind == "b"
++            else self.weights
++        )
++        sum_of_weights = self._reduce(mask, weights, dim=dim, skipna=False)
+ 
+         # 0-weights are not valid
+         valid_weights = sum_of_weights != 0.0
+diff --git a/xarray/tests/test_weighted.py b/xarray/tests/test_weighted.py
+index 2453121..471bf05 100644
+--- a/xarray/tests/test_weighted.py
++++ b/xarray/tests/test_weighted.py
+@@ -59,6 +59,30 @@ def test_weighted_sum_of_weights_nan(weights, expected):
+     assert_equal(expected, result)
+ 
+ 
++@pytest.mark.parametrize(
++    ("data", "weights", "expected_sum_of_weights", "expected_mean"),
++    (
++        ([1.0, 1.0, 1.0], [True, True, False], 2, 1.0),
++        ([np.nan, 1.0, 1.0], [True, True, False], 1, 1.0),
++        ([np.nan, 1.0, 1.0], [True, False, False], np.nan, np.nan),
++    ),
++)
++def test_weighted_boolean_weights(
++    data, weights, expected_sum_of_weights, expected_mean
++):
++    da = DataArray(data)
++    weights = DataArray(weights)
++    numeric_weights = weights.astype(int)
++
++    result = da.weighted(weights)
++    numeric_result = da.weighted(numeric_weights)
++
++    assert_equal(DataArray(expected_sum_of_weights), result.sum_of_weights())
++    assert_equal(numeric_result.sum_of_weights(), result.sum_of_weights())
++    assert_equal(DataArray(expected_mean), result.mean())
++    assert_equal(numeric_result.mean(), result.mean())
++
++
+ @pytest.mark.parametrize("da", ([1.0, 2], [1, np.nan], [np.nan, np.nan]))
+ @pytest.mark.parametrize("factor", [0, 1, 3.14])
+ @pytest.mark.parametrize("skipna", (True, False))

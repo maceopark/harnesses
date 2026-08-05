@@ -1,0 +1,360 @@
+{
+  "role": "interviewer",
+  "model": "gpt-5.6-sol",
+  "command": [
+    "codex",
+    "exec",
+    "--model",
+    "gpt-5.6-sol",
+    "--ephemeral",
+    "--sandbox",
+    "read-only",
+    "--skip-git-repo-check",
+    "--ignore-user-config",
+    "--color",
+    "never",
+    "--output-schema",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-interviewer-dadm_jw0/schema.json",
+    "--output-last-message",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-interviewer-dadm_jw0/output.json",
+    "-C",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-interviewer-dadm_jw0",
+    "<stdin>"
+  ],
+  "prompt": "Follow candidate_skill exactly. Continue until no material blocker remains; there is no arbitrary question budget. Ask exactly one structured question at a time. Repository evidence is already known and must not be delegated back to the owner. Complete only with an implementable contract.\nReturn only the JSON required by the supplied schema.\nINPUT:\n{\"alias\": \"sphinx-doc__sphinx-7748\", \"audited_repository_evidence\": {\"audit_summary\": \"Accepted 13 facts with direct support in their cited ranges; rejected F14 because its ordering claim about adding docstring content is not fully supported by the cited lines.\", \"facts\": [{\"id\": \"F1\", \"line_end\": 455, \"line_start\": 445, \"path\": \"doc/usage/extensions/autodoc.rst\", \"statement\": \"The documented behavior says autodoc_docstring_signature examines the first docstring line for functions and methods, uses it when it resembles a signature, and removes that line from the rendered docstring.\"}, {\"id\": \"F2\", \"line_end\": 1918, \"line_start\": 1913, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"autodoc_docstring_signature is registered with a default value of True.\"}, {\"id\": \"F3\", \"line_end\": 62, \"line_start\": 54, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"The signature parser accepts an optional qualified name, optional parenthesized arguments, and an optional return annotation, with the regular expression anchored to the entire input line.\"}, {\"id\": \"F4\", \"line_end\": 1038, \"line_start\": 1034, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"DocstringSignatureMixin is used to read signatures from docstrings for function and method documenters.\"}, {\"id\": \"F5\", \"line_end\": 1072, \"line_start\": 1045, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"_find_signature copies the retrieved docstrings, examines only doclines[0] in each docstring, validates that parsed signature's base name against the documented object, removes that first line from the retained content, stores one args/return-annotation pair, and then breaks out of the loop.\"}, {\"id\": \"F6\", \"line_end\": 1091, \"line_start\": 1084, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"Docstring signature discovery runs only when no explicit signature arguments were supplied and autodoc_docstring_signature is enabled; the single discovered args/return-annotation pair is assigned to self.args and self.retann.\"}, {\"id\": \"F7\", \"line_end\": 1117, \"line_start\": 1112, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"FunctionDocumenter inherits DocstringSignatureMixin.\"}, {\"id\": \"F8\", \"line_end\": 1554, \"line_start\": 1547, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"MethodDocumenter inherits DocstringSignatureMixin.\"}, {\"id\": \"F9\", \"line_end\": 454, \"line_start\": 441, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"The generic directive-header writer already supports multiple signatures encoded as newline-separated text, emitting one directive signature line for each line returned by format_signature.\"}, {\"id\": \"F10\", \"line_end\": 1654, \"line_start\": 1635, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"MethodDocumenter already returns newline-joined signatures for singledispatch methods by appending registered implementation signatures to the primary signature.\"}, {\"id\": \"F11\", \"line_end\": 130, \"line_start\": 117, \"path\": \"tests/roots/test-ext-autodoc/target/__init__.py\", \"statement\": \"The existing docstring-signature fixture contains one leading method signature followed by ordinary docstring content; another method fixture begins directly with non-signature content.\"}, {\"id\": \"F12\", \"line_end\": 276, \"line_start\": 235, \"path\": \"tests/test_ext_autodoc_configs.py\", \"statement\": \"With autodoc_docstring_signature enabled, the existing test expects the leading signature to appear in the method directive and to be absent from the rendered body, while the nonsignature first line remains body content.\"}, {\"id\": \"F13\", \"line_end\": 303, \"line_start\": 278, \"path\": \"tests/test_ext_autodoc_configs.py\", \"statement\": \"With autodoc_docstring_signature disabled, the existing test expects the introspected empty signature in the directive and retains the signature-looking line in the docstring body.\"}], \"scope_summary\": \"Inspected base commit 9988d5ce267bf0df4791770b469431b1fb00dcdd of the supplied sphinx-doc/sphinx repository, limited to the existing autodoc docstring-signature implementation, documentation, and tests.\", \"unknowns\": []}, \"candidate_skill\": \"---\\nname: clarify-requirements\\ndescription: Clarify an ambiguous request before implementation.\\n---\\n\\n# Interview\\n\\nInspect the request.\\nAsk only questions whose answers can materially change the resulting contract.\\nProduce the runtime-required contract without inventing unauthorized behavior.\\nState contract clauses as observable outcomes, and omit specific implementation or validation mechanisms unless the request or an explicit interview answer requires that mechanism.\\nDo not promote inferred edge cases or exhaustive examples into separate requirements unless explicitly requested or answered.\\n\", \"metadata\": {\"context_mode\": \"repository\", \"partition\": \"development\", \"repository_family\": \"sphinx-doc/sphinx\"}, \"public_request\": \"autodoc_docstring_signature with overloaded methods\\nWhen using swig to wrap C++ classes for python, if they have overloaded methods, I believe the convention is to place the signatures for each of the overloaded C++ methods at the start of the docstring. Currently, `autodoc_docstring_signature` can only pick up the first one. It would be nice to be able to pick up all of them.\\n\\n\", \"repository_facts\": [{\"evidence\": [{\"cache_required\": true, \"excerpt\": \".. confval:: autodoc_docstring_signature\\n\\n   Functions imported from C modules cannot be introspected, and therefore the\\n   signature for such functions cannot be automatically determined.  However, it\\n   is an often-used convention to put the signature into the first line of the\\n   function's docstring.\\n\\n   If this boolean value is set to ``True`` (which is the default), autodoc will\\n   look at the first line of the docstring for functions and methods, and if it\\n   looks like a signature, use the line as the signature and remove it from the\\n   docstring content.\\n\\n   .. versionadded:: 1.1\", \"excerpt_digest\": \"a242da2d69ab4fddb6140f2ea0f0c5c9ad8a078985eb36675bc1603faf2c3ee9\", \"id\": \"repository:fact-1\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"doc/usage/extensions/autodoc.rst:L445-L457\", \"source\": \"repository\", \"source_digest\": \"f16bda007a918cbb8081d338266a65ee9ebca35dc4a6b6102e940941d9265eb0\"}], \"id\": \"fact-1\", \"statement\": \"The documented behavior of autodoc_docstring_signature is to inspect the first docstring line of functions and methods, use it when it resembles a signature, and remove that line from the rendered docstring; the documented default is True.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"class MethodDocumenter(DocstringSignatureMixin, ClassLevelDocumenter):  # type: ignore\\n    \\\"\\\"\\\"\\n    Specialized Documenter subclass for methods (normal, static and class).\\n    \\\"\\\"\\\"\\n    objtype = 'method'\\n    directivetype = 'method'\\n    member_order = 50\\n    priority = 1  # must be more than FunctionDocumenter\", \"excerpt_digest\": \"5b5120b89079ff44834dfc14cb4d565984487da25515a04b22bd6e6a07eace06\", \"id\": \"repository:fact-2\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sphinx/ext/autodoc/__init__.py:L1547-L1554\", \"source\": \"repository\", \"source_digest\": \"43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c\"}], \"id\": \"fact-2\", \"statement\": \"FunctionDocumenter and MethodDocumenter both inherit DocstringSignatureMixin, so they share the docstring-signature extraction implementation.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def _find_signature(self, encoding: str = None) -> Tuple[str, str]:\\n        if encoding is not None:\\n            warnings.warn(\\\"The 'encoding' argument to autodoc.%s._find_signature() is \\\"\\n                          \\\"deprecated.\\\" % self.__class__.__name__,\\n                          RemovedInSphinx40Warning, stacklevel=2)\\n        docstrings = self.get_doc()\\n        self._new_docstrings = docstrings[:]\\n        result = None\\n        for i, doclines in enumerate(docstrings):\\n            # no lines in docstring, no match\\n            if not doclines:\\n                continue\\n            # match first line of docstring against signature RE\\n            match = py_ext_sig_re.match(doclines[0])\\n            if not match:\\n                continue\\n            exmod, path, base, args, retann = match.groups()\", \"excerpt_digest\": \"b92a51e38128d3e97b0a2da72258a9533cda29ca5c181bcea04a15d523cd2da6\", \"id\": \"repository:fact-3\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sphinx/ext/autodoc/__init__.py:L1040-L1056\", \"source\": \"repository\", \"source_digest\": \"43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c\"}], \"id\": \"fact-3\", \"statement\": \"DocstringSignatureMixin obtains all candidate docstrings but attempts py_ext_sig_re only against doclines[0] for each candidate.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"            # the base name must match ours\\n            valid_names = [self.objpath[-1]]  # type: ignore\\n            if isinstance(self, ClassDocumenter):\\n                valid_names.append('__init__')\\n                if hasattr(self.object, '__mro__'):\\n                    valid_names.extend(cls.__name__ for cls in self.object.__mro__)\\n            if base not in valid_names:\\n                continue\\n            # re-prepare docstring to ignore more leading indentation\\n            tab_width = self.directive.state.document.settings.tab_width  # type: ignore\\n            self._new_docstrings[i] = prepare_docstring('\\\\n'.join(doclines[1:]),\\n                                                        tabsize=tab_width)\\n            result = args, retann\\n            # don't look any further\\n            break\\n        return result\", \"excerpt_digest\": \"781a488236b50ac6b8ec0caf867622909c3a2dfffc07445507df3d005b82607f\", \"id\": \"repository:fact-4\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sphinx/ext/autodoc/__init__.py:L1057-L1072\", \"source\": \"repository\", \"source_digest\": \"43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c\"}], \"id\": \"fact-4\", \"statement\": \"After finding a matching first line with an accepted object name, the implementation rebuilds that docstring from doclines[1:], stores one (args, return annotation) result, and breaks out of the search loop.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def format_signature(self, **kwargs: Any) -> str:\\n        if self.args is None and self.env.config.autodoc_docstring_signature:  # type: ignore\\n            # only act if a signature is not explicitly given already, and if\\n            # the feature is enabled\\n            result = self._find_signature()\\n            if result is not None:\\n                self.args, self.retann = result\\n        return super().format_signature(**kwargs)  # type: ignore\", \"excerpt_digest\": \"eb0c917a5f1ea432fc39bac6b49069780e00c77d6369b8515b3bacfc2477abd2\", \"id\": \"repository:fact-5\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sphinx/ext/autodoc/__init__.py:L1084-L1091\", \"source\": \"repository\", \"source_digest\": \"43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c\"}], \"id\": \"fact-5\", \"statement\": \"When enabled and no explicit signature arguments were supplied, DocstringSignatureMixin assigns the single extracted args and return annotation pair to the documenter before delegating to the normal signature formatter.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def add_directive_header(self, sig: str) -> None:\\n        \\\"\\\"\\\"Add the directive header and options to the generated content.\\\"\\\"\\\"\\n        domain = getattr(self, 'domain', 'py')\\n        directive = getattr(self, 'directivetype', self.objtype)\\n        name = self.format_name()\\n        sourcename = self.get_sourcename()\\n\\n        # one signature per line, indented by column\\n        prefix = '.. %s:%s:: ' % (domain, directive)\\n        for i, sig_line in enumerate(sig.split(\\\"\\\\n\\\")):\\n            self.add_line('%s%s%s' % (prefix, name, sig_line),\\n                          sourcename)\\n            if i == 0:\\n                prefix = \\\" \\\" * len(prefix)\", \"excerpt_digest\": \"ed4d6920922020855e56f1aaae129711f1be71eb91da10ca747a6ce22e4f1988\", \"id\": \"repository:fact-6\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sphinx/ext/autodoc/__init__.py:L441-L454\", \"source\": \"repository\", \"source_digest\": \"43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c\"}], \"id\": \"fact-6\", \"statement\": \"The generic directive-header writer already accepts newline-separated formatted signatures and emits one directive signature line for each newline-delimited entry.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def format_signature(self, **kwargs: Any) -> str:\\n        sig = super().format_signature(**kwargs)\\n        sigs = [sig]\\n\\n        if inspect.is_singledispatch_function(self.object):\\n            # append signature of singledispatch'ed functions\\n            for typ, func in self.object.registry.items():\\n                if typ is object:\\n                    pass  # default implementation. skipped.\\n                else:\\n                    self.annotate_to_first_argument(func, typ)\\n\\n                    documenter = FunctionDocumenter(self.directive, '')\\n                    documenter.object = func\\n                    sigs.append(documenter.format_signature())\\n\\n        return \\\"\\\\n\\\".join(sigs)\", \"excerpt_digest\": \"4df789bbe13b5bf3c30db4fabf385b2853c56c4f9aea3605a490eac62e2e97c9\", \"id\": \"repository:fact-7\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sphinx/ext/autodoc/__init__.py:L1159-L1175\", \"source\": \"repository\", \"source_digest\": \"43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c\"}], \"id\": \"fact-7\", \"statement\": \"FunctionDocumenter already constructs multiple displayed signatures for singledispatch functions by collecting formatter results and joining them with newline characters.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        '.. py:class:: Foo()',\\n        '   :module: target.singledispatchmethod',\\n        '',\\n        '   docstring',\\n        '',\\n        '',\\n        '   .. py:method:: Foo.meth(arg, kwarg=None)',\\n        '                  Foo.meth(arg: int, kwarg=None)',\\n        '                  Foo.meth(arg: str, kwarg=None)',\\n        '      :module: target.singledispatchmethod',\\n        '',\\n        '      A method for general use.',\\n        '',\\n    ]\", \"excerpt_digest\": \"172ab71dd755e7ebd0c1a3c997c3c82cf400c26c3b00fd5a07c1e691ee324329\", \"id\": \"repository:fact-8\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_ext_autodoc.py:L1661-L1674\", \"source\": \"repository\", \"source_digest\": \"d647f6b467eed4760698fc2cc397f5daf387cc8d357a9e41804f2e91eb14e6a3\"}], \"id\": \"fact-8\", \"statement\": \"Existing singledispatchmethod tests assert that autodoc emits three aligned py:method signature lines for one method.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"class DocstringSig(object):\\n    def meth(self):\\n        \\\"\\\"\\\"meth(FOO, BAR=1) -> BAZ\\nFirst line of docstring\\n\\n        rest of docstring\\n        \\\"\\\"\\\"\\n\\n    def meth2(self):\\n        \\\"\\\"\\\"First line, no signature\\n        Second line followed by indentation::\\n\\n            indented line\\n        \\\"\\\"\\\"\", \"excerpt_digest\": \"3b516a94329b8c9c912c55ce7ebd8477331d71529f2bcbf6f8dd03e77ab4d450\", \"id\": \"repository:fact-9\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/roots/test-ext-autodoc/target/__init__.py:L117-L130\", \"source\": \"repository\", \"source_digest\": \"93e85038a0cfa5561772353979d64f1f9ad91491b40d8b725d102e288ba68e97\"}], \"id\": \"fact-9\", \"statement\": \"The existing docstring-signature fixture contains one leading method signature followed by prose, and the corresponding test expects that signature in the py:method directive while excluding it from the content.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"@pytest.mark.sphinx('html', testroot='ext-autodoc')\\ndef test_autodoc_docstring_signature(app):\\n    options = {\\\"members\\\": None}\\n    actual = do_autodoc(app, 'class', 'target.DocstringSig', options)\\n    assert list(actual) == [\\n        '',\\n        '.. py:class:: DocstringSig()',\\n        '   :module: target',\\n        '',\\n        '',\\n        '   .. py:method:: DocstringSig.meth(FOO, BAR=1) -> BAZ',\\n        '      :module: target',\\n        '',\\n        '      First line of docstring',\\n        '',\\n        '      rest of docstring',\\n        '',\", \"excerpt_digest\": \"ca47dbf6e186d147d17a130119485e42cc7a293527cf834bb855023dea049a65\", \"id\": \"repository:fact-10\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_ext_autodoc_configs.py:L235-L251\", \"source\": \"repository\", \"source_digest\": \"efe58e80757e6f93ef0535d3694253b76813536641ac18daadaf89985ed64782\"}], \"id\": \"fact-10\", \"statement\": \"The enabled configuration test expects meth(FOO, BAR=1) -> BAZ as the generated method signature and retains only the following prose as docstring content.\"}], \"transcript\": [{\"answer\": \"First non-signature\", \"open_material_decisions\": [\"Define the boundary of the leading overload-signature block.\"], \"question\": {\"header\": \"Block ending\", \"options\": [{\"description\": \"Consume consecutive valid signatures for the documented object from the start, then preserve that line and everything after it as docstring content.\", \"label\": \"First non-signature (Recommended)\", \"recommended\": true}, {\"description\": \"Treat lines before the first blank line as the overload block, consuming valid signatures there and preserving subsequent content.\", \"label\": \"Blank line\", \"recommended\": false}, {\"description\": \"Scan beyond intervening non-signature lines and extract every later valid signature, which may remove signature-like examples from prose.\", \"label\": \"Any valid signatures\", \"recommended\": false}], \"prompt\": \"How should autodoc determine where the leading overload-signature block ends?\"}, \"turn\": 1}, {\"answer\": \"Functions and methods\", \"open_material_decisions\": [\"Decide whether multiple leading docstring signatures are supported only for methods or for both functions and methods.\"], \"question\": {\"header\": \"Object scope\", \"options\": [{\"description\": \"Extend the shared behavior consistently to both function and method documenters.\", \"label\": \"Functions and methods\", \"recommended\": true}, {\"description\": \"Limit multiple-signature extraction to methods, leaving functions restricted to one docstring signature.\", \"label\": \"Methods only\", \"recommended\": false}], \"prompt\": \"Which autodoc objects should support multiple consecutive leading docstring signatures?\"}, \"turn\": 2}], \"upstream\": {\"base_commit\": \"9988d5ce267bf0df4791770b469431b1fb00dcdd\", \"dataset\": \"princeton-nlp/SWE-bench_Verified\", \"instance_id_digest\": \"3b2f3955109fe4d793c39c0bd96451e39c6b5f4cf4942ac3c512e72bda756f7e\", \"issue_cache_key\": \"sha256:8d2fa20fad9e7875f1cfb475ed77cbdea0daee392ce09045da39a7468b6e1c99\", \"issue_digest\": \"8d2fa20fad9e7875f1cfb475ed77cbdea0daee392ce09045da39a7468b6e1c99\", \"revision\": \"c104f840cc67f8b6eec6f759ebc8b2693d585d4a\", \"source_url\": \"https://github.com/sphinx-doc/sphinx/pull/7748\"}}",
+  "input": {
+    "alias": "sphinx-doc__sphinx-7748",
+    "public_request": "autodoc_docstring_signature with overloaded methods\nWhen using swig to wrap C++ classes for python, if they have overloaded methods, I believe the convention is to place the signatures for each of the overloaded C++ methods at the start of the docstring. Currently, `autodoc_docstring_signature` can only pick up the first one. It would be nice to be able to pick up all of them.\n\n",
+    "upstream": {
+      "base_commit": "9988d5ce267bf0df4791770b469431b1fb00dcdd",
+      "dataset": "princeton-nlp/SWE-bench_Verified",
+      "instance_id_digest": "3b2f3955109fe4d793c39c0bd96451e39c6b5f4cf4942ac3c512e72bda756f7e",
+      "issue_cache_key": "sha256:8d2fa20fad9e7875f1cfb475ed77cbdea0daee392ce09045da39a7468b6e1c99",
+      "issue_digest": "8d2fa20fad9e7875f1cfb475ed77cbdea0daee392ce09045da39a7468b6e1c99",
+      "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+      "source_url": "https://github.com/sphinx-doc/sphinx/pull/7748"
+    },
+    "repository_facts": [
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": ".. confval:: autodoc_docstring_signature\n\n   Functions imported from C modules cannot be introspected, and therefore the\n   signature for such functions cannot be automatically determined.  However, it\n   is an often-used convention to put the signature into the first line of the\n   function's docstring.\n\n   If this boolean value is set to ``True`` (which is the default), autodoc will\n   look at the first line of the docstring for functions and methods, and if it\n   looks like a signature, use the line as the signature and remove it from the\n   docstring content.\n\n   .. versionadded:: 1.1",
+            "excerpt_digest": "a242da2d69ab4fddb6140f2ea0f0c5c9ad8a078985eb36675bc1603faf2c3ee9",
+            "id": "repository:fact-1",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "doc/usage/extensions/autodoc.rst:L445-L457",
+            "source": "repository",
+            "source_digest": "f16bda007a918cbb8081d338266a65ee9ebca35dc4a6b6102e940941d9265eb0"
+          }
+        ],
+        "id": "fact-1",
+        "statement": "The documented behavior of autodoc_docstring_signature is to inspect the first docstring line of functions and methods, use it when it resembles a signature, and remove that line from the rendered docstring; the documented default is True."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "class MethodDocumenter(DocstringSignatureMixin, ClassLevelDocumenter):  # type: ignore\n    \"\"\"\n    Specialized Documenter subclass for methods (normal, static and class).\n    \"\"\"\n    objtype = 'method'\n    directivetype = 'method'\n    member_order = 50\n    priority = 1  # must be more than FunctionDocumenter",
+            "excerpt_digest": "5b5120b89079ff44834dfc14cb4d565984487da25515a04b22bd6e6a07eace06",
+            "id": "repository:fact-2",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "sphinx/ext/autodoc/__init__.py:L1547-L1554",
+            "source": "repository",
+            "source_digest": "43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c"
+          }
+        ],
+        "id": "fact-2",
+        "statement": "FunctionDocumenter and MethodDocumenter both inherit DocstringSignatureMixin, so they share the docstring-signature extraction implementation."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    def _find_signature(self, encoding: str = None) -> Tuple[str, str]:\n        if encoding is not None:\n            warnings.warn(\"The 'encoding' argument to autodoc.%s._find_signature() is \"\n                          \"deprecated.\" % self.__class__.__name__,\n                          RemovedInSphinx40Warning, stacklevel=2)\n        docstrings = self.get_doc()\n        self._new_docstrings = docstrings[:]\n        result = None\n        for i, doclines in enumerate(docstrings):\n            # no lines in docstring, no match\n            if not doclines:\n                continue\n            # match first line of docstring against signature RE\n            match = py_ext_sig_re.match(doclines[0])\n            if not match:\n                continue\n            exmod, path, base, args, retann = match.groups()",
+            "excerpt_digest": "b92a51e38128d3e97b0a2da72258a9533cda29ca5c181bcea04a15d523cd2da6",
+            "id": "repository:fact-3",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "sphinx/ext/autodoc/__init__.py:L1040-L1056",
+            "source": "repository",
+            "source_digest": "43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c"
+          }
+        ],
+        "id": "fact-3",
+        "statement": "DocstringSignatureMixin obtains all candidate docstrings but attempts py_ext_sig_re only against doclines[0] for each candidate."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "            # the base name must match ours\n            valid_names = [self.objpath[-1]]  # type: ignore\n            if isinstance(self, ClassDocumenter):\n                valid_names.append('__init__')\n                if hasattr(self.object, '__mro__'):\n                    valid_names.extend(cls.__name__ for cls in self.object.__mro__)\n            if base not in valid_names:\n                continue\n            # re-prepare docstring to ignore more leading indentation\n            tab_width = self.directive.state.document.settings.tab_width  # type: ignore\n            self._new_docstrings[i] = prepare_docstring('\\n'.join(doclines[1:]),\n                                                        tabsize=tab_width)\n            result = args, retann\n            # don't look any further\n            break\n        return result",
+            "excerpt_digest": "781a488236b50ac6b8ec0caf867622909c3a2dfffc07445507df3d005b82607f",
+            "id": "repository:fact-4",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "sphinx/ext/autodoc/__init__.py:L1057-L1072",
+            "source": "repository",
+            "source_digest": "43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c"
+          }
+        ],
+        "id": "fact-4",
+        "statement": "After finding a matching first line with an accepted object name, the implementation rebuilds that docstring from doclines[1:], stores one (args, return annotation) result, and breaks out of the search loop."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    def format_signature(self, **kwargs: Any) -> str:\n        if self.args is None and self.env.config.autodoc_docstring_signature:  # type: ignore\n            # only act if a signature is not explicitly given already, and if\n            # the feature is enabled\n            result = self._find_signature()\n            if result is not None:\n                self.args, self.retann = result\n        return super().format_signature(**kwargs)  # type: ignore",
+            "excerpt_digest": "eb0c917a5f1ea432fc39bac6b49069780e00c77d6369b8515b3bacfc2477abd2",
+            "id": "repository:fact-5",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "sphinx/ext/autodoc/__init__.py:L1084-L1091",
+            "source": "repository",
+            "source_digest": "43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c"
+          }
+        ],
+        "id": "fact-5",
+        "statement": "When enabled and no explicit signature arguments were supplied, DocstringSignatureMixin assigns the single extracted args and return annotation pair to the documenter before delegating to the normal signature formatter."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    def add_directive_header(self, sig: str) -> None:\n        \"\"\"Add the directive header and options to the generated content.\"\"\"\n        domain = getattr(self, 'domain', 'py')\n        directive = getattr(self, 'directivetype', self.objtype)\n        name = self.format_name()\n        sourcename = self.get_sourcename()\n\n        # one signature per line, indented by column\n        prefix = '.. %s:%s:: ' % (domain, directive)\n        for i, sig_line in enumerate(sig.split(\"\\n\")):\n            self.add_line('%s%s%s' % (prefix, name, sig_line),\n                          sourcename)\n            if i == 0:\n                prefix = \" \" * len(prefix)",
+            "excerpt_digest": "ed4d6920922020855e56f1aaae129711f1be71eb91da10ca747a6ce22e4f1988",
+            "id": "repository:fact-6",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "sphinx/ext/autodoc/__init__.py:L441-L454",
+            "source": "repository",
+            "source_digest": "43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c"
+          }
+        ],
+        "id": "fact-6",
+        "statement": "The generic directive-header writer already accepts newline-separated formatted signatures and emits one directive signature line for each newline-delimited entry."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    def format_signature(self, **kwargs: Any) -> str:\n        sig = super().format_signature(**kwargs)\n        sigs = [sig]\n\n        if inspect.is_singledispatch_function(self.object):\n            # append signature of singledispatch'ed functions\n            for typ, func in self.object.registry.items():\n                if typ is object:\n                    pass  # default implementation. skipped.\n                else:\n                    self.annotate_to_first_argument(func, typ)\n\n                    documenter = FunctionDocumenter(self.directive, '')\n                    documenter.object = func\n                    sigs.append(documenter.format_signature())\n\n        return \"\\n\".join(sigs)",
+            "excerpt_digest": "4df789bbe13b5bf3c30db4fabf385b2853c56c4f9aea3605a490eac62e2e97c9",
+            "id": "repository:fact-7",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "sphinx/ext/autodoc/__init__.py:L1159-L1175",
+            "source": "repository",
+            "source_digest": "43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c"
+          }
+        ],
+        "id": "fact-7",
+        "statement": "FunctionDocumenter already constructs multiple displayed signatures for singledispatch functions by collecting formatter results and joining them with newline characters."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "        '.. py:class:: Foo()',\n        '   :module: target.singledispatchmethod',\n        '',\n        '   docstring',\n        '',\n        '',\n        '   .. py:method:: Foo.meth(arg, kwarg=None)',\n        '                  Foo.meth(arg: int, kwarg=None)',\n        '                  Foo.meth(arg: str, kwarg=None)',\n        '      :module: target.singledispatchmethod',\n        '',\n        '      A method for general use.',\n        '',\n    ]",
+            "excerpt_digest": "172ab71dd755e7ebd0c1a3c997c3c82cf400c26c3b00fd5a07c1e691ee324329",
+            "id": "repository:fact-8",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "tests/test_ext_autodoc.py:L1661-L1674",
+            "source": "repository",
+            "source_digest": "d647f6b467eed4760698fc2cc397f5daf387cc8d357a9e41804f2e91eb14e6a3"
+          }
+        ],
+        "id": "fact-8",
+        "statement": "Existing singledispatchmethod tests assert that autodoc emits three aligned py:method signature lines for one method."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "class DocstringSig(object):\n    def meth(self):\n        \"\"\"meth(FOO, BAR=1) -> BAZ\nFirst line of docstring\n\n        rest of docstring\n        \"\"\"\n\n    def meth2(self):\n        \"\"\"First line, no signature\n        Second line followed by indentation::\n\n            indented line\n        \"\"\"",
+            "excerpt_digest": "3b516a94329b8c9c912c55ce7ebd8477331d71529f2bcbf6f8dd03e77ab4d450",
+            "id": "repository:fact-9",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "tests/roots/test-ext-autodoc/target/__init__.py:L117-L130",
+            "source": "repository",
+            "source_digest": "93e85038a0cfa5561772353979d64f1f9ad91491b40d8b725d102e288ba68e97"
+          }
+        ],
+        "id": "fact-9",
+        "statement": "The existing docstring-signature fixture contains one leading method signature followed by prose, and the corresponding test expects that signature in the py:method directive while excluding it from the content."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "@pytest.mark.sphinx('html', testroot='ext-autodoc')\ndef test_autodoc_docstring_signature(app):\n    options = {\"members\": None}\n    actual = do_autodoc(app, 'class', 'target.DocstringSig', options)\n    assert list(actual) == [\n        '',\n        '.. py:class:: DocstringSig()',\n        '   :module: target',\n        '',\n        '',\n        '   .. py:method:: DocstringSig.meth(FOO, BAR=1) -> BAZ',\n        '      :module: target',\n        '',\n        '      First line of docstring',\n        '',\n        '      rest of docstring',\n        '',",
+            "excerpt_digest": "ca47dbf6e186d147d17a130119485e42cc7a293527cf834bb855023dea049a65",
+            "id": "repository:fact-10",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "tests/test_ext_autodoc_configs.py:L235-L251",
+            "source": "repository",
+            "source_digest": "efe58e80757e6f93ef0535d3694253b76813536641ac18daadaf89985ed64782"
+          }
+        ],
+        "id": "fact-10",
+        "statement": "The enabled configuration test expects meth(FOO, BAR=1) -> BAZ as the generated method signature and retains only the following prose as docstring content."
+      }
+    ],
+    "metadata": {
+      "context_mode": "repository",
+      "partition": "development",
+      "repository_family": "sphinx-doc/sphinx"
+    },
+    "candidate_skill": "---\nname: clarify-requirements\ndescription: Clarify an ambiguous request before implementation.\n---\n\n# Interview\n\nInspect the request.\nAsk only questions whose answers can materially change the resulting contract.\nProduce the runtime-required contract without inventing unauthorized behavior.\nState contract clauses as observable outcomes, and omit specific implementation or validation mechanisms unless the request or an explicit interview answer requires that mechanism.\nDo not promote inferred edge cases or exhaustive examples into separate requirements unless explicitly requested or answered.\n",
+    "audited_repository_evidence": {
+      "scope_summary": "Inspected base commit 9988d5ce267bf0df4791770b469431b1fb00dcdd of the supplied sphinx-doc/sphinx repository, limited to the existing autodoc docstring-signature implementation, documentation, and tests.",
+      "facts": [
+        {
+          "id": "F1",
+          "statement": "The documented behavior says autodoc_docstring_signature examines the first docstring line for functions and methods, uses it when it resembles a signature, and removes that line from the rendered docstring.",
+          "path": "doc/usage/extensions/autodoc.rst",
+          "line_start": 445,
+          "line_end": 455
+        },
+        {
+          "id": "F2",
+          "statement": "autodoc_docstring_signature is registered with a default value of True.",
+          "path": "sphinx/ext/autodoc/__init__.py",
+          "line_start": 1913,
+          "line_end": 1918
+        },
+        {
+          "id": "F3",
+          "statement": "The signature parser accepts an optional qualified name, optional parenthesized arguments, and an optional return annotation, with the regular expression anchored to the entire input line.",
+          "path": "sphinx/ext/autodoc/__init__.py",
+          "line_start": 54,
+          "line_end": 62
+        },
+        {
+          "id": "F4",
+          "statement": "DocstringSignatureMixin is used to read signatures from docstrings for function and method documenters.",
+          "path": "sphinx/ext/autodoc/__init__.py",
+          "line_start": 1034,
+          "line_end": 1038
+        },
+        {
+          "id": "F5",
+          "statement": "_find_signature copies the retrieved docstrings, examines only doclines[0] in each docstring, validates that parsed signature's base name against the documented object, removes that first line from the retained content, stores one args/return-annotation pair, and then breaks out of the loop.",
+          "path": "sphinx/ext/autodoc/__init__.py",
+          "line_start": 1045,
+          "line_end": 1072
+        },
+        {
+          "id": "F6",
+          "statement": "Docstring signature discovery runs only when no explicit signature arguments were supplied and autodoc_docstring_signature is enabled; the single discovered args/return-annotation pair is assigned to self.args and self.retann.",
+          "path": "sphinx/ext/autodoc/__init__.py",
+          "line_start": 1084,
+          "line_end": 1091
+        },
+        {
+          "id": "F7",
+          "statement": "FunctionDocumenter inherits DocstringSignatureMixin.",
+          "path": "sphinx/ext/autodoc/__init__.py",
+          "line_start": 1112,
+          "line_end": 1117
+        },
+        {
+          "id": "F8",
+          "statement": "MethodDocumenter inherits DocstringSignatureMixin.",
+          "path": "sphinx/ext/autodoc/__init__.py",
+          "line_start": 1547,
+          "line_end": 1554
+        },
+        {
+          "id": "F9",
+          "statement": "The generic directive-header writer already supports multiple signatures encoded as newline-separated text, emitting one directive signature line for each line returned by format_signature.",
+          "path": "sphinx/ext/autodoc/__init__.py",
+          "line_start": 441,
+          "line_end": 454
+        },
+        {
+          "id": "F10",
+          "statement": "MethodDocumenter already returns newline-joined signatures for singledispatch methods by appending registered implementation signatures to the primary signature.",
+          "path": "sphinx/ext/autodoc/__init__.py",
+          "line_start": 1635,
+          "line_end": 1654
+        },
+        {
+          "id": "F11",
+          "statement": "The existing docstring-signature fixture contains one leading method signature followed by ordinary docstring content; another method fixture begins directly with non-signature content.",
+          "path": "tests/roots/test-ext-autodoc/target/__init__.py",
+          "line_start": 117,
+          "line_end": 130
+        },
+        {
+          "id": "F12",
+          "statement": "With autodoc_docstring_signature enabled, the existing test expects the leading signature to appear in the method directive and to be absent from the rendered body, while the nonsignature first line remains body content.",
+          "path": "tests/test_ext_autodoc_configs.py",
+          "line_start": 235,
+          "line_end": 276
+        },
+        {
+          "id": "F13",
+          "statement": "With autodoc_docstring_signature disabled, the existing test expects the introspected empty signature in the directive and retains the signature-looking line in the docstring body.",
+          "path": "tests/test_ext_autodoc_configs.py",
+          "line_start": 278,
+          "line_end": 303
+        }
+      ],
+      "unknowns": [],
+      "audit_summary": "Accepted 13 facts with direct support in their cited ranges; rejected F14 because its ordering claim about adding docstring content is not fully supported by the cited lines."
+    },
+    "transcript": [
+      {
+        "turn": 1,
+        "open_material_decisions": [
+          "Define the boundary of the leading overload-signature block."
+        ],
+        "question": {
+          "header": "Block ending",
+          "prompt": "How should autodoc determine where the leading overload-signature block ends?",
+          "options": [
+            {
+              "label": "First non-signature (Recommended)",
+              "description": "Consume consecutive valid signatures for the documented object from the start, then preserve that line and everything after it as docstring content.",
+              "recommended": true
+            },
+            {
+              "label": "Blank line",
+              "description": "Treat lines before the first blank line as the overload block, consuming valid signatures there and preserving subsequent content.",
+              "recommended": false
+            },
+            {
+              "label": "Any valid signatures",
+              "description": "Scan beyond intervening non-signature lines and extract every later valid signature, which may remove signature-like examples from prose.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "First non-signature"
+      },
+      {
+        "turn": 2,
+        "open_material_decisions": [
+          "Decide whether multiple leading docstring signatures are supported only for methods or for both functions and methods."
+        ],
+        "question": {
+          "header": "Object scope",
+          "prompt": "Which autodoc objects should support multiple consecutive leading docstring signatures?",
+          "options": [
+            {
+              "label": "Functions and methods",
+              "description": "Extend the shared behavior consistently to both function and method documenters.",
+              "recommended": true
+            },
+            {
+              "label": "Methods only",
+              "description": "Limit multiple-signature extraction to methods, leaving functions restricted to one docstring signature.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Functions and methods"
+      }
+    ]
+  },
+  "exit_code": 0,
+  "stdout": "{\"action\":\"complete\",\"reason\":\"The prior answers resolve the material scope and block-boundary decisions. The repository evidence defines existing precedence, parsing, name validation, configuration behavior, and multi-signature rendering sufficiently for an implementable contract.\",\"open_material_decisions\":[],\"question\":null,\"contract\":{\"summary\":\"When autodoc_docstring_signature is enabled and no explicit signature is supplied, autodoc must recognize every consecutive valid signature for the documented function or method at the start of its docstring, display those signatures in their original order, and exclude the consumed signature lines from the rendered docstring body. The signature block ends at the first line that is not a valid signature for the documented object; that line and all subsequent content remain in the body.\",\"implementation_ready\":true,\"confirmed_decisions\":[\"Multiple leading docstring signatures are supported for both functions and methods.\",\"Only a consecutive block at the start of the docstring is eligible for extraction.\",\"The leading block ends at the first line that is not a valid signature for the documented object.\",\"All extracted signatures are displayed in their original docstring order.\",\"All extracted signature lines are removed from rendered docstring content.\",\"The first non-signature line and everything following it are preserved as docstring content.\",\"Existing behavior remains unchanged when only one leading signature is present.\",\"When autodoc_docstring_signature is disabled, docstring signature lines remain body content and do not replace the normally determined signature.\",\"An explicitly supplied signature continues to take precedence over docstring signature discovery.\",\"Signature recognition and documented-object name validation retain their existing accepted syntax and rules.\"],\"open_material_decisions\":[],\"acceptance_checks\":[\"A function docstring beginning with two valid signatures for that function produces two directive signatures in the same order, and neither signature line appears in the body.\",\"A method docstring beginning with multiple valid overload signatures produces one displayed directive signature per overload in the same order, including each overload's own return annotation when present.\",\"After one or more valid leading signatures, the first non-signature line and all later lines are rendered as docstring content.\",\"A signature-looking line for a different object ends the leading signature block and is preserved along with all subsequent content.\",\"A valid signature appearing after prose is not extracted.\",\"A docstring with one valid leading signature retains the existing single-signature output and body behavior.\",\"With autodoc_docstring_signature disabled, multiple leading signature-looking lines remain in the body and do not become displayed overload signatures.\",\"When an explicit signature is provided, leading docstring signatures do not override it.\"]}}\n",
+  "stderr": "OpenAI Codex v0.144.6\n--------\nworkdir: /var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-interviewer-dadm_jw0\nmodel: gpt-5.6-sol\nprovider: openai\napproval: never\nsandbox: read-only\nreasoning effort: none\nreasoning summaries: none\nsession id: 019f7e41-c62d-70b0-8cd4-ab64a3a034ea\n--------\nuser\nFollow candidate_skill exactly. Continue until no material blocker remains; there is no arbitrary question budget. Ask exactly one structured question at a time. Repository evidence is already known and must not be delegated back to the owner. Complete only with an implementable contract.\nReturn only the JSON required by the supplied schema.\nINPUT:\n{\"alias\": \"sphinx-doc__sphinx-7748\", \"audited_repository_evidence\": {\"audit_summary\": \"Accepted 13 facts with direct support in their cited ranges; rejected F14 because its ordering claim about adding docstring content is not fully supported by the cited lines.\", \"facts\": [{\"id\": \"F1\", \"line_end\": 455, \"line_start\": 445, \"path\": \"doc/usage/extensions/autodoc.rst\", \"statement\": \"The documented behavior says autodoc_docstring_signature examines the first docstring line for functions and methods, uses it when it resembles a signature, and removes that line from the rendered docstring.\"}, {\"id\": \"F2\", \"line_end\": 1918, \"line_start\": 1913, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"autodoc_docstring_signature is registered with a default value of True.\"}, {\"id\": \"F3\", \"line_end\": 62, \"line_start\": 54, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"The signature parser accepts an optional qualified name, optional parenthesized arguments, and an optional return annotation, with the regular expression anchored to the entire input line.\"}, {\"id\": \"F4\", \"line_end\": 1038, \"line_start\": 1034, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"DocstringSignatureMixin is used to read signatures from docstrings for function and method documenters.\"}, {\"id\": \"F5\", \"line_end\": 1072, \"line_start\": 1045, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"_find_signature copies the retrieved docstrings, examines only doclines[0] in each docstring, validates that parsed signature's base name against the documented object, removes that first line from the retained content, stores one args/return-annotation pair, and then breaks out of the loop.\"}, {\"id\": \"F6\", \"line_end\": 1091, \"line_start\": 1084, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"Docstring signature discovery runs only when no explicit signature arguments were supplied and autodoc_docstring_signature is enabled; the single discovered args/return-annotation pair is assigned to self.args and self.retann.\"}, {\"id\": \"F7\", \"line_end\": 1117, \"line_start\": 1112, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"FunctionDocumenter inherits DocstringSignatureMixin.\"}, {\"id\": \"F8\", \"line_end\": 1554, \"line_start\": 1547, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"MethodDocumenter inherits DocstringSignatureMixin.\"}, {\"id\": \"F9\", \"line_end\": 454, \"line_start\": 441, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"The generic directive-header writer already supports multiple signatures encoded as newline-separated text, emitting one directive signature line for each line returned by format_signature.\"}, {\"id\": \"F10\", \"line_end\": 1654, \"line_start\": 1635, \"path\": \"sphinx/ext/autodoc/__init__.py\", \"statement\": \"MethodDocumenter already returns newline-joined signatures for singledispatch methods by appending registered implementation signatures to the primary signature.\"}, {\"id\": \"F11\", \"line_end\": 130, \"line_start\": 117, \"path\": \"tests/roots/test-ext-autodoc/target/__init__.py\", \"statement\": \"The existing docstring-signature fixture contains one leading method signature followed by ordinary docstring content; another method fixture begins directly with non-signature content.\"}, {\"id\": \"F12\", \"line_end\": 276, \"line_start\": 235, \"path\": \"tests/test_ext_autodoc_configs.py\", \"statement\": \"With autodoc_docstring_signature enabled, the existing test expects the leading signature to appear in the method directive and to be absent from the rendered body, while the nonsignature first line remains body content.\"}, {\"id\": \"F13\", \"line_end\": 303, \"line_start\": 278, \"path\": \"tests/test_ext_autodoc_configs.py\", \"statement\": \"With autodoc_docstring_signature disabled, the existing test expects the introspected empty signature in the directive and retains the signature-looking line in the docstring body.\"}], \"scope_summary\": \"Inspected base commit 9988d5ce267bf0df4791770b469431b1fb00dcdd of the supplied sphinx-doc/sphinx repository, limited to the existing autodoc docstring-signature implementation, documentation, and tests.\", \"unknowns\": []}, \"candidate_skill\": \"---\\nname: clarify-requirements\\ndescription: Clarify an ambiguous request before implementation.\\n---\\n\\n# Interview\\n\\nInspect the request.\\nAsk only questions whose answers can materially change the resulting contract.\\nProduce the runtime-required contract without inventing unauthorized behavior.\\nState contract clauses as observable outcomes, and omit specific implementation or validation mechanisms unless the request or an explicit interview answer requires that mechanism.\\nDo not promote inferred edge cases or exhaustive examples into separate requirements unless explicitly requested or answered.\\n\", \"metadata\": {\"context_mode\": \"repository\", \"partition\": \"development\", \"repository_family\": \"sphinx-doc/sphinx\"}, \"public_request\": \"autodoc_docstring_signature with overloaded methods\\nWhen using swig to wrap C++ classes for python, if they have overloaded methods, I believe the convention is to place the signatures for each of the overloaded C++ methods at the start of the docstring. Currently, `autodoc_docstring_signature` can only pick up the first one. It would be nice to be able to pick up all of them.\\n\\n\", \"repository_facts\": [{\"evidence\": [{\"cache_required\": true, \"excerpt\": \".. confval:: autodoc_docstring_signature\\n\\n   Functions imported from C modules cannot be introspected, and therefore the\\n   signature for such functions cannot be automatically determined.  However, it\\n   is an often-used convention to put the signature into the first line of the\\n   function's docstring.\\n\\n   If this boolean value is set to ``True`` (which is the default), autodoc will\\n   look at the first line of the docstring for functions and methods, and if it\\n   looks like a signature, use the line as the signature and remove it from the\\n   docstring content.\\n\\n   .. versionadded:: 1.1\", \"excerpt_digest\": \"a242da2d69ab4fddb6140f2ea0f0c5c9ad8a078985eb36675bc1603faf2c3ee9\", \"id\": \"repository:fact-1\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"doc/usage/extensions/autodoc.rst:L445-L457\", \"source\": \"repository\", \"source_digest\": \"f16bda007a918cbb8081d338266a65ee9ebca35dc4a6b6102e940941d9265eb0\"}], \"id\": \"fact-1\", \"statement\": \"The documented behavior of autodoc_docstring_signature is to inspect the first docstring line of functions and methods, use it when it resembles a signature, and remove that line from the rendered docstring; the documented default is True.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"class MethodDocumenter(DocstringSignatureMixin, ClassLevelDocumenter):  # type: ignore\\n    \\\"\\\"\\\"\\n    Specialized Documenter subclass for methods (normal, static and class).\\n    \\\"\\\"\\\"\\n    objtype = 'method'\\n    directivetype = 'method'\\n    member_order = 50\\n    priority = 1  # must be more than FunctionDocumenter\", \"excerpt_digest\": \"5b5120b89079ff44834dfc14cb4d565984487da25515a04b22bd6e6a07eace06\", \"id\": \"repository:fact-2\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sphinx/ext/autodoc/__init__.py:L1547-L1554\", \"source\": \"repository\", \"source_digest\": \"43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c\"}], \"id\": \"fact-2\", \"statement\": \"FunctionDocumenter and MethodDocumenter both inherit DocstringSignatureMixin, so they share the docstring-signature extraction implementation.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def _find_signature(self, encoding: str = None) -> Tuple[str, str]:\\n        if encoding is not None:\\n            warnings.warn(\\\"The 'encoding' argument to autodoc.%s._find_signature() is \\\"\\n                          \\\"deprecated.\\\" % self.__class__.__name__,\\n                          RemovedInSphinx40Warning, stacklevel=2)\\n        docstrings = self.get_doc()\\n        self._new_docstrings = docstrings[:]\\n        result = None\\n        for i, doclines in enumerate(docstrings):\\n            # no lines in docstring, no match\\n            if not doclines:\\n                continue\\n            # match first line of docstring against signature RE\\n            match = py_ext_sig_re.match(doclines[0])\\n            if not match:\\n                continue\\n            exmod, path, base, args, retann = match.groups()\", \"excerpt_digest\": \"b92a51e38128d3e97b0a2da72258a9533cda29ca5c181bcea04a15d523cd2da6\", \"id\": \"repository:fact-3\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sphinx/ext/autodoc/__init__.py:L1040-L1056\", \"source\": \"repository\", \"source_digest\": \"43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c\"}], \"id\": \"fact-3\", \"statement\": \"DocstringSignatureMixin obtains all candidate docstrings but attempts py_ext_sig_re only against doclines[0] for each candidate.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"            # the base name must match ours\\n            valid_names = [self.objpath[-1]]  # type: ignore\\n            if isinstance(self, ClassDocumenter):\\n                valid_names.append('__init__')\\n                if hasattr(self.object, '__mro__'):\\n                    valid_names.extend(cls.__name__ for cls in self.object.__mro__)\\n            if base not in valid_names:\\n                continue\\n            # re-prepare docstring to ignore more leading indentation\\n            tab_width = self.directive.state.document.settings.tab_width  # type: ignore\\n            self._new_docstrings[i] = prepare_docstring('\\\\n'.join(doclines[1:]),\\n                                                        tabsize=tab_width)\\n            result = args, retann\\n            # don't look any further\\n            break\\n        return result\", \"excerpt_digest\": \"781a488236b50ac6b8ec0caf867622909c3a2dfffc07445507df3d005b82607f\", \"id\": \"repository:fact-4\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sphinx/ext/autodoc/__init__.py:L1057-L1072\", \"source\": \"repository\", \"source_digest\": \"43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c\"}], \"id\": \"fact-4\", \"statement\": \"After finding a matching first line with an accepted object name, the implementation rebuilds that docstring from doclines[1:], stores one (args, return annotation) result, and breaks out of the search loop.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def format_signature(self, **kwargs: Any) -> str:\\n        if self.args is None and self.env.config.autodoc_docstring_signature:  # type: ignore\\n            # only act if a signature is not explicitly given already, and if\\n            # the feature is enabled\\n            result = self._find_signature()\\n            if result is not None:\\n                self.args, self.retann = result\\n        return super().format_signature(**kwargs)  # type: ignore\", \"excerpt_digest\": \"eb0c917a5f1ea432fc39bac6b49069780e00c77d6369b8515b3bacfc2477abd2\", \"id\": \"repository:fact-5\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sphinx/ext/autodoc/__init__.py:L1084-L1091\", \"source\": \"repository\", \"source_digest\": \"43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c\"}], \"id\": \"fact-5\", \"statement\": \"When enabled and no explicit signature arguments were supplied, DocstringSignatureMixin assigns the single extracted args and return annotation pair to the documenter before delegating to the normal signature formatter.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def add_directive_header(self, sig: str) -> None:\\n        \\\"\\\"\\\"Add the directive header and options to the generated content.\\\"\\\"\\\"\\n        domain = getattr(self, 'domain', 'py')\\n        directive = getattr(self, 'directivetype', self.objtype)\\n        name = self.format_name()\\n        sourcename = self.get_sourcename()\\n\\n        # one signature per line, indented by column\\n        prefix = '.. %s:%s:: ' % (domain, directive)\\n        for i, sig_line in enumerate(sig.split(\\\"\\\\n\\\")):\\n            self.add_line('%s%s%s' % (prefix, name, sig_line),\\n                          sourcename)\\n            if i == 0:\\n                prefix = \\\" \\\" * len(prefix)\", \"excerpt_digest\": \"ed4d6920922020855e56f1aaae129711f1be71eb91da10ca747a6ce22e4f1988\", \"id\": \"repository:fact-6\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sphinx/ext/autodoc/__init__.py:L441-L454\", \"source\": \"repository\", \"source_digest\": \"43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c\"}], \"id\": \"fact-6\", \"statement\": \"The generic directive-header writer already accepts newline-separated formatted signatures and emits one directive signature line for each newline-delimited entry.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def format_signature(self, **kwargs: Any) -> str:\\n        sig = super().format_signature(**kwargs)\\n        sigs = [sig]\\n\\n        if inspect.is_singledispatch_function(self.object):\\n            # append signature of singledispatch'ed functions\\n            for typ, func in self.object.registry.items():\\n                if typ is object:\\n                    pass  # default implementation. skipped.\\n                else:\\n                    self.annotate_to_first_argument(func, typ)\\n\\n                    documenter = FunctionDocumenter(self.directive, '')\\n                    documenter.object = func\\n                    sigs.append(documenter.format_signature())\\n\\n        return \\\"\\\\n\\\".join(sigs)\", \"excerpt_digest\": \"4df789bbe13b5bf3c30db4fabf385b2853c56c4f9aea3605a490eac62e2e97c9\", \"id\": \"repository:fact-7\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"sphinx/ext/autodoc/__init__.py:L1159-L1175\", \"source\": \"repository\", \"source_digest\": \"43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c\"}], \"id\": \"fact-7\", \"statement\": \"FunctionDocumenter already constructs multiple displayed signatures for singledispatch functions by collecting formatter results and joining them with newline characters.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        '.. py:class:: Foo()',\\n        '   :module: target.singledispatchmethod',\\n        '',\\n        '   docstring',\\n        '',\\n        '',\\n        '   .. py:method:: Foo.meth(arg, kwarg=None)',\\n        '                  Foo.meth(arg: int, kwarg=None)',\\n        '                  Foo.meth(arg: str, kwarg=None)',\\n        '      :module: target.singledispatchmethod',\\n        '',\\n        '      A method for general use.',\\n        '',\\n    ]\", \"excerpt_digest\": \"172ab71dd755e7ebd0c1a3c997c3c82cf400c26c3b00fd5a07c1e691ee324329\", \"id\": \"repository:fact-8\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_ext_autodoc.py:L1661-L1674\", \"source\": \"repository\", \"source_digest\": \"d647f6b467eed4760698fc2cc397f5daf387cc8d357a9e41804f2e91eb14e6a3\"}], \"id\": \"fact-8\", \"statement\": \"Existing singledispatchmethod tests assert that autodoc emits three aligned py:method signature lines for one method.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"class DocstringSig(object):\\n    def meth(self):\\n        \\\"\\\"\\\"meth(FOO, BAR=1) -> BAZ\\nFirst line of docstring\\n\\n        rest of docstring\\n        \\\"\\\"\\\"\\n\\n    def meth2(self):\\n        \\\"\\\"\\\"First line, no signature\\n        Second line followed by indentation::\\n\\n            indented line\\n        \\\"\\\"\\\"\", \"excerpt_digest\": \"3b516a94329b8c9c912c55ce7ebd8477331d71529f2bcbf6f8dd03e77ab4d450\", \"id\": \"repository:fact-9\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/roots/test-ext-autodoc/target/__init__.py:L117-L130\", \"source\": \"repository\", \"source_digest\": \"93e85038a0cfa5561772353979d64f1f9ad91491b40d8b725d102e288ba68e97\"}], \"id\": \"fact-9\", \"statement\": \"The existing docstring-signature fixture contains one leading method signature followed by prose, and the corresponding test expects that signature in the py:method directive while excluding it from the content.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"@pytest.mark.sphinx('html', testroot='ext-autodoc')\\ndef test_autodoc_docstring_signature(app):\\n    options = {\\\"members\\\": None}\\n    actual = do_autodoc(app, 'class', 'target.DocstringSig', options)\\n    assert list(actual) == [\\n        '',\\n        '.. py:class:: DocstringSig()',\\n        '   :module: target',\\n        '',\\n        '',\\n        '   .. py:method:: DocstringSig.meth(FOO, BAR=1) -> BAZ',\\n        '      :module: target',\\n        '',\\n        '      First line of docstring',\\n        '',\\n        '      rest of docstring',\\n        '',\", \"excerpt_digest\": \"ca47dbf6e186d147d17a130119485e42cc7a293527cf834bb855023dea049a65\", \"id\": \"repository:fact-10\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_ext_autodoc_configs.py:L235-L251\", \"source\": \"repository\", \"source_digest\": \"efe58e80757e6f93ef0535d3694253b76813536641ac18daadaf89985ed64782\"}], \"id\": \"fact-10\", \"statement\": \"The enabled configuration test expects meth(FOO, BAR=1) -> BAZ as the generated method signature and retains only the following prose as docstring content.\"}], \"transcript\": [{\"answer\": \"First non-signature\", \"open_material_decisions\": [\"Define the boundary of the leading overload-signature block.\"], \"question\": {\"header\": \"Block ending\", \"options\": [{\"description\": \"Consume consecutive valid signatures for the documented object from the start, then preserve that line and everything after it as docstring content.\", \"label\": \"First non-signature (Recommended)\", \"recommended\": true}, {\"description\": \"Treat lines before the first blank line as the overload block, consuming valid signatures there and preserving subsequent content.\", \"label\": \"Blank line\", \"recommended\": false}, {\"description\": \"Scan beyond intervening non-signature lines and extract every later valid signature, which may remove signature-like examples from prose.\", \"label\": \"Any valid signatures\", \"recommended\": false}], \"prompt\": \"How should autodoc determine where the leading overload-signature block ends?\"}, \"turn\": 1}, {\"answer\": \"Functions and methods\", \"open_material_decisions\": [\"Decide whether multiple leading docstring signatures are supported only for methods or for both functions and methods.\"], \"question\": {\"header\": \"Object scope\", \"options\": [{\"description\": \"Extend the shared behavior consistently to both function and method documenters.\", \"label\": \"Functions and methods\", \"recommended\": true}, {\"description\": \"Limit multiple-signature extraction to methods, leaving functions restricted to one docstring signature.\", \"label\": \"Methods only\", \"recommended\": false}], \"prompt\": \"Which autodoc objects should support multiple consecutive leading docstring signatures?\"}, \"turn\": 2}], \"upstream\": {\"base_commit\": \"9988d5ce267bf0df4791770b469431b1fb00dcdd\", \"dataset\": \"princeton-nlp/SWE-bench_Verified\", \"instance_id_digest\": \"3b2f3955109fe4d793c39c0bd96451e39c6b5f4cf4942ac3c512e72bda756f7e\", \"issue_cache_key\": \"sha256:8d2fa20fad9e7875f1cfb475ed77cbdea0daee392ce09045da39a7468b6e1c99\", \"issue_digest\": \"8d2fa20fad9e7875f1cfb475ed77cbdea0daee392ce09045da39a7468b6e1c99\", \"revision\": \"c104f840cc67f8b6eec6f759ebc8b2693d585d4a\", \"source_url\": \"https://github.com/sphinx-doc/sphinx/pull/7748\"}}\ncodex\n{\"action\":\"complete\",\"reason\":\"The prior answers resolve the material scope and block-boundary decisions. The repository evidence defines existing precedence, parsing, name validation, configuration behavior, and multi-signature rendering sufficiently for an implementable contract.\",\"open_material_decisions\":[],\"question\":null,\"contract\":{\"summary\":\"When autodoc_docstring_signature is enabled and no explicit signature is supplied, autodoc must recognize every consecutive valid signature for the documented function or method at the start of its docstring, display those signatures in their original order, and exclude the consumed signature lines from the rendered docstring body. The signature block ends at the first line that is not a valid signature for the documented object; that line and all subsequent content remain in the body.\",\"implementation_ready\":true,\"confirmed_decisions\":[\"Multiple leading docstring signatures are supported for both functions and methods.\",\"Only a consecutive block at the start of the docstring is eligible for extraction.\",\"The leading block ends at the first line that is not a valid signature for the documented object.\",\"All extracted signatures are displayed in their original docstring order.\",\"All extracted signature lines are removed from rendered docstring content.\",\"The first non-signature line and everything following it are preserved as docstring content.\",\"Existing behavior remains unchanged when only one leading signature is present.\",\"When autodoc_docstring_signature is disabled, docstring signature lines remain body content and do not replace the normally determined signature.\",\"An explicitly supplied signature continues to take precedence over docstring signature discovery.\",\"Signature recognition and documented-object name validation retain their existing accepted syntax and rules.\"],\"open_material_decisions\":[],\"acceptance_checks\":[\"A function docstring beginning with two valid signatures for that function produces two directive signatures in the same order, and neither signature line appears in the body.\",\"A method docstring beginning with multiple valid overload signatures produces one displayed directive signature per overload in the same order, including each overload's own return annotation when present.\",\"After one or more valid leading signatures, the first non-signature line and all later lines are rendered as docstring content.\",\"A signature-looking line for a different object ends the leading signature block and is preserved along with all subsequent content.\",\"A valid signature appearing after prose is not extracted.\",\"A docstring with one valid leading signature retains the existing single-signature output and body behavior.\",\"With autodoc_docstring_signature disabled, multiple leading signature-looking lines remain in the body and do not become displayed overload signatures.\",\"When an explicit signature is provided, leading docstring signatures do not override it.\"]}}\ntokens used\n12,334\n"
+}

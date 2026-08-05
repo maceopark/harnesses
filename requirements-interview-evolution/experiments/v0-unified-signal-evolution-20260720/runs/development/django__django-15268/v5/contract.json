@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "Given same-model operations [AlterUniqueTogether(empty), AlterIndexTogether(empty), AlterUniqueTogether(final), AlterIndexTogether(final)], MigrationOptimizer returns [AlterUniqueTogether(final), AlterIndexTogether(final)] in that order.",
+    "The existing foo-together autodetector ordering scenario produces only two optimized operations: AlterUniqueTogether followed by AlterIndexTogether, each containing {('title', 'author')}.",
+    "A focused optimizer test proves AlterUniqueTogether can traverse an intervening same-model AlterIndexTogether to collapse into a later AlterUniqueTogether.",
+    "A focused optimizer test proves AlterIndexTogether can traverse an intervening same-model AlterUniqueTogether to collapse into a later AlterIndexTogether.",
+    "Regression coverage proves traversal is not allowed through a different same-model ModelOptionOperation or another unrelated same-model operation.",
+    "Existing tests showing that two adjacent AlterUniqueTogether operations collapse to the second and that two adjacent AlterIndexTogether operations collapse to the second continue to pass.",
+    "The relevant migrations optimizer and autodetector test suites pass without changing database execution semantics."
+  ],
+  "confirmed_decisions": [
+    "Traversal is sibling-only: AlterUniqueTogether and AlterIndexTogether may optimize through each other on the same model, without broadening traversal to other ModelOptionOperation or model-operation classes.",
+    "Success must be verified at both layers: focused MigrationOptimizer regression tests and the end-to-end autodetector ordering scenario.",
+    "The optimized operations retain the complete final option values, not the earlier removal-phase intersection or empty values.",
+    "Existing optimizer behavior for adjacent operations of the same concrete AlterFooTogether type must remain unchanged.",
+    "Different models and unrelated same-model operations retain their existing reduction and barrier behavior."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Change AlterFooTogether reduction so matching operations for the same model can optimize across only the sibling together-option operation. Thus an AlterUniqueTogether may traverse an intervening AlterIndexTogether, and vice versa, while all other same-model operations remain barriers. Preserve the existing rule that repeated operations of the same concrete type collapse to the later operation. The four-operation autodetector ordering case must consequently optimize to the final AlterUniqueTogether and final AlterIndexTogether operations."
+}

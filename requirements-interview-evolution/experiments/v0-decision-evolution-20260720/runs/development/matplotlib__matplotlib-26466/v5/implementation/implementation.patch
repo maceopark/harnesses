@@ -1,0 +1,112 @@
+diff --git a/lib/matplotlib/offsetbox.py b/lib/matplotlib/offsetbox.py
+index bb117c3..c23ca37 100644
+--- a/lib/matplotlib/offsetbox.py
++++ b/lib/matplotlib/offsetbox.py
+@@ -1306,7 +1306,8 @@ or callable, default: value of *xycoords*
+         self.offsetbox = offsetbox
+         self.arrowprops = arrowprops.copy() if arrowprops is not None else None
+         self.set_fontsize(fontsize)
+-        self.xybox = xybox if xybox is not None else xy
++        x, y = self.xy if xybox is None else xybox
++        self.xybox = (x, y)
+         self.boxcoords = boxcoords if boxcoords is not None else xycoords
+         self._box_alignment = box_alignment
+ 
+diff --git a/lib/matplotlib/tests/test_axes.py b/lib/matplotlib/tests/test_axes.py
+index 6c970cd..9844f66 100644
+--- a/lib/matplotlib/tests/test_axes.py
++++ b/lib/matplotlib/tests/test_axes.py
+@@ -766,6 +766,20 @@ def test_annotate_default_arrow():
+     assert ann.arrow_patch is not None
+ 
+ 
++@pytest.mark.parametrize("xy", [np.array([1., 2.]), [1., 2.]])
++def test_annotate_xy_is_snapshotted(xy):
++    fig, ax = plt.subplots()
++    ann = ax.annotate("", xy=xy, xytext=(3, 4), arrowprops={})
++
++    xy[0] = 5
++    ann.update_positions(fig.canvas.get_renderer())
++
++    assert ann.xy == (1, 2)
++    assert isinstance(ann.xy, tuple)
++    np.testing.assert_allclose(ann.arrow_patch._posA_posB[1],
++                               ax.transData.transform((1, 2)))
++
++
+ def test_annotate_signature():
+     """Check that the signature of Axes.annotate() matches Annotation."""
+     fig, ax = plt.subplots()
+diff --git a/lib/matplotlib/tests/test_offsetbox.py b/lib/matplotlib/tests/test_offsetbox.py
+index 49b55e4..a079c32 100644
+--- a/lib/matplotlib/tests/test_offsetbox.py
++++ b/lib/matplotlib/tests/test_offsetbox.py
+@@ -401,6 +401,34 @@ def test_annotationbbox_properties():
+     assert ab.anncoords == 'axes fraction'  # boxcoords if given
+ 
+ 
++@pytest.mark.parametrize("xybox", [None, [3., 4.]])
++def test_annotationbbox_coordinates_are_snapshotted(xybox):
++    xy = np.array([1., 2.])
++    ab = AnnotationBbox(DrawingArea(20, 20), xy, xybox=xybox)
++
++    xy[:] = 5
++    if xybox is not None:
++        xybox[:] = [6, 7]
++
++    assert ab.xy == (1, 2)
++    assert ab.xybox == ((1, 2) if xybox is None else (3, 4))
++    assert isinstance(ab.xy, tuple)
++    assert isinstance(ab.xybox, tuple)
++    assert ab.xybox is not ab.xy
++
++
++def test_annotationbbox_coordinate_snapshot_is_shallow():
++    x, y = object(), object()
++    box_x, box_y = object(), object()
++    ab = AnnotationBbox(DrawingArea(20, 20), [x, y],
++                        xybox=[box_x, box_y])
++
++    assert ab.xy[0] is x
++    assert ab.xy[1] is y
++    assert ab.xybox[0] is box_x
++    assert ab.xybox[1] is box_y
++
++
+ def test_textarea_properties():
+     ta = TextArea('Foo')
+     assert ta.get_text() == 'Foo'
+diff --git a/lib/matplotlib/tests/test_text.py b/lib/matplotlib/tests/test_text.py
+index 47121b7..762921c 100644
+--- a/lib/matplotlib/tests/test_text.py
++++ b/lib/matplotlib/tests/test_text.py
+@@ -251,6 +251,15 @@ def test_annotation_contains():
+     assert ann.contains(event) == (False, {})
+ 
+ 
++def test_annotation_xy_snapshot_is_shallow():
++    x, y = object(), object()
++    ann = Annotation("", [x, y])
++
++    assert isinstance(ann.xy, tuple)
++    assert ann.xy[0] is x
++    assert ann.xy[1] is y
++
++
+ @pytest.mark.parametrize('err, xycoords, match', (
+     (TypeError, print, "xycoords callable must return a BboxBase or Transform, not a"),
+     (TypeError, [0, 0], r"'xycoords' must be an instance of str, tuple"),
+diff --git a/lib/matplotlib/text.py b/lib/matplotlib/text.py
+index d4922fc..bec42d3 100644
+--- a/lib/matplotlib/text.py
++++ b/lib/matplotlib/text.py
+@@ -1456,7 +1456,8 @@ class _AnnotationBase:
+                  xycoords='data',
+                  annotation_clip=None):
+ 
+-        self.xy = xy
++        x, y = xy
++        self.xy = (x, y)
+         self.xycoords = xycoords
+         self.set_annotation_clip(annotation_clip)
+ 

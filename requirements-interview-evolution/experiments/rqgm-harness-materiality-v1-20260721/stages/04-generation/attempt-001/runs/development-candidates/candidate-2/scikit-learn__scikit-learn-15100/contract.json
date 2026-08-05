@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "strip_accents_unicode(\"ñ\") equals \"n\".",
+    "strip_accents_unicode(\"n\\u0303\") equals \"n\".",
+    "strip_accents_unicode produces equal output for canonically equivalent composed and decomposed accented inputs.",
+    "CountVectorizer configured with strip_accents='unicode' produces the same analyzed terms for equivalent composed and decomposed documents, with the combining accent absent.",
+    "Previously supported composed Latin, composed Arabic, mixed-text, and accent-free cases retain their expected outputs.",
+    "Existing behavior for ASCII accent stripping and vectorizer configurations not using Unicode accent stripping does not regress."
+  ],
+  "confirmed_decisions": [
+    "strip_accents_unicode removes combining characters from input that is already in NFKD form.",
+    "A precomposed accented character and its canonically equivalent decomposed sequence produce the same accent-free output; specifically, both \"ñ\" and \"n\\u0303\" produce \"n\".",
+    "Existing Unicode accent-removal behavior for precomposed Latin characters, precomposed Arabic characters, mixed accented and unaccented text, and accent-free text remains intact.",
+    "CountVectorizer preprocessing with strip_accents='unicode' applies the corrected behavior, so composed and decomposed equivalents yield the same analyzed terms.",
+    "The corrected shared preprocessing behavior also applies to vectorizer analyzer modes and subclasses that use the existing Unicode accent-stripping path, including TfidfVectorizer.",
+    "Behavior of strip_accents='ascii', custom accent callables, and configurations without accent stripping remains unchanged.",
+    "The public API and documented meaning of strip_accents='unicode' remain unchanged; this is a behavioral bug fix rather than a new option or API."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Correct Unicode accent stripping so canonically equivalent composed and already-NFKD text produce the same accent-free result, including when used through vectorizers configured with strip_accents='unicode'."
+}

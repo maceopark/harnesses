@@ -1,0 +1,78 @@
+[
+  {
+    "answer": "Guard _sqrt_match",
+    "open_material_decisions": [
+      "Choose the compatibility boundary and fix location: sqrtdenest-specific guard versus a global empty-surds contract for split_surds."
+    ],
+    "question": {
+      "header": "Fix boundary",
+      "options": [
+        {
+          "description": "Recommended: avoid calling split_surds when no eligible Pow surds exist, preserving split_surds behavior for every other caller.",
+          "label": "Guard _sqrt_match",
+          "recommended": true
+        },
+        {
+          "description": "Define new lower-level behavior for an empty surds list, affecting any caller that supplies an Add with no eligible Pow factors.",
+          "label": "Harden split_surds",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should the empty-surds case be handled?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this scope and acceptance criteria as implementation-ready.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a material change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: add a sqrtdenest-specific guard in _sqrt_match so an additive radicand with rational-square terms but no eligible Pow surds is treated as a non-match; preserve split_surds and _split_gcd behavior; add a regression test asserting the reported expression does not raise and equals its unchanged canonical expanded form; run the targeted sqrtdenest tests, with the unavailable mpmath dependency recorded as a validation limitation if still blocking. Residual risk is limited to other mixed or unusual Add shapes that contain eligible Pow factors and therefore continue through the existing split_surds path."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "The reported sqrtdenest call completes without IndexError or another exception.",
+          "The reported expression compares equal to 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2 after sqrtdenest.",
+          "Existing targeted sqrtdenest tests continue to pass.",
+          "split_surds and _split_gcd behavior remains unchanged.",
+          "If tests cannot run because mpmath is unavailable, the implementation handoff explicitly records that validation gap rather than claiming a passing runtime result."
+        ],
+        "confirmed_decisions": [
+          "Handle the empty-surds case with a guard in _sqrt_match, not by changing the lower-level split_surds or _split_gcd contracts.",
+          "An Add satisfying the existing rational-square condition but having no eligible Pow surds is a non-match for denesting.",
+          "Preserve the existing public behavior that expressions which cannot be denested are returned unchanged.",
+          "Add regression coverage for the exact reported expression and its unchanged canonical expanded result.",
+          "Use the targeted sqrtdenest test suite as acceptance evidence, while explicitly reporting the unavailable mpmath dependency if it still prevents runtime validation.",
+          "Do not broaden compatibility guarantees to Add shapes that contain eligible Pow factors and continue through the existing split_surds logic.",
+          "The owner approved this implementation contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Implement a sqrtdenest-specific fix in _sqrt_match: when an additive radicand has rational-square terms but contains no eligible Pow surds for split_surds, treat it as a non-match so the existing sqrtdenest flow returns the expression unchanged. Do not change split_surds or _split_gcd. Add a regression test for (3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2 asserting that sqrtdenest does not raise IndexError and returns its unchanged canonical expanded form. Run the targeted sqrtdenest tests; if importing SymPy remains blocked by unavailable mpmath, record that validation limitation. The acknowledged residual risk is limited to mixed or unusual Add shapes that contain eligible Pow factors and therefore continue through the existing split_surds path."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the proposed contract, and all material decisions needed for implementation are resolved."
+    },
+    "turn": 3
+  }
+]

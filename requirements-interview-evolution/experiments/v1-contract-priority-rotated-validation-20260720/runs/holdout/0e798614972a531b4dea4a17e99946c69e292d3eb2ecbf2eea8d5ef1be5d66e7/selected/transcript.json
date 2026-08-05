@@ -1,0 +1,185 @@
+[
+  {
+    "answer": "Project-relative parity",
+    "open_material_decisions": [
+      "Define the path reference forms against which `ignore-paths` must be evaluated during recursive discovery."
+    ],
+    "question": {
+      "header": "Path semantics",
+      "options": [
+        {
+          "description": "Make TOML and command-line `ignore-paths` behave identically so the reported `pylint --recursive=y src/` case matches `src/gen/...` on Windows and POSIX, without promising matches when the target is supplied as an absolute path.",
+          "label": "Project-relative parity",
+          "recommended": true
+        },
+        {
+          "description": "Also require the same anchored project-relative pattern to match when the recursive target is supplied as an absolute path, broadening normalization behavior beyond the reported case.",
+          "label": "Relative and absolute",
+          "recommended": false
+        },
+        {
+          "description": "Interpret recursive paths relative to the supplied target, which would require a pattern like `^gen/.*$` and would not preserve the reported `^src/gen/.*$` expectation.",
+          "label": "Target-relative",
+          "recommended": false
+        }
+      ],
+      "prompt": "During recursive discovery, which path semantics should `ignore-paths` support for an anchored pattern such as `^src/gen/.*$`?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Working directory",
+    "open_material_decisions": [
+      "Define the base directory used to interpret project-relative candidate paths when the configuration file and process working directory differ."
+    ],
+    "question": {
+      "header": "Relative base",
+      "options": [
+        {
+          "description": "Evaluate relative path candidates from Pylint's invocation working directory; this fixes the reported `^src/gen/.*$` case while preserving command-line and TOML parity without introducing configuration-location semantics.",
+          "label": "Working directory",
+          "recommended": true
+        },
+        {
+          "description": "Evaluate relative path candidates from the directory containing `pyproject.toml`, so behavior follows the configuration file when Pylint is invoked elsewhere.",
+          "label": "Config directory",
+          "recommended": false
+        },
+        {
+          "description": "Match against both working-directory-relative and configuration-directory-relative forms, broadening which anchored patterns can exclude paths and potentially changing behavior outside the reported case.",
+          "label": "Either base",
+          "recommended": false
+        }
+      ],
+      "prompt": "What should be the reference directory for an anchored project-relative `ignore-paths` pattern during recursive discovery?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Match both forms",
+    "open_material_decisions": [
+      "Choose whether recursive `ignore-paths` matching evaluates both the existing raw candidate path and the new working-directory-relative path, or replaces raw-path matching during recursive discovery."
+    ],
+    "question": {
+      "header": "Compatibility",
+      "options": [
+        {
+          "description": "Preserve existing raw-path behavior and additionally match the working-directory-relative form; this fixes `^src/gen/.*$` with the narrowest compatibility risk.",
+          "label": "Match both forms",
+          "recommended": true
+        },
+        {
+          "description": "Use only the working-directory-relative form during recursive discovery, giving one canonical interpretation but potentially breaking existing patterns written for raw or absolute candidate paths.",
+          "label": "Relative form only",
+          "recommended": false
+        }
+      ],
+      "prompt": "When adding working-directory-relative matching for recursive discovery, should existing raw-path matches remain valid?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Recursive candidates",
+    "open_material_decisions": [
+      "Define which candidate categories receive the additional working-directory-relative `ignore-paths` match."
+    ],
+    "question": {
+      "header": "Match scope",
+      "options": [
+        {
+          "description": "Apply it to recursively discovered directories and Python files only; preserve existing semantics for explicit and non-recursive targets.",
+          "label": "Recursive candidates",
+          "recommended": true
+        },
+        {
+          "description": "Apply it through shared ignore matching to recursive, explicit, package-expansion, and non-recursive candidates, creating broader project-relative behavior.",
+          "label": "All candidates",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should the additional working-directory-relative `ignore-paths` form be evaluated?"
+    },
+    "turn": 4
+  },
+  {
+    "answer": "Exclude matched files",
+    "open_material_decisions": [
+      "Define whether descendant-only expressions such as `^src/gen/.*$` authorize pruning `src/gen` even though the expression does not match the directory path `src/gen` itself."
+    ],
+    "question": {
+      "header": "Traversal",
+      "options": [
+        {
+          "description": "Apply the regex literally to recursive directory and Python-file candidates; `src/gen/*.py` is not checked, while traversal is pruned only when the directory path itself matches an ignore rule.",
+          "label": "Exclude matched files",
+          "recommended": true
+        },
+        {
+          "description": "Treat a descendant-matching expression as also ignoring its parent directory, reducing traversal but adding regex-prefix inference beyond normal match semantics.",
+          "label": "Infer directory pruning",
+          "recommended": false
+        }
+      ],
+      "prompt": "For `^src/gen/.*$`, should recursive linting exclude matching Python files only, or also infer that `src/gen` itself should be pruned?"
+    },
+    "turn": 5
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve or revise the complete implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with no remaining material decisions.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open and identify a behavior, boundary, acceptance oracle, or risk that must change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: Scope—fix recursive discovery so `ignore-paths` supplied through `pyproject.toml` or the command line has identical behavior for recursively discovered directory and Python-file candidates. Required behavior—when Pylint is invoked from a working directory with `pylint --recursive=y src/`, an anchored pattern `^src/gen/.*$` must exclude matching Python files under `src/gen` on Windows and POSIX path spellings; matching must consider both the existing raw candidate path and a working-directory-relative candidate path. Regex semantics remain literal: a directory is pruned only if that directory candidate itself matches; no parent-directory inference is required. Compatibility boundary—retain existing raw-path matches and existing behavior for explicit targets, non-recursive checking, and package/module expansion outside recursive candidate handling; no guarantee is added that a project-relative pattern matches when the recursive target is supplied as an absolute path. Acceptance—an end-to-end or equivalent integration test using TOML configuration, recursive `src/`, and anchored `^src/gen/.*$` proves files beneath `src/gen` are absent while a nonignored Python file beneath `src` remains eligible; coverage must establish Windows and POSIX separator compatibility without requiring a particular internal helper, fixture name, or implementation. Exclusions—no changes to config precedence, regex transformation syntax, `ignore`, `ignore-patterns`, supported Python/Pylint versions, or inferred traversal pruning. Implementation delegation—the implementer may choose the narrow internal mechanism and minimum test placement/fixtures, provided only recursive directory and Python-file candidates gain the additional working-directory-relative match, existing raw matching remains, and targeted recursive/config tests plus relevant existing tests pass; return to the owner if satisfying this requires changing shared non-recursive matching semantics or the stated compatibility boundary. Residual risk accepted—absolute-target invocations and paths whose working-directory-relative form contains `..` are not promised new matching behavior beyond existing raw-path semantics."
+    },
+    "turn": 6
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "With `ignore-paths = [\"^src/gen/.*$\"]` loaded from `pyproject.toml`, running recursive linting on relative target `src/` excludes Python files beneath `src/gen`.",
+          "A nonignored Python file beneath `src` remains eligible for linting in the same scenario.",
+          "Equivalent command-line and TOML `ignore-paths` values produce the same recursive exclusion behavior.",
+          "Coverage establishes that the anchored pattern works with Windows and POSIX separator spellings.",
+          "Existing raw-path `ignore-paths` matches continue to work during recursive discovery.",
+          "Directory pruning occurs only when the directory candidate itself matches an ignore rule; no descendant-prefix inference is introduced.",
+          "Relevant targeted recursive/configuration tests and existing affected tests pass.",
+          "No shared non-recursive matching behavior or approved compatibility boundary is changed."
+        ],
+        "confirmed_decisions": [
+          "Project-relative recursive matching is based on Pylint's invocation working directory.",
+          "Existing raw candidate-path matching remains valid alongside the additional working-directory-relative match.",
+          "The additional relative-path form applies only to recursively discovered directory and Python-file candidates.",
+          "An anchored expression such as `^src/gen/.*$` excludes matching descendant Python files but does not imply that `src/gen` itself matches or must be pruned.",
+          "TOML and command-line `ignore-paths` must have identical behavior within the approved recursive scope.",
+          "Explicit targets, non-recursive checking, and package/module expansion outside recursive candidate handling retain their existing semantics.",
+          "No new guarantee applies when the recursive target is absolute or when its working-directory-relative form contains `..`; existing raw-path behavior remains available.",
+          "The implementation mechanism and minimum test placement are delegated within the stated scope and compatibility constraints.",
+          "The owner approved the complete implementation contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix recursive discovery so `ignore-paths` supplied through `pyproject.toml` or the command line behaves identically for recursively discovered directory and Python-file candidates. When invoked from the working directory as `pylint --recursive=y src/`, an anchored pattern `^src/gen/.*$` must exclude matching Python files under `src/gen` with Windows or POSIX separators. Recursive matching must consider both the existing raw candidate path and its working-directory-relative form. Regex matching remains literal: prune a directory only when the directory candidate itself matches; do not infer pruning from descendant-only expressions. Preserve existing raw-path matching and existing behavior for explicit targets, non-recursive checking, and package/module expansion outside recursive candidate handling. Do not guarantee new project-relative matching for absolute recursive targets or working-directory-relative paths containing `..`. Do not change configuration precedence, regex syntax/transformation, `ignore`, `ignore-patterns`, or supported versions. The implementer may select the narrow internal mechanism and minimum fixtures/test placement, but must return to the owner if implementation requires changing shared non-recursive matching semantics or this compatibility boundary."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the complete contract. All material behavioral, compatibility, scope, acceptance, delegation, and residual-risk decisions are resolved."
+    },
+    "turn": 7
+  }
+]

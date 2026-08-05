@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "Calling sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) completes without IndexError.",
+    "The call returns an expression equal to (3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2.",
+    "A regression test for the exact reported expression passes.",
+    "Relevant existing tests in sympy/simplify/tests/test_sqrtdenest.py pass.",
+    "No modifications are made to the observable empty-input behavior of split_surds or _split_gcd for other callers.",
+    "Bounded residual risk acknowledged: malformed or unsupported inputs that reach split_surds directly remain outside this fix."
+  ],
+  "confirmed_decisions": [
+    "The repair boundary is local to sqrtdenest, not a global change to split_surds or _split_gcd.",
+    "The exact reported expression (3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2 must be returned unchanged and must not raise IndexError.",
+    "The empty eligible-Pow-surds condition is treated as a failed denesting match, using the existing unchanged-result behavior.",
+    "Behavior of split_surds and _split_gcd for other direct or indirect callers must remain unchanged.",
+    "Regression coverage must include the exact reported expression.",
+    "Relevant existing sqrtdenest tests must continue to pass.",
+    "Owner explicitly approved this contract."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Implement a local sqrtdenest-side repair for the empty eligible-Pow-surds path. When _sqrt_match encounters an additive radicand that otherwise qualifies for split_surds but contains no eligible Pow surds, it must report no match so the existing sqrtdenest flow returns the affected expression unchanged instead of raising IndexError. Do not change split_surds or _split_gcd behavior. Add a regression test using the exact reported expression."
+}

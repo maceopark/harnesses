@@ -1,0 +1,30 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/0",
+          "quoted_value": "A synthetic or equivalent module reporting version 1.14.3 satisfies minversion(module, '1.14dev') and does not raise TypeError."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/1",
+          "quoted_value": "The regression is verified through the publicly exported astropy.utils.minversion API."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/1/statement",
+          "quoted_value": "minversion accepts either an imported module or a module-name string; a failed string import returns False, while other argument types raise ValueError."
+        }
+      ],
+      "description": "The reported failure occurs through the public API with a string module name. Because string inputs exercise import resolution and then version comparison, object-only coverage plus an export check does not verify the complete reported path. Add an acceptance check using a resolvable module-name string reporting `1.14.3` and require `astropy.utils.minversion(name, '1.14dev')` to return true without raising.",
+      "failure_class": "omission",
+      "general_cause": "The acceptance criteria substitute a module object for the reported module-name execution path, leaving the failing public call shape without explicit regression coverage.",
+      "id": "F-001",
+      "material": true,
+      "observable_signal": "The contract accepts a synthetic or equivalent module for the version-ordering regression and separately checks the public export, but never requires the regression case to pass when `minversion` receives a module-name string."
+    }
+  ],
+  "summary": "The contract is nearly implementation-ready, but it omits explicit regression verification of the reported public module-name-string call path."
+}

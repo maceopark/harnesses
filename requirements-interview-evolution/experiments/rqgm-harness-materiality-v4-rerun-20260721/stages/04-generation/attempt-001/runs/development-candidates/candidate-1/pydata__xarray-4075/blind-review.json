@@ -1,0 +1,55 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/4",
+          "quoted_value": "Boolean weights with an arithmetic total of zero preserve the existing zero-total result behavior."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/2/statement",
+          "quoted_value": "The sum-of-weights calculation creates a boolean mask with da.notnull() and reduces that mask directly against self.weights, so boolean weights produce a boolean-by-boolean dot input."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/3/statement",
+          "quoted_value": "Weighted mean computes the weighted sum separately, computes sum_of_weights through the mask-based path, and returns their quotient; an incorrect denominator directly changes the mean result."
+        }
+      ],
+      "description": "The implementer or verifier must rediscover what “existing zero-total result behavior” means. The contract should state the expected missing/NaN result directly so this edge case is independently executable.",
+      "failure_class": "repository-delegation",
+      "general_cause": "The contract refers to pre-existing behavior instead of stating the audited, observable zero-total result explicitly.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "The zero-total acceptance check requires preserving an unspecified existing result even though repository evidence establishes that zero weight totals are replaced with missing values."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/6",
+          "quoted_value": "Behavior is consistent for supported DataArray and Dataset weighted operations, reduction dimensions, and missing-data options."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/2",
+          "quoted_value": "The correction applies to all affected public weighted reductions, not only weighted mean."
+        },
+        {
+          "artifact": "transcript",
+          "pointer": "/0/answer",
+          "quoted_value": "All affected reductions"
+        }
+      ],
+      "description": "This check cannot yield a determinate pass/fail result as written. It needs a finite supported-case matrix or explicit representative cases and expected results for DataArray, Dataset, dimension selection, and missing-data options.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "A broad compatibility requirement uses undefined scope and an undefined consistency predicate without concrete expected outcomes.",
+      "id": "FINDING-2",
+      "material": true,
+      "observable_signal": "The final acceptance check quantifies over “supported” operations, dimensions, and missing-data options but neither enumerates that matrix nor defines what observations establish consistency."
+    }
+  ],
+  "summary": "The arithmetic boolean-weight intent is resolved, but the contract is not implementation-ready because its zero-total requirement delegates to unspecified existing behavior and its cross-operation compatibility check has no determinate verification scope."
+}

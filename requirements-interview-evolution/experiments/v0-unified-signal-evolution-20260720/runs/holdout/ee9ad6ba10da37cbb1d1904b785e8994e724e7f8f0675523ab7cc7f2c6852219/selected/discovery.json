@@ -1,0 +1,51 @@
+{
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 10,
+      "line_start": 7,
+      "path": "pylint/__main__.py",
+      "statement": "The `pylint` module entry point calls `pylint.modify_sys_path()` before calling `pylint.run_pylint()`."
+    },
+    {
+      "id": "F2",
+      "line_end": 87,
+      "line_start": 80,
+      "path": "pylint/__init__.py",
+      "statement": "`modify_sys_path` is documented as stripping the current working directory to prevent accidental imports of user modules that shadow standard-library or Pylint modules."
+    },
+    {
+      "id": "F3",
+      "line_end": 90,
+      "line_start": 89,
+      "path": "pylint/__init__.py",
+      "statement": "The helper’s documentation assumes the first sys.path entry is always either an empty string or the working directory."
+    },
+    {
+      "id": "F4",
+      "line_end": 105,
+      "line_start": 99,
+      "path": "pylint/__init__.py",
+      "statement": "The implementation removes index 0 with `sys.path.pop(0)` without inspecting the entry first; it then performs additional PYTHONPATH-dependent removals using the current working directory."
+    },
+    {
+      "id": "F5",
+      "line_end": 772,
+      "line_start": 746,
+      "path": "tests/test_self.py",
+      "statement": "The existing test directly invokes `modify_sys_path` with the current working directory as the first entry and asserts that this first entry is removed, including when a custom PYTHONPATH entry follows it."
+    },
+    {
+      "id": "F6",
+      "line_end": 815,
+      "line_start": 774,
+      "path": "tests/test_self.py",
+      "statement": "Additional existing cases use an empty string or the current working directory as the first entry and verify removal behavior for leading or trailing empty PYTHONPATH components."
+    }
+  ],
+  "scope_summary": "At base commit 684a1d6aa0a6791e20078bc524f97c8906332390, Pylint’s module entry point invokes a helper that unconditionally removes the first sys.path entry; the existing tests exercise working-directory and empty-string entries but do not establish behavior for an unrelated first entry such as a bundled-library path.",
+  "unknowns": [
+    "The supplied base commit contains no cited repository evidence establishing intended behavior when sys.path[0] is an unrelated path inserted by a runpy caller.",
+    "The supplied base commit contains no cited repository evidence establishing whether relative spellings or normalized equivalents of the current working directory should be treated identically."
+  ]
+}

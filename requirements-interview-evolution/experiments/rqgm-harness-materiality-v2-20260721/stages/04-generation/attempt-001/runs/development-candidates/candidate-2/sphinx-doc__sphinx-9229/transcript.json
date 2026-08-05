@@ -1,0 +1,75 @@
+[
+  {
+    "answer": "Docstring only",
+    "open_material_decisions": [
+      "Whether a documented type alias should suppress the generated “alias of …” message or retain it after the source documentation."
+    ],
+    "question": {
+      "header": "Alias message",
+      "options": [
+        {
+          "description": "Render the supplied source documentation and omit the generated “alias of …” text, matching the stated expected behavior.",
+          "label": "Docstring only (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Render the supplied source documentation followed by the generated “alias of …” text, matching the existing Python 3.7+ GenericAlias behavior.",
+          "label": "Docstring plus alias",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has a next-line documentation string, what should autodoc render?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "All supported versions",
+    "open_material_decisions": [
+      "Whether the corrected behavior must apply across all supported Python runtimes or only the reported Python 3.6 path."
+    ],
+    "question": {
+      "header": "Runtime scope",
+      "options": [
+        {
+          "description": "Apply one consistent outcome across every Python version supported by this Sphinx release.",
+          "label": "All supported versions",
+          "recommended": true
+        },
+        {
+          "description": "Correct only the reported legacy-runtime path and leave newer GenericAlias behavior unchanged.",
+          "label": "Python 3.6 only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Across which Python runtimes should documented type aliases render their source documentation without the generated alias message?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Under every supported Python runtime, autodoc output for a module-level type alias with a next-line documentation string includes the complete source documentation.",
+          "The same output does not include a generated “alias of …” message.",
+          "Documented aliases using Dict, Union, and Callable exhibit the same outcome rather than varying by their runtime object classification.",
+          "An alias without source-level documentation continues to use its existing default output, including an “alias of …” message where currently applicable.",
+          "Explicit type-alias documentation and type aliases discovered through module member documentation produce the same documented-alias outcome."
+        ],
+        "confirmed_decisions": [
+          "A type alias with a next-line documentation string renders the supplied source documentation only; the generated “alias of …” message is omitted.",
+          "This behavior applies across every Python version supported by the Sphinx 4.1 release.",
+          "The behavior applies consistently to class-like and recognized generic-alias runtime representations, including aliases formed with Dict, Union, and Callable.",
+          "Existing default rendering remains unchanged for aliases that do not have source-level documentation."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Autodoc must consistently honor source-level next-line documentation strings for type aliases. When such documentation exists, the rendered alias documentation must contain that source documentation and must not contain the generated “alias of …” message, regardless of which supported Python runtime representation or autodoc documenter handles the alias. Type aliases without source-level documentation retain their existing default rendering."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The repository evidence and two explicit interview answers resolve the material behavior and runtime scope. The requested change can now be implemented without inventing additional behavior."
+    },
+    "turn": 3
+  }
+]

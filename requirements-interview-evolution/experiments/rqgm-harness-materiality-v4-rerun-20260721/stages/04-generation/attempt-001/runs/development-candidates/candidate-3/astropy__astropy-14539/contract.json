@@ -1,0 +1,19 @@
+{
+  "acceptance_checks": [
+    "Create a binary table containing a QD variable-length column with rows [0] and [0, 0], write it to a FITS file, compare that pathname with itself using FITSDiff, and observe identical is true with no reported table-data difference.",
+    "Compare independently loaded or constructed tables containing equal Q-format variable-length values and observe that TableDataDiff reports zero differences.",
+    "Compare Q-format variable-length columns containing a genuine row value difference and observe that FITSDiff remains non-identical and identifies the differing column and row.",
+    "Verify that existing P-format variable-length comparisons and non-variable-length table comparisons retain their current results."
+  ],
+  "confirmed_decisions": [
+    "The change is scoped to the erroneous treatment of Q-format variable-length array table columns; unrelated FITSDiff behavior is unchanged.",
+    "Q-format variable-length arrays receive the same row-wise value-comparison behavior already established for P-format variable-length arrays.",
+    "Identical Q-format variable-length array values must leave diff_total and diff_values empty, allowing TableDataDiff, HDUDiff, and FITSDiff to remain identical.",
+    "Actual Q-format variable-length array value differences must continue to be counted and reported by column and row.",
+    "Existing rtol and atol behavior for variable-length array comparisons applies equally to P and Q formats.",
+    "No new dependency, public API, file-format change, or migration is required."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Correct FITSDiff table-data comparison so identical Q-format variable-length array columns compare as identical, including when a FITS file containing such a column is compared with itself. Preserve genuine-difference reporting and the existing FITSDiff tolerance semantics used for variable-length array values."
+}

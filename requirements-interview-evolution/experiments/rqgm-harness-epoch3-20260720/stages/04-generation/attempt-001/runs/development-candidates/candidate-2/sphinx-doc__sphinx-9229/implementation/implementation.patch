@@ -1,0 +1,102 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..41e9e27 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1281,8 +1281,9 @@ class FunctionDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # typ
+     def can_document_member(cls, member: Any, membername: str, isattr: bool, parent: Any
+                             ) -> bool:
+         # supports functions, builtins and bound methods exported at the module level
+-        return (inspect.isfunction(member) or inspect.isbuiltin(member) or
+-                (inspect.isroutine(member) and isinstance(parent, ModuleDocumenter)))
++        return (not inspect.isgenericalias(member) and
++                (inspect.isfunction(member) or inspect.isbuiltin(member) or
++                 (inspect.isroutine(member) and isinstance(parent, ModuleDocumenter))))
+ 
+     def format_args(self, **kwargs: Any) -> str:
+         if self.config.autodoc_typehints in ('none', 'description'):
+@@ -1457,7 +1458,7 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+     @classmethod
+     def can_document_member(cls, member: Any, membername: str, isattr: bool, parent: Any
+                             ) -> bool:
+-        return isinstance(member, type)
++        return isinstance(member, type) and not inspect.isgenericalias(member)
+ 
+     def import_object(self, raiseerror: bool = False) -> bool:
+         ret = super().import_object(raiseerror)
+diff --git a/sphinx/util/inspect.py b/sphinx/util/inspect.py
+index f216e87..d152784 100644
+--- a/sphinx/util/inspect.py
++++ b/sphinx/util/inspect.py
+@@ -395,7 +395,10 @@ def isproperty(obj: Any) -> bool:
+ 
+ def isgenericalias(obj: Any) -> bool:
+     """Check if the object is GenericAlias."""
+-    if (hasattr(typing, '_GenericAlias') and  # only for py37+
++    if (hasattr(typing, '_TypingBase') and  # for py36
++            isinstance(obj, typing._TypingBase)):  # type: ignore
++        return True
++    elif (hasattr(typing, '_GenericAlias') and  # only for py37+
+             isinstance(obj, typing._GenericAlias)):  # type: ignore
+         return True
+     elif (hasattr(types, 'GenericAlias') and  # only for py39+
+diff --git a/tests/roots/test-ext-autodoc/target/genericalias.py b/tests/roots/test-ext-autodoc/target/genericalias.py
+index 9909efc..c5bfc6c 100644
+--- a/tests/roots/test-ext-autodoc/target/genericalias.py
++++ b/tests/roots/test-ext-autodoc/target/genericalias.py
+@@ -1,10 +1,24 @@
+-from typing import Callable, List
++from pathlib import Path
++from typing import Any, Callable, Dict, List, Union
+ 
+ #: A list of int
+ T = List[int]
+ 
+ C = Callable[[int], None]  # a generic alias not having a doccomment
+ 
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary with PyScaffold's options.
++Should be treated as immutable.
++"""
++
++FileContents = Union[str, None]
++"""When the file content is ``None``, the file should not be written to disk.
++"""
++
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of functions considered file operations.
++"""
++
+ 
+ class Class:
+     #: A list of int
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..6e315e5 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -101,6 +101,26 @@ def test_autodata_GenericAlias(app):
+         ]
+ 
+ 
++@pytest.mark.parametrize(('name', 'documentation'), [
++    ('ScaffoldOpts', ["Dictionary with PyScaffold's options.",
++                      'Should be treated as immutable.']),
++    ('FileContents', ['When the file content is ``None``, the file should not be written to disk.']),
++    ('FileOp', ['Signature of functions considered file operations.']),
++])
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodata_GenericAlias_next_line_docstring(app, name, documentation):
++    actual = list(do_autodoc(app, 'data', 'target.genericalias.' + name))
++    for line in documentation:
++        assert '   ' + line in actual
++    assert any(line.startswith('   alias of ') for line in actual)
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodata_GenericAlias_without_docstring(app):
++    actual = list(do_autodoc(app, 'data', 'target.genericalias.C'))
++    assert any(line.startswith('   alias of ') for line in actual)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_NewType(app):
+     actual = do_autodoc(app, 'data', 'target.typevar.T6')

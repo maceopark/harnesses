@@ -1,0 +1,53 @@
+[
+  {
+    "answer": "Match P behavior",
+    "open_material_decisions": [
+      "Whether Q-format variable-length columns must follow the same tolerance-aware row-by-row comparison behavior as P-format columns, including detection and reporting of genuine differences."
+    ],
+    "question": {
+      "header": "Q behavior",
+      "options": [
+        {
+          "description": "Q-format VLAs compare row by row with configured tolerances, so identical values pass and genuine differences are still detected and reported.",
+          "label": "Match P behavior",
+          "recommended": true
+        },
+        {
+          "description": "Only guarantee that identical Q-format VLA data compares equal; behavior for genuine Q-format differences is left unspecified.",
+          "label": "Identical-only fix",
+          "recommended": false
+        }
+      ],
+      "prompt": "What observable behavior should Q-format variable-length columns have after the fix?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A FITS file containing the reported QD column values [[0], [0, 0]] compares identical to itself through FITSDiff.",
+          "Two equivalent table inputs containing Q-format variable-length-array data compare identical.",
+          "A genuine difference in a Q-format variable-length-array row is detected and reported against the correct column and row.",
+          "Q-format floating-point variable-length-array differences within configured tolerances compare equal, while differences outside those tolerances do not.",
+          "Existing P-format variable-length-array comparison behavior continues to pass without regression."
+        ],
+        "confirmed_decisions": [
+          "Comparing a FITS file containing Q-format variable-length-array columns with itself reports the files as identical when no actual differences exist.",
+          "Q-format variable-length-array columns follow the same observable comparison behavior as P-format variable-length-array columns.",
+          "Q-format variable-length-array values are compared row by row using the configured relative and absolute tolerances.",
+          "Genuine Q-format variable-length-array differences outside the configured tolerances make the comparison non-identical and are included in the existing table-difference reporting.",
+          "Existing behavior for P-format variable-length arrays and non-VLA table columns remains unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Correct FITSDiff table-data comparison for Q-format variable-length-array columns so identical data is not falsely reported as different, while genuine differences remain tolerance-aware and reportable in the same manner as P-format variable-length columns."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The supplied repository evidence and interview answer resolve the only material ambiguity: Q-format variable-length columns must have the same observable comparison semantics as P-format variable-length columns. The contract is implementation-ready without expanding scope."
+    },
+    "turn": 2
+  }
+]

@@ -1,0 +1,247 @@
+{
+  "role": "evidence-auditor",
+  "model": "gpt-5.6-sol",
+  "command": [
+    "codex",
+    "exec",
+    "--model",
+    "gpt-5.6-sol",
+    "--ephemeral",
+    "--sandbox",
+    "read-only",
+    "--skip-git-repo-check",
+    "--ignore-user-config",
+    "--color",
+    "never",
+    "--output-schema",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-evidence-auditor-fatybrll/schema.json",
+    "--output-last-message",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-evidence-auditor-fatybrll/output.json",
+    "-C",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-evidence-auditor-fatybrll",
+    "--add-dir",
+    "/Users/jpark/Library/Caches/swebench-interview-cases/repositories/pallets__flask-5014",
+    "<stdin>"
+  ],
+  "prompt": "Independently re-open every cited file and disposition every fact. Accept only direct support; never create product requirements. The complete fact-ID set is [\"F1\", \"F2\", \"F3\", \"F4\", \"F5\", \"F6\", \"F7\", \"F8\", \"F9\"]. Return each of these IDs exactly once across accepted_fact_ids and rejected, and never return an ID outside this set.\nReturn only the JSON required by the supplied schema.\nINPUT:\n{\"alias\": \"pallets__flask-5014\", \"discovery\": {\"facts\": [{\"id\": \"F1\", \"line_end\": 175, \"line_start\": 172, \"path\": \"src/flask/blueprints.py\", \"statement\": \"Blueprint.__init__ accepts name as a string constructor argument.\"}, {\"id\": \"F2\", \"line_end\": 196, \"line_start\": 193, \"path\": \"src/flask/blueprints.py\", \"statement\": \"The constructor's only explicit name validation rejects names containing '.', after which it assigns the supplied value directly to self.name; an empty string does not satisfy that rejection condition.\"}, {\"id\": \"F3\", \"line_end\": 134, \"line_start\": 133, \"path\": \"src/flask/blueprints.py\", \"statement\": \"The Blueprint documentation states that the blueprint name is prepended to each endpoint name.\"}, {\"id\": \"F4\", \"line_end\": 78, \"line_start\": 77, \"path\": \"src/flask/blueprints.py\", \"statement\": \"BlueprintSetupState takes its registration name from the registration options when supplied, otherwise from blueprint.name.\"}, {\"id\": \"F5\", \"line_end\": 113, \"line_start\": 108, \"path\": \"src/flask/blueprints.py\", \"statement\": \"When adding a blueprint URL rule, Flask constructs the endpoint from name_prefix, name, and endpoint, then strips leading dots; an empty blueprint name therefore contributes no visible blueprint segment to the resulting endpoint.\"}, {\"id\": \"F6\", \"line_end\": 314, \"line_start\": 297, \"path\": \"src/flask/blueprints.py\", \"statement\": \"Blueprint registration similarly constructs the application blueprint key from name_prefix and the selected blueprint name, strips leading dots, checks that key for duplicates, and stores the blueprint under it.\"}, {\"id\": \"F7\", \"line_end\": 1010, \"line_start\": 984, \"path\": \"src/flask/app.py\", \"statement\": \"Flask.register_blueprint delegates registration directly to blueprint.register with the provided options.\"}, {\"id\": \"F8\", \"line_end\": 256, \"line_start\": 254, \"path\": \"tests/test_blueprints.py\", \"statement\": \"The existing blueprint test suite covers the constructor's dotted-name rejection by asserting that Blueprint('app.ui', __name__) raises ValueError.\"}, {\"id\": \"F9\", \"line_end\": 1010, \"line_start\": 996, \"path\": \"tests/test_blueprints.py\", \"statement\": \"The existing suite also expects ValueError for duplicate blueprint registration names while allowing explicit alternative names.\"}], \"scope_summary\": \"Base commit 7ee9ceb71e868944a46e1ff00b506772a53a4f1d already rejects Blueprint names containing a dot, but does not reject an empty string; the name feeds registration keys and endpoint prefixes.\", \"unknowns\": []}, \"metadata\": {\"context_mode\": \"repository\", \"partition\": \"development\", \"repository_family\": \"pallets/flask\"}, \"public_request\": \"Require a non-empty name for Blueprints\\nThings do not work correctly if a Blueprint is given an empty name (e.g. #4944).\\r\\nIt would be helpful if a `ValueError` was raised when trying to do that.\\n\", \"repository_facts\": [{\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        if \\\".\\\" in name:\\n            raise ValueError(\\\"'name' may not contain a dot '.' character.\\\")\\n\\n        self.name = name\", \"excerpt_digest\": \"9c5cafa2daec8005104bf7b172c20a61cb8413acffbb79ad0b4a11e8f1879938\", \"id\": \"repository:F1\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"src/flask/blueprints.py:L193-L196\", \"source\": \"repository\", \"source_digest\": \"9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0\"}], \"id\": \"F1\", \"statement\": \"Blueprint construction rejects names containing a dot with ValueError, then stores the supplied name directly; this code has no non-empty-name check.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        if self.url_prefix is not None:\\n            if rule:\\n                rule = \\\"/\\\".join((self.url_prefix.rstrip(\\\"/\\\"), rule.lstrip(\\\"/\\\")))\\n            else:\\n                rule = self.url_prefix\\n        options.setdefault(\\\"subdomain\\\", self.subdomain)\\n        if endpoint is None:\\n            endpoint = _endpoint_from_view_func(view_func)  # type: ignore\\n        defaults = self.url_defaults\\n        if \\\"defaults\\\" in options:\\n            defaults = dict(defaults, **options.pop(\\\"defaults\\\"))\\n\\n        self.app.add_url_rule(\\n            rule,\\n            f\\\"{self.name_prefix}.{self.name}.{endpoint}\\\".lstrip(\\\".\\\"),\\n            view_func,\\n            defaults=defaults,\", \"excerpt_digest\": \"9254e6f6ce90aea6fcba59fa9978f570ccdfcc68fb92ec10e78c2ba8ef6a29a1\", \"id\": \"repository:F2\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"src/flask/blueprints.py:L96-L112\", \"source\": \"repository\", \"source_digest\": \"9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0\"}], \"id\": \"F2\", \"statement\": \"Blueprint route registration constructs an application endpoint from name_prefix, name, and endpoint, then removes leading dots with lstrip(\\\".\\\").\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        name_prefix = options.get(\\\"name_prefix\\\", \\\"\\\")\\n        self_name = options.get(\\\"name\\\", self.name)\\n        name = f\\\"{name_prefix}.{self_name}\\\".lstrip(\\\".\\\")\\n\\n        if name in app.blueprints:\\n            bp_desc = \\\"this\\\" if app.blueprints[name] is self else \\\"a different\\\"\\n            existing_at = f\\\" '{name}'\\\" if self_name != name else \\\"\\\"\\n\\n            raise ValueError(\\n                f\\\"The name '{self_name}' is already registered for\\\"\\n                f\\\" {bp_desc} blueprint{existing_at}. Use 'name=' to\\\"\\n                f\\\" provide a unique name.\\\"\\n            )\\n\\n        first_bp_registration = not any(bp is self for bp in app.blueprints.values())\\n        first_name_registration = name not in app.blueprints\\n\\n        app.blueprints[name] = self\", \"excerpt_digest\": \"38eb0eae7028bee5c048fade024809f65745e8a91d65570e14065ac74130340e\", \"id\": \"repository:F3\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"src/flask/blueprints.py:L297-L314\", \"source\": \"repository\", \"source_digest\": \"9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0\"}], \"id\": \"F3\", \"statement\": \"Blueprint application registration accepts an optional name override, constructs the registered name with a leading-dot strip, checks only for duplicate registered names, and stores the blueprint under that resulting name.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"                    state.url_prefix.rstrip(\\\"/\\\") + \\\"/\\\" + bp_url_prefix.lstrip(\\\"/\\\")\\n                )\\n            elif bp_url_prefix is not None:\\n                bp_options[\\\"url_prefix\\\"] = bp_url_prefix\\n            elif state.url_prefix is not None:\\n                bp_options[\\\"url_prefix\\\"] = state.url_prefix\\n\\n            bp_options[\\\"name_prefix\\\"] = name\\n            blueprint.register(app, bp_options)\", \"excerpt_digest\": \"f53086f179b5022581918c9531b0e93dc1e10b4ef513472ad43bdf8f3cb4cc4b\", \"id\": \"repository:F4\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"src/flask/blueprints.py:L394-L402\", \"source\": \"repository\", \"source_digest\": \"9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0\"}], \"id\": \"F4\", \"statement\": \"Nested blueprint registration passes the parent blueprint's computed registered name as the child's name_prefix.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"def test_dotted_name_not_allowed(app, client):\\n    with pytest.raises(ValueError):\\n        flask.Blueprint(\\\"app.ui\\\", __name__)\", \"excerpt_digest\": \"939d4844f6c433f0590c71343b9e353ed2d14fa67cc0e79c0732c4ceeca7c62c\", \"id\": \"repository:F5\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_blueprints.py:L254-L256\", \"source\": \"repository\", \"source_digest\": \"804b98bbb71ccce566ab78a15cb141793ebbaee3c1b3bb591d9dab04c9940f4a\"}], \"id\": \"F5\", \"statement\": \"Existing Blueprint tests assert that a dotted constructor name raises ValueError.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"-   Show an error when a blueprint name contains a dot. The ``.`` has\\n    special meaning, it is used to separate (nested) blueprint names and\\n    the endpoint name. :issue:`4041`\", \"excerpt_digest\": \"290bac7b2d86c9c3243dd5d248843c5c3743676f08548d59e6b0d4ad624d50f8\", \"id\": \"repository:F6\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"CHANGES.rst:L346-L348\", \"source\": \"repository\", \"source_digest\": \"d48be7a6bea42e9aec3810f1031694d06fc3ac44d474bea60051d8d0d1caa7a0\"}], \"id\": \"F6\", \"statement\": \"The changelog documents that dots are prohibited because they separate nested blueprint names from endpoint names.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"When you bind a function with the help of the ``@simple_page.route``\\ndecorator, the blueprint will record the intention of registering the\\nfunction ``show`` on the application when it's later registered.\\nAdditionally it will prefix the endpoint of the function with the\\nname of the blueprint which was given to the :class:`Blueprint`\\nconstructor (in this case also ``simple_page``). The blueprint's name\\ndoes not modify the URL, only the endpoint.\", \"excerpt_digest\": \"dbbca8971bf3d2de46b11c8a34c66eab8e141bbacea361d085a942ef93022ffc\", \"id\": \"repository:F7\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"docs/blueprints.rst:L76-L82\", \"source\": \"repository\", \"source_digest\": \"0efbff2912d81e24df4e1d9400657a153cbbfe93c9d3035a6e51ae6ba2d34734\"}], \"id\": \"F7\", \"statement\": \"Blueprint documentation states that the constructor name prefixes endpoint names and does not modify URLs.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        #: Maps registered blueprint names to blueprint objects. The\\n        #: dict retains the order the blueprints were registered in.\\n        #: Blueprints can be registered multiple times, this dict does\\n        #: not track how often they were attached.\\n        #:\\n        #: .. versionadded:: 0.7\\n        self.blueprints: t.Dict[str, \\\"Blueprint\\\"] = {}\", \"excerpt_digest\": \"5e8e5f017ef700fa7d473e6b75636ecb70c023993f204bdad182b9a02b0a2176\", \"id\": \"repository:F8\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"src/flask/app.py:L456-L462\", \"source\": \"repository\", \"source_digest\": \"d439102c7658f90f896556c557df89501f2c98ad498d6317453f10ef58508710\"}], \"id\": \"F8\", \"statement\": \"The Flask application stores registered blueprints in a dictionary keyed by registered blueprint name.\"}], \"upstream\": {\"base_commit\": \"7ee9ceb71e868944a46e1ff00b506772a53a4f1d\", \"dataset\": \"princeton-nlp/SWE-bench_Verified\", \"instance_id_digest\": \"bdd33b5ea3c1b86510e90e21ecb685b16c80331aed7a7b7385d397b8343088df\", \"issue_cache_key\": \"sha256:f77d8eab7dd608172aa78b3b50dfa7e0e9b3a6a1c52d14a1cb02417eb5a0ab00\", \"issue_digest\": \"f77d8eab7dd608172aa78b3b50dfa7e0e9b3a6a1c52d14a1cb02417eb5a0ab00\", \"revision\": \"c104f840cc67f8b6eec6f759ebc8b2693d585d4a\", \"source_url\": \"https://github.com/pallets/flask/pull/5014\"}}",
+  "input": {
+    "alias": "pallets__flask-5014",
+    "public_request": "Require a non-empty name for Blueprints\nThings do not work correctly if a Blueprint is given an empty name (e.g. #4944).\r\nIt would be helpful if a `ValueError` was raised when trying to do that.\n",
+    "upstream": {
+      "base_commit": "7ee9ceb71e868944a46e1ff00b506772a53a4f1d",
+      "dataset": "princeton-nlp/SWE-bench_Verified",
+      "instance_id_digest": "bdd33b5ea3c1b86510e90e21ecb685b16c80331aed7a7b7385d397b8343088df",
+      "issue_cache_key": "sha256:f77d8eab7dd608172aa78b3b50dfa7e0e9b3a6a1c52d14a1cb02417eb5a0ab00",
+      "issue_digest": "f77d8eab7dd608172aa78b3b50dfa7e0e9b3a6a1c52d14a1cb02417eb5a0ab00",
+      "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+      "source_url": "https://github.com/pallets/flask/pull/5014"
+    },
+    "repository_facts": [
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "        if \".\" in name:\n            raise ValueError(\"'name' may not contain a dot '.' character.\")\n\n        self.name = name",
+            "excerpt_digest": "9c5cafa2daec8005104bf7b172c20a61cb8413acffbb79ad0b4a11e8f1879938",
+            "id": "repository:F1",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "src/flask/blueprints.py:L193-L196",
+            "source": "repository",
+            "source_digest": "9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0"
+          }
+        ],
+        "id": "F1",
+        "statement": "Blueprint construction rejects names containing a dot with ValueError, then stores the supplied name directly; this code has no non-empty-name check."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "        if self.url_prefix is not None:\n            if rule:\n                rule = \"/\".join((self.url_prefix.rstrip(\"/\"), rule.lstrip(\"/\")))\n            else:\n                rule = self.url_prefix\n        options.setdefault(\"subdomain\", self.subdomain)\n        if endpoint is None:\n            endpoint = _endpoint_from_view_func(view_func)  # type: ignore\n        defaults = self.url_defaults\n        if \"defaults\" in options:\n            defaults = dict(defaults, **options.pop(\"defaults\"))\n\n        self.app.add_url_rule(\n            rule,\n            f\"{self.name_prefix}.{self.name}.{endpoint}\".lstrip(\".\"),\n            view_func,\n            defaults=defaults,",
+            "excerpt_digest": "9254e6f6ce90aea6fcba59fa9978f570ccdfcc68fb92ec10e78c2ba8ef6a29a1",
+            "id": "repository:F2",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "src/flask/blueprints.py:L96-L112",
+            "source": "repository",
+            "source_digest": "9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0"
+          }
+        ],
+        "id": "F2",
+        "statement": "Blueprint route registration constructs an application endpoint from name_prefix, name, and endpoint, then removes leading dots with lstrip(\".\")."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "        name_prefix = options.get(\"name_prefix\", \"\")\n        self_name = options.get(\"name\", self.name)\n        name = f\"{name_prefix}.{self_name}\".lstrip(\".\")\n\n        if name in app.blueprints:\n            bp_desc = \"this\" if app.blueprints[name] is self else \"a different\"\n            existing_at = f\" '{name}'\" if self_name != name else \"\"\n\n            raise ValueError(\n                f\"The name '{self_name}' is already registered for\"\n                f\" {bp_desc} blueprint{existing_at}. Use 'name=' to\"\n                f\" provide a unique name.\"\n            )\n\n        first_bp_registration = not any(bp is self for bp in app.blueprints.values())\n        first_name_registration = name not in app.blueprints\n\n        app.blueprints[name] = self",
+            "excerpt_digest": "38eb0eae7028bee5c048fade024809f65745e8a91d65570e14065ac74130340e",
+            "id": "repository:F3",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "src/flask/blueprints.py:L297-L314",
+            "source": "repository",
+            "source_digest": "9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0"
+          }
+        ],
+        "id": "F3",
+        "statement": "Blueprint application registration accepts an optional name override, constructs the registered name with a leading-dot strip, checks only for duplicate registered names, and stores the blueprint under that resulting name."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "                    state.url_prefix.rstrip(\"/\") + \"/\" + bp_url_prefix.lstrip(\"/\")\n                )\n            elif bp_url_prefix is not None:\n                bp_options[\"url_prefix\"] = bp_url_prefix\n            elif state.url_prefix is not None:\n                bp_options[\"url_prefix\"] = state.url_prefix\n\n            bp_options[\"name_prefix\"] = name\n            blueprint.register(app, bp_options)",
+            "excerpt_digest": "f53086f179b5022581918c9531b0e93dc1e10b4ef513472ad43bdf8f3cb4cc4b",
+            "id": "repository:F4",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "src/flask/blueprints.py:L394-L402",
+            "source": "repository",
+            "source_digest": "9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0"
+          }
+        ],
+        "id": "F4",
+        "statement": "Nested blueprint registration passes the parent blueprint's computed registered name as the child's name_prefix."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "def test_dotted_name_not_allowed(app, client):\n    with pytest.raises(ValueError):\n        flask.Blueprint(\"app.ui\", __name__)",
+            "excerpt_digest": "939d4844f6c433f0590c71343b9e353ed2d14fa67cc0e79c0732c4ceeca7c62c",
+            "id": "repository:F5",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "tests/test_blueprints.py:L254-L256",
+            "source": "repository",
+            "source_digest": "804b98bbb71ccce566ab78a15cb141793ebbaee3c1b3bb591d9dab04c9940f4a"
+          }
+        ],
+        "id": "F5",
+        "statement": "Existing Blueprint tests assert that a dotted constructor name raises ValueError."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "-   Show an error when a blueprint name contains a dot. The ``.`` has\n    special meaning, it is used to separate (nested) blueprint names and\n    the endpoint name. :issue:`4041`",
+            "excerpt_digest": "290bac7b2d86c9c3243dd5d248843c5c3743676f08548d59e6b0d4ad624d50f8",
+            "id": "repository:F6",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "CHANGES.rst:L346-L348",
+            "source": "repository",
+            "source_digest": "d48be7a6bea42e9aec3810f1031694d06fc3ac44d474bea60051d8d0d1caa7a0"
+          }
+        ],
+        "id": "F6",
+        "statement": "The changelog documents that dots are prohibited because they separate nested blueprint names from endpoint names."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "When you bind a function with the help of the ``@simple_page.route``\ndecorator, the blueprint will record the intention of registering the\nfunction ``show`` on the application when it's later registered.\nAdditionally it will prefix the endpoint of the function with the\nname of the blueprint which was given to the :class:`Blueprint`\nconstructor (in this case also ``simple_page``). The blueprint's name\ndoes not modify the URL, only the endpoint.",
+            "excerpt_digest": "dbbca8971bf3d2de46b11c8a34c66eab8e141bbacea361d085a942ef93022ffc",
+            "id": "repository:F7",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "docs/blueprints.rst:L76-L82",
+            "source": "repository",
+            "source_digest": "0efbff2912d81e24df4e1d9400657a153cbbfe93c9d3035a6e51ae6ba2d34734"
+          }
+        ],
+        "id": "F7",
+        "statement": "Blueprint documentation states that the constructor name prefixes endpoint names and does not modify URLs."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "        #: Maps registered blueprint names to blueprint objects. The\n        #: dict retains the order the blueprints were registered in.\n        #: Blueprints can be registered multiple times, this dict does\n        #: not track how often they were attached.\n        #:\n        #: .. versionadded:: 0.7\n        self.blueprints: t.Dict[str, \"Blueprint\"] = {}",
+            "excerpt_digest": "5e8e5f017ef700fa7d473e6b75636ecb70c023993f204bdad182b9a02b0a2176",
+            "id": "repository:F8",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "src/flask/app.py:L456-L462",
+            "source": "repository",
+            "source_digest": "d439102c7658f90f896556c557df89501f2c98ad498d6317453f10ef58508710"
+          }
+        ],
+        "id": "F8",
+        "statement": "The Flask application stores registered blueprints in a dictionary keyed by registered blueprint name."
+      }
+    ],
+    "metadata": {
+      "context_mode": "repository",
+      "partition": "development",
+      "repository_family": "pallets/flask"
+    },
+    "discovery": {
+      "scope_summary": "Base commit 7ee9ceb71e868944a46e1ff00b506772a53a4f1d already rejects Blueprint names containing a dot, but does not reject an empty string; the name feeds registration keys and endpoint prefixes.",
+      "facts": [
+        {
+          "id": "F1",
+          "statement": "Blueprint.__init__ accepts name as a string constructor argument.",
+          "path": "src/flask/blueprints.py",
+          "line_start": 172,
+          "line_end": 175
+        },
+        {
+          "id": "F2",
+          "statement": "The constructor's only explicit name validation rejects names containing '.', after which it assigns the supplied value directly to self.name; an empty string does not satisfy that rejection condition.",
+          "path": "src/flask/blueprints.py",
+          "line_start": 193,
+          "line_end": 196
+        },
+        {
+          "id": "F3",
+          "statement": "The Blueprint documentation states that the blueprint name is prepended to each endpoint name.",
+          "path": "src/flask/blueprints.py",
+          "line_start": 133,
+          "line_end": 134
+        },
+        {
+          "id": "F4",
+          "statement": "BlueprintSetupState takes its registration name from the registration options when supplied, otherwise from blueprint.name.",
+          "path": "src/flask/blueprints.py",
+          "line_start": 77,
+          "line_end": 78
+        },
+        {
+          "id": "F5",
+          "statement": "When adding a blueprint URL rule, Flask constructs the endpoint from name_prefix, name, and endpoint, then strips leading dots; an empty blueprint name therefore contributes no visible blueprint segment to the resulting endpoint.",
+          "path": "src/flask/blueprints.py",
+          "line_start": 108,
+          "line_end": 113
+        },
+        {
+          "id": "F6",
+          "statement": "Blueprint registration similarly constructs the application blueprint key from name_prefix and the selected blueprint name, strips leading dots, checks that key for duplicates, and stores the blueprint under it.",
+          "path": "src/flask/blueprints.py",
+          "line_start": 297,
+          "line_end": 314
+        },
+        {
+          "id": "F7",
+          "statement": "Flask.register_blueprint delegates registration directly to blueprint.register with the provided options.",
+          "path": "src/flask/app.py",
+          "line_start": 984,
+          "line_end": 1010
+        },
+        {
+          "id": "F8",
+          "statement": "The existing blueprint test suite covers the constructor's dotted-name rejection by asserting that Blueprint('app.ui', __name__) raises ValueError.",
+          "path": "tests/test_blueprints.py",
+          "line_start": 254,
+          "line_end": 256
+        },
+        {
+          "id": "F9",
+          "statement": "The existing suite also expects ValueError for duplicate blueprint registration names while allowing explicit alternative names.",
+          "path": "tests/test_blueprints.py",
+          "line_start": 996,
+          "line_end": 1010
+        }
+      ],
+      "unknowns": []
+    }
+  },
+  "exit_code": 0,
+  "stdout": "{\"accepted_fact_ids\":[\"F1\",\"F2\",\"F3\",\"F4\",\"F5\",\"F6\",\"F7\",\"F8\",\"F9\"],\"rejected\":[],\"summary\":\"All nine facts are directly supported by the cited repository files and line regions.\"}\n",
+  "stderr": "OpenAI Codex v0.144.6\n--------\nworkdir: /var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-evidence-auditor-fatybrll\nmodel: gpt-5.6-sol\nprovider: openai\napproval: never\nsandbox: read-only\nreasoning effort: none\nreasoning summaries: none\nsession id: 019f7fc7-6470-7ce1-a6c8-3a0035a3f399\n--------\nuser\nIndependently re-open every cited file and disposition every fact. Accept only direct support; never create product requirements. The complete fact-ID set is [\"F1\", \"F2\", \"F3\", \"F4\", \"F5\", \"F6\", \"F7\", \"F8\", \"F9\"]. Return each of these IDs exactly once across accepted_fact_ids and rejected, and never return an ID outside this set.\nReturn only the JSON required by the supplied schema.\nINPUT:\n{\"alias\": \"pallets__flask-5014\", \"discovery\": {\"facts\": [{\"id\": \"F1\", \"line_end\": 175, \"line_start\": 172, \"path\": \"src/flask/blueprints.py\", \"statement\": \"Blueprint.__init__ accepts name as a string constructor argument.\"}, {\"id\": \"F2\", \"line_end\": 196, \"line_start\": 193, \"path\": \"src/flask/blueprints.py\", \"statement\": \"The constructor's only explicit name validation rejects names containing '.', after which it assigns the supplied value directly to self.name; an empty string does not satisfy that rejection condition.\"}, {\"id\": \"F3\", \"line_end\": 134, \"line_start\": 133, \"path\": \"src/flask/blueprints.py\", \"statement\": \"The Blueprint documentation states that the blueprint name is prepended to each endpoint name.\"}, {\"id\": \"F4\", \"line_end\": 78, \"line_start\": 77, \"path\": \"src/flask/blueprints.py\", \"statement\": \"BlueprintSetupState takes its registration name from the registration options when supplied, otherwise from blueprint.name.\"}, {\"id\": \"F5\", \"line_end\": 113, \"line_start\": 108, \"path\": \"src/flask/blueprints.py\", \"statement\": \"When adding a blueprint URL rule, Flask constructs the endpoint from name_prefix, name, and endpoint, then strips leading dots; an empty blueprint name therefore contributes no visible blueprint segment to the resulting endpoint.\"}, {\"id\": \"F6\", \"line_end\": 314, \"line_start\": 297, \"path\": \"src/flask/blueprints.py\", \"statement\": \"Blueprint registration similarly constructs the application blueprint key from name_prefix and the selected blueprint name, strips leading dots, checks that key for duplicates, and stores the blueprint under it.\"}, {\"id\": \"F7\", \"line_end\": 1010, \"line_start\": 984, \"path\": \"src/flask/app.py\", \"statement\": \"Flask.register_blueprint delegates registration directly to blueprint.register with the provided options.\"}, {\"id\": \"F8\", \"line_end\": 256, \"line_start\": 254, \"path\": \"tests/test_blueprints.py\", \"statement\": \"The existing blueprint test suite covers the constructor's dotted-name rejection by asserting that Blueprint('app.ui', __name__) raises ValueError.\"}, {\"id\": \"F9\", \"line_end\": 1010, \"line_start\": 996, \"path\": \"tests/test_blueprints.py\", \"statement\": \"The existing suite also expects ValueError for duplicate blueprint registration names while allowing explicit alternative names.\"}], \"scope_summary\": \"Base commit 7ee9ceb71e868944a46e1ff00b506772a53a4f1d already rejects Blueprint names containing a dot, but does not reject an empty string; the name feeds registration keys and endpoint prefixes.\", \"unknowns\": []}, \"metadata\": {\"context_mode\": \"repository\", \"partition\": \"development\", \"repository_family\": \"pallets/flask\"}, \"public_request\": \"Require a non-empty name for Blueprints\\nThings do not work correctly if a Blueprint is given an empty name (e.g. #4944).\\r\\nIt would be helpful if a `ValueError` was raised when trying to do that.\\n\", \"repository_facts\": [{\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        if \\\".\\\" in name:\\n            raise ValueError(\\\"'name' may not contain a dot '.' character.\\\")\\n\\n        self.name = name\", \"excerpt_digest\": \"9c5cafa2daec8005104bf7b172c20a61cb8413acffbb79ad0b4a11e8f1879938\", \"id\": \"repository:F1\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"src/flask/blueprints.py:L193-L196\", \"source\": \"repository\", \"source_digest\": \"9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0\"}], \"id\": \"F1\", \"statement\": \"Blueprint construction rejects names containing a dot with ValueError, then stores the supplied name directly; this code has no non-empty-name check.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        if self.url_prefix is not None:\\n            if rule:\\n                rule = \\\"/\\\".join((self.url_prefix.rstrip(\\\"/\\\"), rule.lstrip(\\\"/\\\")))\\n            else:\\n                rule = self.url_prefix\\n        options.setdefault(\\\"subdomain\\\", self.subdomain)\\n        if endpoint is None:\\n            endpoint = _endpoint_from_view_func(view_func)  # type: ignore\\n        defaults = self.url_defaults\\n        if \\\"defaults\\\" in options:\\n            defaults = dict(defaults, **options.pop(\\\"defaults\\\"))\\n\\n        self.app.add_url_rule(\\n            rule,\\n            f\\\"{self.name_prefix}.{self.name}.{endpoint}\\\".lstrip(\\\".\\\"),\\n            view_func,\\n            defaults=defaults,\", \"excerpt_digest\": \"9254e6f6ce90aea6fcba59fa9978f570ccdfcc68fb92ec10e78c2ba8ef6a29a1\", \"id\": \"repository:F2\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"src/flask/blueprints.py:L96-L112\", \"source\": \"repository\", \"source_digest\": \"9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0\"}], \"id\": \"F2\", \"statement\": \"Blueprint route registration constructs an application endpoint from name_prefix, name, and endpoint, then removes leading dots with lstrip(\\\".\\\").\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        name_prefix = options.get(\\\"name_prefix\\\", \\\"\\\")\\n        self_name = options.get(\\\"name\\\", self.name)\\n        name = f\\\"{name_prefix}.{self_name}\\\".lstrip(\\\".\\\")\\n\\n        if name in app.blueprints:\\n            bp_desc = \\\"this\\\" if app.blueprints[name] is self else \\\"a different\\\"\\n            existing_at = f\\\" '{name}'\\\" if self_name != name else \\\"\\\"\\n\\n            raise ValueError(\\n                f\\\"The name '{self_name}' is already registered for\\\"\\n                f\\\" {bp_desc} blueprint{existing_at}. Use 'name=' to\\\"\\n                f\\\" provide a unique name.\\\"\\n            )\\n\\n        first_bp_registration = not any(bp is self for bp in app.blueprints.values())\\n        first_name_registration = name not in app.blueprints\\n\\n        app.blueprints[name] = self\", \"excerpt_digest\": \"38eb0eae7028bee5c048fade024809f65745e8a91d65570e14065ac74130340e\", \"id\": \"repository:F3\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"src/flask/blueprints.py:L297-L314\", \"source\": \"repository\", \"source_digest\": \"9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0\"}], \"id\": \"F3\", \"statement\": \"Blueprint application registration accepts an optional name override, constructs the registered name with a leading-dot strip, checks only for duplicate registered names, and stores the blueprint under that resulting name.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"                    state.url_prefix.rstrip(\\\"/\\\") + \\\"/\\\" + bp_url_prefix.lstrip(\\\"/\\\")\\n                )\\n            elif bp_url_prefix is not None:\\n                bp_options[\\\"url_prefix\\\"] = bp_url_prefix\\n            elif state.url_prefix is not None:\\n                bp_options[\\\"url_prefix\\\"] = state.url_prefix\\n\\n            bp_options[\\\"name_prefix\\\"] = name\\n            blueprint.register(app, bp_options)\", \"excerpt_digest\": \"f53086f179b5022581918c9531b0e93dc1e10b4ef513472ad43bdf8f3cb4cc4b\", \"id\": \"repository:F4\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"src/flask/blueprints.py:L394-L402\", \"source\": \"repository\", \"source_digest\": \"9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0\"}], \"id\": \"F4\", \"statement\": \"Nested blueprint registration passes the parent blueprint's computed registered name as the child's name_prefix.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"def test_dotted_name_not_allowed(app, client):\\n    with pytest.raises(ValueError):\\n        flask.Blueprint(\\\"app.ui\\\", __name__)\", \"excerpt_digest\": \"939d4844f6c433f0590c71343b9e353ed2d14fa67cc0e79c0732c4ceeca7c62c\", \"id\": \"repository:F5\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_blueprints.py:L254-L256\", \"source\": \"repository\", \"source_digest\": \"804b98bbb71ccce566ab78a15cb141793ebbaee3c1b3bb591d9dab04c9940f4a\"}], \"id\": \"F5\", \"statement\": \"Existing Blueprint tests assert that a dotted constructor name raises ValueError.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"-   Show an error when a blueprint name contains a dot. The ``.`` has\\n    special meaning, it is used to separate (nested) blueprint names and\\n    the endpoint name. :issue:`4041`\", \"excerpt_digest\": \"290bac7b2d86c9c3243dd5d248843c5c3743676f08548d59e6b0d4ad624d50f8\", \"id\": \"repository:F6\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"CHANGES.rst:L346-L348\", \"source\": \"repository\", \"source_digest\": \"d48be7a6bea42e9aec3810f1031694d06fc3ac44d474bea60051d8d0d1caa7a0\"}], \"id\": \"F6\", \"statement\": \"The changelog documents that dots are prohibited because they separate nested blueprint names from endpoint names.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"When you bind a function with the help of the ``@simple_page.route``\\ndecorator, the blueprint will record the intention of registering the\\nfunction ``show`` on the application when it's later registered.\\nAdditionally it will prefix the endpoint of the function with the\\nname of the blueprint which was given to the :class:`Blueprint`\\nconstructor (in this case also ``simple_page``). The blueprint's name\\ndoes not modify the URL, only the endpoint.\", \"excerpt_digest\": \"dbbca8971bf3d2de46b11c8a34c66eab8e141bbacea361d085a942ef93022ffc\", \"id\": \"repository:F7\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"docs/blueprints.rst:L76-L82\", \"source\": \"repository\", \"source_digest\": \"0efbff2912d81e24df4e1d9400657a153cbbfe93c9d3035a6e51ae6ba2d34734\"}], \"id\": \"F7\", \"statement\": \"Blueprint documentation states that the constructor name prefixes endpoint names and does not modify URLs.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        #: Maps registered blueprint names to blueprint objects. The\\n        #: dict retains the order the blueprints were registered in.\\n        #: Blueprints can be registered multiple times, this dict does\\n        #: not track how often they were attached.\\n        #:\\n        #: .. versionadded:: 0.7\\n        self.blueprints: t.Dict[str, \\\"Blueprint\\\"] = {}\", \"excerpt_digest\": \"5e8e5f017ef700fa7d473e6b75636ecb70c023993f204bdad182b9a02b0a2176\", \"id\": \"repository:F8\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"src/flask/app.py:L456-L462\", \"source\": \"repository\", \"source_digest\": \"d439102c7658f90f896556c557df89501f2c98ad498d6317453f10ef58508710\"}], \"id\": \"F8\", \"statement\": \"The Flask application stores registered blueprints in a dictionary keyed by registered blueprint name.\"}], \"upstream\": {\"base_commit\": \"7ee9ceb71e868944a46e1ff00b506772a53a4f1d\", \"dataset\": \"princeton-nlp/SWE-bench_Verified\", \"instance_id_digest\": \"bdd33b5ea3c1b86510e90e21ecb685b16c80331aed7a7b7385d397b8343088df\", \"issue_cache_key\": \"sha256:f77d8eab7dd608172aa78b3b50dfa7e0e9b3a6a1c52d14a1cb02417eb5a0ab00\", \"issue_digest\": \"f77d8eab7dd608172aa78b3b50dfa7e0e9b3a6a1c52d14a1cb02417eb5a0ab00\", \"revision\": \"c104f840cc67f8b6eec6f759ebc8b2693d585d4a\", \"source_url\": \"https://github.com/pallets/flask/pull/5014\"}}\nexec\n/bin/zsh -lc \"sed -n '65,120p;125,205p;285,320p;970,1020p' src/flask/blueprints.py\nsed -n '970,1020p' src/flask/app.py\nsed -n '245,265p;985,1020p' tests/test_blueprints.py\" in /Users/jpark/Library/Caches/swebench-interview-cases/repositories/pallets__flask-5014\n succeeded in 0ms:\n\n        #: The subdomain that the blueprint should be active for, ``None``\n        #: otherwise.\n        self.subdomain = subdomain\n\n        url_prefix = self.options.get(\"url_prefix\")\n        if url_prefix is None:\n            url_prefix = self.blueprint.url_prefix\n        #: The prefix that should be used for all URLs defined on the\n        #: blueprint.\n        self.url_prefix = url_prefix\n\n        self.name = self.options.get(\"name\", blueprint.name)\n        self.name_prefix = self.options.get(\"name_prefix\", \"\")\n\n        #: A dictionary with URL defaults that is added to each and every\n        #: URL that was defined with the blueprint.\n        self.url_defaults = dict(self.blueprint.url_values_defaults)\n        self.url_defaults.update(self.options.get(\"url_defaults\", ()))\n\n    def add_url_rule(\n        self,\n        rule: str,\n        endpoint: t.Optional[str] = None,\n        view_func: t.Optional[t.Callable] = None,\n        **options: t.Any,\n    ) -> None:\n        \"\"\"A helper method to register a rule (and optionally a view function)\n        to the application.  The endpoint is automatically prefixed with the\n        blueprint's name.\n        \"\"\"\n        if self.url_prefix is not None:\n            if rule:\n                rule = \"/\".join((self.url_prefix.rstrip(\"/\"), rule.lstrip(\"/\")))\n            else:\n                rule = self.url_prefix\n        options.setdefault(\"subdomain\", self.subdomain)\n        if endpoint is None:\n            endpoint = _endpoint_from_view_func(view_func)  # type: ignore\n        defaults = self.url_defaults\n        if \"defaults\" in options:\n            defaults = dict(defaults, **options.pop(\"defaults\"))\n\n        self.app.add_url_rule(\n            rule,\n            f\"{self.name_prefix}.{self.name}.{endpoint}\".lstrip(\".\"),\n            view_func,\n            defaults=defaults,\n            **options,\n        )\n\n\nclass Blueprint(Scaffold):\n    \"\"\"Represents a blueprint, a collection of routes and other\n    app-related functions that can be registered on a real application\n    later.\n    application by recording them for later registration.\n\n    Decorating a function with a blueprint creates a deferred function\n    that is called with :class:`~flask.blueprints.BlueprintSetupState`\n    when the blueprint is registered on an application.\n\n    See :doc:`/blueprints` for more information.\n\n    :param name: The name of the blueprint. Will be prepended to each\n        endpoint name.\n    :param import_name: The name of the blueprint package, usually\n        ``__name__``. This helps locate the ``root_path`` for the\n        blueprint.\n    :param static_folder: A folder with static files that should be\n        served by the blueprint's static route. The path is relative to\n        the blueprint's root path. Blueprint static files are disabled\n        by default.\n    :param static_url_path: The url to serve static files from.\n        Defaults to ``static_folder``. If the blueprint does not have\n        a ``url_prefix``, the app's static route will take precedence,\n        and the blueprint's static files won't be accessible.\n    :param template_folder: A folder with templates that should be added\n        to the app's template search path. The path is relative to the\n        blueprint's root path. Blueprint templates are disabled by\n        default. Blueprint templates have a lower precedence than those\n        in the app's templates folder.\n    :param url_prefix: A path to prepend to all of the blueprint's URLs,\n        to make them distinct from the rest of the app's routes.\n    :param subdomain: A subdomain that blueprint routes will match on by\n        default.\n    :param url_defaults: A dict of default values that blueprint routes\n        will receive by default.\n    :param root_path: By default, the blueprint will automatically set\n        this based on ``import_name``. In certain situations this\n        automatic detection can fail, so the path can be specified\n        manually instead.\n\n    .. versionchanged:: 1.1.0\n        Blueprints have a ``cli`` group to register nested CLI commands.\n        The ``cli_group`` parameter controls the name of the group under\n        the ``flask`` command.\n\n    .. versionadded:: 0.7\n    \"\"\"\n\n    _got_registered_once = False\n\n    def __init__(\n        self,\n        name: str,\n        import_name: str,\n        static_folder: t.Optional[t.Union[str, os.PathLike]] = None,\n        static_url_path: t.Optional[str] = None,\n        template_folder: t.Optional[t.Union[str, os.PathLike]] = None,\n        url_prefix: t.Optional[str] = None,\n        subdomain: t.Optional[str] = None,\n        url_defaults: t.Optional[dict] = None,\n        root_path: t.Optional[str] = None,\n        cli_group: t.Optional[str] = _sentinel,  # type: ignore\n    ):\n        super().__init__(\n            import_name=import_name,\n            static_folder=static_folder,\n            static_url_path=static_url_path,\n            template_folder=template_folder,\n            root_path=root_path,\n        )\n\n        if \".\" in name:\n            raise ValueError(\"'name' may not contain a dot '.' character.\")\n\n        self.name = name\n        self.url_prefix = url_prefix\n        self.subdomain = subdomain\n        self.deferred_functions: t.List[DeferredSetupFunction] = []\n\n        if url_defaults is None:\n            url_defaults = {}\n\n        self.url_values_defaults = url_defaults\n        self.cli_group = cli_group\n\n        .. versionchanged:: 2.0.1\n            Nested blueprints are registered with their dotted name.\n            This allows different blueprints with the same name to be\n            nested at different locations.\n\n        .. versionchanged:: 2.0.1\n            The ``name`` option can be used to change the (pre-dotted)\n            name the blueprint is registered with. This allows the same\n            blueprint to be registered multiple times with unique names\n            for ``url_for``.\n        \"\"\"\n        name_prefix = options.get(\"name_prefix\", \"\")\n        self_name = options.get(\"name\", self.name)\n        name = f\"{name_prefix}.{self_name}\".lstrip(\".\")\n\n        if name in app.blueprints:\n            bp_desc = \"this\" if app.blueprints[name] is self else \"a different\"\n            existing_at = f\" '{name}'\" if self_name != name else \"\"\n\n            raise ValueError(\n                f\"The name '{self_name}' is already registered for\"\n                f\" {bp_desc} blueprint{existing_at}. Use 'name=' to\"\n                f\" provide a unique name.\"\n            )\n\n        first_bp_registration = not any(bp is self for bp in app.blueprints.values())\n        first_name_registration = name not in app.blueprints\n\n        app.blueprints[name] = self\n        self._got_registered_once = True\n        state = self.make_setup_state(app, options, first_bp_registration)\n\n        if self.has_static_folder:\n            state.add_url_rule(\n                f\"{self.static_url_path}/<path:filename>\",\n\n        Returns an instance of :attr:`test_cli_runner_class`, by default\n        :class:`~flask.testing.FlaskCliRunner`. The Flask app object is\n        passed as the first argument.\n\n        .. versionadded:: 1.0\n        \"\"\"\n        cls = self.test_cli_runner_class\n\n        if cls is None:\n            from .testing import FlaskCliRunner as cls\n\n        return cls(self, **kwargs)  # type: ignore\n\n    @setupmethod\n    def register_blueprint(self, blueprint: \"Blueprint\", **options: t.Any) -> None:\n        \"\"\"Register a :class:`~flask.Blueprint` on the application. Keyword\n        arguments passed to this method will override the defaults set on the\n        blueprint.\n\n        Calls the blueprint's :meth:`~flask.Blueprint.register` method after\n        recording the blueprint in the application's :attr:`blueprints`.\n\n        :param blueprint: The blueprint to register.\n        :param url_prefix: Blueprint routes will be prefixed with this.\n        :param subdomain: Blueprint routes will match on this subdomain.\n        :param url_defaults: Blueprint routes will use these default values for\n            view arguments.\n        :param options: Additional keyword arguments are passed to\n            :class:`~flask.blueprints.BlueprintSetupState`. They can be\n            accessed in :meth:`~flask.Blueprint.record` callbacks.\n\n        .. versionchanged:: 2.0.1\n            The ``name`` option can be used to change the (pre-dotted)\n            name the blueprint is registered with. This allows the same\n            blueprint to be registered multiple times with unique names\n            for ``url_for``.\n\n        .. versionadded:: 0.7\n        \"\"\"\n        blueprint.register(self, options)\n\n    def iter_blueprints(self) -> t.ValuesView[\"Blueprint\"]:\n        \"\"\"Iterates over all blueprints by the order they were registered.\n\n        .. versionadded:: 0.11\n        \"\"\"\n        return self.blueprints.values()\n\n    @setupmethod\n    def add_url_rule(\n\n\ndef test_templates_list(test_apps):\n    from blueprintapp import app\n\n    templates = sorted(app.jinja_env.list_templates())\n    assert templates == [\"admin/index.html\", \"frontend/index.html\"]\n\n\ndef test_dotted_name_not_allowed(app, client):\n    with pytest.raises(ValueError):\n        flask.Blueprint(\"app.ui\", __name__)\n\n\ndef test_dotted_names_from_app(app, client):\n    test = flask.Blueprint(\"test\", __name__)\n\n    @app.route(\"/\")\n    def app_index():\n        return flask.url_for(\"test.index\")\n\n    response = client.get(\n        \"/\", base_url=f\"http://{child_subdomain}.{parent_subdomain}.{domain_name}\"\n    )\n\n    assert response.status_code == 200\n\n    response = client.get(\"/\", base_url=f\"http://{parent_subdomain}.{domain_name}\")\n\n    assert response.status_code == 404\n\n\ndef test_unique_blueprint_names(app, client) -> None:\n    bp = flask.Blueprint(\"bp\", __name__)\n    bp2 = flask.Blueprint(\"bp\", __name__)\n\n    app.register_blueprint(bp)\n\n    with pytest.raises(ValueError):\n        app.register_blueprint(bp)  # same bp, same name, error\n\n    app.register_blueprint(bp, name=\"again\")  # same bp, different name, ok\n\n    with pytest.raises(ValueError):\n        app.register_blueprint(bp2)  # different bp, same name, error\n\n    app.register_blueprint(bp2, name=\"alt\")  # different bp, different name, ok\n\n\ndef test_self_registration(app, client) -> None:\n    bp = flask.Blueprint(\"bp\", __name__)\n    with pytest.raises(ValueError):\n        bp.register_blueprint(bp)\n\n\ndef test_blueprint_renaming(app, client) -> None:\n    bp = flask.Blueprint(\"bp\", __name__)\n\ncodex\n{\"accepted_fact_ids\":[\"F1\",\"F2\",\"F3\",\"F4\",\"F5\",\"F6\",\"F7\",\"F8\",\"F9\"],\"rejected\":[],\"summary\":\"All nine facts are directly supported by the cited repository files and line regions.\"}\ntokens used\n12,835\n"
+}

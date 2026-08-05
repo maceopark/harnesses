@@ -1,0 +1,452 @@
+{
+  "role": "adversarial-reviewer",
+  "model": "gpt-5.6-sol",
+  "command": [
+    "codex",
+    "exec",
+    "--model",
+    "gpt-5.6-sol",
+    "--ephemeral",
+    "--sandbox",
+    "read-only",
+    "--skip-git-repo-check",
+    "--ignore-user-config",
+    "--color",
+    "never",
+    "--output-schema",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-adversarial-reviewer-zz2ahfr2/schema.json",
+    "--output-last-message",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-adversarial-reviewer-zz2ahfr2/output.json",
+    "-C",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-adversarial-reviewer-zz2ahfr2",
+    "<stdin>"
+  ],
+  "prompt": "Blindly review only public request, audited repository evidence, transcript, and contract. Use only the fixed failure taxonomy. Report material readiness failures with exact JSON-pointer citations to scalar leaves; do not quote arrays or objects and do not infer gold behavior. Citation artifact roots are exact: contract uses /summary, /implementation_ready, /confirmed_decisions/N, /open_material_decisions/N, or /acceptance_checks/N; transcript uses /N/...; evidence uses /scope_summary, /facts/N/..., /unknowns/N, or /audit_summary. Never cite /repository_facts or another public-case path as an evidence artifact.\nReturn only the JSON required by the supplied schema.\nINPUT:\n{\"alias\": \"ee9ad6ba10da37cbb1d1904b785e8994e724e7f8f0675523ab7cc7f2c6852219\", \"audited_repository_evidence\": {\"audit_summary\": \"All five facts are directly supported by the cited repository files and line ranges.\", \"facts\": [{\"id\": \"F1\", \"line_end\": 15, \"line_start\": 7, \"path\": \"pylint/__init__.py\", \"statement\": \"The pylint package publicly exports modify_sys_path via __all__.\"}, {\"id\": \"F2\", \"line_end\": 10, \"line_start\": 7, \"path\": \"pylint/__main__.py\", \"statement\": \"The module-execution entry point imports pylint, calls pylint.modify_sys_path(), and then calls pylint.run_pylint().\"}, {\"id\": \"F3\", \"line_end\": 97, \"line_start\": 80, \"path\": \"pylint/__init__.py\", \"statement\": \"modify_sys_path documents that it strips the current working directory and states that the first entry will always be either an empty string or the working directory.\"}, {\"id\": \"F4\", \"line_end\": 105, \"line_start\": 99, \"path\": \"pylint/__init__.py\", \"statement\": \"The first operation in modify_sys_path is an unconditional sys.path.pop(0); cwd and PYTHONPATH are examined only afterward.\"}, {\"id\": \"F5\", \"line_end\": 815, \"line_start\": 746, \"path\": \"tests/test_self.py\", \"statement\": \"The existing modify_sys_path test cases initialize sys.path with either the mocked cwd or an empty string as the first entry and assert that this entry is removed.\"}], \"scope_summary\": \"At base commit 684a1d6aa0a6791e20078bc524f97c8906332390, Pylint’s module entry point calls modify_sys_path(), whose first operation unconditionally removes sys.path[0]. Existing tests cover first entries equal to the mocked working directory or an empty string, but not an unrelated path inserted at index 0.\", \"unknowns\": [\"The repository does not establish intended behavior when sys.path is empty or when its first entry is an unrelated path such as one injected by a bundling extension.\", \"The repository does not contain a test invoking pylint through runpy.run_module.\"]}, \"contract\": {\"acceptance_checks\": [\"With sys.path beginning with \\\"\\\", modify_sys_path() removes that first entry.\", \"With sys.path beginning with \\\".\\\", modify_sys_path() removes that first entry.\", \"With sys.path beginning with os.getcwd(), modify_sys_path() removes that first entry.\", \"With sys.path beginning with an unrelated path, modify_sys_path() preserves it.\", \"With sys.path equal to [], modify_sys_path() returns without error and leaves it empty.\", \"For leading- and trailing-colon PYTHONPATH scenarios, genuine later current-directory markers are removed at the appropriate shifted position while preceding unrelated paths are preserved.\", \"For leading- and trailing-colon PYTHONPATH scenarios, a later unrelated candidate is preserved rather than removed based only on its index.\", \"A runpy.run_module('pylint', run_name='__main__', alter_sys=True) regression test inserts an unrelated path at sys.path[0] and verifies that the path is still present and usable when pylint's entry point reaches run_pylint; the test isolates or stubs actual lint execution.\", \"Existing modify_sys_path tests covering python -m pylint path stripping and PYTHONPATH colon behavior continue to pass.\", \"The modify_sys_path docstring accurately describes conditional removal and no longer claims sys.path[0] is always empty or the working directory.\"], \"confirmed_decisions\": [\"Recognize exactly \\\"\\\", \\\".\\\", and os.getcwd() as removable current-directory markers.\", \"Leave an empty sys.path unchanged and do not raise IndexError.\", \"Preserve an unrelated first entry instead of unconditionally popping index 0.\", \"Continue PYTHONPATH leading- and trailing-colon cleanup even when preserving an unrelated first entry.\", \"For PYTHONPATH-driven cleanup, remove a later candidate only when its value is \\\"\\\", \\\".\\\", or os.getcwd(); do not remove by calculated index alone.\", \"Add both direct modify_sys_path unit tests and a regression test exercising runpy.run_module with run_name=\\\"__main__\\\" and alter_sys=True.\", \"Preserve the existing security behavior for normal python -m pylint execution by continuing to remove genuine current-directory markers.\", \"Keep the public modify_sys_path export and module-entry-point call structure unchanged.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"Update pylint.modify_sys_path() so it removes a path entry only when that entry is an explicit current-directory marker: \\\"\\\", \\\".\\\", or os.getcwd(). An empty sys.path must remain unchanged without raising. An unrelated sys.path[0], including a path injected before runpy.run_module('pylint', run_name='__main__', alter_sys=True), must be preserved. Existing PYTHONPATH leading- or trailing-colon cleanup must continue to remove an implicitly added current-directory entry at its shifted position when an unrelated first entry is preserved, but only after verifying that the candidate entry is \\\"\\\", \\\".\\\", or os.getcwd(); unrelated entries must never be removed solely by index. Update the function documentation to remove the invalid assumption that the first entry is always empty or the working directory. Add direct unit coverage and a runpy entry-point regression test.\"}, \"failure_taxonomy\": [\"omission\", \"invention\", \"repository-delegation\", \"synthesis-loss\", \"unverifiable-acceptance\", \"compatibility-regression\", \"implementation-leakage\", \"redundant-question\"], \"metadata\": {\"context_mode\": \"repository\", \"partition\": \"holdout\", \"repository_family\": \"holdout-ee9ad6ba10da\"}, \"public_request\": \"`pylint` removes first item from `sys.path` when running from `runpy`.\\n### Bug description\\n\\nThis is the line where the first item from sys.path is removed.\\r\\nhttps://github.com/PyCQA/pylint/blob/ce7cccf96454fb6e286e4a8f38919733a0f28f44/pylint/__init__.py#L99\\r\\n\\r\\nI think there should be a check to ensure that the first item is `\\\"\\\"`, `\\\".\\\"` or `os.getcwd()` before removing.\\n\\n### Configuration\\n\\n_No response_\\n\\n### Command used\\n\\n```shell\\nRun programmatically to repro this, using this code:\\r\\n\\r\\nimport sys\\r\\nimport runpy\\r\\n\\r\\nsys.path.insert(0, \\\"something\\\")\\r\\n\\r\\nrunpy.run_module('pylint', run_name=\\\"__main__\\\", alter_sys=True)\\n```\\n\\n\\n### Pylint output\\n\\n```shell\\nWhen using pylint extension which bundles the libraries, the extension add them to sys.path depending on user settings. Pylint removes the first entry from sys path causing it to fail to load.\\n```\\n\\n\\n### Expected behavior\\n\\nCheck if  `\\\"\\\"`, `\\\".\\\"` or `os.getcwd()` before removing the first item from sys.path\\n\\n### Pylint version\\n\\n```shell\\npylint 2.14.5\\n```\\n\\n\\n### OS / Environment\\n\\n_No response_\\n\\n### Additional dependencies\\n\\n_No response_\\n\", \"repository_facts\": [{\"evidence\": [{\"cache_required\": true, \"excerpt\": \"import pylint\\n\\npylint.modify_sys_path()\\npylint.run_pylint()\", \"excerpt_digest\": \"362eca5b2f875e8385f103ef1accdb191198e16dfef197b950a2bd64a5efa378\", \"id\": \"repository:F1\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"pylint/__main__.py:L7-L10\", \"source\": \"repository\", \"source_digest\": \"9b5cb99bb2b2f07b7236713c7ed1929d14930e0bf9b2eabc3fe07857f283dc96\"}], \"id\": \"F1\", \"statement\": \"Executing the pylint package as a module imports pylint, calls modify_sys_path(), and then calls run_pylint().\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"def modify_sys_path() -> None:\\n    \\\"\\\"\\\"Modify sys path for execution as Python module.\\n\\n    Strip out the current working directory from sys.path.\\n    Having the working directory in `sys.path` means that `pylint` might\\n    inadvertently import user code from modules having the same name as\\n    stdlib or pylint's own modules.\\n    CPython issue: https://bugs.python.org/issue33053\", \"excerpt_digest\": \"6f8302f1e9e481b062fec736150355c11c1e33c7c988e837abdffe1861a01c16\", \"id\": \"repository:F2\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"pylint/__init__.py:L80-L87\", \"source\": \"repository\", \"source_digest\": \"ef00ba3e9c79e2be9952db9a0ad62905245dc4fa8759c2d553fc0da3cec3c7d2\"}], \"id\": \"F2\", \"statement\": \"modify_sys_path() is documented as stripping the current working directory to avoid importing user modules that shadow standard-library or pylint modules.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    - Remove the first entry. This will always be either \\\"\\\" or the working directory\\n    - Remove the working directory from the second and third entries\\n      if PYTHONPATH includes a \\\":\\\" at the beginning or the end.\\n      https://github.com/PyCQA/pylint/issues/3636\\n      Don't remove it if PYTHONPATH contains the cwd or '.' as the entry will\\n      only be added once.\\n    - Don't remove the working directory from the rest. It will be included\\n      if pylint is installed in an editable configuration (as the last item).\\n      https://github.com/PyCQA/pylint/issues/4161\", \"excerpt_digest\": \"08c8049565ed88372c8e8a018f98768b144e044b5627e2c76aa3846ce7bd5ef8\", \"id\": \"repository:F3\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"pylint/__init__.py:L89-L97\", \"source\": \"repository\", \"source_digest\": \"ef00ba3e9c79e2be9952db9a0ad62905245dc4fa8759c2d553fc0da3cec3c7d2\"}], \"id\": \"F3\", \"statement\": \"The function’s documentation states that the first sys.path entry is always either an empty string or the working directory, and describes additional removals related to leading or trailing PYTHONPATH colons.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    sys.path.pop(0)\\n    env_pythonpath = os.environ.get(\\\"PYTHONPATH\\\", \\\"\\\")\\n    cwd = os.getcwd()\\n    if env_pythonpath.startswith(\\\":\\\") and env_pythonpath not in (f\\\":{cwd}\\\", \\\":.\\\"):\\n        sys.path.pop(0)\\n    elif env_pythonpath.endswith(\\\":\\\") and env_pythonpath not in (f\\\"{cwd}:\\\", \\\".:\\\"):\\n        sys.path.pop(1)\", \"excerpt_digest\": \"f97ef41137492ed33702871bea8ecdd6a5b298deafa89f5b2b2f9c9f824ed57f\", \"id\": \"repository:F4\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"pylint/__init__.py:L99-L105\", \"source\": \"repository\", \"source_digest\": \"ef00ba3e9c79e2be9952db9a0ad62905245dc4fa8759c2d553fc0da3cec3c7d2\"}], \"id\": \"F4\", \"statement\": \"The implementation unconditionally removes sys.path[0], then may remove another entry based on PYTHONPATH and the current working directory; it performs no value or length check before the first pop.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def test_modify_sys_path() -> None:\\n        cwd = \\\"/tmp/pytest-of-root/pytest-0/test_do_not_import_files_from_0\\\"\\n        default_paths = [\\n            \\\"/usr/local/lib/python39.zip\\\",\\n            \\\"/usr/local/lib/python3.9\\\",\\n            \\\"/usr/local/lib/python3.9/lib-dynload\\\",\\n            \\\"/usr/local/lib/python3.9/site-packages\\\",\\n        ]\\n        with _test_sys_path(), patch(\\\"os.getcwd\\\") as mock_getcwd:\\n            mock_getcwd.return_value = cwd\\n            paths = [cwd, *default_paths]\\n            sys.path = copy(paths)\\n            with _test_environ_pythonpath():\\n                modify_sys_path()\\n            assert sys.path == paths[1:]\", \"excerpt_digest\": \"b7f0a3e66eb6057cbee8be0a00ebfa89359b994492986d63e4765eda0a12c00f\", \"id\": \"repository:F5\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_self.py:L746-L760\", \"source\": \"repository\", \"source_digest\": \"0977b3ec86ae4c1fdfa63160f65d876c8a6ecf80fed1e27087ed3b5b7fa675a1\"}], \"id\": \"F5\", \"statement\": \"The existing unit test initially supplies the mocked current working directory as sys.path[0] and asserts that modify_sys_path() removes it.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"            paths = [cwd, \\\"/custom_pythonpath\\\", *default_paths]\\n            sys.path = copy(paths)\\n            with _test_environ_pythonpath(\\\"/custom_pythonpath\\\"):\\n                modify_sys_path()\\n            assert sys.path == paths[1:]\\n\\n            paths = [cwd, \\\"/custom_pythonpath\\\", cwd, *default_paths]\\n            sys.path = copy(paths)\\n            with _test_environ_pythonpath(\\\"/custom_pythonpath:\\\"):\\n                modify_sys_path()\\n            assert sys.path == [paths[1]] + paths[3:]\", \"excerpt_digest\": \"984818a0880e1720c9c83b6b4cdf2f662d6d1ca618a7c9b3bbe99786f5412041\", \"id\": \"repository:F6\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_self.py:L768-L778\", \"source\": \"repository\", \"source_digest\": \"0977b3ec86ae4c1fdfa63160f65d876c8a6ecf80fed1e27087ed3b5b7fa675a1\"}], \"id\": \"F6\", \"statement\": \"The unit test also places a custom PYTHONPATH entry at sys.path[1], with the working directory at sys.path[0], and asserts that only the first entry is removed.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"            paths = [\\\"\\\", cwd, \\\"/custom_pythonpath\\\", *default_paths]\\n            sys.path = copy(paths)\\n            with _test_environ_pythonpath(\\\":/custom_pythonpath\\\"):\\n                modify_sys_path()\\n            assert sys.path == paths[2:]\\n\\n            paths = [cwd, cwd, \\\"/custom_pythonpath\\\", *default_paths]\\n            sys.path = copy(paths)\\n            with _test_environ_pythonpath(\\\":/custom_pythonpath:\\\"):\\n                modify_sys_path()\\n            assert sys.path == paths[2:]\", \"excerpt_digest\": \"87f082d1a7e519f1235118e8073fb430db1e0e446f0e572fea9861ec2b73c232\", \"id\": \"repository:F7\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_self.py:L780-L790\", \"source\": \"repository\", \"source_digest\": \"0977b3ec86ae4c1fdfa63160f65d876c8a6ecf80fed1e27087ed3b5b7fa675a1\"}], \"id\": \"F7\", \"statement\": \"For a leading-colon PYTHONPATH case, the unit test supplies an empty string at sys.path[0] followed by the working directory and asserts that both leading entries are removed.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def test_do_not_import_files_from_local_directory(\\n        self, tmpdir: LocalPath, args: list[str]\\n    ) -> None:\\n        for path in (\\\"astroid.py\\\", \\\"hmac.py\\\"):\\n            file_path = tmpdir / path\\n            file_path.write(\\\"'Docstring'\\\\nimport completely_unknown\\\\n\\\")\\n            pylint_call = [sys.executable, \\\"-m\\\", \\\"pylint\\\"] + args + [path]\\n            with tmpdir.as_cwd():\\n                subprocess.check_output(pylint_call, cwd=str(tmpdir))\\n            new_python_path = os.environ.get(\\\"PYTHONPATH\\\", \\\"\\\").strip(\\\":\\\")\\n            with tmpdir.as_cwd(), _test_environ_pythonpath(f\\\"{new_python_path}:\\\"):\\n                # Appending a colon to PYTHONPATH should not break path stripping\\n                # https://github.com/PyCQA/pylint/issues/3636\\n                subprocess.check_output(pylint_call, cwd=str(tmpdir))\", \"excerpt_digest\": \"b20520050a723f86f7ad1aecc98d30c1df5e414550bc3d7a64811c37b18d8013\", \"id\": \"repository:F8\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_self.py:L826-L839\", \"source\": \"repository\", \"source_digest\": \"0977b3ec86ae4c1fdfa63160f65d876c8a6ecf80fed1e27087ed3b5b7fa675a1\"}], \"id\": \"F8\", \"statement\": \"The integration test invokes pylint through `python -m pylint` from a temporary working directory and checks behavior both normally and with a trailing colon in PYTHONPATH.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    @staticmethod\\n    def test_import_plugin_from_local_directory_if_pythonpath_cwd(\\n        tmpdir: LocalPath,\\n    ) -> None:\\n        p_plugin = tmpdir / \\\"plugin.py\\\"\\n        p_plugin.write(\\\"# Some plugin content\\\")\\n        if sys.platform == \\\"win32\\\":\\n            python_path = \\\".\\\"\\n        else:\\n            python_path = f\\\"{os.environ.get('PYTHONPATH', '').strip(':')}:.\\\"\\n        with tmpdir.as_cwd(), _test_environ_pythonpath(python_path):\\n            args = [sys.executable, \\\"-m\\\", \\\"pylint\\\", \\\"--load-plugins\\\", \\\"plugin\\\"]\\n            process = subprocess.run(\\n                args, cwd=str(tmpdir), stderr=subprocess.PIPE, check=False\\n            )\\n            assert (\\n                \\\"AttributeError: module 'plugin' has no attribute 'register'\\\"\\n                in process.stderr.decode()\\n            )\", \"excerpt_digest\": \"dcadf16197f02851c22a125a7e3e295dc52cbee28acca4e75f52950888630bd5\", \"id\": \"repository:F9\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_self.py:L841-L859\", \"source\": \"repository\", \"source_digest\": \"0977b3ec86ae4c1fdfa63160f65d876c8a6ecf80fed1e27087ed3b5b7fa675a1\"}], \"id\": \"F9\", \"statement\": \"A separate integration test verifies that a plugin in the current directory is reached when PYTHONPATH explicitly contains the current directory, again invoking `python -m pylint`.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"[project.scripts]\\npylint        = \\\"pylint:run_pylint\\\"\\npylint-config = \\\"pylint:_run_pylint_config\\\"\\nepylint       = \\\"pylint:run_epylint\\\"\\npyreverse     = \\\"pylint:run_pyreverse\\\"\\nsymilar       = \\\"pylint:run_symilar\\\"\", \"excerpt_digest\": \"bffe4dafdebdd60c7f759339772670b3cb76bff8901467cfff2547edf5b03615\", \"id\": \"repository:F10\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"pyproject.toml:L62-L67\", \"source\": \"repository\", \"source_digest\": \"a2c84fc0ffd68c619ce923496a0d6f9b4cafdb291be0f6a58a4ca90681d4a2d5\"}], \"id\": \"F10\", \"statement\": \"The installed `pylint` console script maps directly to pylint:run_pylint rather than the package module entry point.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"def run_pylint(argv: Sequence[str] | None = None) -> None:\\n    \\\"\\\"\\\"Run pylint.\\n\\n    argv can be a sequence of strings normally supplied as arguments on the command line\\n    \\\"\\\"\\\"\\n    from pylint.lint import Run as PylintRun\\n\\n    try:\\n        PylintRun(argv or sys.argv[1:])\\n    except KeyboardInterrupt:\\n        sys.exit(1)\", \"excerpt_digest\": \"01e0d7fb72c9971807d7256fea345406c135aa171e5a0d4ed52c2ce084792b7a\", \"id\": \"repository:F11\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"pylint/__init__.py:L27-L37\", \"source\": \"repository\", \"source_digest\": \"ef00ba3e9c79e2be9952db9a0ad62905245dc4fa8759c2d553fc0da3cec3c7d2\"}], \"id\": \"F11\", \"statement\": \"run_pylint() constructs the lint Run object from supplied arguments or sys.argv[1:] and does not call modify_sys_path().\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"@contextlib.contextmanager\\ndef _test_sys_path(\\n    replacement_sys_path: list[str] | None = None,\\n) -> Generator[None, None, None]:\\n    original_path = sys.path\\n    try:\\n        if replacement_sys_path is not None:\\n            sys.path = copy(replacement_sys_path)\\n        yield\\n    finally:\\n        sys.path = original_path\", \"excerpt_digest\": \"d1d5d39d597c3deb940adc32cae298d883d9c6142f9a8de9a338854adb7aafb4\", \"id\": \"repository:F12\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"pylint/testutils/utils.py:L27-L37\", \"source\": \"repository\", \"source_digest\": \"8829faa836f79cd8dd01128b2eca256aeb0188bc42648023eb4d40ae108dcfcf\"}], \"id\": \"F12\", \"statement\": \"The shared test helper can replace sys.path for a test and restores the original sys.path object afterward.\"}], \"transcript\": [{\"answer\": \"Leave unchanged\", \"open_material_decisions\": [\"Whether modify_sys_path should tolerate an empty sys.path or preserve the current IndexError behavior.\"], \"question\": {\"header\": \"Empty path\", \"options\": [{\"description\": \"Return without error; remove index 0 only when it exists and equals \\\"\\\", \\\".\\\", or os.getcwd().\", \"label\": \"Leave unchanged\", \"recommended\": true}, {\"description\": \"Preserve the current failure on an empty list while protecting unrelated non-empty first entries.\", \"label\": \"Keep IndexError\", \"recommended\": false}], \"prompt\": \"If sys.path is empty, what should modify_sys_path() do?\"}, \"turn\": 1}, {\"answer\": \"Remove later cwd\", \"open_material_decisions\": [\"How PYTHONPATH-driven cleanup should behave when sys.path[0] is an unrelated path and is preserved.\"], \"question\": {\"header\": \"Later cwd\", \"options\": [{\"description\": \"Preserve the unrelated first entry while adjusting cleanup to remove the implicit working-directory entry at its shifted position.\", \"label\": \"Remove later cwd\", \"recommended\": true}, {\"description\": \"If the first entry is unrelated, preserve the entire sys.path and do not apply the PYTHONPATH colon cleanup.\", \"label\": \"Skip extra cleanup\", \"recommended\": false}], \"prompt\": \"When sys.path[0] is unrelated and preserved, but a leading or trailing colon in PYTHONPATH caused Python to add the working directory later in sys.path, should modify_sys_path() still remove that later implicit working-directory entry?\"}, \"turn\": 2}, {\"answer\": \"Unit and runpy\", \"open_material_decisions\": [\"Whether acceptance requires a runpy.run_module regression test in addition to direct modify_sys_path unit coverage.\"], \"question\": {\"header\": \"Regression test\", \"options\": [{\"description\": \"Add direct modify_sys_path cases plus a runpy.run_module regression that verifies an unrelated first entry remains usable.\", \"label\": \"Unit and runpy\", \"recommended\": true}, {\"description\": \"Test modify_sys_path directly without exercising the reported runpy entry path.\", \"label\": \"Unit only\", \"recommended\": false}], \"prompt\": \"What test must prove the reported runpy failure is fixed?\"}, \"turn\": 3}, {\"answer\": \"Require cwd marker\", \"open_material_decisions\": [\"Whether PYTHONPATH-driven cleanup may remove a later entry only when its value is an explicit working-directory marker (\\\"\\\", \\\".\\\", or os.getcwd()), rather than removing solely by a calculated index.\"], \"question\": {\"header\": \"Later match\", \"options\": [{\"description\": \"Remove the shifted entry only if it equals \\\"\\\", \\\".\\\", or os.getcwd(); otherwise preserve it.\", \"label\": \"Require cwd marker\", \"recommended\": true}, {\"description\": \"Preserve sys.path[0] but remove the expected shifted index without checking its value.\", \"label\": \"Use shifted index\", \"recommended\": false}], \"prompt\": \"When preserving an unrelated sys.path[0], what condition should govern removal of a later entry introduced by a leading or trailing colon in PYTHONPATH?\"}, \"turn\": 4}, {\"interviewer\": {\"action\": \"complete\", \"contract\": {\"acceptance_checks\": [\"With sys.path beginning with \\\"\\\", modify_sys_path() removes that first entry.\", \"With sys.path beginning with \\\".\\\", modify_sys_path() removes that first entry.\", \"With sys.path beginning with os.getcwd(), modify_sys_path() removes that first entry.\", \"With sys.path beginning with an unrelated path, modify_sys_path() preserves it.\", \"With sys.path equal to [], modify_sys_path() returns without error and leaves it empty.\", \"For leading- and trailing-colon PYTHONPATH scenarios, genuine later current-directory markers are removed at the appropriate shifted position while preceding unrelated paths are preserved.\", \"For leading- and trailing-colon PYTHONPATH scenarios, a later unrelated candidate is preserved rather than removed based only on its index.\", \"A runpy.run_module('pylint', run_name='__main__', alter_sys=True) regression test inserts an unrelated path at sys.path[0] and verifies that the path is still present and usable when pylint's entry point reaches run_pylint; the test isolates or stubs actual lint execution.\", \"Existing modify_sys_path tests covering python -m pylint path stripping and PYTHONPATH colon behavior continue to pass.\", \"The modify_sys_path docstring accurately describes conditional removal and no longer claims sys.path[0] is always empty or the working directory.\"], \"confirmed_decisions\": [\"Recognize exactly \\\"\\\", \\\".\\\", and os.getcwd() as removable current-directory markers.\", \"Leave an empty sys.path unchanged and do not raise IndexError.\", \"Preserve an unrelated first entry instead of unconditionally popping index 0.\", \"Continue PYTHONPATH leading- and trailing-colon cleanup even when preserving an unrelated first entry.\", \"For PYTHONPATH-driven cleanup, remove a later candidate only when its value is \\\"\\\", \\\".\\\", or os.getcwd(); do not remove by calculated index alone.\", \"Add both direct modify_sys_path unit tests and a regression test exercising runpy.run_module with run_name=\\\"__main__\\\" and alter_sys=True.\", \"Preserve the existing security behavior for normal python -m pylint execution by continuing to remove genuine current-directory markers.\", \"Keep the public modify_sys_path export and module-entry-point call structure unchanged.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"Update pylint.modify_sys_path() so it removes a path entry only when that entry is an explicit current-directory marker: \\\"\\\", \\\".\\\", or os.getcwd(). An empty sys.path must remain unchanged without raising. An unrelated sys.path[0], including a path injected before runpy.run_module('pylint', run_name='__main__', alter_sys=True), must be preserved. Existing PYTHONPATH leading- or trailing-colon cleanup must continue to remove an implicitly added current-directory entry at its shifted position when an unrelated first entry is preserved, but only after verifying that the candidate entry is \\\"\\\", \\\".\\\", or os.getcwd(); unrelated entries must never be removed solely by index. Update the function documentation to remove the invalid assumption that the first entry is always empty or the working directory. Add direct unit coverage and a runpy entry-point regression test.\"}, \"open_material_decisions\": [], \"question\": null, \"reason\": \"The reported behavior, empty-list handling, PYTHONPATH cleanup semantics, and required regression coverage are all resolved. No material implementation decision remains open.\"}, \"turn\": 5}], \"upstream\": {\"base_commit\": \"684a1d6aa0a6791e20078bc524f97c8906332390\", \"dataset\": \"princeton-nlp/SWE-bench_Verified\", \"instance_id_digest\": \"ee9ad6ba10da37cbb1d1904b785e8994e724e7f8f0675523ab7cc7f2c6852219\", \"issue_cache_key\": \"sha256:dc1d852f34bf1341c1a0ba290aba65e3cd34b15cc2060f5c96e5eaa4fdf946d5\", \"issue_digest\": \"dc1d852f34bf1341c1a0ba290aba65e3cd34b15cc2060f5c96e5eaa4fdf946d5\", \"revision\": \"c104f840cc67f8b6eec6f759ebc8b2693d585d4a\", \"source_url\": \"https://github.com/pylint-dev/pylint/pull/7277\"}}",
+  "input": {
+    "alias": "ee9ad6ba10da37cbb1d1904b785e8994e724e7f8f0675523ab7cc7f2c6852219",
+    "public_request": "`pylint` removes first item from `sys.path` when running from `runpy`.\n### Bug description\n\nThis is the line where the first item from sys.path is removed.\r\nhttps://github.com/PyCQA/pylint/blob/ce7cccf96454fb6e286e4a8f38919733a0f28f44/pylint/__init__.py#L99\r\n\r\nI think there should be a check to ensure that the first item is `\"\"`, `\".\"` or `os.getcwd()` before removing.\n\n### Configuration\n\n_No response_\n\n### Command used\n\n```shell\nRun programmatically to repro this, using this code:\r\n\r\nimport sys\r\nimport runpy\r\n\r\nsys.path.insert(0, \"something\")\r\n\r\nrunpy.run_module('pylint', run_name=\"__main__\", alter_sys=True)\n```\n\n\n### Pylint output\n\n```shell\nWhen using pylint extension which bundles the libraries, the extension add them to sys.path depending on user settings. Pylint removes the first entry from sys path causing it to fail to load.\n```\n\n\n### Expected behavior\n\nCheck if  `\"\"`, `\".\"` or `os.getcwd()` before removing the first item from sys.path\n\n### Pylint version\n\n```shell\npylint 2.14.5\n```\n\n\n### OS / Environment\n\n_No response_\n\n### Additional dependencies\n\n_No response_\n",
+    "upstream": {
+      "base_commit": "684a1d6aa0a6791e20078bc524f97c8906332390",
+      "dataset": "princeton-nlp/SWE-bench_Verified",
+      "instance_id_digest": "ee9ad6ba10da37cbb1d1904b785e8994e724e7f8f0675523ab7cc7f2c6852219",
+      "issue_cache_key": "sha256:dc1d852f34bf1341c1a0ba290aba65e3cd34b15cc2060f5c96e5eaa4fdf946d5",
+      "issue_digest": "dc1d852f34bf1341c1a0ba290aba65e3cd34b15cc2060f5c96e5eaa4fdf946d5",
+      "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+      "source_url": "https://github.com/pylint-dev/pylint/pull/7277"
+    },
+    "repository_facts": [
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "import pylint\n\npylint.modify_sys_path()\npylint.run_pylint()",
+            "excerpt_digest": "362eca5b2f875e8385f103ef1accdb191198e16dfef197b950a2bd64a5efa378",
+            "id": "repository:F1",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "pylint/__main__.py:L7-L10",
+            "source": "repository",
+            "source_digest": "9b5cb99bb2b2f07b7236713c7ed1929d14930e0bf9b2eabc3fe07857f283dc96"
+          }
+        ],
+        "id": "F1",
+        "statement": "Executing the pylint package as a module imports pylint, calls modify_sys_path(), and then calls run_pylint()."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "def modify_sys_path() -> None:\n    \"\"\"Modify sys path for execution as Python module.\n\n    Strip out the current working directory from sys.path.\n    Having the working directory in `sys.path` means that `pylint` might\n    inadvertently import user code from modules having the same name as\n    stdlib or pylint's own modules.\n    CPython issue: https://bugs.python.org/issue33053",
+            "excerpt_digest": "6f8302f1e9e481b062fec736150355c11c1e33c7c988e837abdffe1861a01c16",
+            "id": "repository:F2",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "pylint/__init__.py:L80-L87",
+            "source": "repository",
+            "source_digest": "ef00ba3e9c79e2be9952db9a0ad62905245dc4fa8759c2d553fc0da3cec3c7d2"
+          }
+        ],
+        "id": "F2",
+        "statement": "modify_sys_path() is documented as stripping the current working directory to avoid importing user modules that shadow standard-library or pylint modules."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    - Remove the first entry. This will always be either \"\" or the working directory\n    - Remove the working directory from the second and third entries\n      if PYTHONPATH includes a \":\" at the beginning or the end.\n      https://github.com/PyCQA/pylint/issues/3636\n      Don't remove it if PYTHONPATH contains the cwd or '.' as the entry will\n      only be added once.\n    - Don't remove the working directory from the rest. It will be included\n      if pylint is installed in an editable configuration (as the last item).\n      https://github.com/PyCQA/pylint/issues/4161",
+            "excerpt_digest": "08c8049565ed88372c8e8a018f98768b144e044b5627e2c76aa3846ce7bd5ef8",
+            "id": "repository:F3",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "pylint/__init__.py:L89-L97",
+            "source": "repository",
+            "source_digest": "ef00ba3e9c79e2be9952db9a0ad62905245dc4fa8759c2d553fc0da3cec3c7d2"
+          }
+        ],
+        "id": "F3",
+        "statement": "The function’s documentation states that the first sys.path entry is always either an empty string or the working directory, and describes additional removals related to leading or trailing PYTHONPATH colons."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    sys.path.pop(0)\n    env_pythonpath = os.environ.get(\"PYTHONPATH\", \"\")\n    cwd = os.getcwd()\n    if env_pythonpath.startswith(\":\") and env_pythonpath not in (f\":{cwd}\", \":.\"):\n        sys.path.pop(0)\n    elif env_pythonpath.endswith(\":\") and env_pythonpath not in (f\"{cwd}:\", \".:\"):\n        sys.path.pop(1)",
+            "excerpt_digest": "f97ef41137492ed33702871bea8ecdd6a5b298deafa89f5b2b2f9c9f824ed57f",
+            "id": "repository:F4",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "pylint/__init__.py:L99-L105",
+            "source": "repository",
+            "source_digest": "ef00ba3e9c79e2be9952db9a0ad62905245dc4fa8759c2d553fc0da3cec3c7d2"
+          }
+        ],
+        "id": "F4",
+        "statement": "The implementation unconditionally removes sys.path[0], then may remove another entry based on PYTHONPATH and the current working directory; it performs no value or length check before the first pop."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    def test_modify_sys_path() -> None:\n        cwd = \"/tmp/pytest-of-root/pytest-0/test_do_not_import_files_from_0\"\n        default_paths = [\n            \"/usr/local/lib/python39.zip\",\n            \"/usr/local/lib/python3.9\",\n            \"/usr/local/lib/python3.9/lib-dynload\",\n            \"/usr/local/lib/python3.9/site-packages\",\n        ]\n        with _test_sys_path(), patch(\"os.getcwd\") as mock_getcwd:\n            mock_getcwd.return_value = cwd\n            paths = [cwd, *default_paths]\n            sys.path = copy(paths)\n            with _test_environ_pythonpath():\n                modify_sys_path()\n            assert sys.path == paths[1:]",
+            "excerpt_digest": "b7f0a3e66eb6057cbee8be0a00ebfa89359b994492986d63e4765eda0a12c00f",
+            "id": "repository:F5",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "tests/test_self.py:L746-L760",
+            "source": "repository",
+            "source_digest": "0977b3ec86ae4c1fdfa63160f65d876c8a6ecf80fed1e27087ed3b5b7fa675a1"
+          }
+        ],
+        "id": "F5",
+        "statement": "The existing unit test initially supplies the mocked current working directory as sys.path[0] and asserts that modify_sys_path() removes it."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "            paths = [cwd, \"/custom_pythonpath\", *default_paths]\n            sys.path = copy(paths)\n            with _test_environ_pythonpath(\"/custom_pythonpath\"):\n                modify_sys_path()\n            assert sys.path == paths[1:]\n\n            paths = [cwd, \"/custom_pythonpath\", cwd, *default_paths]\n            sys.path = copy(paths)\n            with _test_environ_pythonpath(\"/custom_pythonpath:\"):\n                modify_sys_path()\n            assert sys.path == [paths[1]] + paths[3:]",
+            "excerpt_digest": "984818a0880e1720c9c83b6b4cdf2f662d6d1ca618a7c9b3bbe99786f5412041",
+            "id": "repository:F6",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "tests/test_self.py:L768-L778",
+            "source": "repository",
+            "source_digest": "0977b3ec86ae4c1fdfa63160f65d876c8a6ecf80fed1e27087ed3b5b7fa675a1"
+          }
+        ],
+        "id": "F6",
+        "statement": "The unit test also places a custom PYTHONPATH entry at sys.path[1], with the working directory at sys.path[0], and asserts that only the first entry is removed."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "            paths = [\"\", cwd, \"/custom_pythonpath\", *default_paths]\n            sys.path = copy(paths)\n            with _test_environ_pythonpath(\":/custom_pythonpath\"):\n                modify_sys_path()\n            assert sys.path == paths[2:]\n\n            paths = [cwd, cwd, \"/custom_pythonpath\", *default_paths]\n            sys.path = copy(paths)\n            with _test_environ_pythonpath(\":/custom_pythonpath:\"):\n                modify_sys_path()\n            assert sys.path == paths[2:]",
+            "excerpt_digest": "87f082d1a7e519f1235118e8073fb430db1e0e446f0e572fea9861ec2b73c232",
+            "id": "repository:F7",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "tests/test_self.py:L780-L790",
+            "source": "repository",
+            "source_digest": "0977b3ec86ae4c1fdfa63160f65d876c8a6ecf80fed1e27087ed3b5b7fa675a1"
+          }
+        ],
+        "id": "F7",
+        "statement": "For a leading-colon PYTHONPATH case, the unit test supplies an empty string at sys.path[0] followed by the working directory and asserts that both leading entries are removed."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    def test_do_not_import_files_from_local_directory(\n        self, tmpdir: LocalPath, args: list[str]\n    ) -> None:\n        for path in (\"astroid.py\", \"hmac.py\"):\n            file_path = tmpdir / path\n            file_path.write(\"'Docstring'\\nimport completely_unknown\\n\")\n            pylint_call = [sys.executable, \"-m\", \"pylint\"] + args + [path]\n            with tmpdir.as_cwd():\n                subprocess.check_output(pylint_call, cwd=str(tmpdir))\n            new_python_path = os.environ.get(\"PYTHONPATH\", \"\").strip(\":\")\n            with tmpdir.as_cwd(), _test_environ_pythonpath(f\"{new_python_path}:\"):\n                # Appending a colon to PYTHONPATH should not break path stripping\n                # https://github.com/PyCQA/pylint/issues/3636\n                subprocess.check_output(pylint_call, cwd=str(tmpdir))",
+            "excerpt_digest": "b20520050a723f86f7ad1aecc98d30c1df5e414550bc3d7a64811c37b18d8013",
+            "id": "repository:F8",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "tests/test_self.py:L826-L839",
+            "source": "repository",
+            "source_digest": "0977b3ec86ae4c1fdfa63160f65d876c8a6ecf80fed1e27087ed3b5b7fa675a1"
+          }
+        ],
+        "id": "F8",
+        "statement": "The integration test invokes pylint through `python -m pylint` from a temporary working directory and checks behavior both normally and with a trailing colon in PYTHONPATH."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    @staticmethod\n    def test_import_plugin_from_local_directory_if_pythonpath_cwd(\n        tmpdir: LocalPath,\n    ) -> None:\n        p_plugin = tmpdir / \"plugin.py\"\n        p_plugin.write(\"# Some plugin content\")\n        if sys.platform == \"win32\":\n            python_path = \".\"\n        else:\n            python_path = f\"{os.environ.get('PYTHONPATH', '').strip(':')}:.\"\n        with tmpdir.as_cwd(), _test_environ_pythonpath(python_path):\n            args = [sys.executable, \"-m\", \"pylint\", \"--load-plugins\", \"plugin\"]\n            process = subprocess.run(\n                args, cwd=str(tmpdir), stderr=subprocess.PIPE, check=False\n            )\n            assert (\n                \"AttributeError: module 'plugin' has no attribute 'register'\"\n                in process.stderr.decode()\n            )",
+            "excerpt_digest": "dcadf16197f02851c22a125a7e3e295dc52cbee28acca4e75f52950888630bd5",
+            "id": "repository:F9",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "tests/test_self.py:L841-L859",
+            "source": "repository",
+            "source_digest": "0977b3ec86ae4c1fdfa63160f65d876c8a6ecf80fed1e27087ed3b5b7fa675a1"
+          }
+        ],
+        "id": "F9",
+        "statement": "A separate integration test verifies that a plugin in the current directory is reached when PYTHONPATH explicitly contains the current directory, again invoking `python -m pylint`."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "[project.scripts]\npylint        = \"pylint:run_pylint\"\npylint-config = \"pylint:_run_pylint_config\"\nepylint       = \"pylint:run_epylint\"\npyreverse     = \"pylint:run_pyreverse\"\nsymilar       = \"pylint:run_symilar\"",
+            "excerpt_digest": "bffe4dafdebdd60c7f759339772670b3cb76bff8901467cfff2547edf5b03615",
+            "id": "repository:F10",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "pyproject.toml:L62-L67",
+            "source": "repository",
+            "source_digest": "a2c84fc0ffd68c619ce923496a0d6f9b4cafdb291be0f6a58a4ca90681d4a2d5"
+          }
+        ],
+        "id": "F10",
+        "statement": "The installed `pylint` console script maps directly to pylint:run_pylint rather than the package module entry point."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "def run_pylint(argv: Sequence[str] | None = None) -> None:\n    \"\"\"Run pylint.\n\n    argv can be a sequence of strings normally supplied as arguments on the command line\n    \"\"\"\n    from pylint.lint import Run as PylintRun\n\n    try:\n        PylintRun(argv or sys.argv[1:])\n    except KeyboardInterrupt:\n        sys.exit(1)",
+            "excerpt_digest": "01e0d7fb72c9971807d7256fea345406c135aa171e5a0d4ed52c2ce084792b7a",
+            "id": "repository:F11",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "pylint/__init__.py:L27-L37",
+            "source": "repository",
+            "source_digest": "ef00ba3e9c79e2be9952db9a0ad62905245dc4fa8759c2d553fc0da3cec3c7d2"
+          }
+        ],
+        "id": "F11",
+        "statement": "run_pylint() constructs the lint Run object from supplied arguments or sys.argv[1:] and does not call modify_sys_path()."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "@contextlib.contextmanager\ndef _test_sys_path(\n    replacement_sys_path: list[str] | None = None,\n) -> Generator[None, None, None]:\n    original_path = sys.path\n    try:\n        if replacement_sys_path is not None:\n            sys.path = copy(replacement_sys_path)\n        yield\n    finally:\n        sys.path = original_path",
+            "excerpt_digest": "d1d5d39d597c3deb940adc32cae298d883d9c6142f9a8de9a338854adb7aafb4",
+            "id": "repository:F12",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "pylint/testutils/utils.py:L27-L37",
+            "source": "repository",
+            "source_digest": "8829faa836f79cd8dd01128b2eca256aeb0188bc42648023eb4d40ae108dcfcf"
+          }
+        ],
+        "id": "F12",
+        "statement": "The shared test helper can replace sys.path for a test and restores the original sys.path object afterward."
+      }
+    ],
+    "metadata": {
+      "context_mode": "repository",
+      "partition": "holdout",
+      "repository_family": "holdout-ee9ad6ba10da"
+    },
+    "transcript": [
+      {
+        "turn": 1,
+        "open_material_decisions": [
+          "Whether modify_sys_path should tolerate an empty sys.path or preserve the current IndexError behavior."
+        ],
+        "question": {
+          "header": "Empty path",
+          "prompt": "If sys.path is empty, what should modify_sys_path() do?",
+          "options": [
+            {
+              "label": "Leave unchanged",
+              "description": "Return without error; remove index 0 only when it exists and equals \"\", \".\", or os.getcwd().",
+              "recommended": true
+            },
+            {
+              "label": "Keep IndexError",
+              "description": "Preserve the current failure on an empty list while protecting unrelated non-empty first entries.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Leave unchanged"
+      },
+      {
+        "turn": 2,
+        "open_material_decisions": [
+          "How PYTHONPATH-driven cleanup should behave when sys.path[0] is an unrelated path and is preserved."
+        ],
+        "question": {
+          "header": "Later cwd",
+          "prompt": "When sys.path[0] is unrelated and preserved, but a leading or trailing colon in PYTHONPATH caused Python to add the working directory later in sys.path, should modify_sys_path() still remove that later implicit working-directory entry?",
+          "options": [
+            {
+              "label": "Remove later cwd",
+              "description": "Preserve the unrelated first entry while adjusting cleanup to remove the implicit working-directory entry at its shifted position.",
+              "recommended": true
+            },
+            {
+              "label": "Skip extra cleanup",
+              "description": "If the first entry is unrelated, preserve the entire sys.path and do not apply the PYTHONPATH colon cleanup.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Remove later cwd"
+      },
+      {
+        "turn": 3,
+        "open_material_decisions": [
+          "Whether acceptance requires a runpy.run_module regression test in addition to direct modify_sys_path unit coverage."
+        ],
+        "question": {
+          "header": "Regression test",
+          "prompt": "What test must prove the reported runpy failure is fixed?",
+          "options": [
+            {
+              "label": "Unit and runpy",
+              "description": "Add direct modify_sys_path cases plus a runpy.run_module regression that verifies an unrelated first entry remains usable.",
+              "recommended": true
+            },
+            {
+              "label": "Unit only",
+              "description": "Test modify_sys_path directly without exercising the reported runpy entry path.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Unit and runpy"
+      },
+      {
+        "turn": 4,
+        "open_material_decisions": [
+          "Whether PYTHONPATH-driven cleanup may remove a later entry only when its value is an explicit working-directory marker (\"\", \".\", or os.getcwd()), rather than removing solely by a calculated index."
+        ],
+        "question": {
+          "header": "Later match",
+          "prompt": "When preserving an unrelated sys.path[0], what condition should govern removal of a later entry introduced by a leading or trailing colon in PYTHONPATH?",
+          "options": [
+            {
+              "label": "Require cwd marker",
+              "description": "Remove the shifted entry only if it equals \"\", \".\", or os.getcwd(); otherwise preserve it.",
+              "recommended": true
+            },
+            {
+              "label": "Use shifted index",
+              "description": "Preserve sys.path[0] but remove the expected shifted index without checking its value.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Require cwd marker"
+      },
+      {
+        "turn": 5,
+        "interviewer": {
+          "action": "complete",
+          "reason": "The reported behavior, empty-list handling, PYTHONPATH cleanup semantics, and required regression coverage are all resolved. No material implementation decision remains open.",
+          "open_material_decisions": [],
+          "question": null,
+          "contract": {
+            "summary": "Update pylint.modify_sys_path() so it removes a path entry only when that entry is an explicit current-directory marker: \"\", \".\", or os.getcwd(). An empty sys.path must remain unchanged without raising. An unrelated sys.path[0], including a path injected before runpy.run_module('pylint', run_name='__main__', alter_sys=True), must be preserved. Existing PYTHONPATH leading- or trailing-colon cleanup must continue to remove an implicitly added current-directory entry at its shifted position when an unrelated first entry is preserved, but only after verifying that the candidate entry is \"\", \".\", or os.getcwd(); unrelated entries must never be removed solely by index. Update the function documentation to remove the invalid assumption that the first entry is always empty or the working directory. Add direct unit coverage and a runpy entry-point regression test.",
+            "implementation_ready": true,
+            "confirmed_decisions": [
+              "Recognize exactly \"\", \".\", and os.getcwd() as removable current-directory markers.",
+              "Leave an empty sys.path unchanged and do not raise IndexError.",
+              "Preserve an unrelated first entry instead of unconditionally popping index 0.",
+              "Continue PYTHONPATH leading- and trailing-colon cleanup even when preserving an unrelated first entry.",
+              "For PYTHONPATH-driven cleanup, remove a later candidate only when its value is \"\", \".\", or os.getcwd(); do not remove by calculated index alone.",
+              "Add both direct modify_sys_path unit tests and a regression test exercising runpy.run_module with run_name=\"__main__\" and alter_sys=True.",
+              "Preserve the existing security behavior for normal python -m pylint execution by continuing to remove genuine current-directory markers.",
+              "Keep the public modify_sys_path export and module-entry-point call structure unchanged."
+            ],
+            "open_material_decisions": [],
+            "acceptance_checks": [
+              "With sys.path beginning with \"\", modify_sys_path() removes that first entry.",
+              "With sys.path beginning with \".\", modify_sys_path() removes that first entry.",
+              "With sys.path beginning with os.getcwd(), modify_sys_path() removes that first entry.",
+              "With sys.path beginning with an unrelated path, modify_sys_path() preserves it.",
+              "With sys.path equal to [], modify_sys_path() returns without error and leaves it empty.",
+              "For leading- and trailing-colon PYTHONPATH scenarios, genuine later current-directory markers are removed at the appropriate shifted position while preceding unrelated paths are preserved.",
+              "For leading- and trailing-colon PYTHONPATH scenarios, a later unrelated candidate is preserved rather than removed based only on its index.",
+              "A runpy.run_module('pylint', run_name='__main__', alter_sys=True) regression test inserts an unrelated path at sys.path[0] and verifies that the path is still present and usable when pylint's entry point reaches run_pylint; the test isolates or stubs actual lint execution.",
+              "Existing modify_sys_path tests covering python -m pylint path stripping and PYTHONPATH colon behavior continue to pass.",
+              "The modify_sys_path docstring accurately describes conditional removal and no longer claims sys.path[0] is always empty or the working directory."
+            ]
+          }
+        }
+      }
+    ],
+    "contract": {
+      "summary": "Update pylint.modify_sys_path() so it removes a path entry only when that entry is an explicit current-directory marker: \"\", \".\", or os.getcwd(). An empty sys.path must remain unchanged without raising. An unrelated sys.path[0], including a path injected before runpy.run_module('pylint', run_name='__main__', alter_sys=True), must be preserved. Existing PYTHONPATH leading- or trailing-colon cleanup must continue to remove an implicitly added current-directory entry at its shifted position when an unrelated first entry is preserved, but only after verifying that the candidate entry is \"\", \".\", or os.getcwd(); unrelated entries must never be removed solely by index. Update the function documentation to remove the invalid assumption that the first entry is always empty or the working directory. Add direct unit coverage and a runpy entry-point regression test.",
+      "implementation_ready": true,
+      "confirmed_decisions": [
+        "Recognize exactly \"\", \".\", and os.getcwd() as removable current-directory markers.",
+        "Leave an empty sys.path unchanged and do not raise IndexError.",
+        "Preserve an unrelated first entry instead of unconditionally popping index 0.",
+        "Continue PYTHONPATH leading- and trailing-colon cleanup even when preserving an unrelated first entry.",
+        "For PYTHONPATH-driven cleanup, remove a later candidate only when its value is \"\", \".\", or os.getcwd(); do not remove by calculated index alone.",
+        "Add both direct modify_sys_path unit tests and a regression test exercising runpy.run_module with run_name=\"__main__\" and alter_sys=True.",
+        "Preserve the existing security behavior for normal python -m pylint execution by continuing to remove genuine current-directory markers.",
+        "Keep the public modify_sys_path export and module-entry-point call structure unchanged."
+      ],
+      "open_material_decisions": [],
+      "acceptance_checks": [
+        "With sys.path beginning with \"\", modify_sys_path() removes that first entry.",
+        "With sys.path beginning with \".\", modify_sys_path() removes that first entry.",
+        "With sys.path beginning with os.getcwd(), modify_sys_path() removes that first entry.",
+        "With sys.path beginning with an unrelated path, modify_sys_path() preserves it.",
+        "With sys.path equal to [], modify_sys_path() returns without error and leaves it empty.",
+        "For leading- and trailing-colon PYTHONPATH scenarios, genuine later current-directory markers are removed at the appropriate shifted position while preceding unrelated paths are preserved.",
+        "For leading- and trailing-colon PYTHONPATH scenarios, a later unrelated candidate is preserved rather than removed based only on its index.",
+        "A runpy.run_module('pylint', run_name='__main__', alter_sys=True) regression test inserts an unrelated path at sys.path[0] and verifies that the path is still present and usable when pylint's entry point reaches run_pylint; the test isolates or stubs actual lint execution.",
+        "Existing modify_sys_path tests covering python -m pylint path stripping and PYTHONPATH colon behavior continue to pass.",
+        "The modify_sys_path docstring accurately describes conditional removal and no longer claims sys.path[0] is always empty or the working directory."
+      ]
+    },
+    "audited_repository_evidence": {
+      "scope_summary": "At base commit 684a1d6aa0a6791e20078bc524f97c8906332390, Pylint’s module entry point calls modify_sys_path(), whose first operation unconditionally removes sys.path[0]. Existing tests cover first entries equal to the mocked working directory or an empty string, but not an unrelated path inserted at index 0.",
+      "facts": [
+        {
+          "id": "F1",
+          "statement": "The pylint package publicly exports modify_sys_path via __all__.",
+          "path": "pylint/__init__.py",
+          "line_start": 7,
+          "line_end": 15
+        },
+        {
+          "id": "F2",
+          "statement": "The module-execution entry point imports pylint, calls pylint.modify_sys_path(), and then calls pylint.run_pylint().",
+          "path": "pylint/__main__.py",
+          "line_start": 7,
+          "line_end": 10
+        },
+        {
+          "id": "F3",
+          "statement": "modify_sys_path documents that it strips the current working directory and states that the first entry will always be either an empty string or the working directory.",
+          "path": "pylint/__init__.py",
+          "line_start": 80,
+          "line_end": 97
+        },
+        {
+          "id": "F4",
+          "statement": "The first operation in modify_sys_path is an unconditional sys.path.pop(0); cwd and PYTHONPATH are examined only afterward.",
+          "path": "pylint/__init__.py",
+          "line_start": 99,
+          "line_end": 105
+        },
+        {
+          "id": "F5",
+          "statement": "The existing modify_sys_path test cases initialize sys.path with either the mocked cwd or an empty string as the first entry and assert that this entry is removed.",
+          "path": "tests/test_self.py",
+          "line_start": 746,
+          "line_end": 815
+        }
+      ],
+      "unknowns": [
+        "The repository does not establish intended behavior when sys.path is empty or when its first entry is an unrelated path such as one injected by a bundling extension.",
+        "The repository does not contain a test invoking pylint through runpy.run_module."
+      ],
+      "audit_summary": "All five facts are directly supported by the cited repository files and line ranges."
+    },
+    "failure_taxonomy": [
+      "omission",
+      "invention",
+      "repository-delegation",
+      "synthesis-loss",
+      "unverifiable-acceptance",
+      "compatibility-regression",
+      "implementation-leakage",
+      "redundant-question"
+    ]
+  },
+  "exit_code": 0,
+  "stdout": "{\"findings\":[],\"summary\":\"No material readiness failures found. The contract resolves the reported first-entry bug, preserves repository-established path-stripping behavior, covers the runpy reproduction, and leaves no material decisions open.\"}\n",
+  "stderr": "OpenAI Codex v0.144.6\n--------\nworkdir: /var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-adversarial-reviewer-zz2ahfr2\nmodel: gpt-5.6-sol\nprovider: openai\napproval: never\nsandbox: read-only\nreasoning effort: none\nreasoning summaries: none\nsession id: 019f7b11-3568-7450-bfae-037efeceffea\n--------\nuser\nBlindly review only public request, audited repository evidence, transcript, and contract. Use only the fixed failure taxonomy. Report material readiness failures with exact JSON-pointer citations to scalar leaves; do not quote arrays or objects and do not infer gold behavior. Citation artifact roots are exact: contract uses /summary, /implementation_ready, /confirmed_decisions/N, /open_material_decisions/N, or /acceptance_checks/N; transcript uses /N/...; evidence uses /scope_summary, /facts/N/..., /unknowns/N, or /audit_summary. Never cite /repository_facts or another public-case path as an evidence artifact.\nReturn only the JSON required by the supplied schema.\nINPUT:\n{\"alias\": \"ee9ad6ba10da37cbb1d1904b785e8994e724e7f8f0675523ab7cc7f2c6852219\", \"audited_repository_evidence\": {\"audit_summary\": \"All five facts are directly supported by the cited repository files and line ranges.\", \"facts\": [{\"id\": \"F1\", \"line_end\": 15, \"line_start\": 7, \"path\": \"pylint/__init__.py\", \"statement\": \"The pylint package publicly exports modify_sys_path via __all__.\"}, {\"id\": \"F2\", \"line_end\": 10, \"line_start\": 7, \"path\": \"pylint/__main__.py\", \"statement\": \"The module-execution entry point imports pylint, calls pylint.modify_sys_path(), and then calls pylint.run_pylint().\"}, {\"id\": \"F3\", \"line_end\": 97, \"line_start\": 80, \"path\": \"pylint/__init__.py\", \"statement\": \"modify_sys_path documents that it strips the current working directory and states that the first entry will always be either an empty string or the working directory.\"}, {\"id\": \"F4\", \"line_end\": 105, \"line_start\": 99, \"path\": \"pylint/__init__.py\", \"statement\": \"The first operation in modify_sys_path is an unconditional sys.path.pop(0); cwd and PYTHONPATH are examined only afterward.\"}, {\"id\": \"F5\", \"line_end\": 815, \"line_start\": 746, \"path\": \"tests/test_self.py\", \"statement\": \"The existing modify_sys_path test cases initialize sys.path with either the mocked cwd or an empty string as the first entry and assert that this entry is removed.\"}], \"scope_summary\": \"At base commit 684a1d6aa0a6791e20078bc524f97c8906332390, Pylint’s module entry point calls modify_sys_path(), whose first operation unconditionally removes sys.path[0]. Existing tests cover first entries equal to the mocked working directory or an empty string, but not an unrelated path inserted at index 0.\", \"unknowns\": [\"The repository does not establish intended behavior when sys.path is empty or when its first entry is an unrelated path such as one injected by a bundling extension.\", \"The repository does not contain a test invoking pylint through runpy.run_module.\"]}, \"contract\": {\"acceptance_checks\": [\"With sys.path beginning with \\\"\\\", modify_sys_path() removes that first entry.\", \"With sys.path beginning with \\\".\\\", modify_sys_path() removes that first entry.\", \"With sys.path beginning with os.getcwd(), modify_sys_path() removes that first entry.\", \"With sys.path beginning with an unrelated path, modify_sys_path() preserves it.\", \"With sys.path equal to [], modify_sys_path() returns without error and leaves it empty.\", \"For leading- and trailing-colon PYTHONPATH scenarios, genuine later current-directory markers are removed at the appropriate shifted position while preceding unrelated paths are preserved.\", \"For leading- and trailing-colon PYTHONPATH scenarios, a later unrelated candidate is preserved rather than removed based only on its index.\", \"A runpy.run_module('pylint', run_name='__main__', alter_sys=True) regression test inserts an unrelated path at sys.path[0] and verifies that the path is still present and usable when pylint's entry point reaches run_pylint; the test isolates or stubs actual lint execution.\", \"Existing modify_sys_path tests covering python -m pylint path stripping and PYTHONPATH colon behavior continue to pass.\", \"The modify_sys_path docstring accurately describes conditional removal and no longer claims sys.path[0] is always empty or the working directory.\"], \"confirmed_decisions\": [\"Recognize exactly \\\"\\\", \\\".\\\", and os.getcwd() as removable current-directory markers.\", \"Leave an empty sys.path unchanged and do not raise IndexError.\", \"Preserve an unrelated first entry instead of unconditionally popping index 0.\", \"Continue PYTHONPATH leading- and trailing-colon cleanup even when preserving an unrelated first entry.\", \"For PYTHONPATH-driven cleanup, remove a later candidate only when its value is \\\"\\\", \\\".\\\", or os.getcwd(); do not remove by calculated index alone.\", \"Add both direct modify_sys_path unit tests and a regression test exercising runpy.run_module with run_name=\\\"__main__\\\" and alter_sys=True.\", \"Preserve the existing security behavior for normal python -m pylint execution by continuing to remove genuine current-directory markers.\", \"Keep the public modify_sys_path export and module-entry-point call structure unchanged.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"Update pylint.modify_sys_path() so it removes a path entry only when that entry is an explicit current-directory marker: \\\"\\\", \\\".\\\", or os.getcwd(). An empty sys.path must remain unchanged without raising. An unrelated sys.path[0], including a path injected before runpy.run_module('pylint', run_name='__main__', alter_sys=True), must be preserved. Existing PYTHONPATH leading- or trailing-colon cleanup must continue to remove an implicitly added current-directory entry at its shifted position when an unrelated first entry is preserved, but only after verifying that the candidate entry is \\\"\\\", \\\".\\\", or os.getcwd(); unrelated entries must never be removed solely by index. Update the function documentation to remove the invalid assumption that the first entry is always empty or the working directory. Add direct unit coverage and a runpy entry-point regression test.\"}, \"failure_taxonomy\": [\"omission\", \"invention\", \"repository-delegation\", \"synthesis-loss\", \"unverifiable-acceptance\", \"compatibility-regression\", \"implementation-leakage\", \"redundant-question\"], \"metadata\": {\"context_mode\": \"repository\", \"partition\": \"holdout\", \"repository_family\": \"holdout-ee9ad6ba10da\"}, \"public_request\": \"`pylint` removes first item from `sys.path` when running from `runpy`.\\n### Bug description\\n\\nThis is the line where the first item from sys.path is removed.\\r\\nhttps://github.com/PyCQA/pylint/blob/ce7cccf96454fb6e286e4a8f38919733a0f28f44/pylint/__init__.py#L99\\r\\n\\r\\nI think there should be a check to ensure that the first item is `\\\"\\\"`, `\\\".\\\"` or `os.getcwd()` before removing.\\n\\n### Configuration\\n\\n_No response_\\n\\n### Command used\\n\\n```shell\\nRun programmatically to repro this, using this code:\\r\\n\\r\\nimport sys\\r\\nimport runpy\\r\\n\\r\\nsys.path.insert(0, \\\"something\\\")\\r\\n\\r\\nrunpy.run_module('pylint', run_name=\\\"__main__\\\", alter_sys=True)\\n```\\n\\n\\n### Pylint output\\n\\n```shell\\nWhen using pylint extension which bundles the libraries, the extension add them to sys.path depending on user settings. Pylint removes the first entry from sys path causing it to fail to load.\\n```\\n\\n\\n### Expected behavior\\n\\nCheck if  `\\\"\\\"`, `\\\".\\\"` or `os.getcwd()` before removing the first item from sys.path\\n\\n### Pylint version\\n\\n```shell\\npylint 2.14.5\\n```\\n\\n\\n### OS / Environment\\n\\n_No response_\\n\\n### Additional dependencies\\n\\n_No response_\\n\", \"repository_facts\": [{\"evidence\": [{\"cache_required\": true, \"excerpt\": \"import pylint\\n\\npylint.modify_sys_path()\\npylint.run_pylint()\", \"excerpt_digest\": \"362eca5b2f875e8385f103ef1accdb191198e16dfef197b950a2bd64a5efa378\", \"id\": \"repository:F1\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"pylint/__main__.py:L7-L10\", \"source\": \"repository\", \"source_digest\": \"9b5cb99bb2b2f07b7236713c7ed1929d14930e0bf9b2eabc3fe07857f283dc96\"}], \"id\": \"F1\", \"statement\": \"Executing the pylint package as a module imports pylint, calls modify_sys_path(), and then calls run_pylint().\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"def modify_sys_path() -> None:\\n    \\\"\\\"\\\"Modify sys path for execution as Python module.\\n\\n    Strip out the current working directory from sys.path.\\n    Having the working directory in `sys.path` means that `pylint` might\\n    inadvertently import user code from modules having the same name as\\n    stdlib or pylint's own modules.\\n    CPython issue: https://bugs.python.org/issue33053\", \"excerpt_digest\": \"6f8302f1e9e481b062fec736150355c11c1e33c7c988e837abdffe1861a01c16\", \"id\": \"repository:F2\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"pylint/__init__.py:L80-L87\", \"source\": \"repository\", \"source_digest\": \"ef00ba3e9c79e2be9952db9a0ad62905245dc4fa8759c2d553fc0da3cec3c7d2\"}], \"id\": \"F2\", \"statement\": \"modify_sys_path() is documented as stripping the current working directory to avoid importing user modules that shadow standard-library or pylint modules.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    - Remove the first entry. This will always be either \\\"\\\" or the working directory\\n    - Remove the working directory from the second and third entries\\n      if PYTHONPATH includes a \\\":\\\" at the beginning or the end.\\n      https://github.com/PyCQA/pylint/issues/3636\\n      Don't remove it if PYTHONPATH contains the cwd or '.' as the entry will\\n      only be added once.\\n    - Don't remove the working directory from the rest. It will be included\\n      if pylint is installed in an editable configuration (as the last item).\\n      https://github.com/PyCQA/pylint/issues/4161\", \"excerpt_digest\": \"08c8049565ed88372c8e8a018f98768b144e044b5627e2c76aa3846ce7bd5ef8\", \"id\": \"repository:F3\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"pylint/__init__.py:L89-L97\", \"source\": \"repository\", \"source_digest\": \"ef00ba3e9c79e2be9952db9a0ad62905245dc4fa8759c2d553fc0da3cec3c7d2\"}], \"id\": \"F3\", \"statement\": \"The function’s documentation states that the first sys.path entry is always either an empty string or the working directory, and describes additional removals related to leading or trailing PYTHONPATH colons.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    sys.path.pop(0)\\n    env_pythonpath = os.environ.get(\\\"PYTHONPATH\\\", \\\"\\\")\\n    cwd = os.getcwd()\\n    if env_pythonpath.startswith(\\\":\\\") and env_pythonpath not in (f\\\":{cwd}\\\", \\\":.\\\"):\\n        sys.path.pop(0)\\n    elif env_pythonpath.endswith(\\\":\\\") and env_pythonpath not in (f\\\"{cwd}:\\\", \\\".:\\\"):\\n        sys.path.pop(1)\", \"excerpt_digest\": \"f97ef41137492ed33702871bea8ecdd6a5b298deafa89f5b2b2f9c9f824ed57f\", \"id\": \"repository:F4\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"pylint/__init__.py:L99-L105\", \"source\": \"repository\", \"source_digest\": \"ef00ba3e9c79e2be9952db9a0ad62905245dc4fa8759c2d553fc0da3cec3c7d2\"}], \"id\": \"F4\", \"statement\": \"The implementation unconditionally removes sys.path[0], then may remove another entry based on PYTHONPATH and the current working directory; it performs no value or length check before the first pop.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def test_modify_sys_path() -> None:\\n        cwd = \\\"/tmp/pytest-of-root/pytest-0/test_do_not_import_files_from_0\\\"\\n        default_paths = [\\n            \\\"/usr/local/lib/python39.zip\\\",\\n            \\\"/usr/local/lib/python3.9\\\",\\n            \\\"/usr/local/lib/python3.9/lib-dynload\\\",\\n            \\\"/usr/local/lib/python3.9/site-packages\\\",\\n        ]\\n        with _test_sys_path(), patch(\\\"os.getcwd\\\") as mock_getcwd:\\n            mock_getcwd.return_value = cwd\\n            paths = [cwd, *default_paths]\\n            sys.path = copy(paths)\\n            with _test_environ_pythonpath():\\n                modify_sys_path()\\n            assert sys.path == paths[1:]\", \"excerpt_digest\": \"b7f0a3e66eb6057cbee8be0a00ebfa89359b994492986d63e4765eda0a12c00f\", \"id\": \"repository:F5\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_self.py:L746-L760\", \"source\": \"repository\", \"source_digest\": \"0977b3ec86ae4c1fdfa63160f65d876c8a6ecf80fed1e27087ed3b5b7fa675a1\"}], \"id\": \"F5\", \"statement\": \"The existing unit test initially supplies the mocked current working directory as sys.path[0] and asserts that modify_sys_path() removes it.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"            paths = [cwd, \\\"/custom_pythonpath\\\", *default_paths]\\n            sys.path = copy(paths)\\n            with _test_environ_pythonpath(\\\"/custom_pythonpath\\\"):\\n                modify_sys_path()\\n            assert sys.path == paths[1:]\\n\\n            paths = [cwd, \\\"/custom_pythonpath\\\", cwd, *default_paths]\\n            sys.path = copy(paths)\\n            with _test_environ_pythonpath(\\\"/custom_pythonpath:\\\"):\\n                modify_sys_path()\\n            assert sys.path == [paths[1]] + paths[3:]\", \"excerpt_digest\": \"984818a0880e1720c9c83b6b4cdf2f662d6d1ca618a7c9b3bbe99786f5412041\", \"id\": \"repository:F6\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_self.py:L768-L778\", \"source\": \"repository\", \"source_digest\": \"0977b3ec86ae4c1fdfa63160f65d876c8a6ecf80fed1e27087ed3b5b7fa675a1\"}], \"id\": \"F6\", \"statement\": \"The unit test also places a custom PYTHONPATH entry at sys.path[1], with the working directory at sys.path[0], and asserts that only the first entry is removed.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"            paths = [\\\"\\\", cwd, \\\"/custom_pythonpath\\\", *default_paths]\\n            sys.path = copy(paths)\\n            with _test_environ_pythonpath(\\\":/custom_pythonpath\\\"):\\n                modify_sys_path()\\n            assert sys.path == paths[2:]\\n\\n            paths = [cwd, cwd, \\\"/custom_pythonpath\\\", *default_paths]\\n            sys.path = copy(paths)\\n            with _test_environ_pythonpath(\\\":/custom_pythonpath:\\\"):\\n                modify_sys_path()\\n            assert sys.path == paths[2:]\", \"excerpt_digest\": \"87f082d1a7e519f1235118e8073fb430db1e0e446f0e572fea9861ec2b73c232\", \"id\": \"repository:F7\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_self.py:L780-L790\", \"source\": \"repository\", \"source_digest\": \"0977b3ec86ae4c1fdfa63160f65d876c8a6ecf80fed1e27087ed3b5b7fa675a1\"}], \"id\": \"F7\", \"statement\": \"For a leading-colon PYTHONPATH case, the unit test supplies an empty string at sys.path[0] followed by the working directory and asserts that both leading entries are removed.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def test_do_not_import_files_from_local_directory(\\n        self, tmpdir: LocalPath, args: list[str]\\n    ) -> None:\\n        for path in (\\\"astroid.py\\\", \\\"hmac.py\\\"):\\n            file_path = tmpdir / path\\n            file_path.write(\\\"'Docstring'\\\\nimport completely_unknown\\\\n\\\")\\n            pylint_call = [sys.executable, \\\"-m\\\", \\\"pylint\\\"] + args + [path]\\n            with tmpdir.as_cwd():\\n                subprocess.check_output(pylint_call, cwd=str(tmpdir))\\n            new_python_path = os.environ.get(\\\"PYTHONPATH\\\", \\\"\\\").strip(\\\":\\\")\\n            with tmpdir.as_cwd(), _test_environ_pythonpath(f\\\"{new_python_path}:\\\"):\\n                # Appending a colon to PYTHONPATH should not break path stripping\\n                # https://github.com/PyCQA/pylint/issues/3636\\n                subprocess.check_output(pylint_call, cwd=str(tmpdir))\", \"excerpt_digest\": \"b20520050a723f86f7ad1aecc98d30c1df5e414550bc3d7a64811c37b18d8013\", \"id\": \"repository:F8\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_self.py:L826-L839\", \"source\": \"repository\", \"source_digest\": \"0977b3ec86ae4c1fdfa63160f65d876c8a6ecf80fed1e27087ed3b5b7fa675a1\"}], \"id\": \"F8\", \"statement\": \"The integration test invokes pylint through `python -m pylint` from a temporary working directory and checks behavior both normally and with a trailing colon in PYTHONPATH.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    @staticmethod\\n    def test_import_plugin_from_local_directory_if_pythonpath_cwd(\\n        tmpdir: LocalPath,\\n    ) -> None:\\n        p_plugin = tmpdir / \\\"plugin.py\\\"\\n        p_plugin.write(\\\"# Some plugin content\\\")\\n        if sys.platform == \\\"win32\\\":\\n            python_path = \\\".\\\"\\n        else:\\n            python_path = f\\\"{os.environ.get('PYTHONPATH', '').strip(':')}:.\\\"\\n        with tmpdir.as_cwd(), _test_environ_pythonpath(python_path):\\n            args = [sys.executable, \\\"-m\\\", \\\"pylint\\\", \\\"--load-plugins\\\", \\\"plugin\\\"]\\n            process = subprocess.run(\\n                args, cwd=str(tmpdir), stderr=subprocess.PIPE, check=False\\n            )\\n            assert (\\n                \\\"AttributeError: module 'plugin' has no attribute 'register'\\\"\\n                in process.stderr.decode()\\n            )\", \"excerpt_digest\": \"dcadf16197f02851c22a125a7e3e295dc52cbee28acca4e75f52950888630bd5\", \"id\": \"repository:F9\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_self.py:L841-L859\", \"source\": \"repository\", \"source_digest\": \"0977b3ec86ae4c1fdfa63160f65d876c8a6ecf80fed1e27087ed3b5b7fa675a1\"}], \"id\": \"F9\", \"statement\": \"A separate integration test verifies that a plugin in the current directory is reached when PYTHONPATH explicitly contains the current directory, again invoking `python -m pylint`.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"[project.scripts]\\npylint        = \\\"pylint:run_pylint\\\"\\npylint-config = \\\"pylint:_run_pylint_config\\\"\\nepylint       = \\\"pylint:run_epylint\\\"\\npyreverse     = \\\"pylint:run_pyreverse\\\"\\nsymilar       = \\\"pylint:run_symilar\\\"\", \"excerpt_digest\": \"bffe4dafdebdd60c7f759339772670b3cb76bff8901467cfff2547edf5b03615\", \"id\": \"repository:F10\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"pyproject.toml:L62-L67\", \"source\": \"repository\", \"source_digest\": \"a2c84fc0ffd68c619ce923496a0d6f9b4cafdb291be0f6a58a4ca90681d4a2d5\"}], \"id\": \"F10\", \"statement\": \"The installed `pylint` console script maps directly to pylint:run_pylint rather than the package module entry point.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"def run_pylint(argv: Sequence[str] | None = None) -> None:\\n    \\\"\\\"\\\"Run pylint.\\n\\n    argv can be a sequence of strings normally supplied as arguments on the command line\\n    \\\"\\\"\\\"\\n    from pylint.lint import Run as PylintRun\\n\\n    try:\\n        PylintRun(argv or sys.argv[1:])\\n    except KeyboardInterrupt:\\n        sys.exit(1)\", \"excerpt_digest\": \"01e0d7fb72c9971807d7256fea345406c135aa171e5a0d4ed52c2ce084792b7a\", \"id\": \"repository:F11\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"pylint/__init__.py:L27-L37\", \"source\": \"repository\", \"source_digest\": \"ef00ba3e9c79e2be9952db9a0ad62905245dc4fa8759c2d553fc0da3cec3c7d2\"}], \"id\": \"F11\", \"statement\": \"run_pylint() constructs the lint Run object from supplied arguments or sys.argv[1:] and does not call modify_sys_path().\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"@contextlib.contextmanager\\ndef _test_sys_path(\\n    replacement_sys_path: list[str] | None = None,\\n) -> Generator[None, None, None]:\\n    original_path = sys.path\\n    try:\\n        if replacement_sys_path is not None:\\n            sys.path = copy(replacement_sys_path)\\n        yield\\n    finally:\\n        sys.path = original_path\", \"excerpt_digest\": \"d1d5d39d597c3deb940adc32cae298d883d9c6142f9a8de9a338854adb7aafb4\", \"id\": \"repository:F12\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"pylint/testutils/utils.py:L27-L37\", \"source\": \"repository\", \"source_digest\": \"8829faa836f79cd8dd01128b2eca256aeb0188bc42648023eb4d40ae108dcfcf\"}], \"id\": \"F12\", \"statement\": \"The shared test helper can replace sys.path for a test and restores the original sys.path object afterward.\"}], \"transcript\": [{\"answer\": \"Leave unchanged\", \"open_material_decisions\": [\"Whether modify_sys_path should tolerate an empty sys.path or preserve the current IndexError behavior.\"], \"question\": {\"header\": \"Empty path\", \"options\": [{\"description\": \"Return without error; remove index 0 only when it exists and equals \\\"\\\", \\\".\\\", or os.getcwd().\", \"label\": \"Leave unchanged\", \"recommended\": true}, {\"description\": \"Preserve the current failure on an empty list while protecting unrelated non-empty first entries.\", \"label\": \"Keep IndexError\", \"recommended\": false}], \"prompt\": \"If sys.path is empty, what should modify_sys_path() do?\"}, \"turn\": 1}, {\"answer\": \"Remove later cwd\", \"open_material_decisions\": [\"How PYTHONPATH-driven cleanup should behave when sys.path[0] is an unrelated path and is preserved.\"], \"question\": {\"header\": \"Later cwd\", \"options\": [{\"description\": \"Preserve the unrelated first entry while adjusting cleanup to remove the implicit working-directory entry at its shifted position.\", \"label\": \"Remove later cwd\", \"recommended\": true}, {\"description\": \"If the first entry is unrelated, preserve the entire sys.path and do not apply the PYTHONPATH colon cleanup.\", \"label\": \"Skip extra cleanup\", \"recommended\": false}], \"prompt\": \"When sys.path[0] is unrelated and preserved, but a leading or trailing colon in PYTHONPATH caused Python to add the working directory later in sys.path, should modify_sys_path() still remove that later implicit working-directory entry?\"}, \"turn\": 2}, {\"answer\": \"Unit and runpy\", \"open_material_decisions\": [\"Whether acceptance requires a runpy.run_module regression test in addition to direct modify_sys_path unit coverage.\"], \"question\": {\"header\": \"Regression test\", \"options\": [{\"description\": \"Add direct modify_sys_path cases plus a runpy.run_module regression that verifies an unrelated first entry remains usable.\", \"label\": \"Unit and runpy\", \"recommended\": true}, {\"description\": \"Test modify_sys_path directly without exercising the reported runpy entry path.\", \"label\": \"Unit only\", \"recommended\": false}], \"prompt\": \"What test must prove the reported runpy failure is fixed?\"}, \"turn\": 3}, {\"answer\": \"Require cwd marker\", \"open_material_decisions\": [\"Whether PYTHONPATH-driven cleanup may remove a later entry only when its value is an explicit working-directory marker (\\\"\\\", \\\".\\\", or os.getcwd()), rather than removing solely by a calculated index.\"], \"question\": {\"header\": \"Later match\", \"options\": [{\"description\": \"Remove the shifted entry only if it equals \\\"\\\", \\\".\\\", or os.getcwd(); otherwise preserve it.\", \"label\": \"Require cwd marker\", \"recommended\": true}, {\"description\": \"Preserve sys.path[0] but remove the expected shifted index without checking its value.\", \"label\": \"Use shifted index\", \"recommended\": false}], \"prompt\": \"When preserving an unrelated sys.path[0], what condition should govern removal of a later entry introduced by a leading or trailing colon in PYTHONPATH?\"}, \"turn\": 4}, {\"interviewer\": {\"action\": \"complete\", \"contract\": {\"acceptance_checks\": [\"With sys.path beginning with \\\"\\\", modify_sys_path() removes that first entry.\", \"With sys.path beginning with \\\".\\\", modify_sys_path() removes that first entry.\", \"With sys.path beginning with os.getcwd(), modify_sys_path() removes that first entry.\", \"With sys.path beginning with an unrelated path, modify_sys_path() preserves it.\", \"With sys.path equal to [], modify_sys_path() returns without error and leaves it empty.\", \"For leading- and trailing-colon PYTHONPATH scenarios, genuine later current-directory markers are removed at the appropriate shifted position while preceding unrelated paths are preserved.\", \"For leading- and trailing-colon PYTHONPATH scenarios, a later unrelated candidate is preserved rather than removed based only on its index.\", \"A runpy.run_module('pylint', run_name='__main__', alter_sys=True) regression test inserts an unrelated path at sys.path[0] and verifies that the path is still present and usable when pylint's entry point reaches run_pylint; the test isolates or stubs actual lint execution.\", \"Existing modify_sys_path tests covering python -m pylint path stripping and PYTHONPATH colon behavior continue to pass.\", \"The modify_sys_path docstring accurately describes conditional removal and no longer claims sys.path[0] is always empty or the working directory.\"], \"confirmed_decisions\": [\"Recognize exactly \\\"\\\", \\\".\\\", and os.getcwd() as removable current-directory markers.\", \"Leave an empty sys.path unchanged and do not raise IndexError.\", \"Preserve an unrelated first entry instead of unconditionally popping index 0.\", \"Continue PYTHONPATH leading- and trailing-colon cleanup even when preserving an unrelated first entry.\", \"For PYTHONPATH-driven cleanup, remove a later candidate only when its value is \\\"\\\", \\\".\\\", or os.getcwd(); do not remove by calculated index alone.\", \"Add both direct modify_sys_path unit tests and a regression test exercising runpy.run_module with run_name=\\\"__main__\\\" and alter_sys=True.\", \"Preserve the existing security behavior for normal python -m pylint execution by continuing to remove genuine current-directory markers.\", \"Keep the public modify_sys_path export and module-entry-point call structure unchanged.\"], \"implementation_ready\": true, \"open_material_decisions\": [], \"summary\": \"Update pylint.modify_sys_path() so it removes a path entry only when that entry is an explicit current-directory marker: \\\"\\\", \\\".\\\", or os.getcwd(). An empty sys.path must remain unchanged without raising. An unrelated sys.path[0], including a path injected before runpy.run_module('pylint', run_name='__main__', alter_sys=True), must be preserved. Existing PYTHONPATH leading- or trailing-colon cleanup must continue to remove an implicitly added current-directory entry at its shifted position when an unrelated first entry is preserved, but only after verifying that the candidate entry is \\\"\\\", \\\".\\\", or os.getcwd(); unrelated entries must never be removed solely by index. Update the function documentation to remove the invalid assumption that the first entry is always empty or the working directory. Add direct unit coverage and a runpy entry-point regression test.\"}, \"open_material_decisions\": [], \"question\": null, \"reason\": \"The reported behavior, empty-list handling, PYTHONPATH cleanup semantics, and required regression coverage are all resolved. No material implementation decision remains open.\"}, \"turn\": 5}], \"upstream\": {\"base_commit\": \"684a1d6aa0a6791e20078bc524f97c8906332390\", \"dataset\": \"princeton-nlp/SWE-bench_Verified\", \"instance_id_digest\": \"ee9ad6ba10da37cbb1d1904b785e8994e724e7f8f0675523ab7cc7f2c6852219\", \"issue_cache_key\": \"sha256:dc1d852f34bf1341c1a0ba290aba65e3cd34b15cc2060f5c96e5eaa4fdf946d5\", \"issue_digest\": \"dc1d852f34bf1341c1a0ba290aba65e3cd34b15cc2060f5c96e5eaa4fdf946d5\", \"revision\": \"c104f840cc67f8b6eec6f759ebc8b2693d585d4a\", \"source_url\": \"https://github.com/pylint-dev/pylint/pull/7277\"}}\ncodex\n{\"findings\":[],\"summary\":\"No material readiness failures found. The contract resolves the reported first-entry bug, preserves repository-established path-stripping behavior, covers the runpy reproduction, and leaves no material decisions open.\"}\ntokens used\n28,848\n"
+}

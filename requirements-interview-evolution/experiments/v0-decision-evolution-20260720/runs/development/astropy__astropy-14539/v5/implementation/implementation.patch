@@ -1,0 +1,66 @@
+diff --git a/astropy/io/fits/diff.py b/astropy/io/fits/diff.py
+index 100cdf1..d3608ef 100644
+--- a/astropy/io/fits/diff.py
++++ b/astropy/io/fits/diff.py
+@@ -1449,7 +1449,7 @@ class TableDataDiff(_BaseDiff):
+                 arrb.dtype, np.floating
+             ):
+                 diffs = where_not_allclose(arra, arrb, rtol=self.rtol, atol=self.atol)
+-            elif "P" in col.format:
++            elif "P" in col.format or "Q" in col.format:
+                 diffs = (
+                     [
+                         idx
+diff --git a/astropy/io/fits/tests/test_diff.py b/astropy/io/fits/tests/test_diff.py
+index adfebe6..fcc486d 100644
+--- a/astropy/io/fits/tests/test_diff.py
++++ b/astropy/io/fits/tests/test_diff.py
+@@ -419,6 +419,48 @@ class TestDiff(FitsTestCase):
+         assert diff.diff_ratio == 0
+         assert diff.diff_total == 0
+ 
++    def test_q_vla_tables(self):
++        ca = Column("A", format="QD", array=[[0], [0, 0]])
++        cb = Column("A", format="QD", array=[[0], [0, 0]])
++
++        diff = TableDataDiff(
++            BinTableHDU.from_columns([ca]).data,
++            BinTableHDU.from_columns([cb]).data,
++        )
++        assert diff.identical
++        assert diff.diff_total == 0
++        assert diff.diff_values == []
++
++        cb = Column("A", format="QD", array=[[0], [0, 0.001]])
++        diff = TableDataDiff(
++            BinTableHDU.from_columns([ca]).data,
++            BinTableHDU.from_columns([cb]).data,
++            atol=0.0001,
++        )
++        assert not diff.identical
++        assert diff.diff_total == 1
++        assert diff.diff_values[0][0] == ("A", 1)
++        assert (diff.diff_values[0][1][0] == [0, 0]).all()
++        assert (diff.diff_values[0][1][1] == [0, 0.001]).all()
++
++        diff = TableDataDiff(
++            BinTableHDU.from_columns([ca]).data,
++            BinTableHDU.from_columns([cb]).data,
++            atol=0.01,
++        )
++        assert diff.identical
++        assert diff.diff_total == 0
++        assert diff.diff_values == []
++
++    def test_identical_q_vla_file(self):
++        column = Column("a", format="QD", array=[[0], [0, 0]])
++        filename = self.temp("q-vla.fits")
++        BinTableHDU.from_columns([column]).writeto(filename)
++
++        diff = FITSDiff(filename, filename)
++        assert diff.identical
++        assert diff.diff_hdus == []
++
+     def test_diff_empty_tables(self):
+         """
+         Regression test for https://aeon.stsci.edu/ssb/trac/pyfits/ticket/178

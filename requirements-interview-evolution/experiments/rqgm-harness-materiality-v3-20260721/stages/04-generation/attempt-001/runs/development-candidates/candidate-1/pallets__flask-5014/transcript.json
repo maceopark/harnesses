@@ -1,0 +1,51 @@
+[
+  {
+    "answer": "Constructor only (Recommended)",
+    "open_material_decisions": [
+      "Whether an empty `name=` override passed during blueprint registration must also raise `ValueError`, or only an empty name passed to `Blueprint(...)`."
+    ],
+    "question": {
+      "header": "Empty override",
+      "options": [
+        {
+          "description": "Raise `ValueError` only when `Blueprint(\"\", ...)` is constructed, matching the request's explicit wording and keeping registration behavior unchanged.",
+          "label": "Constructor only (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Also raise `ValueError` when registration supplies `name=\"\"`, preventing the same empty registered namespace through the override path.",
+          "label": "Constructor and override",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should the non-empty-name requirement also apply to the optional `name=` override used when registering a blueprint?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Constructing a Blueprint with an empty string name raises `ValueError`.",
+          "Constructing a Blueprint with a valid non-empty, non-dotted name continues to succeed.",
+          "Constructing a Blueprint with a dotted name continues to raise `ValueError`.",
+          "Supplying an empty registration-time `name=` override is not newly rejected by this change."
+        ],
+        "confirmed_decisions": [
+          "`Blueprint(\"\", ...)` raises `ValueError`.",
+          "The existing prohibition against dots in Blueprint constructor names remains in effect.",
+          "The optional `name=` override supplied during blueprint registration is outside this change and retains its existing behavior.",
+          "No additional restriction is imposed on non-empty names, including whitespace-only names."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Require every Blueprint constructed through `Blueprint(...)` to have a non-empty name. Constructing a Blueprint with an empty string name raises `ValueError`. Registration-time `name=` override behavior remains unchanged."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The only material scope ambiguity was resolved: the non-empty-name requirement applies to the Blueprint constructor, not the registration-time name override. The requested behavior is now implementation-ready without inventing additional constraints."
+    },
+    "turn": 2
+  }
+]

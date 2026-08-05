@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "A focused bytes-parametrized regression completes successfully with `--setup-show` while bytes warnings are treated as errors and displays `b'Hello World'` during both setup and teardown.",
+    "Focused coverage demonstrates bounded output for a raw parameter with an overlong representation.",
+    "Focused coverage demonstrates that a raw parameter whose `repr` raises does not make setup-show fail.",
+    "Existing setup-show tests for explicit and callable custom IDs continue to pass unchanged.",
+    "The implementation does not alter parameter-ID generation, node IDs, `--setup-only`, or other display paths and introduces no dependency."
+  ],
+  "confirmed_decisions": [
+    "Safe representation applies only to raw parameters stored when no custom fixture IDs exist; explicit and callable custom-ID results retain current rendering.",
+    "All raw parameters use safe repr-style semantics; the observable output for raw strings may change from unquoted to quoted text.",
+    "Raw rendering must be size-limited and resilient to exceptions raised by user-defined `repr` implementations.",
+    "Setup and teardown must display the same safely rendered raw parameter behavior.",
+    "The residual risk from unsafe explicit or callable custom-ID results is accepted and remains outside scope.",
+    "Parameter-ID generation, node IDs, `--setup-only`, and unrelated display paths are excluded.",
+    "No new dependencies may be added, and implementation must remain within the localized setup-show path."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Change only `--setup-show` rendering of raw fixture parameters when no custom fixture IDs are present. Render every such raw parameter with size-limited, exception-resilient repr-style semantics. Bytes must display as `b'Hello World'` without raising `BytesWarning` under `python -bb`; raw strings may consequently change from `foo` to `'foo'`; and a user object whose `repr` raises must not cause setup-show to fail. Apply the same rendering to setup and teardown. Preserve existing rendering for explicit and callable custom-ID results, including the accepted residual risk that unsafe custom-ID values such as bytes may still fail. Exclude parameter-ID generation, test node IDs, `--setup-only`, and all other display paths. Implementation may use the repository’s existing safe-representation facility or an equivalent existing facility, but must add no dependency and must not broaden the affected paths."
+}

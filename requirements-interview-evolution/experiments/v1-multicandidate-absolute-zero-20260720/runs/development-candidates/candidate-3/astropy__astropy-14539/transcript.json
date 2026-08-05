@@ -1,0 +1,59 @@
+[
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Approve the proposed narrow scope and acceptance criteria for treating Q-format VLAs like P-format VLAs in TableDataDiff."
+    ],
+    "question": {
+      "header": "Approve fix",
+      "options": [
+        {
+          "description": "Seal this narrow, implementation-ready fix and its regression criteria.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify different behavior or test boundaries.",
+          "label": "Revise scope",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: update TableDataDiff so both P- and Q-format VLA columns use its existing row-by-row np.allclose comparison with current rtol/atol semantics; add regression coverage showing a written Q-format VLA FITS file compares identical to itself through FITSDiff and that genuinely different Q-format VLA rows remain reported; preserve existing P-format, fixed-width-column, difference-counting, and report-format behavior, with validation limited only by the currently unavailable erfa dependency?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A regression test creates and writes a binary table with a Q-format VLA whose rows have variable lengths, reopens or compares the written file through `FITSDiff`, and asserts that comparing the file to itself is identical.",
+          "A regression test compares Q-format VLA table data with at least one genuinely differing row and asserts that the difference is detected.",
+          "The differing-Q regression confirms the existing observable report identifies the column and differing row, without requiring new report wording.",
+          "Existing P-format VLA comparison tests continue to pass unchanged.",
+          "Existing table-diff tests for fixed-width columns, difference totals, stored row values, and report output continue to pass.",
+          "Run the targeted FITS diff tests and relevant table VLA tests; if the environment still lacks `erfa`, record that execution gap and perform the strongest available static or collection-level validation without weakening the contract."
+        ],
+        "confirmed_decisions": [
+          "Scope is limited to Q-format VLA handling in `TableDataDiff` and directly associated regression tests.",
+          "Both P- and Q-format VLA columns must use the existing row-by-row `np.allclose` path with current `rtol` and `atol` semantics.",
+          "A written Q-format VLA FITS file compared with itself through `FITSDiff` must produce `identical == True` and no reported HDU/table data difference.",
+          "Regression coverage must also show that genuinely different Q-format VLA rows produce a non-identical result and remain reported through the existing column-and-row reporting behavior.",
+          "Existing P-format VLA behavior must remain unchanged.",
+          "Existing fixed-width-column comparison behavior must remain unchanged.",
+          "Existing distinct-row difference counting, `numdiffs` limiting, stored difference values, and report text/format must remain unchanged.",
+          "No broader VLA refactor, parser change, descriptor-storage change, or new compatibility guarantee is required.",
+          "Implementation may choose the smallest repository-consistent predicate for recognizing P and Q VLA formats, provided it satisfies these boundaries and does not broaden the special comparison path to unrelated formats.",
+          "The inability to execute the reproduction at audit time due to the unavailable `erfa` dependency is an acknowledged validation constraint, not a change to required behavior."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update `TableDataDiff` so FITS Q-format variable-length-array columns are recognized alongside P-format VLAs and use the existing row-by-row `np.allclose` comparison with the configured `rtol` and `atol`. Add regression coverage proving that a written FITS table containing a Q-format VLA compares identical to itself through `FITSDiff`, while genuinely different Q-format VLA row data is still detected and reported. Do not change the behavior of P-format VLAs, fixed-width columns, difference counting, stored row differences, or report formatting."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the proposed narrow contract, and the supplied repository evidence resolves the relevant behavior, compatibility, and test boundaries. No material decision remains open."
+    },
+    "turn": 2
+  }
+]

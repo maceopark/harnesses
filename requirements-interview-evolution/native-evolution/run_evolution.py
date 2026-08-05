@@ -8,8 +8,10 @@ import fcntl
 import hashlib
 import json
 import os
+import re
 import subprocess
 import tempfile
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
@@ -37,6 +39,71 @@ def replace_json(path: Path, value: Any) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     write_json(temporary, value)
     temporary.replace(path)
+
+
+def validate_schema(value: Any, schema: dict[str, Any], path: str = "$" ) -> None:
+    """Validate the closed JSON-schema subset used by this harness.
+
+    Codex receives the same schema, but coordinator-side validation is required so a
+    custom backend, transport regression, or malformed cached response fails closed.
+    """
+    if "anyOf" in schema:
+        errors: list[str] = []
+        for option in schema["anyOf"]:
+            try:
+                validate_schema(value, option, path)
+                return
+            except ValueError as exc:
+                errors.append(str(exc))
+        raise ValueError(f"schema validation failed at {path}: no anyOf branch matched")
+
+    expected = schema.get("type")
+    allowed = expected if isinstance(expected, list) else [expected] if expected else []
+    type_matches = {
+        "object": lambda item: isinstance(item, dict),
+        "array": lambda item: isinstance(item, list),
+        "string": lambda item: isinstance(item, str),
+        "integer": lambda item: isinstance(item, int) and not isinstance(item, bool),
+        "number": lambda item: isinstance(item, (int, float)) and not isinstance(item, bool),
+        "boolean": lambda item: isinstance(item, bool),
+        "null": lambda item: item is None,
+    }
+    if allowed and not any(type_matches[kind](value) for kind in allowed):
+        raise ValueError(f"schema validation failed at {path}: expected {allowed}")
+    if value is None:
+        return
+    if "enum" in schema and value not in schema["enum"]:
+        raise ValueError(f"schema validation failed at {path}: value is not in enum")
+
+    if isinstance(value, dict):
+        required = set(schema.get("required", []))
+        missing = required - set(value)
+        if missing:
+            raise ValueError(f"schema validation failed at {path}: missing {sorted(missing)}")
+        properties = schema.get("properties", {})
+        if schema.get("additionalProperties") is False:
+            extras = set(value) - set(properties)
+            if extras:
+                raise ValueError(f"schema validation failed at {path}: extra {sorted(extras)}")
+        for key, item in value.items():
+            if key in properties:
+                validate_schema(item, properties[key], f"{path}/{key}")
+    elif isinstance(value, list):
+        if len(value) < schema.get("minItems", 0):
+            raise ValueError(f"schema validation failed at {path}: too few items")
+        if "maxItems" in schema and len(value) > schema["maxItems"]:
+            raise ValueError(f"schema validation failed at {path}: too many items")
+        if "items" in schema:
+            for index, item in enumerate(value):
+                validate_schema(item, schema["items"], f"{path}/{index}")
+    elif isinstance(value, str) and "pattern" in schema:
+        if re.search(schema["pattern"], value) is None:
+            raise ValueError(f"schema validation failed at {path}: pattern mismatch")
+    elif isinstance(value, (int, float)) and not isinstance(value, bool):
+        if "minimum" in schema and value < schema["minimum"]:
+            raise ValueError(f"schema validation failed at {path}: below minimum")
+        if "maximum" in schema and value > schema["maximum"]:
+            raise ValueError(f"schema validation failed at {path}: above maximum")
 
 
 DECISION = {
@@ -276,7 +343,7 @@ LENS_PROPOSAL_SCHEMA = {
 LENS_AUDIT_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["accepted_lens_ids", "rejected_lenses", "audit_summary"],
+    "required": ["accepted_lens_ids", "rejected_lenses", "assessments", "audit_summary"],
     "properties": {
         "accepted_lens_ids": {
             "type": "array", "minItems": 1, "items": {"type": "string"}
@@ -287,6 +354,22 @@ LENS_AUDIT_SCHEMA = {
                 "type": "object", "additionalProperties": False,
                 "required": ["id", "reason"],
                 "properties": {"id": {"type": "string"}, "reason": {"type": "string"}},
+            },
+        },
+        "assessments": {
+            "type": "array",
+            "items": {
+                "type": "object", "additionalProperties": False,
+                "required": [
+                    "id", "observable", "material", "solution_neutral", "duplicate_of"
+                ],
+                "properties": {
+                    "id": {"type": "string"},
+                    "observable": {"type": "boolean"},
+                    "material": {"type": "boolean"},
+                    "solution_neutral": {"type": "boolean"},
+                    "duplicate_of": {"type": ["string", "null"]},
+                },
             },
         },
         "audit_summary": {"type": "string"},
@@ -422,7 +505,7 @@ def role_prompt(role: str, payload: dict[str, Any]) -> str:
     common = "Return only the JSON object required by the supplied output schema."
     instructions = {
         "failure-lens-proposer": "You are the Failure-Lens Proposer. From only the general task seed and the fixed goal of producing an implementable requirements handoff, propose 3-5 distinct externally observable ways discovery, interaction, synthesis, handoff, implementation, verification, or learning can fail. Do not propose solutions or skill wording and do not name or compare products, agents, skills, or frameworks.",
-        "lens-auditor": "You are the independent Lens Auditor and Deduplicator. Accept only materially distinct, externally observable, solution-neutral failure lenses. Reject or merge duplicates, vague quality claims, style preferences, and anything dependent on a named product, skill, or implementation phrase. Preserve accepted lens IDs when possible and disposition every proposed lens.",
+        "lens-auditor": "You are the independent Lens Auditor and Deduplicator. Assess every proposal for observability, materiality, solution neutrality, and duplication. Accept only lenses for which all three booleans are true and duplicate_of is null. Reject duplicates, vague quality claims, style preferences, and anything dependent on a named product, skill, or implementation phrase. For a duplicate, set duplicate_of to the retained proposal ID. Preserve accepted lens IDs and disposition every proposed lens.",
         "lens-case-designer": "You are the Lens-Conditioned Case Designer. Create an objectively judgeable case shaped by the frozen failure lenses. Do not try to make a candidate skill fail and do not mention candidate wording, scores, mutations, or another partition. In repository context preserve the supplied public request byte-for-byte and return null oracle; in greenfield context create the private owner oracle.",
         "owner-oracle-designer": "You are the Owner Oracle Designer for a repository-grounded case. Use the public request and audited repository evidence. Define only latent product decisions that repository evidence cannot answer. Never contradict or restate accepted repository facts.",
         "discovery": "You are the read-only Repository Discovery Agent. Inspect the repository for facts material to the public request. Every fact must cite repository-relative file paths and exact inclusive line bounds. Put only actual contradictions in conflicts; use an empty array when sources agree. Report unknowns separately. Do not invent desired future behavior or owner choices.",
@@ -443,8 +526,10 @@ def invoke_recorded(backend: RoleBackend, run_dir: Path, sequence: int, role: st
                     payload: dict[str, Any], schema: dict[str, Any]) -> dict[str, Any]:
     prompt = role_prompt(role, payload)
     result = backend.invoke(role, prompt, schema)
+    validate_schema(result, schema)
     write_json(run_dir / "calls" / f"{sequence:03d}-{role}.json", {
-        "role": role, "prompt_sha256": digest_text(prompt), "input": payload, "output": result
+        "role": role, "prompt": prompt, "prompt_sha256": digest_text(prompt),
+        "input": payload, "output": result
     })
     return result
 
@@ -564,6 +649,24 @@ def validate_lens_set(proposal: dict[str, Any], audit: dict[str, Any]) -> list[d
         raise ValueError("lens auditor returned contradictory dispositions")
     if set(accepted_ids) | set(rejected_ids) != set(proposed_by_id):
         raise ValueError("lens auditor must disposition every proposed lens")
+    assessments = audit["assessments"]
+    assessment_ids = [item["id"] for item in assessments]
+    if len(assessment_ids) != len(set(assessment_ids)) or set(assessment_ids) != set(proposed_by_id):
+        raise ValueError("lens auditor must assess every proposed lens exactly once")
+    assessment_by_id = {item["id"]: item for item in assessments}
+    for lens_id in accepted_ids:
+        assessment = assessment_by_id[lens_id]
+        if not (assessment["observable"] and assessment["material"]
+                and assessment["solution_neutral"] and assessment["duplicate_of"] is None):
+            raise ValueError("lens auditor accepted an unobservable, immaterial, dependent, or duplicate lens")
+    for lens_id in rejected_ids:
+        assessment = assessment_by_id[lens_id]
+        if (assessment["observable"] and assessment["material"]
+                and assessment["solution_neutral"] and assessment["duplicate_of"] is None):
+            raise ValueError("lens auditor rejected a lens without a recorded rejection basis")
+        duplicate_of = assessment["duplicate_of"]
+        if duplicate_of is not None and duplicate_of not in proposed_by_id:
+            raise ValueError("lens auditor duplicate target is unknown")
     accepted = [proposed_by_id[lens_id] for lens_id in accepted_ids]
     for lens in accepted:
         searchable = canonical(lens).lower()
@@ -642,11 +745,7 @@ def validate_adversarial_review(review: dict[str, Any], frozen_lenses: list[dict
                 pointer = pointer[len(envelope_prefix):]
             observed = resolve_pointer(artifacts[citation["artifact"]], pointer)
             quoted = citation["quoted_text"]
-            matches = (
-                bool(quoted) and quoted in observed
-                if isinstance(observed, str)
-                else quoted == canonical(observed)
-            )
+            matches = quoted == observed if isinstance(observed, str) else quoted == canonical(observed)
             if not matches:
                 raise ValueError("adversarial finding citation does not match the artifact")
 
@@ -737,16 +836,60 @@ def complete_study_run(path: Path, run_dir: Path) -> None:
     _locked_registry(path, complete)
 
 
+def verify_run_artifacts(run_dir: Path, manifest: dict[str, Any]) -> None:
+    """Fail closed before a registry entry can be marked completed."""
+    lens_set_path = run_dir / "lens-set.json"
+    lens_set = json.loads(lens_set_path.read_text(encoding="utf-8"))
+    recorded_lens_digest = lens_set.pop("sha256", None)
+    if recorded_lens_digest != digest_text(canonical(lens_set)):
+        raise ValueError("run artifact integrity failure: lens-set.json self digest")
+    checks = {
+        "lens_set_sha256": ("lens-set.json", lambda item: item["sha256"]),
+        "lens_case_sha256": ("lens-case.json", lambda item: digest_text(canonical(item))),
+        "public_case_sha256": ("public-case.json", lambda item: digest_text(canonical(item))),
+        "evidence_pack_sha256": ("evidence-pack.json", lambda item: digest_text(canonical(item))),
+        "owner_oracle_sha256": (
+            "private-owner-oracle.json", lambda item: digest_text(canonical(item))
+        ),
+        "transcript_sha256": ("transcript.json", lambda item: digest_text(canonical(item))),
+        "evaluation_sha256": ("evaluation.json", lambda item: digest_text(canonical(item))),
+        "adversarial_review_sha256": (
+            "adversarial-review.json", lambda item: digest_text(canonical(item))
+        ),
+        "adjudication_sha256": ("adjudication.json", lambda item: digest_text(canonical(item))),
+    }
+    for field, (name, calculate) in checks.items():
+        path = run_dir / name
+        if not path.is_file() or manifest[field] != calculate(json.loads(path.read_text(encoding="utf-8"))):
+            raise ValueError(f"run artifact integrity failure: {name}")
+    if manifest["lens_set_sha256"] != manifest["case_identity"]["lens_set_sha256"]:
+        raise ValueError("run artifact integrity failure: lens-set identity mismatch")
+    calls = sorted((run_dir / "calls").glob("*.json"))
+    if len(calls) != manifest["call_count"]:
+        raise ValueError("run artifact integrity failure: call count mismatch")
+    for call in calls:
+        item = json.loads(call.read_text(encoding="utf-8"))
+        if digest_text(item["prompt"]) != item["prompt_sha256"]:
+            raise ValueError(f"run artifact integrity failure: {call.name} prompt digest")
+    candidate = run_dir / "candidate-SKILL.md"
+    if manifest["mode"] == "holdout":
+        if candidate.exists() or manifest["candidate_sha256"] is not None:
+            raise ValueError("holdout run contains a mutation candidate")
+    elif not candidate.is_file() or manifest["candidate_sha256"] != digest_text(
+            candidate.read_text(encoding="utf-8")):
+        raise ValueError("run artifact integrity failure: candidate-SKILL.md")
+
+
 def run(seed: str, skill: str, run_dir: Path, backend: RoleBackend,
-        safety_max_turns: int, mode: str = "development", context_mode: str = "greenfield",
+        safety_max_turns: int | None, mode: str = "development", context_mode: str = "greenfield",
         repo_root: Path | None = None, stagnation_patience: int = 3,
         study_registry: Path | None = None) -> dict[str, Any]:
     if mode not in {"development", "holdout"}:
         raise ValueError("mode must be development or holdout")
     if context_mode not in {"greenfield", "repository"}:
         raise ValueError("context_mode must be greenfield or repository")
-    if safety_max_turns < 2 or stagnation_patience < 2:
-        raise ValueError("safety_max_turns and stagnation_patience must be at least 2")
+    if (safety_max_turns is not None and safety_max_turns < 2) or stagnation_patience < 2:
+        raise ValueError("an explicit safety_max_turns and stagnation_patience must be at least 2")
     if context_mode == "repository" and repo_root is None:
         raise ValueError("repository context requires repo_root")
 
@@ -833,12 +976,12 @@ def run(seed: str, skill: str, run_dir: Path, backend: RoleBackend,
     stagnation_history: list[tuple[tuple[str, ...], str]] = []
     termination_reason = "completed"
 
-    for turn in range(1, safety_max_turns + 1):
+    turn = 1
+    while True:
         interview = invoke_recorded(backend, run_dir, sequence, "interviewer", {
             "skill_md": skill, "public_request": public_request,
             "audited_repository_evidence": evidence_pack, "transcript": transcript,
-            "turn": turn, "safety_turns_remaining": safety_max_turns - turn + 1,
-            "force_close": False,
+            "turn": turn, "force_close": False,
         }, INTERVIEW_SCHEMA)
         sequence += 1
         validate_interview_output(interview)
@@ -865,15 +1008,16 @@ def run(seed: str, skill: str, run_dir: Path, backend: RoleBackend,
                 and len(set(stagnation_history[-stagnation_patience:])) == 1):
             termination_reason = "stagnation"
             break
-    else:
-        termination_reason = "safety_ceiling"
+        if safety_max_turns is not None and turn >= safety_max_turns:
+            termination_reason = "safety_ceiling"
+            break
+        turn += 1
 
     if final_contract is None:
         forced = invoke_recorded(backend, run_dir, sequence, "interviewer", {
             "skill_md": skill, "public_request": public_request,
             "audited_repository_evidence": evidence_pack, "transcript": transcript,
-            "turn": len(transcript) + 1, "safety_turns_remaining": 0,
-            "force_close": True,
+            "turn": len(transcript) + 1, "force_close": True,
             "force_close_reason": termination_reason,
         }, INTERVIEW_SCHEMA)
         sequence += 1
@@ -948,6 +1092,8 @@ def run(seed: str, skill: str, run_dir: Path, backend: RoleBackend,
         "owner_oracle_sha256": digest_text(canonical(oracle)),
         "transcript_sha256": digest_text(canonical(transcript)),
         "evaluation_sha256": digest_text(canonical(judge)),
+        "adversarial_review_sha256": digest_text(canonical(adversarial_review)),
+        "adjudication_sha256": digest_text(canonical(adjudication)),
         "candidate_sha256": digest_text(mutation["skill_md"]) if mutation else None,
         "safety_max_turns": safety_max_turns, "stagnation_patience": stagnation_patience,
         "termination_reason": termination_reason, "mode": mode, "context_mode": context_mode,
@@ -964,30 +1110,72 @@ def run(seed: str, skill: str, run_dir: Path, backend: RoleBackend,
                   + (["mutator"] if mode == "development" else [])),
         "transport": "codex exec --ephemeral", "orca": False,
         "isolation": "logical-prompt-and-working-directory; not OS read-deny",
+        "call_count": len(list((run_dir / "calls").glob("*.json"))),
     }
     write_json(run_dir / "manifest.json", manifest)
+    verify_run_artifacts(run_dir, manifest)
     complete_study_run(registry_path, run_dir)
     return {"manifest": manifest, "evaluation": judge, "run_dir": str(run_dir)}
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--seed", required=True)
+    parser.add_argument("--seed")
     parser.add_argument("--skill", type=Path, required=True)
     parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--context", choices=("greenfield", "repository"), default="greenfield")
     parser.add_argument("--repo", type=Path)
-    parser.add_argument("--safety-max-turns", type=int, default=30)
+    parser.add_argument(
+        "--safety-max-turns", type=int,
+        help="optional emergency runaway guard; omitted means no turn ceiling",
+    )
     parser.add_argument("--stagnation-patience", type=int, default=3)
     parser.add_argument("--timeout", type=int, default=180)
     parser.add_argument("--model")
     parser.add_argument("--study-registry", type=Path)
     parser.add_argument("--mode", choices=("development", "holdout"), default="development")
+    parser.add_argument("--imported-case", type=Path)
+    parser.add_argument("--sealed-source", type=Path)
+    parser.add_argument("--cache-root", type=Path)
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+    if args.imported_case is not None:
+        missing = [name for name in ("sealed_source", "cache_root", "repo") if getattr(args, name) is None]
+        if missing:
+            raise SystemExit("--imported-case requires --sealed-source, --cache-root, and --repo")
+        if args.model not in {None, "gpt-5.6-sol"}:
+            raise SystemExit("imported cases require --model gpt-5.6-sol with no fallback")
+        if args.safety_max_turns is not None:
+            raise SystemExit("imported cases forbid an arbitrary interview turn ceiling")
+        package_src = Path(__file__).resolve().parents[1] / "swebench-interview-cases" / "src"
+        sys.path.insert(0, str(package_src))
+        from swebench_interview_cases.cache import ContentAddressedCache
+        from swebench_interview_cases.imported_native import run_imported_case
+
+        skill = args.skill.read_text(encoding="utf-8")
+        try:
+            result = run_imported_case(
+                public_case=json.loads(args.imported_case.read_text(encoding="utf-8")),
+                sealed_source=json.loads(args.sealed_source.read_text(encoding="utf-8")),
+                cache=ContentAddressedCache(args.cache_root), repo_root=args.repo,
+                skill_md=skill, run_dir=args.run_dir,
+                stagnation_patience=args.stagnation_patience,
+            )
+        except Exception as exc:
+            args.run_dir.mkdir(parents=True, exist_ok=True)
+            write_json(args.run_dir / "failure.json", {
+                "schema": "NativeEvolutionImportedFailure.v1",
+                "created_at": datetime.now(UTC).isoformat(),
+                "error_type": type(exc).__name__, "error": str(exc),
+            })
+            raise
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return
+    if args.seed is None:
+        raise SystemExit("--seed is required unless --imported-case is used")
     if args.context == "repository" and args.repo is None:
         raise SystemExit("--context repository requires --repo")
     skill = args.skill.read_text(encoding="utf-8")

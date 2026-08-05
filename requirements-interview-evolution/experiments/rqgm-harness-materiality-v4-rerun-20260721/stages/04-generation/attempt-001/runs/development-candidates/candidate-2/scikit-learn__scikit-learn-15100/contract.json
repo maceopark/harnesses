@@ -1,0 +1,19 @@
+{
+  "acceptance_checks": [
+    "strip_accents_unicode(\"ñ\") returns \"n\".",
+    "strip_accents_unicode(\"n\\u0303\") returns \"n\" rather than returning the decomposed input unchanged.",
+    "Composed and already-NFKD forms of the same accented text produce identical results.",
+    "CountVectorizer configured with strip_accents=\"unicode\" preprocesses already-NFKD accented text without retaining its combining accent.",
+    "TfidfVectorizer configured with strip_accents=\"unicode\" preprocesses already-NFKD accented text without retaining its combining accent.",
+    "Existing supported Unicode accent-stripping outcomes continue to pass."
+  ],
+  "confirmed_decisions": [
+    "strip_accents_unicode removes Unicode combining marks even when its input is already in NFKD form.",
+    "Canonically equivalent composed and decomposed accented text produces the same accent-free output.",
+    "The corrected behavior applies wherever the shared strip_accents=\"unicode\" preprocessing is used, including CountVectorizer and TfidfVectorizer.",
+    "Behavior outside Unicode accent stripping remains compatible with existing behavior."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Correct Unicode accent stripping so canonically equivalent composed and already-NFKD text receive the same accent-free preprocessing result. In particular, both \"ñ\" and \"n\\u0303\" must become \"n\" through strip_accents_unicode and through vectorizers configured with strip_accents=\"unicode\"."
+}

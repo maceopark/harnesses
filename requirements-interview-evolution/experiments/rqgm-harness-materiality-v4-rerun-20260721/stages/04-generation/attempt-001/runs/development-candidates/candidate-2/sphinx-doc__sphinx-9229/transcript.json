@@ -1,0 +1,121 @@
+[
+  {
+    "answer": "All versions",
+    "open_material_decisions": [
+      "Whether aliases with source-level documentation should suppress the generated “alias of …” text only on Python 3.6 or consistently across all supported Python versions."
+    ],
+    "question": {
+      "header": "Version scope",
+      "options": [
+        {
+          "description": "Render only the custom documentation consistently across supported Python versions, changing the existing Python 3.7+ behavior that currently shows both.",
+          "label": "All versions",
+          "recommended": true
+        },
+        {
+          "description": "Fix the reported legacy-version inconsistency while preserving the existing Python 3.7+ custom-documentation-plus-alias output.",
+          "label": "Python 3.6 only",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has source-level documentation, on which Python versions should that documentation replace the generated “alias of …” text?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Typing aliases only",
+    "open_material_decisions": [
+      "Whether custom source documentation replaces generated alias text only for typing type aliases or for every autodoc alias represented through class/data documenters."
+    ],
+    "question": {
+      "header": "Alias scope",
+      "options": [
+        {
+          "description": "Apply the change to aliases created from typing constructs such as Dict, Union, and Callable, matching the reported bug’s narrow boundary.",
+          "label": "Typing aliases only",
+          "recommended": true
+        },
+        {
+          "description": "Apply the replacement behavior to every class-like or data-like alias that autodoc otherwise renders with an “alias of …” message.",
+          "label": "All autodoc aliases",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which aliases should use source-level documentation in place of the generated “alias of …” text?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Next-line strings",
+    "open_material_decisions": [
+      "Whether replacement applies only to a string literal immediately following a typing-alias assignment, as reported, or to every source-level variable-documentation form recognized by autodoc."
+    ],
+    "question": {
+      "header": "Doc syntax",
+      "options": [
+        {
+          "description": "Apply replacement only when a typing-alias assignment is immediately followed by a documentation string, matching the reported case narrowly.",
+          "label": "Next-line strings",
+          "recommended": true
+        },
+        {
+          "description": "Apply replacement to every source-level variable-documentation form recognized by autodoc, including documentation comments.",
+          "label": "All source docs",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which source-level documentation forms should replace the generated “alias of …” text for typing aliases?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "All autodoc paths",
+    "open_material_decisions": [
+      "Whether the replacement behavior must apply only during automatic module member discovery or also when the same documented typing alias is targeted explicitly with autodata."
+    ],
+    "question": {
+      "header": "Entry points",
+      "options": [
+        {
+          "description": "Use the same output for automatic module members and explicit autodata directives.",
+          "label": "All autodoc paths",
+          "recommended": true
+        },
+        {
+          "description": "Fix the sphinx-apidoc/automodule case while leaving explicit autodata behavior unchanged.",
+          "label": "Module discovery only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should a next-line documentation string replace the generated “alias of …” text for a typing alias?"
+    },
+    "turn": 4
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A documented Dict typing alias renders its complete next-line documentation string and does not render generated “alias of …” text.",
+          "Documented Union and Callable typing aliases render their complete next-line documentation strings and do not render generated “alias of …” text.",
+          "The outcome is consistent across supported Python versions, including Python 3.6 and Python 3.7 or later.",
+          "The outcome is the same when aliases are discovered through module documentation and when targeted explicitly through autodata.",
+          "Multiline reStructuredText in the next-line documentation string is preserved for normal autodoc rendering."
+        ],
+        "confirmed_decisions": [
+          "Apply the behavior across all supported Python versions.",
+          "Limit the behavior to aliases created from typing constructs.",
+          "Trigger replacement only for a documentation string immediately following the alias assignment.",
+          "Apply identical behavior through automatic module-member discovery and explicit autodata documentation."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Across all supported Python versions, autodoc must render a typing alias’s next-line documentation string as that alias’s documentation and omit the generated “alias of …” text. This applies to typing aliases such as Dict, Union, and Callable whether discovered as module members or documented explicitly through autodata. Existing behavior outside this boundary remains compatible."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "All material product decisions are resolved, and the requested behavior is narrow, observable, and implementation-ready."
+    },
+    "turn": 5
+  }
+]

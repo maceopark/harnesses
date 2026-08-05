@@ -1,0 +1,100 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/6",
+          "quoted_value": "Every object treated by autodoc as a class alias receives the same documentation precedence, including typing aliases and ordinary renamed classes."
+        },
+        {
+          "artifact": "transcript",
+          "pointer": "/6/answer",
+          "quoted_value": "All class aliases"
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/scope_summary",
+          "quoted_value": "Base commit behavior for autodoc source-level variable documentation and typing generic aliases."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/unknowns/1",
+          "quoted_value": "The supplied repository facts do not establish which of the reported aliases is recognized as a GenericAlias under the reporter's Python 3.6.9 runtime."
+        }
+      ],
+      "description": "The ordinary-renamed-class requirement is a material scope invention. The transcript confirms the selected option, but the option itself introduced behavior beyond the public request and beyond the audited repository facts. This can cause unrelated ClassDocumenter behavior to change and prevents the contract from being safely implementation-ready as scoped.",
+      "failure_class": "invention",
+      "general_cause": "The interview expanded a module-level typing-alias bug into behavior for every object autodoc treats as a class alias, including ordinary renamed classes, without audited evidence establishing that this broader object category is part of the reported failure or shares the relevant content path.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "The sealed contract requires source-documentation precedence for ordinary renamed classes even though the audited scope is source-level variable documentation and typing generic aliases, and the audit expressly lacks runtime classification evidence for the reported aliases."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/6",
+          "quoted_value": "Verify explicit directive body content is preserved and suppresses generated alias text when source documentation is absent."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/7",
+          "quoted_value": "Verify that when source documentation and explicit directive body content coexist, source documentation appears first, directive body content appears second, and generated alias text is absent."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/7",
+          "quoted_value": "Explicit directive body content suppresses generated alias text even when no source-level variable documentation exists."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/scope_summary",
+          "quoted_value": "Base commit behavior for autodoc source-level variable documentation and typing generic aliases."
+        }
+      ],
+      "description": "The explicit directive-body rules are material and testable in principle, but the audit does not establish the relevant current code path, fixture mechanism, or baseline behavior. A fresh implementer cannot verify these checks from the sealed evidence without reopening repository discovery, so implementation_ready is overstated.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The contract declares implementation readiness while requiring explicit-directive-body precedence that is not covered by any audited repository fact or identified regression surface.",
+      "id": "FINDING-2",
+      "material": true,
+      "observable_signal": "Three acceptance checks require preserving, ordering, and suppressing generated content around explicit directive bodies, but the audited evidence only establishes source documentation, generic-alias generation, and existing fixture behavior."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/3",
+          "quoted_value": "The rule applies consistently across every Python version supported by the target Sphinx release, including Python 3.6 and Python 3.7+."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/9",
+          "quoted_value": "The change affects body-content selection only; existing directive type, header, value, and signature rendering remain unchanged."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/6/statement",
+          "quoted_value": "Generic-alias recognition is limited to typing._GenericAlias, types.GenericAlias, and typing._SpecialGenericAlias when those implementation classes exist."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/unknowns/1",
+          "quoted_value": "The supplied repository facts do not establish which of the reported aliases is recognized as a GenericAlias under the reporter's Python 3.6.9 runtime."
+        }
+      ],
+      "description": "The cross-version requirement can force changes outside the demonstrated failure path and may alter legacy class-alias behavior to compensate for objects not recognized as GenericAlias. Without resolving the documented runtime uncertainty, preserving existing headers, values, signatures, and unrelated alias behavior cannot be assured.",
+      "failure_class": "compatibility-regression",
+      "general_cause": "The contract generalizes the requested fix across all supported Python versions despite audited evidence showing version-dependent generic-alias recognition and an unresolved runtime-classification gap.",
+      "id": "FINDING-3",
+      "material": true,
+      "observable_signal": "The contract mandates one content rule for Python 3.6 and 3.7+, while the audit states that recognition is limited to runtime-specific implementation classes and does not establish which reported aliases are recognized on Python 3.6.9."
+    }
+  ],
+  "summary": "The contract is not materially implementation-ready. It expands the issue to ordinary renamed classes and explicit directive-body semantics without corresponding audited repository grounding, and it mandates cross-version uniformity despite an unresolved Python 3.6 classification gap that creates compatibility risk."
+}

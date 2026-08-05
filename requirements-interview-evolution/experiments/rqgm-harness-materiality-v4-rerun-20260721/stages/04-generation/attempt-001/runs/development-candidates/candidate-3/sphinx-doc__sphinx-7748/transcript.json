@@ -1,0 +1,118 @@
+[
+  {
+    "answer": "Matching prefix",
+    "open_material_decisions": [
+      "Define where overload-signature extraction stops and how a mismatched signature-like line is treated."
+    ],
+    "question": {
+      "header": "Block boundary",
+      "options": [
+        {
+          "description": "Collect consecutive valid signatures for the documented member, stopping before and preserving the first non-signature or mismatched-name line.",
+          "label": "Matching prefix (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Collect every consecutive signature-shaped line at the start even when its object name does not match the documented member.",
+          "label": "Signature prefix",
+          "recommended": false
+        },
+        {
+          "description": "Continue looking for matching signatures beyond intervening prose or other non-signature lines.",
+          "label": "Search docstring",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc determine which leading docstring lines are overload signatures?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Functions and methods",
+    "open_material_decisions": [
+      "Whether consecutive overload-signature extraction applies only to methods or to both functions and methods using autodoc_docstring_signature."
+    ],
+    "question": {
+      "header": "Member scope",
+      "options": [
+        {
+          "description": "Extend the existing shared autodoc_docstring_signature behavior consistently for both member types.",
+          "label": "Functions and methods",
+          "recommended": true
+        },
+        {
+          "description": "Limit the new multiple-signature behavior to methods, leaving functions restricted to one docstring signature.",
+          "label": "Methods only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which documented members should support multiple consecutive docstring signatures?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Remove all collected",
+    "open_material_decisions": [
+      "Determine how collected overload-signature lines affect rendered docstring content."
+    ],
+    "question": {
+      "header": "Doc content",
+      "options": [
+        {
+          "description": "Remove every collected overload-signature line and render the remaining docstring content, consistent with current single-signature behavior.",
+          "label": "Remove all collected",
+          "recommended": true
+        },
+        {
+          "description": "Remove only the first signature line while also displaying later collected signatures in the directive header.",
+          "label": "Keep extra signatures",
+          "recommended": false
+        },
+        {
+          "description": "Display collected signatures in the directive header and also retain every signature line in the docstring body.",
+          "label": "Keep all signatures",
+          "recommended": false
+        }
+      ],
+      "prompt": "After autodoc collects multiple leading overload signatures, what should remain in the rendered docstring body?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "With autodoc_docstring_signature enabled, a function docstring beginning with two or more matching signature lines emits all signatures as aligned directive header lines in their original order and omits those lines from the body.",
+          "With autodoc_docstring_signature enabled, a method docstring beginning with two or more matching signature lines emits all signatures as aligned directive header lines in their original order and omits those lines from the body.",
+          "A matching signature prefix followed by prose stops extraction at the prose and preserves the prose and subsequent content.",
+          "A matching first signature followed by a signature-shaped line for a different member stops extraction before the mismatched line and preserves that line and subsequent content.",
+          "A docstring with one matching leading signature continues to produce the current single-signature output.",
+          "A docstring whose first line is not a matching signature continues to use normal signature formatting and preserves its content.",
+          "With autodoc_docstring_signature disabled, consecutive signature-looking lines remain in the docstring body and do not replace the normal signature.",
+          "When an explicit signature is supplied, consecutive docstring signatures are not extracted and existing explicit-signature precedence is preserved.",
+          "Existing singledispatch function and method multiple-signature output remains unchanged.",
+          "The autodoc documentation is updated from first-line-only behavior to describe collection and removal of consecutive matching leading signature lines for functions and methods."
+        ],
+        "confirmed_decisions": [
+          "Multiple-signature extraction applies to both functions and methods through their shared DocstringSignatureMixin behavior.",
+          "Extraction examines only a consecutive prefix at the start of a candidate docstring.",
+          "A prefix line is collected only when it parses as a signature and its object name is accepted for the documented member under the existing name-validation rules.",
+          "Extraction stops before the first non-signature or mismatched-name line; that line and all following content remain in the rendered docstring body.",
+          "Every collected signature is displayed as a separate directive signature line, in docstring order.",
+          "All collected signature lines are removed from the rendered docstring body.",
+          "A single matching leading signature retains the existing observable behavior.",
+          "autodoc_docstring_signature=False continues to preserve signature-looking docstring lines and use normal introspected signature formatting.",
+          "An explicitly supplied signature continues to take precedence over docstring-signature extraction."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend autodoc_docstring_signature so functions and methods can expose multiple overload signatures from a consecutive matching prefix at the start of a docstring. Collect each leading signature-shaped line whose accepted object name matches the documented member, stop at the first non-signature or mismatched-name line, display the collected signatures as separate directive signature lines in their original order, and remove all collected lines from the rendered docstring body. Preserve existing behavior when the option is disabled, when an explicit signature is supplied, and when only one matching signature is present."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "All material externally observable choices are resolved. The requested extension can be implemented using the existing shared docstring-signature path and newline-separated directive-signature support without inventing additional behavior."
+    },
+    "turn": 4
+  }
+]

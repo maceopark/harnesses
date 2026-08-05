@@ -1,0 +1,55 @@
+[
+  {
+    "answer": "Constructor only",
+    "open_material_decisions": [
+      "Whether empty-name validation applies only to `Blueprint(...)` constructor names or also to explicit `name=\"\"` registration overrides."
+    ],
+    "question": {
+      "header": "Validation",
+      "options": [
+        {
+          "description": "Raise `ValueError` for `Blueprint(\"\", ...)`; leave registration-time `name=\"\"` override behavior unchanged.",
+          "label": "Constructor only",
+          "recommended": true
+        },
+        {
+          "description": "Raise `ValueError` for both an empty constructor name and an explicit empty registration `name` override.",
+          "label": "Both paths",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should Flask reject an empty Blueprint name?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Constructing `flask.Blueprint(\"\", __name__)` raises `ValueError`.",
+          "Constructing a Blueprint with a non-empty name still succeeds.",
+          "Constructing `flask.Blueprint(\"app.ui\", __name__)` still raises `ValueError`.",
+          "The new test asserts constructor-time failure rather than requiring application registration.",
+          "Existing Blueprint tests pass without changing registration-time `name` override expectations."
+        ],
+        "confirmed_decisions": [
+          "Validation occurs when constructing `Blueprint(\"\", import_name, ...)`.",
+          "An empty constructor name raises `ValueError`.",
+          "The existing `ValueError` behavior for names containing `.` remains intact.",
+          "Only the empty string is prohibited; no whitespace trimming or broader name normalization is introduced.",
+          "Explicit registration overrides such as `app.register_blueprint(bp, name=\"\")` remain unchanged.",
+          "No endpoint construction, nested-blueprint registration, registry-key construction, or duplicate-name behavior is otherwise changed.",
+          "Add focused regression coverage in `tests/test_blueprints.py` for the empty constructor name, colocated with the existing dotted-name validation test."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Require every Blueprint constructor name to be non-empty. In `Blueprint.__init__`, raise `ValueError` when `name == \"\"`, alongside the existing dotted-name validation. Do not change registration-time handling of an explicit `name=\"\"` override."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The only material scope ambiguity was resolved: validation applies to the Blueprint constructor only. Repository evidence is sufficient to produce an implementation-ready contract without inventing registration-time behavior."
+    },
+    "turn": 2
+  }
+]

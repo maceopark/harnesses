@@ -1,0 +1,65 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/3/statement",
+          "quoted_value": "_find_signature checks only doclines[0] in each retrieved docstring against py_ext_sig_re."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/4/statement",
+          "quoted_value": "After finding one valid signature, _find_signature removes that first line from the prepared content, stores a single (args, return annotation) result, and immediately breaks out of its loop."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/0",
+          "quoted_value": "When autodoc_docstring_signature is enabled and no explicit directive signature was supplied, autodoc recognizes consecutive valid signature lines beginning at the first docstring line for functions and methods."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        }
+      ],
+      "description": "Implementation readiness is overstated because an implementer must still decide whether to extract overloads only from the first candidate docstring, from the first candidate containing a valid leading block, or across multiple candidates. These choices can produce different rendered signatures and content.",
+      "failure_class": "omission",
+      "general_cause": "The contract generalizes single-signature extraction without deciding how overload extraction behaves when the documenter returns multiple candidate docstrings.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "Repository evidence says extraction iterates over multiple retrieved docstrings and currently stops after the first accepted signature, while the contract specifies a leading overload block without identifying which candidate docstring supplies that block or whether later candidates are searched."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/5",
+          "quoted_value": "autodoc-process-signature is invoked independently once for each extracted overload using the existing single-signature event shape, and each event result controls that overload's rendered signature."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/5",
+          "quoted_value": "An autodoc-process-signature listener observes one event per extracted overload and can independently transform each rendered overload."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/unknowns/0",
+          "quoted_value": "The supplied base-commit repository does not establish how multiple extracted signatures should be represented internally or processed by the autodoc-process-signature event."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        }
+      ],
+      "description": "The implementation and acceptance check cannot be executed from the contract and audited evidence alone. The implementer must investigate repository behavior to determine the referenced event contract and how each listener result controls rendering, despite the contract declaring itself implementation-ready.",
+      "failure_class": "repository-delegation",
+      "general_cause": "A material extension-event requirement is specified by reference to existing behavior that the audited evidence explicitly does not establish.",
+      "id": "FINDING-2",
+      "material": true,
+      "observable_signal": "The contract requires one event per overload using the existing event shape, but the evidence identifies overload event processing as unknown and supplies no fact defining the event inputs, permissible results, or result application semantics."
+    }
+  ],
+  "summary": "The contract is not materially implementation-ready: it omits overload behavior across multiple candidate docstrings and delegates essential event semantics to unprovided repository behavior."
+}

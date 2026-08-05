@@ -1,0 +1,127 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..36d1248 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -2019,6 +2019,19 @@ class DataDocumenter(GenericAliasMixin, NewTypeMixin, TypeVarMixin,
+         super().add_content(more_content, no_docstring=no_docstring)
+ 
+ 
++class GenericAliasDataDocumenter(DataDocumenter):
++    """Specialized DataDocumenter for class-like typing aliases."""
++
++    objtype = 'genericaliasdata'
++    directivetype = 'data'
++    priority = ClassDocumenter.priority + 1
++
++    @classmethod
++    def can_document_member(cls, member: Any, membername: str, isattr: bool, parent: Any
++                            ) -> bool:
++        return inspect.isgenericalias(member) and isattr
++
++
+ class NewTypeDataDocumenter(DataDocumenter):
+     """
+     Specialized Documenter subclass for NewTypes.
+@@ -2698,6 +2711,7 @@ def setup(app: Sphinx) -> Dict[str, Any]:
+     app.add_autodocumenter(ClassDocumenter)
+     app.add_autodocumenter(ExceptionDocumenter)
+     app.add_autodocumenter(DataDocumenter)
++    app.add_autodocumenter(GenericAliasDataDocumenter)
+     app.add_autodocumenter(NewTypeDataDocumenter)
+     app.add_autodocumenter(FunctionDocumenter)
+     app.add_autodocumenter(DecoratorDocumenter)
+diff --git a/sphinx/util/inspect.py b/sphinx/util/inspect.py
+index f216e87..e821ab8 100644
+--- a/sphinx/util/inspect.py
++++ b/sphinx/util/inspect.py
+@@ -404,6 +404,13 @@ def isgenericalias(obj: Any) -> bool:
+     elif (hasattr(typing, '_SpecialGenericAlias') and  # for py39+
+             isinstance(obj, typing._SpecialGenericAlias)):  # type: ignore
+         return True
++    elif (sys.version_info < (3, 7) and
++          getattr(obj, '__module__', None) == 'typing' and
++          getattr(obj, '__origin__', None) is not None):
++        # In Python 3.6 parameterized aliases are implemented as class-like
++        # objects by typing itself.  They must not be handled as real classes
++        # by autodoc.
++        return True
+     else:
+         return False
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/genericalias.py b/tests/roots/test-ext-autodoc/target/genericalias.py
+index 9909efc..352836d 100644
+--- a/tests/roots/test-ext-autodoc/target/genericalias.py
++++ b/tests/roots/test-ext-autodoc/target/genericalias.py
+@@ -1,10 +1,31 @@
+-from typing import Callable, List
++from pathlib import Path
++from typing import Any, Callable, Dict, List, Union
+ 
+ #: A list of int
+ T = List[int]
+ 
+ C = Callable[[int], None]  # a generic alias not having a doccomment
+ 
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary with options.
++Should be treated as immutable.
++
++Options should be observed.
++"""
++
++FileContents = Union[str, None]
++"""When content is ``None``, the file should not be written to
++disk.
++"""
++
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of file operations::
++
++    Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++
++Returns the changed path or ``None``.
++"""
++
+ 
+ class Class:
+     #: A list of int
+diff --git a/tests/test_ext_autodoc_automodule.py b/tests/test_ext_autodoc_automodule.py
+index 59296a9..d4d36f1 100644
+--- a/tests/test_ext_autodoc_automodule.py
++++ b/tests/test_ext_autodoc_automodule.py
+@@ -54,6 +54,35 @@ def test_automodule(app):
+     ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_automodule_typing_aliases(app):
++    options = {'members': 'ScaffoldOpts,FileContents,FileOp,C',
++               'undoc-members': None}
++    actual = list(do_autodoc(app, 'module', 'target.genericalias', options))
++
++    for name, documentation in [
++        ('ScaffoldOpts', ['Dictionary with options.',
++                          'Should be treated as immutable.',
++                          'Options should be observed.']),
++        ('FileContents', ['When content is ``None``, the file should not be written to',
++                          'disk.']),
++        ('FileOp', ['Signature of file operations::',
++                    'Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]',
++                    'Returns the changed path or ``None``.']),
++    ]:
++        start = actual.index('.. py:data:: %s' % name)
++        end = next((i for i in range(start + 1, len(actual))
++                    if actual[i].startswith('.. py:')), len(actual))
++        section = actual[start:end]
++        for line in documentation:
++            assert any(line in output_line for output_line in section)
++        assert any('alias of ' in output_line for output_line in section)
++
++    start = actual.index('.. py:data:: C')
++    section = actual[start:]
++    assert any('alias of ' in output_line for output_line in section)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_automodule_undoc_members(app):
+     options = {'members': None,

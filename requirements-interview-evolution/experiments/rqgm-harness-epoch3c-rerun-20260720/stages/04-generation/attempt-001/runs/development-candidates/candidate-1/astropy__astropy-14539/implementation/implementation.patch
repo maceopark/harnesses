@@ -1,0 +1,58 @@
+diff --git a/astropy/io/fits/diff.py b/astropy/io/fits/diff.py
+index 100cdf1..d3608ef 100644
+--- a/astropy/io/fits/diff.py
++++ b/astropy/io/fits/diff.py
+@@ -1449,7 +1449,7 @@ class TableDataDiff(_BaseDiff):
+                 arrb.dtype, np.floating
+             ):
+                 diffs = where_not_allclose(arra, arrb, rtol=self.rtol, atol=self.atol)
+-            elif "P" in col.format:
++            elif "P" in col.format or "Q" in col.format:
+                 diffs = (
+                     [
+                         idx
+diff --git a/astropy/io/fits/tests/test_diff.py b/astropy/io/fits/tests/test_diff.py
+index adfebe6..a39bf55 100644
+--- a/astropy/io/fits/tests/test_diff.py
++++ b/astropy/io/fits/tests/test_diff.py
+@@ -624,6 +624,40 @@ class TestDiff(FitsTestCase):
+         report = diff.report()
+         assert "No differences found." in report
+ 
++    def test_q_vla(self):
++        a = Column("a", format="QD", array=[[0], [0, 0]])
++        b = Column("a", format="QD", array=[[0], [0, 0]])
++        c = Column("a", format="QD", array=[[0], [0, 1]])
++
++        ta = BinTableHDU.from_columns([a])
++        tb = BinTableHDU.from_columns([b])
++        tc = BinTableHDU.from_columns([c])
++
++        assert TableDataDiff(ta.data, tb.data).identical
++
++        diff = TableDataDiff(ta.data, tc.data)
++        assert not diff.identical
++        assert diff.diff_total == 1
++        assert diff.diff_values[0][0] == ("a", 1)
++        assert "Column a data differs in row 1:" in diff.report()
++
++    def test_q_vla_floating_point_tolerance(self):
++        a = Column("a", format="QD", array=[[1.0], [2.0, 3.0]])
++        b = Column("a", format="QD", array=[[1.0 + 1e-6], [2.0, 3.0]])
++
++        ta = BinTableHDU.from_columns([a])
++        tb = BinTableHDU.from_columns([b])
++
++        assert TableDataDiff(ta.data, tb.data, atol=1e-5).identical
++        assert not TableDataDiff(ta.data, tb.data, atol=1e-7).identical
++
++    def test_identical_file_with_q_vla(self):
++        filename = self.temp("q-vla.fits")
++        column = Column("a", format="QD", array=[[0], [0, 0]])
++        BinTableHDU.from_columns([column]).writeto(filename)
++
++        assert FITSDiff(filename, filename).identical
++
+     def test_partially_identical_files1(self):
+         """
+         Test files that have some identical HDUs but a different extension

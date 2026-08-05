@@ -1,0 +1,90 @@
+[
+  {
+    "answer": "Each overload",
+    "open_material_decisions": [
+      "Event-handler behavior for multiple docstring-derived signatures."
+    ],
+    "question": {
+      "header": "Event handling",
+      "options": [
+        {
+          "description": "Invoke the existing signature-processing behavior independently for every extracted overload before displaying them.",
+          "label": "Each overload",
+          "recommended": true
+        },
+        {
+          "description": "Invoke signature processing once with the overloads represented as one newline-separated signature value.",
+          "label": "Combined once",
+          "recommended": false
+        },
+        {
+          "description": "Preserve processing for only the first overload and display later overloads without event-handler transformation.",
+          "label": "First only",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc-process-signature handlers be applied when several overload signatures are extracted from one docstring?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "First non-signature",
+    "open_material_decisions": [
+      "Where extraction of consecutive leading overload signatures stops."
+    ],
+    "question": {
+      "header": "Overload block",
+      "options": [
+        {
+          "description": "Collect consecutive valid signatures for the documented object, then preserve the first non-matching line and everything after it as docstring content.",
+          "label": "First non-signature",
+          "recommended": true
+        },
+        {
+          "description": "Treat every line before the first blank line as part of the signature block, even if an intervening line is not a valid signature.",
+          "label": "First blank line",
+          "recommended": false
+        },
+        {
+          "description": "Collect matching signatures throughout the docstring and remove them even when prose appears between them.",
+          "label": "Scan all lines",
+          "recommended": false
+        }
+      ],
+      "prompt": "When reading signatures from the start of a docstring, where should autodoc stop collecting overloads?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A function or method docstring beginning with multiple valid signatures for that object produces one displayed signature per leading overload, preserving source order.",
+          "The first non-signature line after an overload block begins the rendered docstring content and is not removed.",
+          "A signature-like line for a different object is not collected as an overload and stops the leading block.",
+          "Each overload can be independently transformed by an autodoc-process-signature handler, and the transformed overloads are displayed separately.",
+          "Existing behavior remains unchanged for one leading signature, disabled autodoc_docstring_signature, and explicitly supplied signatures."
+        ],
+        "confirmed_decisions": [
+          "When autodoc_docstring_signature is enabled and no explicit autodoc signature was supplied, autodoc recognizes every consecutive leading docstring line that is a valid signature for the documented function or method.",
+          "Each recognized overload is emitted as a separate displayed directive signature, in the same order as it appears in the docstring.",
+          "Extraction stops at the first line that is not a valid signature for the documented object. That line and all subsequent lines remain in the rendered docstring content.",
+          "All recognized leading signature lines are removed from the rendered docstring content.",
+          "The existing autodoc-process-signature behavior is applied independently to each extracted overload before display.",
+          "A single leading docstring signature continues to behave as before.",
+          "When autodoc_docstring_signature is disabled, no docstring signatures are extracted and all signature-looking lines remain in the rendered content.",
+          "An explicitly supplied autodoc signature continues to take precedence over docstring-derived signatures.",
+          "The documented autodoc_docstring_signature contract reflects support for consecutive leading overload signatures for functions and methods."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend autodoc_docstring_signature so functions and methods may expose multiple overload signatures from a consecutive signature block at the start of a docstring."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The repository evidence and two interview answers resolve the material behavior: autodoc should consume a consecutive leading block of valid overload signatures and apply existing signature-processing handlers independently to each overload. Existing configuration gating and explicit-signature precedence remain unchanged."
+    },
+    "turn": 3
+  }
+]

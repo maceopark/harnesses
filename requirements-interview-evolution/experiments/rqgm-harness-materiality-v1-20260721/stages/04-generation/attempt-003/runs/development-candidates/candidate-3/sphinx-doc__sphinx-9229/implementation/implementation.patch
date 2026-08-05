@@ -1,0 +1,105 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..88dc0b4 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1676,6 +1676,15 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+     def get_doc(self, ignore: int = None) -> Optional[List[List[str]]]:
+         if self.doc_as_attr:
+             # Don't show the docstring of the class when it is an alias.
++            try:
++                analyzer = ModuleAnalyzer.for_module(self.modname)
++                attr_docs = analyzer.find_attr_docs()
++                key = ('.'.join(self.objpath[:-1]), self.objpath[-1])
++                if key in attr_docs:
++                    return [list(attr_docs[key])]
++            except PycodeError:
++                pass
++
+             return None
+ 
+         lines = getattr(self, '_new_docstrings', None)
+diff --git a/tests/roots/test-ext-autodoc/target/type_aliases.py b/tests/roots/test-ext-autodoc/target/type_aliases.py
+new file mode 100644
+index 0000000..90e7a98
+--- /dev/null
++++ b/tests/roots/test-ext-autodoc/target/type_aliases.py
+@@ -0,0 +1,21 @@
++from pathlib import Path
++from typing import Any, Callable, Dict, Union
++
++
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary with project options.
++Should be treated as immutable.
++"""
++
++FileContents = Union[str, None]
++"""When the file content is ``None``, the file should not be written.
++Empty files use an empty string.
++"""
++
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of file operations.
++
++File operations can return the changed path or ``None``.
++"""
++
++Undocumented = Dict[str, Any]
+diff --git a/tests/test_ext_autodoc_automodule.py b/tests/test_ext_autodoc_automodule.py
+index 59296a9..ba25333 100644
+--- a/tests/test_ext_autodoc_automodule.py
++++ b/tests/test_ext_autodoc_automodule.py
+@@ -13,6 +13,8 @@ import sys
+ 
+ import pytest
+ 
++from sphinx.ext.autodoc import ClassDocumenter
++
+ from .test_ext_autodoc import do_autodoc
+ 
+ 
+@@ -118,6 +120,44 @@ def test_automodule_special_members(app):
+     ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++@pytest.mark.parametrize('class_like', [False, True])
++def test_automodule_type_aliases(app, monkeypatch, class_like):
++    if class_like:
++        original = ClassDocumenter.can_document_member.__func__
++
++        def can_document_member(cls, member, membername, isattr, parent):
++            if (parent.object.__name__ == 'target.type_aliases' and
++                    membername != 'Undocumented'):
++                return True
++            return original(cls, member, membername, isattr, parent)
++
++        monkeypatch.setattr(ClassDocumenter, 'can_document_member',
++                            classmethod(can_document_member))
++
++    options = {'members': None}
++    actual = '\n'.join(do_autodoc(app, 'module', 'target.type_aliases', options))
++
++    assert 'Dictionary with project options.\n   Should be treated as immutable.' in actual
++    assert ('When the file content is ``None``, the file should not be written.\n'
++            '   Empty files use an empty string.') in actual
++    assert ('Signature of file operations.\n\n'
++            '   File operations can return the changed path or ``None``.') in actual
++
++    if class_like or sys.version_info >= (3, 7):
++        for name in ('FileContents', 'FileOp', 'ScaffoldOpts'):
++            alias = actual[actual.index(':: %s' % name):]
++            assert 'alias of ' in alias.split('\n.. py:', 1)[0]
++
++    undocumented = '\n'.join(do_autodoc(app, 'data',
++                                         'target.type_aliases.Undocumented'))
++    if sys.version_info >= (3, 7):
++        assert 'alias of ' in undocumented
++    assert 'Dictionary with project options.' not in undocumented
++    assert 'When the file content is ``None``' not in undocumented
++    assert 'Signature of file operations.' not in undocumented
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc',
+                     confoverrides={'autodoc_mock_imports': ['missing_module',
+                                                             'missing_package1',

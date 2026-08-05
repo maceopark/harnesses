@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "The reproduction using format='QD', rows [[0], [0, 0]], and FITSDiff(path, path) yields identical == True.",
+    "printdiff or the equivalent report for that identical Q-format VLA file contains no table-data difference report.",
+    "Two equivalent independently loaded Q-format VLA tables compare as identical.",
+    "A changed value in a Q-format VLA row makes TableDataDiff/FITSDiff non-identical and records the correct differing row.",
+    "Existing P-format VLA comparison tests continue to pass.",
+    "The targeted astropy.io.fits diff tests pass, including the new Q-format regression coverage."
+  ],
+  "confirmed_decisions": [
+    "Limit the production change to the VLA comparison dispatch in TableDataDiff; do not special-case identical path strings or bypass normal FITSDiff/HDUDiff processing.",
+    "Recognize both FITS P-format and Q-format columns as variable-length arrays for row-by-row value comparison.",
+    "Apply the existing comparison tolerances (rtol and atol) to Q-format VLA row values consistently with the current P-format behavior.",
+    "Preserve existing FITSDiff reporting, difference counting, numdiffs limiting, file-opening, and resource-cleanup behavior.",
+    "Add a regression test using a binary table with a QD column containing unequal-length rows, written to disk and compared through FITSDiff using the same file path for both inputs; the result must be identical with no reported data difference.",
+    "Add or extend coverage showing that a genuine difference in a Q-format VLA row is still detected and attributed to the appropriate table row.",
+    "Keep existing P-format VLA behavior covered and unchanged."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Correct FITS table-data comparison so Q-format variable-length-array columns are handled as VLAs, just like P-format columns, instead of using the generic object-array inequality path that can report false differences. Add regression coverage demonstrating that FITSDiff considers an identical FITS file containing a Q-format VLA identical while preserving detection of genuine VLA row differences."
+}

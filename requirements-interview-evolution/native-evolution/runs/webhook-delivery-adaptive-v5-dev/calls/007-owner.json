@@ -1,0 +1,118 @@
+{
+  "role": "owner",
+  "prompt": "You are the Owner. Answer only the current question from the private owner oracle. Do not volunteer unasked decisions, evaluate the interviewer, mention the oracle, or reinterpret repository evidence.\nReturn only the JSON object required by the supplied output schema.\nINPUT:\n{\"oracle\":{\"material_decisions\":[{\"answer\":\"Each endpoint delivery has at most 6 automatic attempts including the initial attempt. Connection refusal, DNS failure, connect timeout, TLS failure, response timeout, HTTP 408, HTTP 425, HTTP 429, and HTTP 5xx consume an attempt and are retryable. Other HTTP 4xx responses consume an attempt and immediately make the delivery terminally failed. A complete 2xx response makes it succeeded. Redirects are not followed and are treated as terminal 4xx-class failures. Retryable outcomes schedule delays of 10, 30, 120, 600, and 3600 seconds after attempts 1 through 5, measured from completion of the preceding attempt. For 429 or 503, a valid Retry-After value replaces the scheduled delay only when it is between 1 and 3600 seconds; otherwise the normal delay applies. No seventh automatic attempt is created.\",\"id\":\"retry-outcome-matrix\",\"why_material\":\"This fixes delivery volume, latency, terminal-state timing, and behavior for every required failure class.\"},{\"answer\":\"Send the exact persisted UTF-8 JSON byte sequence as the HTTP body without reserialization or content encoding. Required headers are Webhook-Id containing the immutable event UUID, Webhook-Timestamp containing base-10 Unix seconds, and Webhook-Signature containing comma-separated v1=<lowercase hex HMAC-SHA256> entries. The signed byte sequence is the ASCII string Webhook-Id, a period, Webhook-Timestamp, a period, and the exact body bytes. Header names are case-insensitive, but values are not trimmed or normalized before verification. Verification requires all three headers, rejects timestamps more than 300 seconds from receiver time, and succeeds if any v1 signature matches any currently accepted secret using constant-time comparison. During rotation, both old and new secrets are accepted for 24 hours; the sender signs new attempts only with the new secret after rotation begins. Each retry gets a fresh timestamp and signature over the unchanged persisted body and event ID.\",\"id\":\"signature-wire-contract\",\"why_material\":\"This makes signatures reproducible across byte encodings, retries, timestamp checks, and secret rotation.\"},{\"answer\":\"Webhook-Id is an immutable UUID assigned once to the logical account event and is the receiver-facing idempotency key. Automatic retries and manual replays preserve it. A distinct event always receives a distinct UUID even if its payload is byte-identical. Receivers deduplicate by the tuple of sender tenant identifier and Webhook-Id for 30 days after first successful processing. The same event sent to multiple endpoints retains its Webhook-Id, while sender-side delivery state is keyed separately by event ID and endpoint ID. Changing or replacing an endpoint creates a new endpoint delivery but does not create a new event identity. A manual replay after 30 days may be processed again and must be labeled as outside the promised deduplication window.\",\"id\":\"idempotency-identity-and-scope\",\"why_material\":\"This prevents retries from causing duplicate side effects without suppressing distinct events or conflating endpoint delivery records.\"},{\"answer\":\"Store one logical delivery record per event-and-endpoint pair and one immutable attempt record per actual HTTP attempt. Delivery states are pending, retry_scheduled, in_flight, succeeded, and failed_exhausted; a terminal non-retryable client response uses failed_permanent. Each attempt records its sequential number, trigger type (automatic or manual), scheduled time, start and finish times, outcome class, HTTP status when available, sanitized error, signature key version, and next-retry time. Manual replay creates a new replay run linked to the original delivery, preserves the event ID, starts attempt numbering at 1 within that run, and never rewrites prior records. The operator view shows the current logical state, every run and attempt in order, the reason for each transition, and correlation IDs that map visible entries to worker and request logs.\",\"id\":\"history-state-model\",\"why_material\":\"This gives operators an auditable mapping from lifecycle state to every real attempt, retry, terminal outcome, and replay.\"},{\"answer\":\"The mandatory end-to-end test uses a receiver that verifies the signature, records the event ID and side effect, then drops the first response after processing. The sender must record attempt 1 as a response timeout, schedule and execute attempt 2 with the same event ID and body but a fresh valid timestamp and signature, and finish succeeded after the receiver returns 200. The receiver must record exactly one business side effect and one duplicate suppression. History must show both attempt records, their outcome classes and timestamps, the retry transition, and the final succeeded state. A subsequent manual replay must remain linked to the original delivery, use the same event ID, be visibly labeled manual, and cause no second business side effect within the 30-day window.\",\"id\":\"partial-acknowledgement-acceptance-test\",\"why_material\":\"This proves the combined retry, authentication, idempotency, terminal-state, and operator-history guarantees under a realistic partial failure.\"}],\"owner_rules\":[\"The case is complete only if the resulting specification makes every oracle decision directly testable without relying on undocumented framework defaults.\",\"Automatic attempts and manual replay runs must remain distinguishable in both persistence and the operator interface.\",\"Secrets, full payloads, and sensitive response bodies must not appear in delivery-history error details or ordinary logs.\",\"Endpoint disablement cancels scheduled future attempts but does not delete or rewrite existing delivery and attempt history.\",\"The acceptance suite must include unchanged payload verification, one-byte payload mutation, stale timestamp, missing signature metadata, old-secret and new-secret rotation cases, every retry outcome class, distinct identical-payload events, retries across endpoint changes, replay inside and outside the deduplication window, and the lost-acknowledgement scenario.\"]},\"owner_rules\":[\"The case is complete only if the resulting specification makes every oracle decision directly testable without relying on undocumented framework defaults.\",\"Automatic attempts and manual replay runs must remain distinguishable in both persistence and the operator interface.\",\"Secrets, full payloads, and sensitive response bodies must not appear in delivery-history error details or ordinary logs.\",\"Endpoint disablement cancels scheduled future attempts but does not delete or rewrite existing delivery and attempt history.\",\"The acceptance suite must include unchanged payload verification, one-byte payload mutation, stale timestamp, missing signature metadata, old-secret and new-secret rotation cases, every retry outcome class, distinct identical-payload events, retries across endpoint changes, replay inside and outside the deduplication window, and the lost-acknowledgement scenario.\"],\"question\":{\"header\":\"Deduplication key\",\"options\":[{\"description\":\"Assign one delivery ID per event-endpoint pair and reuse it across every automatic attempt, while also exposing a separate stable event ID for business correlation.\",\"label\":\"Stable delivery ID\",\"recommended\":true},{\"description\":\"Require deduplication by event ID across endpoints, which is simpler but can incorrectly collapse intentionally distinct subscriptions or endpoint configurations.\",\"label\":\"Stable event ID\",\"recommended\":false},{\"description\":\"Give every retry a new receiver-visible identity, preserving attempt traceability but providing no reliable key for suppressing duplicate processing.\",\"label\":\"Unique attempt ID\",\"recommended\":false}],\"prompt\":\"Which identifier must receivers use to deduplicate automatic retries? This determines the persistence uniqueness rules and whether a lost acknowledgement can safely trigger the same logical delivery again.\"},\"transcript\":[{\"answer\":\"At-least-once\",\"open_material_decisions\":[\"Abuse protections, SSRF defenses, destination restrictions, payload limits, and tenant isolation\",\"Acceptance-test matrix and implementation authorization\",\"Delivery guarantee and receiver deduplication responsibility, especially after lost acknowledgements\",\"Delivery-history audience, filters, statuses, detail exposure, and support actions\",\"Effect of endpoint edits, disablement, deletion, and secret rotation on queued deliveries and historical replay\",\"Manual replay semantics, authorization, rate limits, whether replay reuses the original event identity, and how replay appears in history\",\"Ordering and concurrency guarantees per account and endpoint\",\"Persistence lifecycle, uniqueness constraints, retention, payload redaction, and audit requirements\",\"Retryable versus terminal outcomes, backoff schedule, attempt limits, timeouts, and Retry-After handling\",\"Secret lifecycle, overlap during rotation, storage protection, disclosure rules, and operator permissions\",\"Sender API boundaries for endpoint configuration, verification, event submission, validation, quotas, and authorization\",\"Signed HTTP contract, including signature algorithm, canonical signed bytes, timestamp tolerance, headers, payload/versioning, and response acknowledgement rules\",\"Stable identifiers and idempotency semantics for events, endpoint deliveries, retry attempts, and manual replays\",\"Whether endpoint fanout is snapshotted when an account event occurs or resolved later by workers\",\"Worker scaling, leasing, crash recovery, scheduling, dead-letter behavior, and observability/SLO expectations\"],\"question\":{\"header\":\"Delivery guarantee\",\"options\":[{\"description\":\"Retry ambiguous outcomes and require receivers to deduplicate using a stable event or delivery identifier; duplicates are possible, but silent loss is minimized.\",\"label\":\"At-least-once (Recommended)\",\"recommended\":true},{\"description\":\"Do not retry ambiguous outcomes, preventing sender-created duplicates but allowing events to be permanently lost when acknowledgements disappear.\",\"label\":\"At-most-once\",\"recommended\":false},{\"description\":\"Let each endpoint choose at-least-once or at-most-once behavior, increasing flexibility but materially expanding API, persistence, UI, testing, and support complexity.\",\"label\":\"Configurable per endpoint\",\"recommended\":false}],\"prompt\":\"Which receiver-facing guarantee should be authoritative? This determines whether retries after a lost acknowledgement may repeat a successfully processed request and what receivers must deduplicate.\"},\"turn\":1}]}",
+  "prompt_sha256": "27b6069f808f8bbf0900a1c8dc80aa9aefda8f488072027e330a1fd47a10b0f5",
+  "input": {
+    "oracle": {
+      "material_decisions": [
+        {
+          "id": "retry-outcome-matrix",
+          "answer": "Each endpoint delivery has at most 6 automatic attempts including the initial attempt. Connection refusal, DNS failure, connect timeout, TLS failure, response timeout, HTTP 408, HTTP 425, HTTP 429, and HTTP 5xx consume an attempt and are retryable. Other HTTP 4xx responses consume an attempt and immediately make the delivery terminally failed. A complete 2xx response makes it succeeded. Redirects are not followed and are treated as terminal 4xx-class failures. Retryable outcomes schedule delays of 10, 30, 120, 600, and 3600 seconds after attempts 1 through 5, measured from completion of the preceding attempt. For 429 or 503, a valid Retry-After value replaces the scheduled delay only when it is between 1 and 3600 seconds; otherwise the normal delay applies. No seventh automatic attempt is created.",
+          "why_material": "This fixes delivery volume, latency, terminal-state timing, and behavior for every required failure class."
+        },
+        {
+          "id": "signature-wire-contract",
+          "answer": "Send the exact persisted UTF-8 JSON byte sequence as the HTTP body without reserialization or content encoding. Required headers are Webhook-Id containing the immutable event UUID, Webhook-Timestamp containing base-10 Unix seconds, and Webhook-Signature containing comma-separated v1=<lowercase hex HMAC-SHA256> entries. The signed byte sequence is the ASCII string Webhook-Id, a period, Webhook-Timestamp, a period, and the exact body bytes. Header names are case-insensitive, but values are not trimmed or normalized before verification. Verification requires all three headers, rejects timestamps more than 300 seconds from receiver time, and succeeds if any v1 signature matches any currently accepted secret using constant-time comparison. During rotation, both old and new secrets are accepted for 24 hours; the sender signs new attempts only with the new secret after rotation begins. Each retry gets a fresh timestamp and signature over the unchanged persisted body and event ID.",
+          "why_material": "This makes signatures reproducible across byte encodings, retries, timestamp checks, and secret rotation."
+        },
+        {
+          "id": "idempotency-identity-and-scope",
+          "answer": "Webhook-Id is an immutable UUID assigned once to the logical account event and is the receiver-facing idempotency key. Automatic retries and manual replays preserve it. A distinct event always receives a distinct UUID even if its payload is byte-identical. Receivers deduplicate by the tuple of sender tenant identifier and Webhook-Id for 30 days after first successful processing. The same event sent to multiple endpoints retains its Webhook-Id, while sender-side delivery state is keyed separately by event ID and endpoint ID. Changing or replacing an endpoint creates a new endpoint delivery but does not create a new event identity. A manual replay after 30 days may be processed again and must be labeled as outside the promised deduplication window.",
+          "why_material": "This prevents retries from causing duplicate side effects without suppressing distinct events or conflating endpoint delivery records."
+        },
+        {
+          "id": "history-state-model",
+          "answer": "Store one logical delivery record per event-and-endpoint pair and one immutable attempt record per actual HTTP attempt. Delivery states are pending, retry_scheduled, in_flight, succeeded, and failed_exhausted; a terminal non-retryable client response uses failed_permanent. Each attempt records its sequential number, trigger type (automatic or manual), scheduled time, start and finish times, outcome class, HTTP status when available, sanitized error, signature key version, and next-retry time. Manual replay creates a new replay run linked to the original delivery, preserves the event ID, starts attempt numbering at 1 within that run, and never rewrites prior records. The operator view shows the current logical state, every run and attempt in order, the reason for each transition, and correlation IDs that map visible entries to worker and request logs.",
+          "why_material": "This gives operators an auditable mapping from lifecycle state to every real attempt, retry, terminal outcome, and replay."
+        },
+        {
+          "id": "partial-acknowledgement-acceptance-test",
+          "answer": "The mandatory end-to-end test uses a receiver that verifies the signature, records the event ID and side effect, then drops the first response after processing. The sender must record attempt 1 as a response timeout, schedule and execute attempt 2 with the same event ID and body but a fresh valid timestamp and signature, and finish succeeded after the receiver returns 200. The receiver must record exactly one business side effect and one duplicate suppression. History must show both attempt records, their outcome classes and timestamps, the retry transition, and the final succeeded state. A subsequent manual replay must remain linked to the original delivery, use the same event ID, be visibly labeled manual, and cause no second business side effect within the 30-day window.",
+          "why_material": "This proves the combined retry, authentication, idempotency, terminal-state, and operator-history guarantees under a realistic partial failure."
+        }
+      ],
+      "owner_rules": [
+        "The case is complete only if the resulting specification makes every oracle decision directly testable without relying on undocumented framework defaults.",
+        "Automatic attempts and manual replay runs must remain distinguishable in both persistence and the operator interface.",
+        "Secrets, full payloads, and sensitive response bodies must not appear in delivery-history error details or ordinary logs.",
+        "Endpoint disablement cancels scheduled future attempts but does not delete or rewrite existing delivery and attempt history.",
+        "The acceptance suite must include unchanged payload verification, one-byte payload mutation, stale timestamp, missing signature metadata, old-secret and new-secret rotation cases, every retry outcome class, distinct identical-payload events, retries across endpoint changes, replay inside and outside the deduplication window, and the lost-acknowledgement scenario."
+      ]
+    },
+    "owner_rules": [
+      "The case is complete only if the resulting specification makes every oracle decision directly testable without relying on undocumented framework defaults.",
+      "Automatic attempts and manual replay runs must remain distinguishable in both persistence and the operator interface.",
+      "Secrets, full payloads, and sensitive response bodies must not appear in delivery-history error details or ordinary logs.",
+      "Endpoint disablement cancels scheduled future attempts but does not delete or rewrite existing delivery and attempt history.",
+      "The acceptance suite must include unchanged payload verification, one-byte payload mutation, stale timestamp, missing signature metadata, old-secret and new-secret rotation cases, every retry outcome class, distinct identical-payload events, retries across endpoint changes, replay inside and outside the deduplication window, and the lost-acknowledgement scenario."
+    ],
+    "transcript": [
+      {
+        "turn": 1,
+        "open_material_decisions": [
+          "Abuse protections, SSRF defenses, destination restrictions, payload limits, and tenant isolation",
+          "Acceptance-test matrix and implementation authorization",
+          "Delivery guarantee and receiver deduplication responsibility, especially after lost acknowledgements",
+          "Delivery-history audience, filters, statuses, detail exposure, and support actions",
+          "Effect of endpoint edits, disablement, deletion, and secret rotation on queued deliveries and historical replay",
+          "Manual replay semantics, authorization, rate limits, whether replay reuses the original event identity, and how replay appears in history",
+          "Ordering and concurrency guarantees per account and endpoint",
+          "Persistence lifecycle, uniqueness constraints, retention, payload redaction, and audit requirements",
+          "Retryable versus terminal outcomes, backoff schedule, attempt limits, timeouts, and Retry-After handling",
+          "Secret lifecycle, overlap during rotation, storage protection, disclosure rules, and operator permissions",
+          "Sender API boundaries for endpoint configuration, verification, event submission, validation, quotas, and authorization",
+          "Signed HTTP contract, including signature algorithm, canonical signed bytes, timestamp tolerance, headers, payload/versioning, and response acknowledgement rules",
+          "Stable identifiers and idempotency semantics for events, endpoint deliveries, retry attempts, and manual replays",
+          "Whether endpoint fanout is snapshotted when an account event occurs or resolved later by workers",
+          "Worker scaling, leasing, crash recovery, scheduling, dead-letter behavior, and observability/SLO expectations"
+        ],
+        "question": {
+          "header": "Delivery guarantee",
+          "prompt": "Which receiver-facing guarantee should be authoritative? This determines whether retries after a lost acknowledgement may repeat a successfully processed request and what receivers must deduplicate.",
+          "options": [
+            {
+              "label": "At-least-once (Recommended)",
+              "description": "Retry ambiguous outcomes and require receivers to deduplicate using a stable event or delivery identifier; duplicates are possible, but silent loss is minimized.",
+              "recommended": true
+            },
+            {
+              "label": "At-most-once",
+              "description": "Do not retry ambiguous outcomes, preventing sender-created duplicates but allowing events to be permanently lost when acknowledgements disappear.",
+              "recommended": false
+            },
+            {
+              "label": "Configurable per endpoint",
+              "description": "Let each endpoint choose at-least-once or at-most-once behavior, increasing flexibility but materially expanding API, persistence, UI, testing, and support complexity.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "At-least-once"
+      }
+    ],
+    "question": {
+      "header": "Deduplication key",
+      "prompt": "Which identifier must receivers use to deduplicate automatic retries? This determines the persistence uniqueness rules and whether a lost acknowledgement can safely trigger the same logical delivery again.",
+      "options": [
+        {
+          "label": "Stable delivery ID",
+          "description": "Assign one delivery ID per event-endpoint pair and reuse it across every automatic attempt, while also exposing a separate stable event ID for business correlation.",
+          "recommended": true
+        },
+        {
+          "label": "Stable event ID",
+          "description": "Require deduplication by event ID across endpoints, which is simpler but can incorrectly collapse intentionally distinct subscriptions or endpoint configurations.",
+          "recommended": false
+        },
+        {
+          "label": "Unique attempt ID",
+          "description": "Give every retry a new receiver-visible identity, preserving attempt traceability but providing no reliable key for suppressing duplicate processing.",
+          "recommended": false
+        }
+      ]
+    }
+  },
+  "output": {
+    "answer": "Receivers must deduplicate automatic retries using the stable Webhook-Id event UUID, scoped by sender tenant identifier. The same Webhook-Id is preserved across all automatic attempts, endpoints, endpoint changes, and manual replays; sender-side delivery identity remains separately keyed by event ID and endpoint ID."
+  }
+}

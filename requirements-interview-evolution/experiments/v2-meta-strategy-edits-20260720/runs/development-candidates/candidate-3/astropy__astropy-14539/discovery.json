@@ -1,0 +1,100 @@
+{
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 300,
+      "line_start": 289,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "FITSDiff independently opens each filename argument, including when both arguments name the same file, and compares corresponding HDUs through HDUDiff."
+    },
+    {
+      "id": "F2",
+      "line_end": 380,
+      "line_start": 363,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "FITSDiff constructs an HDUDiff for every corresponding HDU and records that HDU when HDUDiff is not identical."
+    },
+    {
+      "id": "F3",
+      "line_end": 607,
+      "line_start": 601,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "For two table-like HDUs, HDUDiff delegates their data comparison to TableDataDiff."
+    },
+    {
+      "id": "F4",
+      "line_end": 1463,
+      "line_start": 1445,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "TableDataDiff retrieves each common column's arrays and uses three comparison branches: floating dtypes use where_not_allclose, formats containing 'P' use row-wise np.allclose, and every other format uses np.where(arra != arrb)."
+    },
+    {
+      "id": "F5",
+      "line_end": 1461,
+      "line_start": 1452,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "The P-format VLA branch compares each row's constituent arrays independently with the configured relative and absolute tolerances."
+    },
+    {
+      "id": "F6",
+      "line_end": 1463,
+      "line_start": 1452,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "Q-format VLA columns do not satisfy the explicit 'P' format check and therefore follow the generic arra != arrb branch."
+    },
+    {
+      "id": "F7",
+      "line_end": 823,
+      "line_start": 793,
+      "path": "astropy/io/fits/fitsrec.py",
+      "statement": "FITSRec uses the same conversion method for both P- and Q-format descriptors, producing a VLA column whose individual rows are arrays loaded from heap data."
+    },
+    {
+      "id": "F8",
+      "line_end": 1488,
+      "line_start": 1465,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "Any indices returned by the comparison are counted in diff_total and stored as row-level diff_values; diff_ratio is calculated from diff_total over rows times fields."
+    },
+    {
+      "id": "F9",
+      "line_end": 1554,
+      "line_start": 1527,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "A nonempty diff_values list causes reporting of 'Column ... data differs in row ...' and the total number and ratio of differing table elements."
+    },
+    {
+      "id": "F10",
+      "line_end": 134,
+      "line_start": 122,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "A diff object is considered identical only when all of its diff_* attributes are empty, so a spurious TableDataDiff diff_values entry makes the comparison non-identical."
+    },
+    {
+      "id": "F11",
+      "line_end": 419,
+      "line_start": 398,
+      "path": "astropy/io/fits/tests/test_diff.py",
+      "statement": "The existing identical-table diff test includes a P-format variable-length column and asserts an identical result."
+    },
+    {
+      "id": "F12",
+      "line_end": 593,
+      "line_start": 551,
+      "path": "astropy/io/fits/tests/test_diff.py",
+      "statement": "The existing different-table-data diff test likewise exercises a PI-format VLA and validates its row-level differences, but its VLA coverage shown here is P-format."
+    },
+    {
+      "id": "F13",
+      "line_end": 3069,
+      "line_start": 3038,
+      "path": "astropy/io/fits/tests/test_table.py",
+      "statement": "Separate table tests establish that both PD and QD variable-length formats are supported for writing and reading, including object-array and list inputs."
+    }
+  ],
+  "scope_summary": "Base commit evidence localizes the false difference to TableDataDiff's format-specific VLA comparison: P-format VLAs receive row-wise np.allclose comparison, while Q-format VLAs fall through to whole object-array inequality.",
+  "unknowns": [
+    "The supplied base-commit repository does not contain a FITSDiff regression test for identical Q-format VLA data in the inspected diff tests.",
+    "No runtime reproduction was performed because inspection was restricted to the supplied read-only base-commit repository."
+  ]
+}

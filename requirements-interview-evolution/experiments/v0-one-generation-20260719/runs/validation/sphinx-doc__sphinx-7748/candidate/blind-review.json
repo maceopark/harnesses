@@ -1,0 +1,55 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/summary",
+          "quoted_value": "Extend autodoc_docstring_signature so functions and methods can extract a consecutive block of overloaded signatures from the start of a docstring. Beginning at the first line, collect each consecutive line that fully parses as a Python extended signature and whose base name is valid for the documented object under the existing name-validation rules. Stop at the first non-signature or differently named line. Display every collected signature, including its own arguments and optional return annotation, as aligned directive signature lines. Remove only the collected signature lines from rendered docstring content. Preserve the stopping line and all subsequent content. Existing configuration gating, explicit-signature precedence, and single-signature behavior remain unchanged. Update the user documentation to describe consecutive leading signatures rather than only the first line."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/0",
+          "quoted_value": "Add a method fixture whose docstring begins with at least two consecutive same-name signatures followed by prose; enabled autodoc output contains one aligned py:method directive line per signature and begins content with the prose."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/0/statement",
+          "quoted_value": "The documented behavior is to inspect only the first docstring line for functions and methods, use it when it resembles a signature, and remove that line from the rendered docstring."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        }
+      ],
+      "description": "A method-only regression can pass all specified behavioral checks while function docstrings still fail to extract multiple signatures. Documentation and the existing single-signature behavior do not verify the new multi-signature function path, so implementation readiness is materially overstated.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The acceptance suite does not cover every object category included in the contracted behavior.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "The contract promises overloaded-signature extraction for both functions and methods, but the only new enabled-output fixture explicitly required is a method fixture."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/9",
+          "quoted_value": "Run the targeted ext-autodoc configuration tests and relevant autodoc test suite successfully."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        }
+      ],
+      "description": "Implementers and reviewers can choose different test scopes and still claim satisfaction, preventing consistent verification of the completion claim. This is material because repository-wide compatibility is otherwise asserted through the final test requirement.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The final verification scope is expressed subjectively rather than as a bounded test target.",
+      "id": "FINDING-2",
+      "material": true,
+      "observable_signal": "The contract requires the “relevant autodoc test suite” to pass without identifying which suite, paths, selectors, or equivalent deterministic boundary constitute relevance."
+    }
+  ],
+  "summary": "The behavior is mostly well synthesized, but the contract is not implementation-ready: its acceptance checks omit the promised multi-signature function path and leave the final autodoc test boundary undefined."
+}

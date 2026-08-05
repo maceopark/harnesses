@@ -1,0 +1,133 @@
+{
+  "role": "owner",
+  "prompt": "You are the Owner. Answer only the current question from the private owner oracle. Do not volunteer unasked decisions, evaluate the interviewer, mention the oracle, or reinterpret repository evidence.\nReturn only the JSON object required by the supplied output schema.\nINPUT:\n{\"oracle\":{\"material_decisions\":[{\"answer\":\"Emit a bare JSON array of task objects; do not wrap it in a `tasks` property and do not add metadata.\",\"id\":\"D1\",\"why_material\":\"The top-level shape is the primary machine-consumer contract and cannot be inferred from the repository.\"},{\"answer\":\"Represent an empty result as `[]`.\",\"id\":\"D2\",\"why_material\":\"Automation requires a parseable payload even when no tasks match, while the repository defines only the empty text-mode behavior.\"},{\"answer\":\"Emit compact, single-line JSON followed by exactly one newline. Serialize object keys in the stable order `id`, `title`, `done`, `due`, `priority`.\",\"id\":\"D3\",\"why_material\":\"Whitespace, trailing-newline, and key-order choices determine exact stdout and future compatibility tests, but are not currently specified.\"},{\"answer\":\"Make `--json` a `list` subcommand option, accepted after `list` alongside its filters; do not introduce it as a global option before the subcommand.\",\"id\":\"D4\",\"why_material\":\"Option placement changes the public CLI grammar and is not determined by existing behavior.\"},{\"answer\":\"Use standards-compliant JSON string escaping for titles and other strings, including quotes, backslashes, newlines, tabs, and control characters; preserve their decoded string values exactly.\",\"id\":\"D5\",\"why_material\":\"Machine consumers need valid JSON for arbitrary existing titles, and the repository has no JSON-output compatibility contract for these values.\"}],\"owner_rules\":[\"Treat the JSON shape and byte-level formatting above as a stable public interface for automation.\",\"Do not add metadata, schema-version fields, summaries, labels, or text-mode display values to JSON records.\",\"Keep `--json` additive and scoped only to successful `list` output; existing error reporting and exit semantics remain shared with text mode.\"]},\"owner_rules\":[\"Treat the JSON shape and byte-level formatting above as a stable public interface for automation.\",\"Do not add metadata, schema-version fields, summaries, labels, or text-mode display values to JSON records.\",\"Keep `--json` additive and scoped only to successful `list` output; existing error reporting and exit semantics remain shared with text mode.\"],\"question\":{\"header\":\"JSON format\",\"options\":[{\"description\":\"Emit one compact JSON array followed by a newline, use standard JSON escaping, and treat object key order as non-contractual while retaining the five existing fields.\",\"label\":\"Compact defaults\",\"recommended\":true},{\"description\":\"Emit an indented multi-line JSON array followed by a newline, with standard escaping and non-contractual key order.\",\"label\":\"Pretty printed\",\"recommended\":false},{\"description\":\"Emit compact newline-terminated JSON and contractually require each record’s keys in id, title, done, due, priority order.\",\"label\":\"Exact ordered keys\",\"recommended\":false}],\"prompt\":\"Which serialization contract should `todo list --json` use? This determines the exact bytes automation and tests can expect.\"},\"transcript\":[{\"answer\":\"{\\\"selected\\\":\\\"Bare array\\\",\\\"answer\\\":\\\"Emit a bare JSON array of task objects, with no `tasks` wrapper or metadata. Represent an empty result as `[]`.\\\"}\",\"open_material_decisions\":[\"Empty JSON result representation and whether it emits output.\",\"JSON serialization defaults: compact versus indented output, newline termination, and whether key order is contractual.\",\"JSON top-level shape: bare array versus an object containing tasks or metadata.\",\"Whether --json is list-local only or also accepted before the subcommand.\"],\"question\":{\"header\":\"JSON shape\",\"options\":[{\"description\":\"Emit task records directly, such as `[{\\\"id\\\":1,...}]`; this is simplest and naturally represents an empty result as `[]`.\",\"label\":\"Bare array\",\"recommended\":true},{\"description\":\"Emit `{\\\"tasks\\\":[...]}`, allowing metadata to be added later but introducing an extra access layer.\",\"label\":\"Tasks object\",\"recommended\":false},{\"description\":\"Emit a structured object containing tasks plus fields such as count or active filters, widening the requested output contract.\",\"label\":\"Metadata object\",\"recommended\":false}],\"prompt\":\"What top-level JSON shape should `todo list --json` emit? This becomes the machine-consumer compatibility contract.\"},\"turn\":1},{\"answer\":\"{\\\"selected\\\":\\\"Same semantics\\\",\\\"answer\\\":\\\"Yes. Apply the existing filters and sort order, then serialize exactly those task records in the same order; only the presentation format changes.\\\"}\",\"open_material_decisions\":[\"JSON serialization defaults: compact versus indented output, newline termination, and whether object key order is contractual.\",\"Whether --json is list-local only or also accepted before the subcommand.\",\"Whether JSON records use the same exact-match filters and post-filter sort order as text output.\"],\"question\":{\"header\":\"Record order\",\"options\":[{\"description\":\"Apply the existing filters and sort order, then serialize those task records; only the presentation format changes.\",\"label\":\"Same semantics\",\"recommended\":true},{\"description\":\"Apply existing filters but emit records in store order, making JSON ordering differ from text output.\",\"label\":\"Filter only\",\"recommended\":false},{\"description\":\"Emit all stored records in storage order regardless of list filters or text sorting, widening the flag’s behavior.\",\"label\":\"Store order\",\"recommended\":false}],\"prompt\":\"Should `todo list --json` contain exactly the records that text mode would list, in the same filtered and sorted order? This determines whether changing only the output format preserves list semantics for automation.\"},\"turn\":2}]}",
+  "prompt_sha256": "923659b1d09c3856ff28f21aec960930a5b3d2f8246226100803f2f5aa63d896",
+  "input": {
+    "oracle": {
+      "material_decisions": [
+        {
+          "id": "D1",
+          "answer": "Emit a bare JSON array of task objects; do not wrap it in a `tasks` property and do not add metadata.",
+          "why_material": "The top-level shape is the primary machine-consumer contract and cannot be inferred from the repository."
+        },
+        {
+          "id": "D2",
+          "answer": "Represent an empty result as `[]`.",
+          "why_material": "Automation requires a parseable payload even when no tasks match, while the repository defines only the empty text-mode behavior."
+        },
+        {
+          "id": "D3",
+          "answer": "Emit compact, single-line JSON followed by exactly one newline. Serialize object keys in the stable order `id`, `title`, `done`, `due`, `priority`.",
+          "why_material": "Whitespace, trailing-newline, and key-order choices determine exact stdout and future compatibility tests, but are not currently specified."
+        },
+        {
+          "id": "D4",
+          "answer": "Make `--json` a `list` subcommand option, accepted after `list` alongside its filters; do not introduce it as a global option before the subcommand.",
+          "why_material": "Option placement changes the public CLI grammar and is not determined by existing behavior."
+        },
+        {
+          "id": "D5",
+          "answer": "Use standards-compliant JSON string escaping for titles and other strings, including quotes, backslashes, newlines, tabs, and control characters; preserve their decoded string values exactly.",
+          "why_material": "Machine consumers need valid JSON for arbitrary existing titles, and the repository has no JSON-output compatibility contract for these values."
+        }
+      ],
+      "owner_rules": [
+        "Treat the JSON shape and byte-level formatting above as a stable public interface for automation.",
+        "Do not add metadata, schema-version fields, summaries, labels, or text-mode display values to JSON records.",
+        "Keep `--json` additive and scoped only to successful `list` output; existing error reporting and exit semantics remain shared with text mode."
+      ]
+    },
+    "owner_rules": [
+      "Treat the JSON shape and byte-level formatting above as a stable public interface for automation.",
+      "Do not add metadata, schema-version fields, summaries, labels, or text-mode display values to JSON records.",
+      "Keep `--json` additive and scoped only to successful `list` output; existing error reporting and exit semantics remain shared with text mode."
+    ],
+    "transcript": [
+      {
+        "turn": 1,
+        "open_material_decisions": [
+          "Empty JSON result representation and whether it emits output.",
+          "JSON serialization defaults: compact versus indented output, newline termination, and whether key order is contractual.",
+          "JSON top-level shape: bare array versus an object containing tasks or metadata.",
+          "Whether --json is list-local only or also accepted before the subcommand."
+        ],
+        "question": {
+          "header": "JSON shape",
+          "prompt": "What top-level JSON shape should `todo list --json` emit? This becomes the machine-consumer compatibility contract.",
+          "options": [
+            {
+              "label": "Bare array",
+              "description": "Emit task records directly, such as `[{\"id\":1,...}]`; this is simplest and naturally represents an empty result as `[]`.",
+              "recommended": true
+            },
+            {
+              "label": "Tasks object",
+              "description": "Emit `{\"tasks\":[...]}`, allowing metadata to be added later but introducing an extra access layer.",
+              "recommended": false
+            },
+            {
+              "label": "Metadata object",
+              "description": "Emit a structured object containing tasks plus fields such as count or active filters, widening the requested output contract.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "{\"selected\":\"Bare array\",\"answer\":\"Emit a bare JSON array of task objects, with no `tasks` wrapper or metadata. Represent an empty result as `[]`.\"}"
+      },
+      {
+        "turn": 2,
+        "open_material_decisions": [
+          "JSON serialization defaults: compact versus indented output, newline termination, and whether object key order is contractual.",
+          "Whether --json is list-local only or also accepted before the subcommand.",
+          "Whether JSON records use the same exact-match filters and post-filter sort order as text output."
+        ],
+        "question": {
+          "header": "Record order",
+          "prompt": "Should `todo list --json` contain exactly the records that text mode would list, in the same filtered and sorted order? This determines whether changing only the output format preserves list semantics for automation.",
+          "options": [
+            {
+              "label": "Same semantics",
+              "description": "Apply the existing filters and sort order, then serialize those task records; only the presentation format changes.",
+              "recommended": true
+            },
+            {
+              "label": "Filter only",
+              "description": "Apply existing filters but emit records in store order, making JSON ordering differ from text output.",
+              "recommended": false
+            },
+            {
+              "label": "Store order",
+              "description": "Emit all stored records in storage order regardless of list filters or text sorting, widening the flag’s behavior.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "{\"selected\":\"Same semantics\",\"answer\":\"Yes. Apply the existing filters and sort order, then serialize exactly those task records in the same order; only the presentation format changes.\"}"
+      }
+    ],
+    "question": {
+      "header": "JSON format",
+      "prompt": "Which serialization contract should `todo list --json` use? This determines the exact bytes automation and tests can expect.",
+      "options": [
+        {
+          "label": "Compact defaults",
+          "description": "Emit one compact JSON array followed by a newline, use standard JSON escaping, and treat object key order as non-contractual while retaining the five existing fields.",
+          "recommended": true
+        },
+        {
+          "label": "Pretty printed",
+          "description": "Emit an indented multi-line JSON array followed by a newline, with standard escaping and non-contractual key order.",
+          "recommended": false
+        },
+        {
+          "label": "Exact ordered keys",
+          "description": "Emit compact newline-terminated JSON and contractually require each record’s keys in id, title, done, due, priority order.",
+          "recommended": false
+        }
+      ]
+    }
+  },
+  "output": {
+    "answer": "{\"selected\":\"Exact ordered keys\",\"answer\":\"Emit compact, single-line JSON followed by exactly one newline. Use standards-compliant JSON escaping, and serialize each record’s keys in the stable order `id`, `title`, `done`, `due`, `priority`.\"}"
+  }
+}

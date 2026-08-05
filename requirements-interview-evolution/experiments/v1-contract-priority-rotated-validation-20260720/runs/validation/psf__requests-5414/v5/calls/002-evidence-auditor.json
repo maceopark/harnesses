@@ -1,0 +1,296 @@
+{
+  "role": "evidence-auditor",
+  "model": "gpt-5.6-sol",
+  "command": [
+    "codex",
+    "exec",
+    "--model",
+    "gpt-5.6-sol",
+    "--ephemeral",
+    "--sandbox",
+    "read-only",
+    "--skip-git-repo-check",
+    "--ignore-user-config",
+    "--color",
+    "never",
+    "--output-schema",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-evidence-auditor-dm7trpim/schema.json",
+    "--output-last-message",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-evidence-auditor-dm7trpim/output.json",
+    "-C",
+    "/var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-evidence-auditor-dm7trpim",
+    "--add-dir",
+    "/Users/jpark/gitrepos/harnesses/requirements-interview-evolution/experiments/v1-contract-priority-rotated-validation-20260720/repositories/psf__requests-5414",
+    "<stdin>"
+  ],
+  "prompt": "Independently re-open every cited file and disposition every fact. Accept only direct support; never create product requirements. The complete fact-ID set is [\"F1\", \"F2\", \"F3\", \"F4\", \"F5\", \"F6\", \"F7\", \"F8\", \"F9\", \"F10\", \"F11\"]. Return each of these IDs exactly once across accepted_fact_ids and rejected, and never return an ID outside this set.\nReturn only the JSON required by the supplied schema.\nINPUT:\n{\"alias\": \"psf__requests-5414\", \"discovery\": {\"facts\": [{\"id\": \"F1\", \"line_end\": 386, \"line_start\": 382, \"path\": \"requests/models.py\", \"statement\": \"PreparedRequest.prepare_url parses HTTP URLs and converts urllib3 LocationParseError failures into requests.exceptions.InvalidURL.\"}, {\"id\": \"F2\", \"line_end\": 395, \"line_start\": 388, \"path\": \"requests/models.py\", \"statement\": \"After parsing, prepare_url raises InvalidURL when the URL has no host.\"}, {\"id\": \"F3\", \"line_end\": 358, \"line_start\": 350, \"path\": \"requests/models.py\", \"statement\": \"The IDNA helper encodes a host with idna.encode(..., uts46=True) and translates idna.IDNAError into UnicodeError.\"}, {\"id\": \"F4\", \"line_end\": 405, \"line_start\": 397, \"path\": \"requests/models.py\", \"statement\": \"prepare_url invokes the IDNA helper only for non-ASCII hosts; a UnicodeError from that helper is converted to InvalidURL with the message 'URL has an invalid label.'\"}, {\"id\": \"F5\", \"line_end\": 407, \"line_start\": 399, \"path\": \"requests/models.py\", \"statement\": \"For ASCII hosts, the only explicit label-related rejection in this branch is a hostname beginning with '*'; there is no corresponding leading-dot check.\"}, {\"id\": \"F6\", \"line_end\": 415, \"line_start\": 409, \"path\": \"requests/models.py\", \"statement\": \"After hostname checks, prepare_url reconstructs the network location directly from auth, host, and optional port.\"}, {\"id\": \"F7\", \"line_end\": 444, \"line_start\": 433, \"path\": \"requests/models.py\", \"statement\": \"The reconstructed URL is requoted and assigned to the prepared request without another hostname-label validation step in prepare_url.\"}, {\"id\": \"F8\", \"line_end\": 91, \"line_start\": 90, \"path\": \"requests/exceptions.py\", \"statement\": \"InvalidURL is a Requests exception and also a ValueError subclass.\"}, {\"id\": \"F9\", \"line_end\": 87, \"line_start\": 77, \"path\": \"tests/test_requests.py\", \"statement\": \"The general invalid-URL test covers a URL with no host ('http://') but does not include a leading-dot hostname.\"}, {\"id\": \"F10\", \"line_end\": 2497, \"line_start\": 2484, \"path\": \"tests/test_requests.py\", \"statement\": \"The bad-URL preparation test expects InvalidURL for wildcard-prefixed hosts and one non-ASCII hostname, but contains no leading-dot hostname case.\"}, {\"id\": \"F11\", \"line_end\": 415, \"line_start\": 412, \"path\": \"requests/adapters.py\", \"statement\": \"At adapter connection setup, LocationValueError is translated into InvalidURL associated with the request.\"}], \"scope_summary\": \"Inspected only the supplied repository at base commit 39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e. Existing URL preparation validates missing hosts, non-ASCII IDNA failures, and wildcard-prefixed ASCII hosts, but does not validate an ASCII hostname beginning with a dot.\", \"unknowns\": [\"The repository contains no cited test establishing the behavior of 'http://.example.com' at this base commit.\", \"The exact downstream standard-library or dependency call that emits the reported UnicodeError is not identified by the repository-local code inspected.\"]}, \"metadata\": {\"context_mode\": \"repository\", \"partition\": \"validation\", \"repository_family\": \"psf/requests\"}, \"public_request\": \"Getting http://.example.com raises UnicodeError\\nAttempting to get e.g. `http://.example.com` results in a `UnicodeError`. It seems like the intention so far has been to raise `InvalidUrl` instead (see e.g. [this line](https://github.com/psf/requests/blob/ca6f9af5dba09591007b15a7368bc0f006b7cc50/requests/models.py#L401)).\\r\\n\\r\\nI see there was some hesitation in fixing a similar issue (#4168) and would like to add that even catching the error just to rethrow as a requests exception would be beneficial.\\r\\n\\r\\n## Expected Result\\r\\n\\r\\nBased on PR #774: `InvalidUrl: URL has an invalid label.`\\r\\n\\r\\n## Actual Result\\r\\n\\r\\n`UnicodeError: encoding with 'idna' codec failed (UnicodeError: label empty or too long)`\\r\\n\\r\\n## Reproduction Steps\\r\\n\\r\\n```python3\\r\\nimport requests\\r\\nrequests.get(\\\"http://.example.com\\\")\\r\\n```\\r\\n\\r\\n## System Information\\r\\n\\r\\n    $ python -m requests.help\\r\\n\\r\\n```\\r\\n{\\r\\n  \\\"chardet\\\": {\\r\\n    \\\"version\\\": \\\"3.0.4\\\"\\r\\n  },\\r\\n  \\\"cryptography\\\": {\\r\\n    \\\"version\\\": \\\"2.8\\\"\\r\\n  },\\r\\n  \\\"idna\\\": {\\r\\n    \\\"version\\\": \\\"2.8\\\"\\r\\n  },\\r\\n  \\\"implementation\\\": {\\r\\n    \\\"name\\\": \\\"CPython\\\",\\r\\n    \\\"version\\\": \\\"3.8.0\\\"\\r\\n  },\\r\\n  \\\"platform\\\": {\\r\\n    \\\"release\\\": \\\"5.3.0-40-generic\\\",\\r\\n    \\\"system\\\": \\\"Linux\\\"\\r\\n  },\\r\\n  \\\"pyOpenSSL\\\": {\\r\\n    \\\"openssl_version\\\": \\\"1010104f\\\",\\r\\n    \\\"version\\\": \\\"19.1.0\\\"\\r\\n  },\\r\\n  \\\"requests\\\": {\\r\\n    \\\"version\\\": \\\"2.23.0\\\"\\r\\n  },\\r\\n  \\\"system_ssl\\\": {\\r\\n    \\\"version\\\": \\\"1010103f\\\"\\r\\n  },\\r\\n  \\\"urllib3\\\": {\\r\\n    \\\"version\\\": \\\"1.25.8\\\"\\r\\n  },\\r\\n  \\\"using_pyopenssl\\\": true\\r\\n}\\r\\n```\\n\", \"repository_facts\": [{\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def prepare(self,\\n            method=None, url=None, headers=None, files=None, data=None,\\n            params=None, auth=None, cookies=None, hooks=None, json=None):\\n        \\\"\\\"\\\"Prepares the entire request with the given parameters.\\\"\\\"\\\"\\n\\n        self.prepare_method(method)\\n        self.prepare_url(url, params)\\n        self.prepare_headers(headers)\\n        self.prepare_cookies(cookies)\\n        self.prepare_body(data, files, json)\\n        self.prepare_auth(auth, url)\", \"excerpt_digest\": \"cbf35b7c37ddaa89b4ce3b71fe2e49a24a509af64ae412096b4cc7d5afc2be55\", \"id\": \"repository:F1\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L312-L322\", \"source\": \"repository\", \"source_digest\": \"c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888\"}], \"id\": \"F1\", \"statement\": \"PreparedRequest.prepare invokes prepare_url before preparing headers, cookies, body, or authentication.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        # Support for unicode domain names and paths.\\n        try:\\n            scheme, auth, host, port, path, query, fragment = parse_url(url)\\n        except LocationParseError as e:\\n            raise InvalidURL(*e.args)\", \"excerpt_digest\": \"f3d22eaff5a4f010ef3b48e8a45bef6f7fc1a884a4e82e4820061c2dd9101bc7\", \"id\": \"repository:F2\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L382-L386\", \"source\": \"repository\", \"source_digest\": \"c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888\"}], \"id\": \"F2\", \"statement\": \"prepare_url parses the URL with urllib3.util.parse_url and converts only LocationParseError from that call into InvalidURL.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        if not scheme:\\n            error = (\\\"Invalid URL {0!r}: No schema supplied. Perhaps you meant http://{0}?\\\")\\n            error = error.format(to_native_string(url, 'utf8'))\\n\\n            raise MissingSchema(error)\\n\\n        if not host:\\n            raise InvalidURL(\\\"Invalid URL %r: No host supplied\\\" % url)\", \"excerpt_digest\": \"ace562c337e391ebb672f1559bbc0f0d9184ed34b7013291c80583917c492ad6\", \"id\": \"repository:F3\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L388-L395\", \"source\": \"repository\", \"source_digest\": \"c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888\"}], \"id\": \"F3\", \"statement\": \"After parsing, prepare_url raises MissingSchema when the scheme is absent and InvalidURL when the parsed host is absent.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        # In general, we want to try IDNA encoding the hostname if the string contains\\n        # non-ASCII characters. This allows users to automatically get the correct IDNA\\n        # behaviour. For strings containing only ASCII characters, we need to also verify\\n        # it doesn't start with a wildcard (*), before allowing the unencoded hostname.\\n        if not unicode_is_ascii(host):\\n            try:\\n                host = self._get_idna_encoded_host(host)\\n            except UnicodeError:\\n                raise InvalidURL('URL has an invalid label.')\\n        elif host.startswith(u'*'):\\n            raise InvalidURL('URL has an invalid label.')\", \"excerpt_digest\": \"3f839effe507cc0a9c6a55d6d73c7b3dc6a1eada39f9a31489135de180159852\", \"id\": \"repository:F4\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L397-L407\", \"source\": \"repository\", \"source_digest\": \"c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888\"}], \"id\": \"F4\", \"statement\": \"For a non-ASCII host, prepare_url calls _get_idna_encoded_host and converts UnicodeError into InvalidURL with the message \\\"URL has an invalid label.\\\" For an ASCII host, the shown validation only rejects a host beginning with '*'.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    @staticmethod\\n    def _get_idna_encoded_host(host):\\n        import idna\\n\\n        try:\\n            host = idna.encode(host, uts46=True).decode('utf-8')\\n        except idna.IDNAError:\\n            raise UnicodeError\\n        return host\", \"excerpt_digest\": \"d06ceab5bb6254429d619803f28bb0a081674c96138e208239512b11478f3c22\", \"id\": \"repository:F5\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L350-L358\", \"source\": \"repository\", \"source_digest\": \"c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888\"}], \"id\": \"F5\", \"statement\": \"_get_idna_encoded_host uses idna.encode with uts46=True and translates idna.IDNAError into UnicodeError.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"class MissingSchema(RequestException, ValueError):\\n    \\\"\\\"\\\"The URL schema (e.g. http or https) is missing.\\\"\\\"\\\"\\n\\n\\nclass InvalidSchema(RequestException, ValueError):\\n    \\\"\\\"\\\"See defaults.py for valid schemas.\\\"\\\"\\\"\\n\\n\\nclass InvalidURL(RequestException, ValueError):\\n    \\\"\\\"\\\"The URL provided was somehow invalid.\\\"\\\"\\\"\", \"excerpt_digest\": \"ac9d81316216d3f9eb5b4007821752b247889670e21e5b54fe49bd938689d36b\", \"id\": \"repository:F6\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/exceptions.py:L82-L91\", \"source\": \"repository\", \"source_digest\": \"d374f4f497332c86d5803a517842bc355e99073d9d9d9c4af23ae15a7ddb7211\"}], \"id\": \"F6\", \"statement\": \"InvalidURL is a Requests RequestException and ValueError subclass whose documented meaning is that the supplied URL was invalid.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    @pytest.mark.parametrize(\\n        'exception, url', (\\n            (MissingSchema, 'hiwpefhipowhefopw'),\\n            (InvalidSchema, 'localhost:3128'),\\n            (InvalidSchema, 'localhost.localdomain:3128/'),\\n            (InvalidSchema, '10.122.1.1:3128/'),\\n            (InvalidURL, 'http://'),\\n        ))\\n    def test_invalid_url(self, exception, url):\\n        with pytest.raises(exception):\\n            requests.get(url)\", \"excerpt_digest\": \"b3d85c39c0a92a00ebb6997996657bd2dcf9158a91c26c4ef9af58b7f48cf3a8\", \"id\": \"repository:F7\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_requests.py:L77-L87\", \"source\": \"repository\", \"source_digest\": \"a932e188000e026b9da004969347a3e9d23f43874bfc32c5ba2aef38fcc913e6\"}], \"id\": \"F7\", \"statement\": \"The general invalid-URL test expects InvalidURL for \\\"http://\\\", alongside MissingSchema and InvalidSchema cases.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    @pytest.mark.parametrize(\\n        'url',\\n        (\\n            b\\\"http://*.google.com\\\",\\n            b\\\"http://*\\\",\\n            u\\\"http://*.google.com\\\",\\n            u\\\"http://*\\\",\\n            u\\\"http://☃.net/\\\"\\n        )\\n    )\\n    def test_preparing_bad_url(self, url):\\n        r = requests.Request('GET', url=url)\\n        with pytest.raises(requests.exceptions.InvalidURL):\\n            r.prepare()\", \"excerpt_digest\": \"4018653375c4bf75910a804399a832cef3f82e69cd6894f5d7583befa15286df\", \"id\": \"repository:F8\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_requests.py:L2484-L2497\", \"source\": \"repository\", \"source_digest\": \"a932e188000e026b9da004969347a3e9d23f43874bfc32c5ba2aef38fcc913e6\"}], \"id\": \"F8\", \"statement\": \"The prepared-request invalid-URL test expects InvalidURL for wildcard hosts and for the Unicode hostname \\\"http://☃.net/\\\"; the reported \\\"http://.example.com\\\" input is not present in this parameter list.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"requires = [\\n    'charset_normalizer~=2.0.0; python_version >= \\\"3\\\"',\\n    'chardet>=3.0.2,<5; python_version < \\\"3\\\"',\\n    'idna>=2.5,<3; python_version < \\\"3\\\"',\\n    'idna>=2.5,<4; python_version >= \\\"3\\\"',\\n    'urllib3>=1.21.1,<1.27',\\n    'certifi>=2017.4.17'\", \"excerpt_digest\": \"952ff38607ac8d4ffe7a49308508411406142e5489aecd18e8b1e6cc5e416aad\", \"id\": \"repository:F9\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"setup.py:L43-L49\", \"source\": \"repository\", \"source_digest\": \"f8df953275dbe3ce3646dabd04d23814dc29ca2366636c4204c08d17394fbe71\"}], \"id\": \"F9\", \"statement\": \"The package declares urllib3 versions from 1.21.1 through versions below 1.27 and idna versions from 2.5 through versions below 4 on Python 3.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"from urllib3.fields import RequestField\\nfrom urllib3.filepost import encode_multipart_formdata\\nfrom urllib3.util import parse_url\\nfrom urllib3.exceptions import (\\n    DecodeError, ReadTimeoutError, ProtocolError, LocationParseError)\", \"excerpt_digest\": \"20473fc8bb206b13b9aa40b35e82711707d7b8a6f7a0ad8c7bb3b8841db22672\", \"id\": \"repository:F10\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L18-L22\", \"source\": \"repository\", \"source_digest\": \"c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888\"}], \"id\": \"F10\", \"statement\": \"requests.models imports parse_url and LocationParseError directly from urllib3 rather than defining their parsing behavior in this repository.\"}], \"upstream\": {\"base_commit\": \"39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e\", \"dataset\": \"princeton-nlp/SWE-bench_Verified\", \"instance_id_digest\": \"ab37cb5123421073835bec54f98fab233373fb0a333813a33432d7ec6fd4bcb1\", \"issue_cache_key\": \"sha256:08faa0ea47836476b5f4b3709c06a00569996ccc654011299f9c8587cd7007ba\", \"issue_digest\": \"08faa0ea47836476b5f4b3709c06a00569996ccc654011299f9c8587cd7007ba\", \"revision\": \"c104f840cc67f8b6eec6f759ebc8b2693d585d4a\", \"source_url\": \"https://github.com/psf/requests/pull/5414\"}}",
+  "input": {
+    "alias": "psf__requests-5414",
+    "public_request": "Getting http://.example.com raises UnicodeError\nAttempting to get e.g. `http://.example.com` results in a `UnicodeError`. It seems like the intention so far has been to raise `InvalidUrl` instead (see e.g. [this line](https://github.com/psf/requests/blob/ca6f9af5dba09591007b15a7368bc0f006b7cc50/requests/models.py#L401)).\r\n\r\nI see there was some hesitation in fixing a similar issue (#4168) and would like to add that even catching the error just to rethrow as a requests exception would be beneficial.\r\n\r\n## Expected Result\r\n\r\nBased on PR #774: `InvalidUrl: URL has an invalid label.`\r\n\r\n## Actual Result\r\n\r\n`UnicodeError: encoding with 'idna' codec failed (UnicodeError: label empty or too long)`\r\n\r\n## Reproduction Steps\r\n\r\n```python3\r\nimport requests\r\nrequests.get(\"http://.example.com\")\r\n```\r\n\r\n## System Information\r\n\r\n    $ python -m requests.help\r\n\r\n```\r\n{\r\n  \"chardet\": {\r\n    \"version\": \"3.0.4\"\r\n  },\r\n  \"cryptography\": {\r\n    \"version\": \"2.8\"\r\n  },\r\n  \"idna\": {\r\n    \"version\": \"2.8\"\r\n  },\r\n  \"implementation\": {\r\n    \"name\": \"CPython\",\r\n    \"version\": \"3.8.0\"\r\n  },\r\n  \"platform\": {\r\n    \"release\": \"5.3.0-40-generic\",\r\n    \"system\": \"Linux\"\r\n  },\r\n  \"pyOpenSSL\": {\r\n    \"openssl_version\": \"1010104f\",\r\n    \"version\": \"19.1.0\"\r\n  },\r\n  \"requests\": {\r\n    \"version\": \"2.23.0\"\r\n  },\r\n  \"system_ssl\": {\r\n    \"version\": \"1010103f\"\r\n  },\r\n  \"urllib3\": {\r\n    \"version\": \"1.25.8\"\r\n  },\r\n  \"using_pyopenssl\": true\r\n}\r\n```\n",
+    "upstream": {
+      "base_commit": "39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e",
+      "dataset": "princeton-nlp/SWE-bench_Verified",
+      "instance_id_digest": "ab37cb5123421073835bec54f98fab233373fb0a333813a33432d7ec6fd4bcb1",
+      "issue_cache_key": "sha256:08faa0ea47836476b5f4b3709c06a00569996ccc654011299f9c8587cd7007ba",
+      "issue_digest": "08faa0ea47836476b5f4b3709c06a00569996ccc654011299f9c8587cd7007ba",
+      "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+      "source_url": "https://github.com/psf/requests/pull/5414"
+    },
+    "repository_facts": [
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    def prepare(self,\n            method=None, url=None, headers=None, files=None, data=None,\n            params=None, auth=None, cookies=None, hooks=None, json=None):\n        \"\"\"Prepares the entire request with the given parameters.\"\"\"\n\n        self.prepare_method(method)\n        self.prepare_url(url, params)\n        self.prepare_headers(headers)\n        self.prepare_cookies(cookies)\n        self.prepare_body(data, files, json)\n        self.prepare_auth(auth, url)",
+            "excerpt_digest": "cbf35b7c37ddaa89b4ce3b71fe2e49a24a509af64ae412096b4cc7d5afc2be55",
+            "id": "repository:F1",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "requests/models.py:L312-L322",
+            "source": "repository",
+            "source_digest": "c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888"
+          }
+        ],
+        "id": "F1",
+        "statement": "PreparedRequest.prepare invokes prepare_url before preparing headers, cookies, body, or authentication."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "        # Support for unicode domain names and paths.\n        try:\n            scheme, auth, host, port, path, query, fragment = parse_url(url)\n        except LocationParseError as e:\n            raise InvalidURL(*e.args)",
+            "excerpt_digest": "f3d22eaff5a4f010ef3b48e8a45bef6f7fc1a884a4e82e4820061c2dd9101bc7",
+            "id": "repository:F2",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "requests/models.py:L382-L386",
+            "source": "repository",
+            "source_digest": "c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888"
+          }
+        ],
+        "id": "F2",
+        "statement": "prepare_url parses the URL with urllib3.util.parse_url and converts only LocationParseError from that call into InvalidURL."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "        if not scheme:\n            error = (\"Invalid URL {0!r}: No schema supplied. Perhaps you meant http://{0}?\")\n            error = error.format(to_native_string(url, 'utf8'))\n\n            raise MissingSchema(error)\n\n        if not host:\n            raise InvalidURL(\"Invalid URL %r: No host supplied\" % url)",
+            "excerpt_digest": "ace562c337e391ebb672f1559bbc0f0d9184ed34b7013291c80583917c492ad6",
+            "id": "repository:F3",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "requests/models.py:L388-L395",
+            "source": "repository",
+            "source_digest": "c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888"
+          }
+        ],
+        "id": "F3",
+        "statement": "After parsing, prepare_url raises MissingSchema when the scheme is absent and InvalidURL when the parsed host is absent."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "        # In general, we want to try IDNA encoding the hostname if the string contains\n        # non-ASCII characters. This allows users to automatically get the correct IDNA\n        # behaviour. For strings containing only ASCII characters, we need to also verify\n        # it doesn't start with a wildcard (*), before allowing the unencoded hostname.\n        if not unicode_is_ascii(host):\n            try:\n                host = self._get_idna_encoded_host(host)\n            except UnicodeError:\n                raise InvalidURL('URL has an invalid label.')\n        elif host.startswith(u'*'):\n            raise InvalidURL('URL has an invalid label.')",
+            "excerpt_digest": "3f839effe507cc0a9c6a55d6d73c7b3dc6a1eada39f9a31489135de180159852",
+            "id": "repository:F4",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "requests/models.py:L397-L407",
+            "source": "repository",
+            "source_digest": "c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888"
+          }
+        ],
+        "id": "F4",
+        "statement": "For a non-ASCII host, prepare_url calls _get_idna_encoded_host and converts UnicodeError into InvalidURL with the message \"URL has an invalid label.\" For an ASCII host, the shown validation only rejects a host beginning with '*'."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    @staticmethod\n    def _get_idna_encoded_host(host):\n        import idna\n\n        try:\n            host = idna.encode(host, uts46=True).decode('utf-8')\n        except idna.IDNAError:\n            raise UnicodeError\n        return host",
+            "excerpt_digest": "d06ceab5bb6254429d619803f28bb0a081674c96138e208239512b11478f3c22",
+            "id": "repository:F5",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "requests/models.py:L350-L358",
+            "source": "repository",
+            "source_digest": "c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888"
+          }
+        ],
+        "id": "F5",
+        "statement": "_get_idna_encoded_host uses idna.encode with uts46=True and translates idna.IDNAError into UnicodeError."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "class MissingSchema(RequestException, ValueError):\n    \"\"\"The URL schema (e.g. http or https) is missing.\"\"\"\n\n\nclass InvalidSchema(RequestException, ValueError):\n    \"\"\"See defaults.py for valid schemas.\"\"\"\n\n\nclass InvalidURL(RequestException, ValueError):\n    \"\"\"The URL provided was somehow invalid.\"\"\"",
+            "excerpt_digest": "ac9d81316216d3f9eb5b4007821752b247889670e21e5b54fe49bd938689d36b",
+            "id": "repository:F6",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "requests/exceptions.py:L82-L91",
+            "source": "repository",
+            "source_digest": "d374f4f497332c86d5803a517842bc355e99073d9d9d9c4af23ae15a7ddb7211"
+          }
+        ],
+        "id": "F6",
+        "statement": "InvalidURL is a Requests RequestException and ValueError subclass whose documented meaning is that the supplied URL was invalid."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    @pytest.mark.parametrize(\n        'exception, url', (\n            (MissingSchema, 'hiwpefhipowhefopw'),\n            (InvalidSchema, 'localhost:3128'),\n            (InvalidSchema, 'localhost.localdomain:3128/'),\n            (InvalidSchema, '10.122.1.1:3128/'),\n            (InvalidURL, 'http://'),\n        ))\n    def test_invalid_url(self, exception, url):\n        with pytest.raises(exception):\n            requests.get(url)",
+            "excerpt_digest": "b3d85c39c0a92a00ebb6997996657bd2dcf9158a91c26c4ef9af58b7f48cf3a8",
+            "id": "repository:F7",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "tests/test_requests.py:L77-L87",
+            "source": "repository",
+            "source_digest": "a932e188000e026b9da004969347a3e9d23f43874bfc32c5ba2aef38fcc913e6"
+          }
+        ],
+        "id": "F7",
+        "statement": "The general invalid-URL test expects InvalidURL for \"http://\", alongside MissingSchema and InvalidSchema cases."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "    @pytest.mark.parametrize(\n        'url',\n        (\n            b\"http://*.google.com\",\n            b\"http://*\",\n            u\"http://*.google.com\",\n            u\"http://*\",\n            u\"http://☃.net/\"\n        )\n    )\n    def test_preparing_bad_url(self, url):\n        r = requests.Request('GET', url=url)\n        with pytest.raises(requests.exceptions.InvalidURL):\n            r.prepare()",
+            "excerpt_digest": "4018653375c4bf75910a804399a832cef3f82e69cd6894f5d7583befa15286df",
+            "id": "repository:F8",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "tests/test_requests.py:L2484-L2497",
+            "source": "repository",
+            "source_digest": "a932e188000e026b9da004969347a3e9d23f43874bfc32c5ba2aef38fcc913e6"
+          }
+        ],
+        "id": "F8",
+        "statement": "The prepared-request invalid-URL test expects InvalidURL for wildcard hosts and for the Unicode hostname \"http://☃.net/\"; the reported \"http://.example.com\" input is not present in this parameter list."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "requires = [\n    'charset_normalizer~=2.0.0; python_version >= \"3\"',\n    'chardet>=3.0.2,<5; python_version < \"3\"',\n    'idna>=2.5,<3; python_version < \"3\"',\n    'idna>=2.5,<4; python_version >= \"3\"',\n    'urllib3>=1.21.1,<1.27',\n    'certifi>=2017.4.17'",
+            "excerpt_digest": "952ff38607ac8d4ffe7a49308508411406142e5489aecd18e8b1e6cc5e416aad",
+            "id": "repository:F9",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "setup.py:L43-L49",
+            "source": "repository",
+            "source_digest": "f8df953275dbe3ce3646dabd04d23814dc29ca2366636c4204c08d17394fbe71"
+          }
+        ],
+        "id": "F9",
+        "statement": "The package declares urllib3 versions from 1.21.1 through versions below 1.27 and idna versions from 2.5 through versions below 4 on Python 3."
+      },
+      {
+        "evidence": [
+          {
+            "cache_required": true,
+            "excerpt": "from urllib3.fields import RequestField\nfrom urllib3.filepost import encode_multipart_formdata\nfrom urllib3.util import parse_url\nfrom urllib3.exceptions import (\n    DecodeError, ReadTimeoutError, ProtocolError, LocationParseError)",
+            "excerpt_digest": "20473fc8bb206b13b9aa40b35e82711707d7b8a6f7a0ad8c7bb3b8841db22672",
+            "id": "repository:F10",
+            "knowledge_timing": "repository_discoverable",
+            "locator": "requests/models.py:L18-L22",
+            "source": "repository",
+            "source_digest": "c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888"
+          }
+        ],
+        "id": "F10",
+        "statement": "requests.models imports parse_url and LocationParseError directly from urllib3 rather than defining their parsing behavior in this repository."
+      }
+    ],
+    "metadata": {
+      "context_mode": "repository",
+      "partition": "validation",
+      "repository_family": "psf/requests"
+    },
+    "discovery": {
+      "scope_summary": "Inspected only the supplied repository at base commit 39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e. Existing URL preparation validates missing hosts, non-ASCII IDNA failures, and wildcard-prefixed ASCII hosts, but does not validate an ASCII hostname beginning with a dot.",
+      "facts": [
+        {
+          "id": "F1",
+          "statement": "PreparedRequest.prepare_url parses HTTP URLs and converts urllib3 LocationParseError failures into requests.exceptions.InvalidURL.",
+          "path": "requests/models.py",
+          "line_start": 382,
+          "line_end": 386
+        },
+        {
+          "id": "F2",
+          "statement": "After parsing, prepare_url raises InvalidURL when the URL has no host.",
+          "path": "requests/models.py",
+          "line_start": 388,
+          "line_end": 395
+        },
+        {
+          "id": "F3",
+          "statement": "The IDNA helper encodes a host with idna.encode(..., uts46=True) and translates idna.IDNAError into UnicodeError.",
+          "path": "requests/models.py",
+          "line_start": 350,
+          "line_end": 358
+        },
+        {
+          "id": "F4",
+          "statement": "prepare_url invokes the IDNA helper only for non-ASCII hosts; a UnicodeError from that helper is converted to InvalidURL with the message 'URL has an invalid label.'",
+          "path": "requests/models.py",
+          "line_start": 397,
+          "line_end": 405
+        },
+        {
+          "id": "F5",
+          "statement": "For ASCII hosts, the only explicit label-related rejection in this branch is a hostname beginning with '*'; there is no corresponding leading-dot check.",
+          "path": "requests/models.py",
+          "line_start": 399,
+          "line_end": 407
+        },
+        {
+          "id": "F6",
+          "statement": "After hostname checks, prepare_url reconstructs the network location directly from auth, host, and optional port.",
+          "path": "requests/models.py",
+          "line_start": 409,
+          "line_end": 415
+        },
+        {
+          "id": "F7",
+          "statement": "The reconstructed URL is requoted and assigned to the prepared request without another hostname-label validation step in prepare_url.",
+          "path": "requests/models.py",
+          "line_start": 433,
+          "line_end": 444
+        },
+        {
+          "id": "F8",
+          "statement": "InvalidURL is a Requests exception and also a ValueError subclass.",
+          "path": "requests/exceptions.py",
+          "line_start": 90,
+          "line_end": 91
+        },
+        {
+          "id": "F9",
+          "statement": "The general invalid-URL test covers a URL with no host ('http://') but does not include a leading-dot hostname.",
+          "path": "tests/test_requests.py",
+          "line_start": 77,
+          "line_end": 87
+        },
+        {
+          "id": "F10",
+          "statement": "The bad-URL preparation test expects InvalidURL for wildcard-prefixed hosts and one non-ASCII hostname, but contains no leading-dot hostname case.",
+          "path": "tests/test_requests.py",
+          "line_start": 2484,
+          "line_end": 2497
+        },
+        {
+          "id": "F11",
+          "statement": "At adapter connection setup, LocationValueError is translated into InvalidURL associated with the request.",
+          "path": "requests/adapters.py",
+          "line_start": 412,
+          "line_end": 415
+        }
+      ],
+      "unknowns": [
+        "The repository contains no cited test establishing the behavior of 'http://.example.com' at this base commit.",
+        "The exact downstream standard-library or dependency call that emits the reported UnicodeError is not identified by the repository-local code inspected."
+      ]
+    }
+  },
+  "exit_code": 0,
+  "stdout": "{\"accepted_fact_ids\":[\"F1\",\"F2\",\"F3\",\"F4\",\"F5\",\"F6\",\"F7\",\"F8\",\"F9\",\"F10\",\"F11\"],\"rejected\":[],\"summary\":\"All 11 facts are directly supported by the cited repository files and line ranges.\"}\n",
+  "stderr": "OpenAI Codex v0.144.6\n--------\nworkdir: /var/folders/mq/dl2q5jl13jqgnlvgydfb0_hm0000gn/T/swebench-evidence-auditor-dm7trpim\nmodel: gpt-5.6-sol\nprovider: openai\napproval: never\nsandbox: read-only\nreasoning effort: none\nreasoning summaries: none\nsession id: 019f7c2b-7293-7ca0-971b-c1ddbb5b5a81\n--------\nuser\nIndependently re-open every cited file and disposition every fact. Accept only direct support; never create product requirements. The complete fact-ID set is [\"F1\", \"F2\", \"F3\", \"F4\", \"F5\", \"F6\", \"F7\", \"F8\", \"F9\", \"F10\", \"F11\"]. Return each of these IDs exactly once across accepted_fact_ids and rejected, and never return an ID outside this set.\nReturn only the JSON required by the supplied schema.\nINPUT:\n{\"alias\": \"psf__requests-5414\", \"discovery\": {\"facts\": [{\"id\": \"F1\", \"line_end\": 386, \"line_start\": 382, \"path\": \"requests/models.py\", \"statement\": \"PreparedRequest.prepare_url parses HTTP URLs and converts urllib3 LocationParseError failures into requests.exceptions.InvalidURL.\"}, {\"id\": \"F2\", \"line_end\": 395, \"line_start\": 388, \"path\": \"requests/models.py\", \"statement\": \"After parsing, prepare_url raises InvalidURL when the URL has no host.\"}, {\"id\": \"F3\", \"line_end\": 358, \"line_start\": 350, \"path\": \"requests/models.py\", \"statement\": \"The IDNA helper encodes a host with idna.encode(..., uts46=True) and translates idna.IDNAError into UnicodeError.\"}, {\"id\": \"F4\", \"line_end\": 405, \"line_start\": 397, \"path\": \"requests/models.py\", \"statement\": \"prepare_url invokes the IDNA helper only for non-ASCII hosts; a UnicodeError from that helper is converted to InvalidURL with the message 'URL has an invalid label.'\"}, {\"id\": \"F5\", \"line_end\": 407, \"line_start\": 399, \"path\": \"requests/models.py\", \"statement\": \"For ASCII hosts, the only explicit label-related rejection in this branch is a hostname beginning with '*'; there is no corresponding leading-dot check.\"}, {\"id\": \"F6\", \"line_end\": 415, \"line_start\": 409, \"path\": \"requests/models.py\", \"statement\": \"After hostname checks, prepare_url reconstructs the network location directly from auth, host, and optional port.\"}, {\"id\": \"F7\", \"line_end\": 444, \"line_start\": 433, \"path\": \"requests/models.py\", \"statement\": \"The reconstructed URL is requoted and assigned to the prepared request without another hostname-label validation step in prepare_url.\"}, {\"id\": \"F8\", \"line_end\": 91, \"line_start\": 90, \"path\": \"requests/exceptions.py\", \"statement\": \"InvalidURL is a Requests exception and also a ValueError subclass.\"}, {\"id\": \"F9\", \"line_end\": 87, \"line_start\": 77, \"path\": \"tests/test_requests.py\", \"statement\": \"The general invalid-URL test covers a URL with no host ('http://') but does not include a leading-dot hostname.\"}, {\"id\": \"F10\", \"line_end\": 2497, \"line_start\": 2484, \"path\": \"tests/test_requests.py\", \"statement\": \"The bad-URL preparation test expects InvalidURL for wildcard-prefixed hosts and one non-ASCII hostname, but contains no leading-dot hostname case.\"}, {\"id\": \"F11\", \"line_end\": 415, \"line_start\": 412, \"path\": \"requests/adapters.py\", \"statement\": \"At adapter connection setup, LocationValueError is translated into InvalidURL associated with the request.\"}], \"scope_summary\": \"Inspected only the supplied repository at base commit 39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e. Existing URL preparation validates missing hosts, non-ASCII IDNA failures, and wildcard-prefixed ASCII hosts, but does not validate an ASCII hostname beginning with a dot.\", \"unknowns\": [\"The repository contains no cited test establishing the behavior of 'http://.example.com' at this base commit.\", \"The exact downstream standard-library or dependency call that emits the reported UnicodeError is not identified by the repository-local code inspected.\"]}, \"metadata\": {\"context_mode\": \"repository\", \"partition\": \"validation\", \"repository_family\": \"psf/requests\"}, \"public_request\": \"Getting http://.example.com raises UnicodeError\\nAttempting to get e.g. `http://.example.com` results in a `UnicodeError`. It seems like the intention so far has been to raise `InvalidUrl` instead (see e.g. [this line](https://github.com/psf/requests/blob/ca6f9af5dba09591007b15a7368bc0f006b7cc50/requests/models.py#L401)).\\r\\n\\r\\nI see there was some hesitation in fixing a similar issue (#4168) and would like to add that even catching the error just to rethrow as a requests exception would be beneficial.\\r\\n\\r\\n## Expected Result\\r\\n\\r\\nBased on PR #774: `InvalidUrl: URL has an invalid label.`\\r\\n\\r\\n## Actual Result\\r\\n\\r\\n`UnicodeError: encoding with 'idna' codec failed (UnicodeError: label empty or too long)`\\r\\n\\r\\n## Reproduction Steps\\r\\n\\r\\n```python3\\r\\nimport requests\\r\\nrequests.get(\\\"http://.example.com\\\")\\r\\n```\\r\\n\\r\\n## System Information\\r\\n\\r\\n    $ python -m requests.help\\r\\n\\r\\n```\\r\\n{\\r\\n  \\\"chardet\\\": {\\r\\n    \\\"version\\\": \\\"3.0.4\\\"\\r\\n  },\\r\\n  \\\"cryptography\\\": {\\r\\n    \\\"version\\\": \\\"2.8\\\"\\r\\n  },\\r\\n  \\\"idna\\\": {\\r\\n    \\\"version\\\": \\\"2.8\\\"\\r\\n  },\\r\\n  \\\"implementation\\\": {\\r\\n    \\\"name\\\": \\\"CPython\\\",\\r\\n    \\\"version\\\": \\\"3.8.0\\\"\\r\\n  },\\r\\n  \\\"platform\\\": {\\r\\n    \\\"release\\\": \\\"5.3.0-40-generic\\\",\\r\\n    \\\"system\\\": \\\"Linux\\\"\\r\\n  },\\r\\n  \\\"pyOpenSSL\\\": {\\r\\n    \\\"openssl_version\\\": \\\"1010104f\\\",\\r\\n    \\\"version\\\": \\\"19.1.0\\\"\\r\\n  },\\r\\n  \\\"requests\\\": {\\r\\n    \\\"version\\\": \\\"2.23.0\\\"\\r\\n  },\\r\\n  \\\"system_ssl\\\": {\\r\\n    \\\"version\\\": \\\"1010103f\\\"\\r\\n  },\\r\\n  \\\"urllib3\\\": {\\r\\n    \\\"version\\\": \\\"1.25.8\\\"\\r\\n  },\\r\\n  \\\"using_pyopenssl\\\": true\\r\\n}\\r\\n```\\n\", \"repository_facts\": [{\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    def prepare(self,\\n            method=None, url=None, headers=None, files=None, data=None,\\n            params=None, auth=None, cookies=None, hooks=None, json=None):\\n        \\\"\\\"\\\"Prepares the entire request with the given parameters.\\\"\\\"\\\"\\n\\n        self.prepare_method(method)\\n        self.prepare_url(url, params)\\n        self.prepare_headers(headers)\\n        self.prepare_cookies(cookies)\\n        self.prepare_body(data, files, json)\\n        self.prepare_auth(auth, url)\", \"excerpt_digest\": \"cbf35b7c37ddaa89b4ce3b71fe2e49a24a509af64ae412096b4cc7d5afc2be55\", \"id\": \"repository:F1\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L312-L322\", \"source\": \"repository\", \"source_digest\": \"c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888\"}], \"id\": \"F1\", \"statement\": \"PreparedRequest.prepare invokes prepare_url before preparing headers, cookies, body, or authentication.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        # Support for unicode domain names and paths.\\n        try:\\n            scheme, auth, host, port, path, query, fragment = parse_url(url)\\n        except LocationParseError as e:\\n            raise InvalidURL(*e.args)\", \"excerpt_digest\": \"f3d22eaff5a4f010ef3b48e8a45bef6f7fc1a884a4e82e4820061c2dd9101bc7\", \"id\": \"repository:F2\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L382-L386\", \"source\": \"repository\", \"source_digest\": \"c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888\"}], \"id\": \"F2\", \"statement\": \"prepare_url parses the URL with urllib3.util.parse_url and converts only LocationParseError from that call into InvalidURL.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        if not scheme:\\n            error = (\\\"Invalid URL {0!r}: No schema supplied. Perhaps you meant http://{0}?\\\")\\n            error = error.format(to_native_string(url, 'utf8'))\\n\\n            raise MissingSchema(error)\\n\\n        if not host:\\n            raise InvalidURL(\\\"Invalid URL %r: No host supplied\\\" % url)\", \"excerpt_digest\": \"ace562c337e391ebb672f1559bbc0f0d9184ed34b7013291c80583917c492ad6\", \"id\": \"repository:F3\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L388-L395\", \"source\": \"repository\", \"source_digest\": \"c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888\"}], \"id\": \"F3\", \"statement\": \"After parsing, prepare_url raises MissingSchema when the scheme is absent and InvalidURL when the parsed host is absent.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"        # In general, we want to try IDNA encoding the hostname if the string contains\\n        # non-ASCII characters. This allows users to automatically get the correct IDNA\\n        # behaviour. For strings containing only ASCII characters, we need to also verify\\n        # it doesn't start with a wildcard (*), before allowing the unencoded hostname.\\n        if not unicode_is_ascii(host):\\n            try:\\n                host = self._get_idna_encoded_host(host)\\n            except UnicodeError:\\n                raise InvalidURL('URL has an invalid label.')\\n        elif host.startswith(u'*'):\\n            raise InvalidURL('URL has an invalid label.')\", \"excerpt_digest\": \"3f839effe507cc0a9c6a55d6d73c7b3dc6a1eada39f9a31489135de180159852\", \"id\": \"repository:F4\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L397-L407\", \"source\": \"repository\", \"source_digest\": \"c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888\"}], \"id\": \"F4\", \"statement\": \"For a non-ASCII host, prepare_url calls _get_idna_encoded_host and converts UnicodeError into InvalidURL with the message \\\"URL has an invalid label.\\\" For an ASCII host, the shown validation only rejects a host beginning with '*'.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    @staticmethod\\n    def _get_idna_encoded_host(host):\\n        import idna\\n\\n        try:\\n            host = idna.encode(host, uts46=True).decode('utf-8')\\n        except idna.IDNAError:\\n            raise UnicodeError\\n        return host\", \"excerpt_digest\": \"d06ceab5bb6254429d619803f28bb0a081674c96138e208239512b11478f3c22\", \"id\": \"repository:F5\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L350-L358\", \"source\": \"repository\", \"source_digest\": \"c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888\"}], \"id\": \"F5\", \"statement\": \"_get_idna_encoded_host uses idna.encode with uts46=True and translates idna.IDNAError into UnicodeError.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"class MissingSchema(RequestException, ValueError):\\n    \\\"\\\"\\\"The URL schema (e.g. http or https) is missing.\\\"\\\"\\\"\\n\\n\\nclass InvalidSchema(RequestException, ValueError):\\n    \\\"\\\"\\\"See defaults.py for valid schemas.\\\"\\\"\\\"\\n\\n\\nclass InvalidURL(RequestException, ValueError):\\n    \\\"\\\"\\\"The URL provided was somehow invalid.\\\"\\\"\\\"\", \"excerpt_digest\": \"ac9d81316216d3f9eb5b4007821752b247889670e21e5b54fe49bd938689d36b\", \"id\": \"repository:F6\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/exceptions.py:L82-L91\", \"source\": \"repository\", \"source_digest\": \"d374f4f497332c86d5803a517842bc355e99073d9d9d9c4af23ae15a7ddb7211\"}], \"id\": \"F6\", \"statement\": \"InvalidURL is a Requests RequestException and ValueError subclass whose documented meaning is that the supplied URL was invalid.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    @pytest.mark.parametrize(\\n        'exception, url', (\\n            (MissingSchema, 'hiwpefhipowhefopw'),\\n            (InvalidSchema, 'localhost:3128'),\\n            (InvalidSchema, 'localhost.localdomain:3128/'),\\n            (InvalidSchema, '10.122.1.1:3128/'),\\n            (InvalidURL, 'http://'),\\n        ))\\n    def test_invalid_url(self, exception, url):\\n        with pytest.raises(exception):\\n            requests.get(url)\", \"excerpt_digest\": \"b3d85c39c0a92a00ebb6997996657bd2dcf9158a91c26c4ef9af58b7f48cf3a8\", \"id\": \"repository:F7\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_requests.py:L77-L87\", \"source\": \"repository\", \"source_digest\": \"a932e188000e026b9da004969347a3e9d23f43874bfc32c5ba2aef38fcc913e6\"}], \"id\": \"F7\", \"statement\": \"The general invalid-URL test expects InvalidURL for \\\"http://\\\", alongside MissingSchema and InvalidSchema cases.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"    @pytest.mark.parametrize(\\n        'url',\\n        (\\n            b\\\"http://*.google.com\\\",\\n            b\\\"http://*\\\",\\n            u\\\"http://*.google.com\\\",\\n            u\\\"http://*\\\",\\n            u\\\"http://☃.net/\\\"\\n        )\\n    )\\n    def test_preparing_bad_url(self, url):\\n        r = requests.Request('GET', url=url)\\n        with pytest.raises(requests.exceptions.InvalidURL):\\n            r.prepare()\", \"excerpt_digest\": \"4018653375c4bf75910a804399a832cef3f82e69cd6894f5d7583befa15286df\", \"id\": \"repository:F8\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"tests/test_requests.py:L2484-L2497\", \"source\": \"repository\", \"source_digest\": \"a932e188000e026b9da004969347a3e9d23f43874bfc32c5ba2aef38fcc913e6\"}], \"id\": \"F8\", \"statement\": \"The prepared-request invalid-URL test expects InvalidURL for wildcard hosts and for the Unicode hostname \\\"http://☃.net/\\\"; the reported \\\"http://.example.com\\\" input is not present in this parameter list.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"requires = [\\n    'charset_normalizer~=2.0.0; python_version >= \\\"3\\\"',\\n    'chardet>=3.0.2,<5; python_version < \\\"3\\\"',\\n    'idna>=2.5,<3; python_version < \\\"3\\\"',\\n    'idna>=2.5,<4; python_version >= \\\"3\\\"',\\n    'urllib3>=1.21.1,<1.27',\\n    'certifi>=2017.4.17'\", \"excerpt_digest\": \"952ff38607ac8d4ffe7a49308508411406142e5489aecd18e8b1e6cc5e416aad\", \"id\": \"repository:F9\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"setup.py:L43-L49\", \"source\": \"repository\", \"source_digest\": \"f8df953275dbe3ce3646dabd04d23814dc29ca2366636c4204c08d17394fbe71\"}], \"id\": \"F9\", \"statement\": \"The package declares urllib3 versions from 1.21.1 through versions below 1.27 and idna versions from 2.5 through versions below 4 on Python 3.\"}, {\"evidence\": [{\"cache_required\": true, \"excerpt\": \"from urllib3.fields import RequestField\\nfrom urllib3.filepost import encode_multipart_formdata\\nfrom urllib3.util import parse_url\\nfrom urllib3.exceptions import (\\n    DecodeError, ReadTimeoutError, ProtocolError, LocationParseError)\", \"excerpt_digest\": \"20473fc8bb206b13b9aa40b35e82711707d7b8a6f7a0ad8c7bb3b8841db22672\", \"id\": \"repository:F10\", \"knowledge_timing\": \"repository_discoverable\", \"locator\": \"requests/models.py:L18-L22\", \"source\": \"repository\", \"source_digest\": \"c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888\"}], \"id\": \"F10\", \"statement\": \"requests.models imports parse_url and LocationParseError directly from urllib3 rather than defining their parsing behavior in this repository.\"}], \"upstream\": {\"base_commit\": \"39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e\", \"dataset\": \"princeton-nlp/SWE-bench_Verified\", \"instance_id_digest\": \"ab37cb5123421073835bec54f98fab233373fb0a333813a33432d7ec6fd4bcb1\", \"issue_cache_key\": \"sha256:08faa0ea47836476b5f4b3709c06a00569996ccc654011299f9c8587cd7007ba\", \"issue_digest\": \"08faa0ea47836476b5f4b3709c06a00569996ccc654011299f9c8587cd7007ba\", \"revision\": \"c104f840cc67f8b6eec6f759ebc8b2693d585d4a\", \"source_url\": \"https://github.com/psf/requests/pull/5414\"}}\ncodex\n{\"accepted_fact_ids\":[],\"rejected\":[],\"summary\":\"I’m reopening the cited repository files at the specified lines and will disposition all 11 facts strictly from direct support.\"}\nexec\n/bin/zsh -lc \"sed -n '340,450p' requests/models.py; sed -n '75,100p' requests/exceptions.py; sed -n '65,100p' tests/test_requests.py; sed -n '2475,2505p' tests/test_requests.py; sed -n '400,425p' requests/adapters.py\" in /Users/jpark/gitrepos/harnesses/requirements-interview-evolution/experiments/v1-contract-priority-rotated-validation-20260720/repositories/psf__requests-5414\n succeeded in 0ms:\n        p.hooks = self.hooks\n        p._body_position = self._body_position\n        return p\n\n    def prepare_method(self, method):\n        \"\"\"Prepares the given HTTP method.\"\"\"\n        self.method = method\n        if self.method is not None:\n            self.method = to_native_string(self.method.upper())\n\n    @staticmethod\n    def _get_idna_encoded_host(host):\n        import idna\n\n        try:\n            host = idna.encode(host, uts46=True).decode('utf-8')\n        except idna.IDNAError:\n            raise UnicodeError\n        return host\n\n    def prepare_url(self, url, params):\n        \"\"\"Prepares the given HTTP URL.\"\"\"\n        #: Accept objects that have string representations.\n        #: We're unable to blindly call unicode/str functions\n        #: as this will include the bytestring indicator (b'')\n        #: on python 3.x.\n        #: https://github.com/psf/requests/pull/2238\n        if isinstance(url, bytes):\n            url = url.decode('utf8')\n        else:\n            url = unicode(url) if is_py2 else str(url)\n\n        # Remove leading whitespaces from url\n        url = url.lstrip()\n\n        # Don't do any URL preparation for non-HTTP schemes like `mailto`,\n        # `data` etc to work around exceptions from `url_parse`, which\n        # handles RFC 3986 only.\n        if ':' in url and not url.lower().startswith('http'):\n            self.url = url\n            return\n\n        # Support for unicode domain names and paths.\n        try:\n            scheme, auth, host, port, path, query, fragment = parse_url(url)\n        except LocationParseError as e:\n            raise InvalidURL(*e.args)\n\n        if not scheme:\n            error = (\"Invalid URL {0!r}: No schema supplied. Perhaps you meant http://{0}?\")\n            error = error.format(to_native_string(url, 'utf8'))\n\n            raise MissingSchema(error)\n\n        if not host:\n            raise InvalidURL(\"Invalid URL %r: No host supplied\" % url)\n\n        # In general, we want to try IDNA encoding the hostname if the string contains\n        # non-ASCII characters. This allows users to automatically get the correct IDNA\n        # behaviour. For strings containing only ASCII characters, we need to also verify\n        # it doesn't start with a wildcard (*), before allowing the unencoded hostname.\n        if not unicode_is_ascii(host):\n            try:\n                host = self._get_idna_encoded_host(host)\n            except UnicodeError:\n                raise InvalidURL('URL has an invalid label.')\n        elif host.startswith(u'*'):\n            raise InvalidURL('URL has an invalid label.')\n\n        # Carefully reconstruct the network location\n        netloc = auth or ''\n        if netloc:\n            netloc += '@'\n        netloc += host\n        if port:\n            netloc += ':' + str(port)\n\n        # Bare domains aren't valid URLs.\n        if not path:\n            path = '/'\n\n        if is_py2:\n            if isinstance(scheme, str):\n                scheme = scheme.encode('utf-8')\n            if isinstance(netloc, str):\n                netloc = netloc.encode('utf-8')\n            if isinstance(path, str):\n                path = path.encode('utf-8')\n            if isinstance(query, str):\n                query = query.encode('utf-8')\n            if isinstance(fragment, str):\n                fragment = fragment.encode('utf-8')\n\n        if isinstance(params, (str, bytes)):\n            params = to_native_string(params)\n\n        enc_params = self._encode_params(params)\n        if enc_params:\n            if query:\n                query = '%s&%s' % (query, enc_params)\n            else:\n                query = enc_params\n\n        url = requote_uri(urlunparse([scheme, netloc, path, None, query, fragment]))\n        self.url = url\n\n    def prepare_headers(self, headers):\n        \"\"\"Prepares the given HTTP headers.\"\"\"\n\n        self.headers = CaseInsensitiveDict()\n        if headers:\n    \"\"\"A valid URL is required to make a request.\"\"\"\n\n\nclass TooManyRedirects(RequestException):\n    \"\"\"Too many redirects.\"\"\"\n\n\nclass MissingSchema(RequestException, ValueError):\n    \"\"\"The URL schema (e.g. http or https) is missing.\"\"\"\n\n\nclass InvalidSchema(RequestException, ValueError):\n    \"\"\"See defaults.py for valid schemas.\"\"\"\n\n\nclass InvalidURL(RequestException, ValueError):\n    \"\"\"The URL provided was somehow invalid.\"\"\"\n\n\nclass InvalidHeader(RequestException, ValueError):\n    \"\"\"The header value provided was somehow invalid.\"\"\"\n\n\nclass InvalidProxyURL(InvalidURL):\n    \"\"\"The proxy URL provided is invalid.\"\"\"\n\n\n        requests.session\n        requests.session().get\n        requests.session().head\n        requests.get\n        requests.head\n        requests.put\n        requests.patch\n        requests.post\n        # Not really an entry point, but people rely on it.\n        from requests.packages.urllib3.poolmanager import PoolManager\n\n    @pytest.mark.parametrize(\n        'exception, url', (\n            (MissingSchema, 'hiwpefhipowhefopw'),\n            (InvalidSchema, 'localhost:3128'),\n            (InvalidSchema, 'localhost.localdomain:3128/'),\n            (InvalidSchema, '10.122.1.1:3128/'),\n            (InvalidURL, 'http://'),\n        ))\n    def test_invalid_url(self, exception, url):\n        with pytest.raises(exception):\n            requests.get(url)\n\n    def test_basic_building(self):\n        req = requests.Request()\n        req.url = 'http://kennethreitz.org/'\n        req.data = {'life': '42'}\n\n        pr = req.prepare()\n        assert pr.url == req.url\n        assert pr.body == 'life=42'\n\n    @pytest.mark.parametrize('method', ('GET', 'HEAD'))\n    def test_no_content_length(self, httpbin, method):\n        req = requests.Request(method, httpbin(method.lower())).prepare()\n            # percent-encoded bytes before comparisons\n            for c in re.findall(r'%[a-fA-F0-9]{2}', x):\n                x = x.replace(c, c.upper())\n            return x\n        \n        r = requests.Request('GET', url=url)\n        p = r.prepare()\n        assert normalize_percent_encode(p.url) == expected\n\n    @pytest.mark.parametrize(\n        'url',\n        (\n            b\"http://*.google.com\",\n            b\"http://*\",\n            u\"http://*.google.com\",\n            u\"http://*\",\n            u\"http://☃.net/\"\n        )\n    )\n    def test_preparing_bad_url(self, url):\n        r = requests.Request('GET', url=url)\n        with pytest.raises(requests.exceptions.InvalidURL):\n            r.prepare()\n\n    @pytest.mark.parametrize(\n        'url, exception',\n        (\n            ('http://localhost:-1', InvalidURL),\n        )\n    )\n    def test_redirecting_to_bad_url(self, httpbin, url, exception):\n        :param timeout: (optional) How long to wait for the server to send\n            data before giving up, as a float, or a :ref:`(connect timeout,\n            read timeout) <timeouts>` tuple.\n        :type timeout: float or tuple or urllib3 Timeout object\n        :param verify: (optional) Either a boolean, in which case it controls whether\n            we verify the server's TLS certificate, or a string, in which case it\n            must be a path to a CA bundle to use\n        :param cert: (optional) Any user-provided SSL certificate to be trusted.\n        :param proxies: (optional) The proxies dictionary to apply to the request.\n        :rtype: requests.Response\n        \"\"\"\n\n        try:\n            conn = self.get_connection(request.url, proxies)\n        except LocationValueError as e:\n            raise InvalidURL(e, request=request)\n\n        self.cert_verify(conn, request.url, verify, cert)\n        url = self.request_url(request, proxies)\n        self.add_headers(request, stream=stream, timeout=timeout, verify=verify, cert=cert, proxies=proxies)\n\n        chunked = not (request.body is None or 'Content-Length' in request.headers)\n\n        if isinstance(timeout, tuple):\n            try:\n                connect, read = timeout\n\ncodex\n{\"accepted_fact_ids\":[\"F1\",\"F2\",\"F3\",\"F4\",\"F5\",\"F6\",\"F7\",\"F8\",\"F9\",\"F10\",\"F11\"],\"rejected\":[],\"summary\":\"All 11 facts are directly supported by the cited repository files and line ranges.\"}\ntokens used\n28,759\n"
+}

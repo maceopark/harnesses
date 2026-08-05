@@ -1,0 +1,130 @@
+diff --git a/sphinx/pycode/parser.py b/sphinx/pycode/parser.py
+index a00b481..38cba6e 100644
+--- a/sphinx/pycode/parser.py
++++ b/sphinx/pycode/parser.py
+@@ -401,7 +401,7 @@ class VariableCommentPicker(ast.NodeVisitor):
+     def visit_Expr(self, node: ast.Expr) -> None:
+         """Handles Expr node and pick up a comment if string."""
+         if (isinstance(self.previous, (ast.Assign, ast.AnnAssign)) and
+-                isinstance(node.value, ast.Str)):
++                isinstance(getattr(node.value, 's', None), (str, bytes))):
+             try:
+                 targets = get_assign_targets(self.previous)
+                 varnames = get_lvar_names(targets[0], self.get_self())
+diff --git a/tests/roots/test-ext-autodoc/target/genericalias.py b/tests/roots/test-ext-autodoc/target/genericalias.py
+index 9909efc..54dc3e2 100644
+--- a/tests/roots/test-ext-autodoc/target/genericalias.py
++++ b/tests/roots/test-ext-autodoc/target/genericalias.py
+@@ -1,10 +1,36 @@
+-from typing import Callable, List
++from pathlib import Path
++from typing import Any, Callable, Dict, List, Union
+ 
+ #: A list of int
+ T = List[int]
+ 
+ C = Callable[[int], None]  # a generic alias not having a doccomment
+ 
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary with PyScaffold's options, see ``pyscaffold.api.create_project``.
++Should be treated as immutable (if required, copy before changing).
++
++Please notice some behaviours given by the options **SHOULD** be observed.
++"""
++
++FileContents = Union[str, None]
++"""When the file content is ``None``, the file should not be written to
++disk (empty files are represented by an empty string ``""`` as content).
++"""
++
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of functions considered file operations::
++
++    Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++
++- **path** (:obj:`pathlib.Path`): file path potentially to be written to/changed
++  in the disk.
++- **contents** (:obj:`FileContents`): usually a string representing content.
++- **opts** (:obj:`ScaffoldOpts`): a dict with PyScaffold's options.
++
++If no file was touched, :obj:`None` should be returned.
++"""
++
+ 
+ class Class:
+     #: A list of int
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..a8f5b72 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -101,6 +101,43 @@ def test_autodata_GenericAlias(app):
+         ]
+ 
+ 
++@pytest.mark.parametrize(('name', 'documentation'), [
++    ('ScaffoldOpts', [
++        "Dictionary with PyScaffold's options, see ``pyscaffold.api.create_project``.",
++        'Should be treated as immutable (if required, copy before changing).',
++        '',
++        'Please notice some behaviours given by the options **SHOULD** be observed.',
++    ]),
++    ('FileContents', [
++        'When the file content is ``None``, the file should not be written to',
++        'disk (empty files are represented by an empty string ``""`` as content).',
++    ]),
++    ('FileOp', [
++        'Signature of functions considered file operations::',
++        '',
++        '    Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]',
++        '',
++        '- **path** (:obj:`pathlib.Path`): file path potentially to be written to/changed',
++        '  in the disk.',
++        '- **contents** (:obj:`FileContents`): usually a string representing content.',
++        '- **opts** (:obj:`ScaffoldOpts`): a dict with PyScaffold\'s options.',
++        '',
++        'If no file was touched, :obj:`None` should be returned.',
++    ]),
++])
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodata_generic_alias_multiline_docstring(app, name, documentation):
++    actual = list(do_autodoc(app, 'data', 'target.genericalias.' + name))
++    start = actual.index('   ' + documentation[0])
++    documented = [('   ' + line if line else '') for line in documentation]
++    assert actual[start:start + len(documented)] == documented
++
++    aliases = [line for line in actual if line.startswith('   alias of ')]
++    if sys.version_info < (3, 7):
++        assert aliases == []
++    else:
++        assert len(aliases) == 1
++        assert actual.index(aliases[0]) > start + len(documented) - 1
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_NewType(app):
+     actual = do_autodoc(app, 'data', 'target.typevar.T6')
+diff --git a/tests/test_pycode_parser.py b/tests/test_pycode_parser.py
+index e909917..0f4b96d 100644
+--- a/tests/test_pycode_parser.py
++++ b/tests/test_pycode_parser.py
+@@ -307,6 +307,22 @@ def test_comment_picker_multiline_string():
+                                ('Foo', 'b'): 'docstring\nstarts with::\n\n    empty line'}
+ 
+ 
++def test_comment_picker_multiline_type_alias_strings():
++    source = ('from typing import Any, Callable, Dict, Union\n'
++              'ScaffoldOpts = Dict[str, Any]\n'
++              '"""First line.\nSecond line.\n"""\n'
++              'FileContents = Union[str, None]\n'
++              '"""Third line.\nFourth line.\n"""\n'
++              'FileOp = Callable[[str, FileContents, ScaffoldOpts], '
++              'Union[str, None]]\n'
++              '"""Fifth line.\nSixth line.\n"""\n')
++    parser = Parser(source)
++    parser.parse()
++    assert parser.comments == {('', 'ScaffoldOpts'): 'First line.\nSecond line.',
++                               ('', 'FileContents'): 'Third line.\nFourth line.',
++                               ('', 'FileOp'): 'Fifth line.\nSixth line.'}
++
++
+ def test_decorators():
+     source = ('@deco\n'
+               'def func1(): pass\n'

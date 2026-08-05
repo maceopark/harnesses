@@ -1,0 +1,19 @@
+{
+  "compatibility_regressions": [
+    "Suppressing `Package` collector creation for unmatched initializers can change package-root bookkeeping and recursive collection behavior, exceeding the requested regression fix and conflicting with the claim that broader traversal semantics remain unchanged.",
+    "The sealed contract does not preserve the pre-existing package-initializer skip-marker behavior implicated by the 5.2.3 changelog; hindsight shows that behavior was removed by the audited fix, but this is diagnostic rather than an issue-time requirement."
+  ],
+  "implementation_ready": false,
+  "invented_requirements": [
+    "Recursively encountered unmatched `__init__.py` files must not create `Package` collectors. The issue requires preventing unintended import, while repository evidence and the audited implementation show that package discovery can remain intact through lazy object loading.",
+    "The contract treats initializer eligibility as the required implementation boundary even though the defect is eager mounting/import during `Package.collect`."
+  ],
+  "material_blockers": [
+    "Revise the central constraint from “must not create `Package` collectors” to “must not eagerly import unmatched package initializers during ordinary recursive collection.” Permit lazy-import implementations that retain package discovery and package-root bookkeeping.",
+    "Reconcile acceptance language with the actual compatibility boundary: matching `__init__.py` files must still have their tests collected, while package-level effects that depended on eager initializer import should not be promised without evidence."
+  ],
+  "owner_recall": 1,
+  "redundant_questions": [],
+  "repository_fidelity": 0.72,
+  "summary": "The interview captured the reporter’s core need and explicitly resolved direct-path behavior, but the sealed contract incorrectly prescribed eliminating `Package` collectors. The audited repository and gold fix locate the regression in eager object mounting during package collection; the compatible fix keeps package discovery and makes import lazy. Because the contract’s central constraint can cause broader collection regressions and contradicts its own scope boundary, it is not implementation-ready despite complete owner approval and strong recall of the public request."
+}

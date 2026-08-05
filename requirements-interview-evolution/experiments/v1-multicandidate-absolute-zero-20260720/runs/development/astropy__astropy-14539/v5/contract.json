@@ -1,0 +1,24 @@
+{
+  "acceptance_checks": [
+    "A FITS file containing a QD VLA column with rows equivalent to [[0], [0, 0]] compares identical to itself through FITSDiff.",
+    "A Q-format VLA column is compared row by row using numpy.allclose with the configured rtol and atol, matching P-format semantics.",
+    "A genuine difference in a Q-format VLA row makes the diff non-identical and is retained in the existing row-level difference data/reporting path.",
+    "Existing P-format VLA diff tests continue to pass without changed semantics.",
+    "Existing non-VLA TableDataDiff and FITSDiff tests continue to pass.",
+    "No changes are required to FITS VLA serialization, heap loading, or descriptor handling."
+  ],
+  "confirmed_decisions": [
+    "Q-format VLAs must match the existing P-format row-by-row numpy.allclose behavior, including rtol and atol handling.",
+    "The regression scope must cover the reported file-to-itself QD case through FITSDiff.",
+    "The regression scope must also prove that genuine Q-format row differences remain detectable and reportable.",
+    "P-format VLA behavior must remain unchanged.",
+    "Non-VLA table comparison behavior must remain unchanged.",
+    "Existing difference-report formatting and propagation through TableDataDiff, HDUDiff, and FITSDiff must remain unchanged.",
+    "FITS VLA read/write behavior is outside the implementation scope and must remain unchanged.",
+    "The implementation may choose the smallest repository-consistent method for recognizing both P and Q VLA formats.",
+    "The owner explicitly approved this contract."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update TableDataDiff so Q-format variable-length-array columns use the same row-by-row numpy.allclose comparison and rtol/atol semantics as existing P-format VLA columns. Add regression coverage proving that FITSDiff considers a QD file compared with itself identical and that genuine Q-format row differences are still reported under those semantics. Preserve reporting behavior, P-format behavior, non-VLA comparisons, and FITS read/write behavior. Implementation may use the smallest repository-consistent mechanism to recognize both P and Q VLA formats. The bounded residual risk is the pre-existing numpy.allclose behavior for unsupported or incompatible VLA element shapes or types; this fix must not broaden that behavior."
+}

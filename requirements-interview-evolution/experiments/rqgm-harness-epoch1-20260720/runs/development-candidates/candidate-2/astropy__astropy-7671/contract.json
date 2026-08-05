@@ -1,0 +1,20 @@
+{
+  "acceptance_checks": [
+    "Calling `minversion` on a module whose version is `1.14.3` with required version `1.14dev` returns `True` and does not raise `TypeError`.",
+    "Both operands are parsed with `pkg_resources.parse_version`; `LooseVersion` is no longer imported or used by `minversion`.",
+    "With `inclusive=True`, equal parsed versions satisfy the requirement; with `inclusive=False`, equal parsed versions do not satisfy it.",
+    "The pre-existing `test_minversion` cases for installed version `0.12.2` still pass: `0.12`, `0.12.1`, and `0.12.0.dev` are accepted, while `1` and `1.2rc1` are rejected.",
+    "Existing behavior for imported modules, module-name strings, failed imports, invalid module argument types, and simple or dotted `version_path` values remains unchanged.",
+    "The targeted introspection test suite passes."
+  ],
+  "confirmed_decisions": [
+    "Use `pkg_resources.parse_version` for both installed and required version strings.",
+    "Remove `minversion`'s reliance on `distutils.version.LooseVersion`.",
+    "Fix the reported `1.14.3` versus `1.14dev` comparison so it returns `True` in inclusive mode instead of raising `TypeError`.",
+    "Preserve the existing `minversion` signature, exports, module resolution, version-path lookup, import-failure behavior, and inclusive/exclusive comparison semantics.",
+    "Extend `astropy/utils/tests/test_introspection.py` with the reported regression case and keep the existing cases passing."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Restore `pkg_resources.parse_version` as the version parser used by `astropy.utils.introspection.minversion`. Replace the `distutils.version.LooseVersion` import and construct parsed versions for both the installed module version and the required version before applying the existing comparison operator. Preserve all existing public API and control-flow behavior: module objects and module-name strings remain supported; failed string imports return `False`; invalid module argument types still raise `ValueError`; `version_path`, including dotted paths, is resolved as before; `inclusive=True` uses `>=`; and `inclusive=False` uses `>`. Add regression coverage proving that an installed version `1.14.3` satisfies a required version `1.14dev` without raising `TypeError`, while retaining the existing `minversion` expectations."
+}

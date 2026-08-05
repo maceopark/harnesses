@@ -1,0 +1,24 @@
+{
+  "acceptance_checks": [
+    "The targeted introspection test suite passes.",
+    "Every pre-existing `test_minversion` assertion retains its current result.",
+    "For a module whose installed version is `1.14.3`, public `astropy.utils.minversion(module, '1.14dev')` returns `True` without raising `TypeError`.",
+    "Both inclusive and exclusive branches use versions parsed by `pkg_resources.parse_version`.",
+    "Invalid or unsupported version input propagates the parser exception.",
+    "No behavior changes are introduced to module import handling, argument validation, or `version_path` lookup beyond version comparison semantics."
+  ],
+  "confirmed_decisions": [
+    "Use `pkg_resources.parse_version` as the version comparator.",
+    "Apply the replacement to both inclusive (`>=`) and exclusive (`>`) comparison branches.",
+    "Propagate `parse_version` errors without returning `False`, rewriting the version, or falling back to `LooseVersion`.",
+    "Preserve all outcomes currently asserted by `test_minversion`.",
+    "Preserve existing module-object and import-name handling, including `False` on import failure and `ValueError` for unsupported module argument types.",
+    "Preserve direct and dotted `version_path` resolution behavior.",
+    "Add regression coverage for installed `1.14.3` versus required `1.14dev`, exercising the public `astropy.utils.minversion` export.",
+    "Limit the required compatibility boundary to existing tests plus the reported regression case.",
+    "The owner explicitly approved this contract."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Replace both inclusive and exclusive `distutils.version.LooseVersion` comparisons in `astropy.utils.minversion` with `pkg_resources.parse_version`. Preserve module resolution, `version_path`, import-failure, and argument-validation behavior. Let parser exceptions propagate for malformed or unsupported versions. Preserve all existing `test_minversion` outcomes and add regression coverage showing that installed version `1.14.3` satisfies required version `1.14dev` through the public `astropy.utils.minversion` API. Compatibility beyond existing tests and parser-supported inputs is not guaranteed; untested legacy version syntax may compare differently."
+}

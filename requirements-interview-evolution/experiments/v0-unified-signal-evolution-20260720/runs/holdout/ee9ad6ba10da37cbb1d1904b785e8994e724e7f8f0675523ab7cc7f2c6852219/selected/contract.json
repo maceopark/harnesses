@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "With `sys.path = [\"something\", ...]`, calling `modify_sys_path()` leaves the complete list unchanged.",
+    "With an unrelated first entry and a leading or trailing empty PYTHONPATH component, calling `modify_sys_path()` still leaves the complete list unchanged.",
+    "With `sys.path = []`, calling `modify_sys_path()` completes without error and leaves the list empty.",
+    "With `sys.path[0]` equal to `\"\"`, `\".\"`, or the exact mocked `os.getcwd()` value, that first entry is removed.",
+    "A normalized or alternative spelling such as `\"./\"` is preserved unless it exactly equals one of the three recognized strings.",
+    "Existing tests for leading and trailing empty PYTHONPATH components continue to pass when the first entry is recognized.",
+    "The focused `modify_sys_path` tests and the relevant `python -m pylint` integration tests pass."
+  ],
+  "confirmed_decisions": [
+    "Recognize exactly three removable first-entry values: `\"\"`, `\".\"`, and the exact `os.getcwd()` string.",
+    "Do not normalize, resolve, or otherwise equate alternative path spellings with the current working directory.",
+    "When `sys.path[0]` is unrelated, leave the entire `sys.path` unchanged and skip all subsequent PYTHONPATH cleanup.",
+    "When `sys.path` is empty, return safely without raising `IndexError`.",
+    "When a recognized first entry is removed, retain the existing leading/trailing-PYTHONPATH cleanup semantics.",
+    "Limit the behavioral change to the `python -m pylint` path that invokes `modify_sys_path()`; the installed console-script behavior remains unchanged.",
+    "Extend `tests/test_self.py` using the existing sys.path/environment isolation helpers, covering unrelated first entries and an empty sys.path while retaining existing cases."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update `modify_sys_path()` so it removes the first entry only when that entry is exactly `\"\"`, `\".\"`, or the exact string returned by `os.getcwd()`. If `sys.path` is empty or its first entry is unrelated, return without changing any entries, including skipping the later PYTHONPATH-dependent cleanup. Preserve the existing cleanup behavior after a recognized first entry is removed."
+}

@@ -1,0 +1,80 @@
+[
+  {
+    "answer": "All Q VLAs",
+    "open_material_decisions": [
+      "Whether TableDataDiff must apply the existing P-format row-wise, tolerance-aware comparison semantics to all Q-format VLA columns, or only to the reported QD case."
+    ],
+    "question": {
+      "header": "Q VLA scope",
+      "options": [
+        {
+          "description": "Treat every Q-format VLA like its corresponding P-format VLA during FITSDiff comparison, preserving configured tolerances and adding regression coverage for identical Q data plus genuine Q differences.",
+          "label": "All Q VLAs",
+          "recommended": true
+        },
+        {
+          "description": "Fix only the reported QD floating-point VLA case and avoid requiring behavior changes or regression coverage for other Q subtypes.",
+          "label": "QD only",
+          "recommended": false
+        }
+      ],
+      "prompt": "What compatibility boundary should the implementation contract require for Q-format variable-length arrays?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Owner approval of the complete implementation contract."
+    ],
+    "question": {
+      "header": "Approve contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with the stated scope, tests, and compatibility boundary.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a material change to its behavior, scope, or acceptance checks.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: update TableDataDiff so every Q-format VLA uses the same row-wise, np.allclose-based, rtol/atol-aware comparison semantics already used for P-format VLAs; preserve existing behavior for non-VLA columns and P-format VLAs; add regression coverage proving identical Q-format VLA data (including the reported QD shape) produces an identical TableDataDiff/FITSDiff result and proving genuine Q-format VLA value differences remain non-identical and are reported at the differing row; run the targeted FITS diff tests. Implementation may choose the smallest repository-consistent P/Q format detection, but must not alter public APIs or dependencies. Residual risk: np.allclose behavior for Q integer and other non-floating VLA element types will match the already-established P-format semantics, as explicitly selected for all Q VLAs."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A TableDataDiff/FITSDiff comparison of identical Q-format VLA data is identical and records no spurious row differences.",
+          "The reported QD example with rows [0] and [0, 0], when written and compared to itself, yields FITSDiff.identical == True.",
+          "A genuine value difference in a Q-format VLA yields a non-identical result and is stored/reported at the differing row.",
+          "Configured rtol and atol are applied to Q-format VLA row comparisons in the same manner as P-format VLAs.",
+          "Existing P-format VLA and non-VLA diff behavior remains covered and passing.",
+          "Targeted astropy.io.fits diff tests pass."
+        ],
+        "confirmed_decisions": [
+          "The compatibility boundary covers all Q-format VLA element subtypes, not only QD.",
+          "Q-format VLAs must use row-wise np.allclose with the configured relative and absolute tolerances, matching existing P-format behavior.",
+          "Existing behavior for P-format VLAs and non-VLA columns must remain unchanged.",
+          "Regression coverage must include identical Q-format VLA data, including the reported QD shape, and a genuine Q-format VLA value difference reported at the correct row.",
+          "Implementation may choose the smallest repository-consistent P/Q format-detection mechanism.",
+          "No public API changes or new dependencies are permitted.",
+          "The owner approved the complete contract.",
+          "Residual risk is acknowledged: Q integer and other non-floating VLA types will adopt the already-established P-format np.allclose semantics."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update TableDataDiff so every Q-format variable-length array uses the same row-wise, np.allclose-based comparison semantics and configured rtol/atol tolerances already used for P-format VLAs. Preserve existing behavior for P-format VLAs and non-VLA columns. Add regression coverage showing that identical Q-format VLA data, including the reported QD case with unequal row lengths, is considered identical by TableDataDiff/FITSDiff, while genuine Q-format VLA value differences remain non-identical and are attributed to the differing row. Use the smallest repository-consistent P/Q VLA format detection; do not change public APIs or add dependencies. The explicitly accepted residual risk is that Q integer and other non-floating VLA element types inherit the existing P-format np.allclose semantics."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the complete contract, and no material decisions remain open."
+    },
+    "turn": 3
+  }
+]

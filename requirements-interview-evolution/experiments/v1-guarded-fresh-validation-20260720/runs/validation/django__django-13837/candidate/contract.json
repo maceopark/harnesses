@@ -1,0 +1,24 @@
+{
+  "acceptance_checks": [
+    "With a nonempty parent of `django`, get_child_arguments() returns sys.executable, existing warning options, `-m`, `django`, and sys.argv[1:].",
+    "With a nonempty parent naming a package other than Django, get_child_arguments() returns sys.executable, existing warning options, `-m`, that exact package parent, and sys.argv[1:].",
+    "With __main__.__spec__ missing or None, existing script and entry-point handling remains effective.",
+    "With an empty __main__.__spec__.parent, existing non-module handling remains effective.",
+    "The restart-level test verifies that reconstructed subprocess arguments contain `-m` and the detected spec parent.",
+    "Existing warning propagation, executable fallback, `-script.py` fallback, and missing-script error tests pass.",
+    "No module-detection path requires django.__main__.__file__.",
+    "restart_with_reloader() retains its existing subprocess execution and return-code loop behavior."
+  ],
+  "confirmed_decisions": [
+    "Any nonempty __main__.__spec__.parent is the exact module name used for the restarted `python -m <module>` command.",
+    "A missing __main__.__spec__ or empty spec parent is not treated as module execution and continues through existing non-module handling.",
+    "Module detection must no longer depend on django.__main__.__file__.",
+    "Existing warning-option propagation, script handling, Windows `.exe` and `-script.py` fallbacks, and missing-script errors remain compatible.",
+    "Tests must cover module reconstruction for both `django` and another package parent, missing and empty-spec non-module behavior, and restart-level module reconstruction.",
+    "Implementation may choose test fixtures and internal expression details, but may not introduce module exclusions or change subprocess-loop behavior.",
+    "Acknowledged residual risk: an unusual runtime exposing a nonempty spec parent for something other than a `-m` package launch will be handled as module execution according to Python's documented spec semantics."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update django.utils.autoreload.get_child_arguments() to inspect the running top-level __main__ module. When __main__.__spec__.parent is nonempty, reconstruct the child command as sys.executable, existing Python warning options, '-m', that exact parent, and sys.argv[1:]. When the spec is missing or its parent is empty, retain the existing script-path, Windows entry-point fallback, and missing-script behavior. Remove reliance on django.__main__.__file__ for module-execution detection. Do not alter restart_with_reloader() subprocess-loop behavior."
+}

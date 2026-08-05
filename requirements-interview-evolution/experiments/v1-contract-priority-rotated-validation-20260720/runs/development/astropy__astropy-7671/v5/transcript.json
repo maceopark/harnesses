@@ -1,0 +1,148 @@
+[
+  {
+    "answer": "pkg_resources parser",
+    "open_material_decisions": [
+      "Behavior for malformed or unsupported version strings",
+      "Compatibility boundary for existing accepted version strings",
+      "Owner approval of the final implementation contract",
+      "Version comparison policy and dependency constraint"
+    ],
+    "question": {
+      "header": "Comparator",
+      "options": [
+        {
+          "description": "Use pkg_resources.parse_version so 1.14.3 satisfies 1.14dev, while accepting the dependency already identified in the report.",
+          "label": "pkg_resources parser",
+          "recommended": true
+        },
+        {
+          "description": "Keep LooseVersion and locally normalize problematic dev/rc forms, minimizing dependency use but requiring Astropy-specific ordering rules.",
+          "label": "Local normalization",
+          "recommended": false
+        },
+        {
+          "description": "Allow the implementer to choose the comparator, constrained to fix the reported case and preserve all existing test outcomes.",
+          "label": "Implementation delegate",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which comparison policy should replace direct LooseVersion ordering in minversion?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Propagate parser error",
+    "open_material_decisions": [
+      "Behavior for malformed or unsupported version strings",
+      "Compatibility boundary for existing accepted version strings",
+      "Owner approval of the final implementation contract"
+    ],
+    "question": {
+      "header": "Invalid versions",
+      "options": [
+        {
+          "description": "Preserve transparent failure: valid versions use `parse_version`, while invalid or unsupported strings raise the parser's exception without fallback rewriting.",
+          "label": "Propagate parser error",
+          "recommended": true
+        },
+        {
+          "description": "Treat any parser failure as an unmet version requirement, avoiding exceptions but potentially masking bad package metadata.",
+          "label": "Return false",
+          "recommended": false
+        },
+        {
+          "description": "Fall back to the current comparator after parser failure, preserving more legacy inputs but retaining inconsistent ordering and possible `TypeError` behavior.",
+          "label": "LooseVersion fallback",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should `minversion` behave when `pkg_resources.parse_version` cannot validly interpret an installed or required version string?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Existing tests",
+    "open_material_decisions": [
+      "Compatibility boundary for existing accepted version strings",
+      "Owner approval of the final implementation contract"
+    ],
+    "question": {
+      "header": "Compatibility",
+      "options": [
+        {
+          "description": "Require all current `test_minversion` outcomes plus the reported regression case; acknowledge residual risk for untested legacy version syntax.",
+          "label": "Existing tests",
+          "recommended": true
+        },
+        {
+          "description": "Require compatibility for every version string previously orderable by `LooseVersion`, which needs broader characterization and tests.",
+          "label": "LooseVersion inputs",
+          "recommended": false
+        },
+        {
+          "description": "Only guarantee parser-supported PEP 440 versions, allowing behavior changes for legacy nonstandard strings.",
+          "label": "PEP 440 only",
+          "recommended": false
+        }
+      ],
+      "prompt": "What compatibility boundary should the replacement comparison preserve beyond fixing `1.14.3 >= 1.14dev`?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the final implementation contract"
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this scope and acceptance criteria as the implementation-ready contract.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a material change before implementation.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: replace both inclusive and exclusive `LooseVersion` comparisons in `astropy.utils.minversion` with `pkg_resources.parse_version`; preserve module resolution, `version_path`, import-failure, and argument-validation behavior; propagate parser errors for invalid or unsupported versions; preserve every existing `test_minversion` outcome; and add regression coverage proving installed version `1.14.3` satisfies required version `1.14dev` (including the public `astropy.utils.minversion` behavior). Acceptance requires the targeted introspection tests to pass. Compatibility beyond existing tests and parser-supported inputs is not guaranteed, leaving a bounded residual risk that untested legacy version syntax may compare differently. Is this contract approved for implementation?"
+    },
+    "turn": 4
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "The targeted introspection test suite passes.",
+          "Every pre-existing `test_minversion` assertion retains its current result.",
+          "For a module whose installed version is `1.14.3`, public `astropy.utils.minversion(module, '1.14dev')` returns `True` without raising `TypeError`.",
+          "Both inclusive and exclusive branches use versions parsed by `pkg_resources.parse_version`.",
+          "Invalid or unsupported version input propagates the parser exception.",
+          "No behavior changes are introduced to module import handling, argument validation, or `version_path` lookup beyond version comparison semantics."
+        ],
+        "confirmed_decisions": [
+          "Use `pkg_resources.parse_version` as the version comparator.",
+          "Apply the replacement to both inclusive (`>=`) and exclusive (`>`) comparison branches.",
+          "Propagate `parse_version` errors without returning `False`, rewriting the version, or falling back to `LooseVersion`.",
+          "Preserve all outcomes currently asserted by `test_minversion`.",
+          "Preserve existing module-object and import-name handling, including `False` on import failure and `ValueError` for unsupported module argument types.",
+          "Preserve direct and dotted `version_path` resolution behavior.",
+          "Add regression coverage for installed `1.14.3` versus required `1.14dev`, exercising the public `astropy.utils.minversion` export.",
+          "Limit the required compatibility boundary to existing tests plus the reported regression case.",
+          "The owner explicitly approved this contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Replace both inclusive and exclusive `distutils.version.LooseVersion` comparisons in `astropy.utils.minversion` with `pkg_resources.parse_version`. Preserve module resolution, `version_path`, import-failure, and argument-validation behavior. Let parser exceptions propagate for malformed or unsupported versions. Preserve all existing `test_minversion` outcomes and add regression coverage showing that installed version `1.14.3` satisfies required version `1.14dev` through the public `astropy.utils.minversion` API. Compatibility beyond existing tests and parser-supported inputs is not guaranteed; untested legacy version syntax may compare differently."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the final contract after resolving every material decision. The contract is implementable from the supplied repository evidence with no remaining material blocker."
+    },
+    "turn": 5
+  }
+]

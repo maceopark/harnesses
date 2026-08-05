@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "`strip_accents_unicode('\\u00f1')` returns `'n'`.",
+    "`strip_accents_unicode('n\\u0303')` returns `'n'`.",
+    "Focused tests prove composed and decomposed equivalents produce the same analyzer output through `CountVectorizer(strip_accents='unicode')`.",
+    "Existing direct Unicode accent-stripping tests remain passing.",
+    "Existing vectorizer analyzer tests remain passing.",
+    "The implementation leaves `strip_accents_ascii` unchanged."
+  ],
+  "confirmed_decisions": [
+    "Remove all Unicode combining characters after NFKD normalization for every input, rather than limiting the fix to Latin characters or canonically composable sequences.",
+    "Preserve existing behavior for precomposed accented input and non-combining characters.",
+    "Require direct regression coverage for the reported decomposed n-plus-combining-tilde case.",
+    "Require vectorizer-level coverage demonstrating equivalent preprocessing for composed and decomposed forms with `strip_accents='unicode'`.",
+    "Rely on the existing shared preprocessing and inheritance paths for word, char, char_wb, and TfidfVectorizer behavior; no separate implementation is required for each consumer.",
+    "No change is required to ASCII accent stripping or documentation.",
+    "Accept the bounded compatibility change that standalone and non-Latin combining marks will also be removed."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update `strip_accents_unicode` so it always NFKD-normalizes its input and removes every Unicode combining character, including when the input was already in NFKD form. Preserve existing results for precomposed accents and non-combining characters. Add focused coverage proving both precomposed `ñ` and decomposed `n` plus combining tilde produce `n`, including composed/decomposed equivalence through `CountVectorizer(strip_accents='unicode')`. The behavior applies through the shared preprocessing path to word, char, and char_wb analyzers and through `TfidfVectorizer` inheritance. Do not change `strip_accents_ascii` or documentation. The explicitly accepted compatibility impact is that standalone and non-Latin combining marks are removed consistently as well."
+}

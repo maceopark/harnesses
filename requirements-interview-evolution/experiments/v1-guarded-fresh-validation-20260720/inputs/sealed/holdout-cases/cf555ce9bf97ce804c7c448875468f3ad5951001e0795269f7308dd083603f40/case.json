@@ -1,0 +1,185 @@
+{
+  "alias": "cf555ce9bf97ce804c7c448875468f3ad5951001e0795269f7308dd083603f40",
+  "metadata": {
+    "context_mode": "repository",
+    "partition": "holdout",
+    "repository_family": "holdout-cf555ce9bf97"
+  },
+  "public_request": {
+    "cache_key": "sha256:ca576fd3db872eac6366a70f11be67886795dbb95d5719f2f9e8ff617c698371",
+    "digest": "ca576fd3db872eac6366a70f11be67886795dbb95d5719f2f9e8ff617c698371"
+  },
+  "repository_facts": [
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "    parser.addini(\n        \"python_files\",\n        type=\"args\",\n        # NOTE: default is also used in AssertionRewritingHook.\n        default=[\"test_*.py\", \"*_test.py\"],\n        help=\"glob-style file patterns for Python test module discovery\",\n    )",
+          "excerpt_digest": "3435ce02c0c6a59b8c0ace38f9b3657111b4cf1174d94c5999fb414e8c7926a7",
+          "id": "repository:F1",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "src/_pytest/python.py:L74-L80",
+          "source": "repository",
+          "source_digest": "21fb0c39cd72f2aeca94f2d4fd6fc4acb2d4d803e1553438ab164197110cd787"
+        }
+      ],
+      "id": "F1",
+      "statement": "The default python_files patterns are test_*.py and *_test.py; __init__.py is not a default pattern."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "def pytest_collect_file(path, parent):\n    ext = path.ext\n    if ext == \".py\":\n        if not parent.session.isinitpath(path):\n            if not path_matches_patterns(\n                path, parent.config.getini(\"python_files\") + [\"__init__.py\"]\n            ):\n                return\n        ihook = parent.session.gethookproxy(path)\n        return ihook.pytest_pycollect_makemodule(path=path, parent=parent)\n\n\ndef path_matches_patterns(path, patterns):\n    \"\"\"Returns True if the given py.path.local matches one of the patterns in the list of globs given\"\"\"\n    return any(path.fnmatch(pattern) for pattern in patterns)\n\n\ndef pytest_pycollect_makemodule(path, parent):\n    if path.basename == \"__init__.py\":\n        return Package(path, parent)",
+          "excerpt_digest": "2fb627e3c28c11ce302c893c6e3525a0567e5006b07efc8d10772297d68cf65b",
+          "id": "repository:F2",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "src/_pytest/python.py:L176-L196",
+          "source": "repository",
+          "source_digest": "21fb0c39cd72f2aeca94f2d4fd6fc4acb2d4d803e1553438ab164197110cd787"
+        }
+      ],
+      "id": "F2",
+      "statement": "For non-initial Python paths, the Python collection hook explicitly appends __init__.py to the configured python_files patterns; matching __init__.py paths are converted into Package collectors."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "            seen_dirs = set()\n            for path in argpath.visit(\n                fil=self._visit_filter, rec=self._recurse, bf=True, sort=True\n            ):\n                dirpath = path.dirpath()\n                if dirpath not in seen_dirs:\n                    # Collect packages first.\n                    seen_dirs.add(dirpath)\n                    pkginit = dirpath.join(\"__init__.py\")\n                    if pkginit.exists():\n                        for x in self._collectfile(pkginit):\n                            yield x\n                            if isinstance(x, Package):\n                                self._pkg_roots[dirpath] = x\n                if dirpath in self._pkg_roots:\n                    # Do not collect packages here.\n                    continue",
+          "excerpt_digest": "7309b87b2c9810c42f2529fd3a879e022b3f06f4bac14e3df7f359ef9ef9ae58",
+          "id": "repository:F3",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "src/_pytest/main.py:L526-L542",
+          "source": "repository",
+          "source_digest": "82fa5c44b2c1a845f00bf7fd82a62319749524da0fd86dd0fd0fc1e2c0b83c3d"
+        }
+      ],
+      "id": "F3",
+      "statement": "While recursively collecting a directory argument, Session checks each encountered directory for __init__.py, invokes _collectfile on it, yields the resulting collector, and records Package collectors as package roots."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "        ), \"{!r} is not a file (isdir={!r}, exists={!r}, islink={!r})\".format(\n            path, path.isdir(), path.exists(), path.islink()\n        )\n        ihook = self.gethookproxy(path)\n        if not self.isinitpath(path):\n            if ihook.pytest_ignore_collect(path=path, config=self.config):\n                return ()\n\n        if handle_dupes:\n            keepduplicates = self.config.getoption(\"keepduplicates\")\n            if not keepduplicates:\n                duplicate_paths = self.config.pluginmanager._duplicatepaths\n                if path in duplicate_paths:\n                    return ()\n                else:\n                    duplicate_paths.add(path)\n\n        return ihook.pytest_collect_file(path=path, parent=self)",
+          "excerpt_digest": "60ac9ff72bec5b6a808fd582a8f2e98d50ce2e9e1b0a5342696750ee96a95366",
+          "id": "repository:F4",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "src/_pytest/main.py:L580-L597",
+          "source": "repository",
+          "source_digest": "82fa5c44b2c1a845f00bf7fd82a62319749524da0fd86dd0fd0fc1e2c0b83c3d"
+        }
+      ],
+      "id": "F4",
+      "statement": "Session._collectfile applies pytest_ignore_collect to non-initial paths and otherwise dispatches the path through pytest_collect_file."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "class Module(nodes.File, PyCollector):\n    \"\"\" Collector for test classes and functions. \"\"\"\n\n    def __init__(self, fspath, parent=None, config=None, session=None, nodeid=None):\n        if fspath.basename == \"__init__.py\":\n            self._ALLOW_MARKERS = False\n\n        nodes.FSCollector.__init__(\n            self, fspath, parent=parent, config=config, session=session, nodeid=nodeid\n        )\n\n    def _getobj(self):\n        return self._importtestmodule()",
+          "excerpt_digest": "2e0bf459b5c1cc3dd229035df3429cd486779ed6684e0e1390ef6cb80d146c4c",
+          "id": "repository:F5",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "src/_pytest/python.py:L432-L444",
+          "source": "repository",
+          "source_digest": "21fb0c39cd72f2aeca94f2d4fd6fc4acb2d4d803e1553438ab164197110cd787"
+        }
+      ],
+      "id": "F5",
+      "statement": "Package inherits Module, and Module obtains its collected object by calling _importtestmodule."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "    def _importtestmodule(self):\n        # we assume we are only called once per module\n        importmode = self.config.getoption(\"--import-mode\")\n        try:\n            mod = self.fspath.pyimport(ensuresyspath=importmode)\n        except SyntaxError:\n            raise self.CollectError(\n                _pytest._code.ExceptionInfo.from_current().getrepr(style=\"short\")\n            )\n        except self.fspath.ImportMismatchError:\n            e = sys.exc_info()[1]\n            raise self.CollectError(\n                \"import file mismatch:\\n\"\n                \"imported module %r has this __file__ attribute:\\n\"\n                \"  %s\\n\"\n                \"which is not the same as the test file we want to collect:\\n\"\n                \"  %s\\n\"\n                \"HINT: remove __pycache__ / .pyc files and/or use a \"\n                \"unique basename for your test file modules\" % e.args\n            )",
+          "excerpt_digest": "8b68d4de8309560d341609d132e176eefdb1308afb7fcbfb713f06bc820de604",
+          "id": "repository:F6",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "src/_pytest/python.py:L508-L528",
+          "source": "repository",
+          "source_digest": "21fb0c39cd72f2aeca94f2d4fd6fc4acb2d4d803e1553438ab164197110cd787"
+        }
+      ],
+      "id": "F6",
+      "statement": "Module._importtestmodule imports the collector's filesystem path with pyimport; import failures are handled as collection errors."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "    def collect(self):\n        self._mount_obj_if_needed()\n        this_path = self.fspath.dirpath()\n        init_module = this_path.join(\"__init__.py\")\n        if init_module.check(file=1) and path_matches_patterns(\n            init_module, self.config.getini(\"python_files\")\n        ):\n            yield Module(init_module, self)\n        pkg_prefixes = set()\n        for path in this_path.visit(rec=self._recurse, bf=True, sort=True):\n            # We will visit our own __init__.py file, in which case we skip it.\n            is_file = path.isfile()\n            if is_file:\n                if path.basename == \"__init__.py\" and path.dirpath() == this_path:\n                    continue\n\n            parts_ = parts(path.strpath)\n            if any(\n                pkg_prefix in parts_ and pkg_prefix.join(\"__init__.py\") != path\n                for pkg_prefix in pkg_prefixes",
+          "excerpt_digest": "8b81bedf5e8f63c7344e10fd3a962d0e60080f931dfa2afecb2b1148480f7aaa",
+          "id": "repository:F7",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "src/_pytest/python.py:L641-L665",
+          "source": "repository",
+          "source_digest": "21fb0c39cd72f2aeca94f2d4fd6fc4acb2d4d803e1553438ab164197110cd787"
+        }
+      ],
+      "id": "F7",
+      "statement": "Package.collect mounts the package object, skips revisiting its own __init__.py, and delegates other visited files to _collectfile."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "def test_collect_pyargs_with_testpaths(testdir, monkeypatch):\n    testmod = testdir.mkdir(\"testmod\")\n    # NOTE: __init__.py is not collected since it does not match python_files.\n    testmod.ensure(\"__init__.py\").write(\"def test_func(): pass\")\n    testmod.ensure(\"test_file.py\").write(\"def test_func(): pass\")\n\n    root = testdir.mkdir(\"root\")\n    root.ensure(\"pytest.ini\").write(\n        textwrap.dedent(\n            \"\"\"",
+          "excerpt_digest": "a25e344a16556b4ece55233e6523eadd11095901420340d5f0548f3f5a07d2b5",
+          "id": "repository:F8",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "testing/test_collection.py:L1090-L1099",
+          "source": "repository",
+          "source_digest": "daf92f54273572c3aa1590fd4f7968f06a8695bc3ea7dde3b948ec7a3e8c3acc"
+        }
+      ],
+      "id": "F8",
+      "statement": "An existing test states that __init__.py is not collected when it does not match python_files, but that test exercises --pyargs together with testpaths rather than ordinary current-directory collection."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "def test_collectignore_via_conftest(testdir, monkeypatch):\n    \"\"\"collect_ignore in parent conftest skips importing child (issue #4592).\"\"\"\n    tests = testdir.mkpydir(\"tests\")\n    tests.ensure(\"conftest.py\").write(\"collect_ignore = ['ignore_me']\")\n\n    ignore_me = tests.mkdir(\"ignore_me\")\n    ignore_me.ensure(\"__init__.py\")\n    ignore_me.ensure(\"conftest.py\").write(\"assert 0, 'should_not_be_called'\")\n\n    result = testdir.runpytest()\n    assert result.ret == ExitCode.NO_TESTS_COLLECTED",
+          "excerpt_digest": "caa167c0c7e86ee400f575a28953c5d32a62c1d114c5e3c4b5b5da5d01e55026",
+          "id": "repository:F9",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "testing/test_collection.py:L1164-L1174",
+          "source": "repository",
+          "source_digest": "daf92f54273572c3aa1590fd4f7968f06a8695bc3ea7dde3b948ec7a3e8c3acc"
+        }
+      ],
+      "id": "F9",
+      "statement": "An existing collect_ignore test creates an ignored child package containing __init__.py and verifies that collection finishes with no tests instead of importing the child's failing conftest.py."
+    },
+    {
+      "evidence": [
+        {
+          "cache_required": true,
+          "excerpt": "pytest 5.2.3 (2019-11-14)\n=========================\n\nBug Fixes\n---------\n\n- `#5830 <https://github.com/pytest-dev/pytest/issues/5830>`_: The first test in a package (``__init__.py``) marked with ``@pytest.mark.skip`` is now correctly skipped.\n\n\n- `#6099 <https://github.com/pytest-dev/pytest/issues/6099>`_: Fix ``--trace`` when used with parametrized functions.",
+          "excerpt_digest": "5bfb060fe2b2f65b0e3ea22d16f5f970107a4b7e88f10108ac59b2dec308cb7e",
+          "id": "repository:F10",
+          "knowledge_timing": "repository_discoverable",
+          "locator": "CHANGELOG.rst:L21-L30",
+          "source": "repository",
+          "source_digest": "3d1a9b90b2f1d26f7447314db3a564a2f0d4c62f743992635a774bf8056ec213"
+        }
+      ],
+      "id": "F10",
+      "statement": "The 5.2.3 changelog records a fix concerning the first test in a package (__init__.py) marked with pytest.mark.skip."
+    }
+  ],
+  "schema": "InterviewerSafeCase.v1",
+  "sealed_source_digest": "5e9c3d93a957e61923d907daae5e93a19b793897be8fc11c45bfaa2839c0c7ca",
+  "upstream": {
+    "base_commit": "e856638ba086fcf5bebf1bebea32d5cf78de87b4",
+    "dataset": "princeton-nlp/SWE-bench_Verified",
+    "instance_id_digest": "cf555ce9bf97ce804c7c448875468f3ad5951001e0795269f7308dd083603f40",
+    "issue_cache_key": "sha256:ca576fd3db872eac6366a70f11be67886795dbb95d5719f2f9e8ff617c698371",
+    "issue_digest": "ca576fd3db872eac6366a70f11be67886795dbb95d5719f2f9e8ff617c698371",
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "source_url": "https://github.com/pytest-dev/pytest/pull/6197"
+  }
+}

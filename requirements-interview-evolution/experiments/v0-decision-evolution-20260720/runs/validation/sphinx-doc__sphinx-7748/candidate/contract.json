@@ -1,0 +1,30 @@
+{
+  "acceptance_checks": [
+    "A method docstring beginning with two or more valid same-name signatures produces one aligned `py:method` signature line per overload, in source order.",
+    "Each emitted overload retains the arguments and return annotation parsed from its own docstring line.",
+    "After a valid overload block, the first prose or blank line and all later content remain in the rendered docstring, subject only to existing docstring normalization.",
+    "A syntactically valid signature line with a rejected object name terminates the overload block and remains in rendered content with all following lines.",
+    "A non-signature first line causes no extraction and preserves the complete docstring.",
+    "Function and class documenters exhibit the same consecutive-signature behavior while retaining the existing accepted-name rules, including class-specific names.",
+    "A single leading signature continues to produce the existing output and removes only that signature line from content.",
+    "With an explicit directive signature, the explicit signature is rendered and all leading docstring signature-like lines remain content.",
+    "With `autodoc_docstring_signature` disabled, introspected or otherwise existing signature behavior is unchanged and all docstring lines remain content.",
+    "Existing singledispatch multi-signature rendering continues to pass without regression.",
+    "Documentation states that the option consumes consecutive valid signatures at the beginning of the docstring and stops at the first invalid or non-signature line.",
+    "Targeted autodoc configuration tests and the existing autodoc test suite pass."
+  ],
+  "confirmed_decisions": [
+    "Collect only a consecutive block of valid signature lines beginning at the first docstring line.",
+    "Stop extraction at the first line that either does not match the signature syntax or has a name rejected by the existing validation rules.",
+    "Preserve the stopping line and every following line as docstring content.",
+    "Preserve and render each overload's return annotation independently.",
+    "Apply multiple-signature extraction to all existing users of `DocstringSignatureMixin`, including functions, methods, and classes.",
+    "Keep explicit directive signatures authoritative; when one is supplied, do not extract or remove docstring signature lines.",
+    "Keep `autodoc_docstring_signature = False` behavior unchanged.",
+    "Use the existing newline-capable directive-header rendering path to emit one displayed line per overload.",
+    "Retain the existing default value of `True`."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Extend `autodoc_docstring_signature` so every documenter already using `DocstringSignatureMixin` can extract multiple consecutive valid signatures from the start of a docstring. Starting at the first line, collect signatures while each line matches the existing extended-signature syntax and its object name passes the existing documenter-specific name validation. Stop at the first non-matching or invalid-name line; preserve that line and all subsequent lines as rendered docstring content. Render each collected overload on a separate directive signature line, preserving its own arguments and return annotation. Keep current precedence: extraction runs only when the option is enabled and no explicit directive signature was supplied. Preserve existing behavior for disabled extraction, single signatures, accepted class names, and docstring candidates without a valid first-line signature. Update the option documentation to describe consecutive leading signatures rather than only the first line."
+}

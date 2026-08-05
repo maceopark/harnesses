@@ -1,0 +1,35 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/2",
+          "quoted_value": "The fix applies transitively to `CountVectorizer`, `TfidfVectorizer`, and shared word/character analyzer preprocessing when `strip_accents='unicode'`."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/5",
+          "quoted_value": "Existing analyzer/vectorizer tests using `strip_accents='unicode'` continue to pass."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/3/statement",
+          "quoted_value": "The vectorizer preprocessing builder maps strip_accents='unicode' directly to strip_accents_unicode."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/6/statement",
+          "quoted_value": "Existing Unicode accent tests exercise composed Latin accented characters, including ñ, and expect their unaccented forms."
+        }
+      ],
+      "description": "Add a regression acceptance check that passes an already-NFKD combining sequence through at least the CountVectorizer Unicode-accent preprocessing/analyzer path and verifies the unaccented result. Without it, the contract's claimed transitive behavior is not directly verified at the public integration boundary.",
+      "failure_class": "omission",
+      "general_cause": "Acceptance coverage verifies the corrected helper and preserves existing vectorizer tests, but does not exercise already-decomposed input through the vectorizer preprocessing path named in the contract.",
+      "id": "F1",
+      "material": true,
+      "observable_signal": "The only analyzer/vectorizer acceptance check requires existing tests to continue passing; audited evidence says those existing Unicode tests use composed accented input."
+    }
+  ],
+  "summary": "The contract identifies the root behavior and direct regression correctly, but it is not fully implementation-ready because acceptance coverage omits the already-decomposed case at the vectorizer integration boundary explicitly included in scope."
+}

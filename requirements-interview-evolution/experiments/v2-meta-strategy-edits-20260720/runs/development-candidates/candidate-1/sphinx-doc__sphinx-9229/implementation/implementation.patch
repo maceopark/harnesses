@@ -1,0 +1,90 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..20faa67 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -2008,9 +2008,15 @@ class DataDocumenter(GenericAliasMixin, NewTypeMixin, TypeVarMixin,
+ 
+     def add_content(self, more_content: Optional[StringList], no_docstring: bool = False
+                     ) -> None:
+-        # Disable analyzing variable comment on Documenter.add_content() to control it on
+-        # DataDocumenter.add_content()
+-        self.analyzer = None
++        # Let Documenter.add_content() handle source comments when the analyzer has
++        # found one.  In particular, this keeps assignment-following docstrings for
++        # type aliases ahead of the generated ``alias of`` content.
++        if self.analyzer and self.objpath:
++            key = ('.'.join(self.objpath[:-1]), self.objpath[-1])
++            if key not in self.analyzer.find_attr_docs():
++                self.analyzer = None
++        else:
++            self.analyzer = None
+ 
+         if not more_content:
+             more_content = StringList()
+diff --git a/tests/roots/test-ext-autodoc/target/genericalias.py b/tests/roots/test-ext-autodoc/target/genericalias.py
+index 9909efc..87952ad 100644
+--- a/tests/roots/test-ext-autodoc/target/genericalias.py
++++ b/tests/roots/test-ext-autodoc/target/genericalias.py
+@@ -1,10 +1,27 @@
+-from typing import Callable, List
++from pathlib import Path
++from typing import Any, Callable, Dict, List, Union
+ 
+ #: A list of int
+ T = List[int]
+ 
+ C = Callable[[int], None]  # a generic alias not having a doccomment
+ 
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary with PyScaffold's options.
++Should be treated as immutable.
++"""
++
++FileContents = Union[str, None]
++"""When the file content is ``None``, the file should not be written to
++disk.
++"""
++
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of functions considered file operations::
++
++    Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""
++
+ 
+ class Class:
+     #: A list of int
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..6ca8a5e 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -101,6 +101,29 @@ def test_autodata_GenericAlias(app):
+         ]
+ 
+ 
++@pytest.mark.parametrize(('name', 'documentation'), [
++    ('ScaffoldOpts', ["Dictionary with PyScaffold's options.",
++                      'Should be treated as immutable.']),
++    ('FileContents', ['When the file content is ``None``, the file should not be written to',
++                      'disk.']),
++    ('FileOp', ['Signature of functions considered file operations::',
++                '',
++                '    Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]']),
++])
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodata_GenericAlias_with_docstring(app, name, documentation):
++    actual = list(do_autodoc(app, 'data', 'target.genericalias.' + name))
++    content = actual[actual.index('') + 1:]
++
++    for line in documentation:
++        assert '   ' + line in content
++
++    alias_lines = [i for i, line in enumerate(actual) if line.startswith('   alias of ')]
++    if alias_lines:
++        first_doc_line = actual.index('   ' + documentation[0])
++        assert first_doc_line < alias_lines[0]
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_NewType(app):
+     actual = do_autodoc(app, 'data', 'target.typevar.T6')

@@ -1,0 +1,79 @@
+{
+  "audit_summary": "Accepted 10 facts with direct support in the cited code. Rejected fact-10 because its cited range does not support the claimed validation.",
+  "facts": [
+    {
+      "id": "fact-1",
+      "line_end": 305,
+      "line_start": 289,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "FITSDiff independently opens each filename argument, so comparing one path to itself still produces two separately opened HDUList objects."
+    },
+    {
+      "id": "fact-2",
+      "line_end": 607,
+      "line_start": 601,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "When both compared HDUs are table-like, HDUDiff delegates their data comparison to TableDataDiff."
+    },
+    {
+      "id": "fact-3",
+      "line_end": 1446,
+      "line_start": 1429,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "TableDataDiff retrieves each common column's arrays from the two table records before selecting a comparison strategy."
+    },
+    {
+      "id": "fact-4",
+      "line_end": 1461,
+      "line_start": 1452,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "The specialized variable-length-array comparison branch is selected only when the column format contains \"P\"; it compares corresponding rows with numpy.allclose."
+    },
+    {
+      "id": "fact-5",
+      "line_end": 1463,
+      "line_start": 1462,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "Columns not handled by the floating-point or P-format branches use numpy.where(arra != arrb), which is the path taken by Q-format VLA columns."
+    },
+    {
+      "id": "fact-6",
+      "line_end": 479,
+      "line_start": 471,
+      "path": "astropy/io/fits/column.py",
+      "statement": "The FITS column implementation defines Q format as a subclass of the P-format VLA representation and assigns it the distinct format code \"Q\"."
+    },
+    {
+      "id": "fact-7",
+      "line_end": 709,
+      "line_start": 706,
+      "path": "astropy/io/fits/column.py",
+      "statement": "Column construction explicitly treats _FormatQ as a variable-length-array format through inheritance from _FormatP."
+    },
+    {
+      "id": "fact-8",
+      "line_end": 1485,
+      "line_start": 1465,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "Indices returned by the selected comparison are counted as differing rows and stored in diff_values, which makes the TableDataDiff non-identical and supplies its reported row differences."
+    },
+    {
+      "id": "fact-9",
+      "line_end": 416,
+      "line_start": 398,
+      "path": "astropy/io/fits/tests/test_diff.py",
+      "statement": "The existing identical-table test includes a P-format VLA column (PI(2)) and asserts that the resulting TableDataDiff is identical."
+    },
+    {
+      "id": "fact-11",
+      "line_end": 618,
+      "line_start": 604,
+      "path": "astropy/io/fits/tests/test_diff.py",
+      "statement": "The existing basic FITSDiff identical-file test covers ordinary image data and asserts both identical status and a 'No differences found.' report."
+    }
+  ],
+  "scope_summary": "Inspected base commit c0a24c1dc957a3b565294213f435fefb2ec99714. The table-diff implementation has specialized row-wise comparison for P-format variable-length arrays but not Q-format variable-length arrays; Q columns therefore reach the generic object-array comparison path.",
+  "unknowns": [
+    "No existing regression test in astropy/io/fits/tests/test_diff.py covers identical Q-format variable-length-array table data or the supplied QD reproduction case."
+  ]
+}

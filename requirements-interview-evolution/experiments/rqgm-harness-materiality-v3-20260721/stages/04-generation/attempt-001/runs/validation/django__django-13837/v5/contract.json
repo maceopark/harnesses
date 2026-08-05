@@ -1,0 +1,25 @@
+{
+  "acceptance_checks": [
+    "With __main__.__spec__.parent == 'django' and sys.argv ending in 'runserver', get_child_arguments() returns [sys.executable, *warning_options, '-m', 'django', 'runserver'].",
+    "With __main__.__spec__.parent == 'pkg_other_than_django', get_child_arguments() reconstructs '-m pkg_other_than_django' and forwards sys.argv[1:] unchanged.",
+    "Module-launch reconstruction succeeds when __main__ has no __file__ attribute.",
+    "When __main__.__spec__ is None, get_child_arguments() follows the existing ordinary-script or Windows entry-point branches.",
+    "When __main__.__spec__.parent is empty, get_child_arguments() does not add '-m' and follows the existing non-module handling.",
+    "Python warning options remain immediately after sys.executable for Python-driven module and script launches.",
+    "The restart-level test verifies that the subprocess command preserves a detected non-Django package name after autoreloader restart.",
+    "Existing autoreload child-argument and restart tests pass, with former django.__main__.__file__ patches replaced by top-level __main__.__spec__ fixtures where applicable."
+  ],
+  "confirmed_decisions": [
+    "Use the running top-level __main__ module as the source of launch metadata.",
+    "Treat a nonempty __main__.__spec__.parent as the package supplied to Python's '-m' option.",
+    "Reconstruct module launches as [sys.executable, warning options, '-m', __main__.__spec__.parent, *sys.argv[1:]].",
+    "Do not hard-code 'django' when reconstructing a module launch.",
+    "Remove get_child_arguments()'s dependency on django.__main__.__file__ and its path comparison with sys.argv[0].",
+    "Do not classify directory or zipfile execution as '-m' execution when __main__.__spec__.parent is the empty string.",
+    "Preserve the existing non-module path, Windows '.exe', Windows '-script.py', missing-script error, warning-option, and argument-forwarding behavior.",
+    "Keep restart_with_reloader() behavior unchanged apart from receiving the generalized command produced by get_child_arguments()."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update django.utils.autoreload.get_child_arguments() to detect general Python module execution through the top-level __main__.__spec__.parent instead of comparing sys.argv[0] with django.__main__.__file__. When __main__.__spec__ exists and its parent is nonempty, reconstruct the child command as sys.executable, existing Python warning options, '-m', the parent package name, and sys.argv[1:]. This must support both 'python -m django runserver' and 'python -m pkg_other_than_django runserver' without relying on __file__. When the spec is absent or its parent is empty, preserve the existing script-path and Windows entry-point handling. Update the autoreload tests to exercise spec-based Django and non-Django module launches, including operation when __main__.__file__ is unavailable, while retaining coverage for ordinary scripts, warning options, and restart behavior."
+}

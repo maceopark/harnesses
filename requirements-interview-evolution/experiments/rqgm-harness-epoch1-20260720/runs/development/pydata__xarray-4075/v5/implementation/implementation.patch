@@ -1,0 +1,53 @@
+diff --git a/xarray/core/weighted.py b/xarray/core/weighted.py
+index 996d2e4..a9b2ec4 100644
+--- a/xarray/core/weighted.py
++++ b/xarray/core/weighted.py
+@@ -140,7 +140,7 @@ class Weighted:
+         """ Calculate the sum of weights, accounting for missing values """
+ 
+         # we need to mask data values that are nan; else the weights are wrong
+-        mask = da.notnull()
++        mask = da.notnull().astype(int)
+ 
+         sum_of_weights = self._reduce(mask, self.weights, dim=dim, skipna=False)
+ 
+diff --git a/xarray/tests/test_weighted.py b/xarray/tests/test_weighted.py
+index 2453121..48eff46 100644
+--- a/xarray/tests/test_weighted.py
++++ b/xarray/tests/test_weighted.py
+@@ -59,6 +59,35 @@ def test_weighted_sum_of_weights_nan(weights, expected):
+     assert_equal(expected, result)
+ 
+ 
++@pytest.mark.parametrize("as_dataset", (True, False))
++@pytest.mark.parametrize(
++    ("data", "weights", "expected_sum_of_weights", "expected_mean"),
++    (
++        ([1.0, 1.0, 1.0], [True, True, False], 2, 1.0),
++        ([1.0, 1.0, 1.0], [False, False, False], np.nan, np.nan),
++        ([1.0, np.nan, 1.0], [True, True, False], 1, 1.0),
++    ),
++)
++def test_weighted_bool_weights(
++    as_dataset, data, weights, expected_sum_of_weights, expected_mean
++):
++    data = DataArray(data)
++    weights = DataArray(weights)
++
++    if as_dataset:
++        data = data.to_dataset(name="data")
++        expected_sum_of_weights = xr.Dataset(
++            {"data": DataArray(expected_sum_of_weights)}
++        )
++        expected_mean = xr.Dataset({"data": DataArray(expected_mean)})
++    else:
++        expected_sum_of_weights = DataArray(expected_sum_of_weights)
++        expected_mean = DataArray(expected_mean)
++
++    assert_equal(expected_sum_of_weights, data.weighted(weights).sum_of_weights())
++    assert_equal(expected_mean, data.weighted(weights).mean())
++
++
+ @pytest.mark.parametrize("da", ([1.0, 2], [1, np.nan], [np.nan, np.nan]))
+ @pytest.mark.parametrize("factor", [0, 1, 3.14])
+ @pytest.mark.parametrize("skipna", (True, False))

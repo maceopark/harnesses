@@ -1,0 +1,225 @@
+{
+  "role": "discovery",
+  "prompt": "You are the read-only Repository Discovery Agent. Inspect the repository for facts material to the public request. Every fact must cite repository-relative file paths and exact inclusive line bounds. Put only actual contradictions in conflicts; use an empty array when sources agree. Report unknowns separately. Do not invent desired future behavior or owner choices.\nReturn only the JSON object required by the supplied output schema.\nINPUT:\n{\"public_request\":\"Preserve all existing behavior while adding an optional --json flag to the todo list command so automation can consume task records.\",\"repository_root\":\"/Users/jpark/gitrepos/harnesses/benchmark/todo-cli-deep-interview\"}",
+  "prompt_sha256": "d999f429ef0c15fe318a69b35ca7ce47f4c51dc5a3c779d13ffa459f7ff8e038",
+  "input": {
+    "public_request": "Preserve all existing behavior while adding an optional --json flag to the todo list command so automation can consume task records.",
+    "repository_root": "/Users/jpark/gitrepos/harnesses/benchmark/todo-cli-deep-interview"
+  },
+  "output": {
+    "scope_summary": "Repository discovery for adding an optional --json flag to the existing todo list command while preserving current behavior. The implementation is a single Python module with pytest coverage and README-defined CLI behavior.",
+    "facts": [
+      {
+        "id": "F1",
+        "claim": "The list subcommand currently accepts only --priority and --due options; no --json option exists.",
+        "authority": "code",
+        "evidence": [
+          {
+            "path": "todo_cli.py",
+            "line_start": 323,
+            "line_end": 327
+          }
+        ]
+      },
+      {
+        "id": "F2",
+        "claim": "The existing list path loads the configured store, applies the priority and due filters, sorts the filtered tasks, prints one human-readable row per task, and returns exit code 0.",
+        "authority": "code",
+        "evidence": [
+          {
+            "path": "todo_cli.py",
+            "line_start": 353,
+            "line_end": 359
+          }
+        ]
+      },
+      {
+        "id": "F3",
+        "claim": "Human-readable list rows are tab-separated and contain id, status ([ ] or [x]), priority, due date (or -), and title in that order.",
+        "authority": "code",
+        "evidence": [
+          {
+            "path": "todo_cli.py",
+            "line_start": 338,
+            "line_end": 341
+          }
+        ]
+      },
+      {
+        "id": "F4",
+        "claim": "Tests lock the exact existing human-readable output for a task as `1\\t[ ]\\thigh\\t-\\talpha\\n`.",
+        "authority": "test",
+        "evidence": [
+          {
+            "path": "tests/test_todo.py",
+            "line_start": 76,
+            "line_end": 81
+          }
+        ]
+      },
+      {
+        "id": "F5",
+        "claim": "Listing an empty or missing store currently emits no stdout or stderr, exits 0, and does not create the store file.",
+        "authority": "test",
+        "evidence": [
+          {
+            "path": "tests/test_todo.py",
+            "line_start": 43,
+            "line_end": 48
+          }
+        ]
+      },
+      {
+        "id": "F6",
+        "claim": "Each task record has exactly five modeled fields: id (integer), title (string), done (boolean), due (string or null), and priority (string).",
+        "authority": "code",
+        "evidence": [
+          {
+            "path": "todo_cli.py",
+            "line_start": 51,
+            "line_end": 57
+          },
+          {
+            "path": "todo_cli.py",
+            "line_start": 86,
+            "line_end": 93
+          }
+        ]
+      },
+      {
+        "id": "F7",
+        "claim": "The existing task-to-dictionary serialization uses keys id, title, done, due, and priority and preserves their native JSON-compatible types.",
+        "authority": "code",
+        "evidence": [
+          {
+            "path": "todo_cli.py",
+            "line_start": 86,
+            "line_end": 93
+          }
+        ]
+      },
+      {
+        "id": "F8",
+        "claim": "List filtering is exact-match filtering by priority and/or due date, with both filters applied when both are supplied.",
+        "authority": "code",
+        "evidence": [
+          {
+            "path": "todo_cli.py",
+            "line_start": 268,
+            "line_end": 276
+          }
+        ]
+      },
+      {
+        "id": "F9",
+        "claim": "Tests require combined priority and due filters to restrict list results to records matching both conditions.",
+        "authority": "test",
+        "evidence": [
+          {
+            "path": "tests/test_todo.py",
+            "line_start": 175,
+            "line_end": 181
+          }
+        ]
+      },
+      {
+        "id": "F10",
+        "claim": "List sorting orders incomplete tasks before completed tasks, then higher priority first, then earlier due dates with null due dates last, then lower task id.",
+        "authority": "code",
+        "evidence": [
+          {
+            "path": "todo_cli.py",
+            "line_start": 279,
+            "line_end": 284
+          }
+        ]
+      },
+      {
+        "id": "F11",
+        "claim": "Tests lock the list sort order, including incomplete-before-done, high-before-medium-before-low, dated-before-undated within equal status and priority, and id as the final tiebreaker.",
+        "authority": "test",
+        "evidence": [
+          {
+            "path": "tests/test_todo.py",
+            "line_start": 123,
+            "line_end": 153
+          }
+        ]
+      },
+      {
+        "id": "F12",
+        "claim": "The README documents list as producing the current text rows, supporting exact-match combinable filters, producing no output for an empty list, and applying sorting after filtering.",
+        "authority": "documentation",
+        "evidence": [
+          {
+            "path": "README.md",
+            "line_start": 59,
+            "line_end": 81
+          }
+        ]
+      },
+      {
+        "id": "F13",
+        "claim": "Invalid list due-date syntax is handled by argument parsing and returns usage exit code 2.",
+        "authority": "test",
+        "evidence": [
+          {
+            "path": "tests/test_todo.py",
+            "line_start": 222,
+            "line_end": 223
+          }
+        ]
+      },
+      {
+        "id": "F14",
+        "claim": "Store and domain failures are printed to stderr as `error: ...` and return exit codes 3 and 1 respectively; successful list execution returns 0.",
+        "authority": "code",
+        "evidence": [
+          {
+            "path": "todo_cli.py",
+            "line_start": 353,
+            "line_end": 359
+          },
+          {
+            "path": "todo_cli.py",
+            "line_start": 391,
+            "line_end": 410
+          }
+        ]
+      },
+      {
+        "id": "F15",
+        "claim": "Listing a corrupt store returns exit code 3 and leaves the store byte-for-byte unchanged.",
+        "authority": "test",
+        "evidence": [
+          {
+            "path": "tests/test_todo.py",
+            "line_start": 255,
+            "line_end": 261
+          }
+        ]
+      },
+      {
+        "id": "F16",
+        "claim": "The CLI uses only the Python standard library at runtime and declares no runtime dependencies.",
+        "authority": "configuration",
+        "evidence": [
+          {
+            "path": "pyproject.toml",
+            "line_start": 5,
+            "line_end": 10
+          }
+        ]
+      }
+    ],
+    "conflicts": [],
+    "unknowns": [
+      "The repository does not specify whether JSON output should be a bare array of task records or an object containing a tasks property or metadata.",
+      "The repository does not specify whether JSON should be compact or indented, whether object key order is contractual, or whether the output should end with a newline.",
+      "The repository does not specify the exact JSON output for an empty filtered result beyond the existing text mode producing no output.",
+      "The repository does not explicitly state whether JSON records must follow the same filtered and sorted sequence as text output, although filtering and sorting are integral to the current list execution path.",
+      "The repository does not specify whether --json is valid only after the list subcommand or should also be accepted before it as a global option.",
+      "No tests or documentation currently define --json behavior, compatibility expectations for machine consumers, or handling of titles containing control characters in JSON output."
+    ]
+  }
+}

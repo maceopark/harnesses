@@ -1,0 +1,285 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..b0e3ebd 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1781,6 +1781,10 @@ class DataDocumenterMixinBase:
+         """Check :value: header should be suppressed."""
+         return False
+ 
++    def has_docstring_comment(self) -> bool:
++        """Check the variable has a docstring after its assignment."""
++        return False
++
+     def update_content(self, more_content: StringList) -> None:
+         """Update docstring for the NewType object."""
+         pass
+@@ -1797,7 +1801,7 @@ class GenericAliasMixin(DataDocumenterMixinBase):
+                 super().should_suppress_directive_header())
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if inspect.isgenericalias(self.object):
++        if inspect.isgenericalias(self.object) and not self.has_docstring_comment():
+             more_content.append(_('alias of %s') % restify(self.object), '')
+             more_content.append('', '')
+ 
+@@ -1998,6 +2002,14 @@ class DataDocumenter(GenericAliasMixin, NewTypeMixin, TypeVarMixin,
+ 
+         return None
+ 
++    def has_docstring_comment(self) -> bool:
++        try:
++            analyzer = ModuleAnalyzer.for_module(self.modname)
++            analyzer.analyze()
++            return ('', self.objpath[-1]) in analyzer.attr_docstrings
++        except PycodeError:
++            return False
++
+     def get_doc(self, ignore: int = None) -> Optional[List[List[str]]]:
+         # Check the variable has a docstring-comment
+         comment = self.get_module_comment(self.objpath[-1])
+@@ -2571,6 +2583,20 @@ class AttributeDocumenter(GenericAliasMixin, NewTypeMixin, SlotsMixin,  # type:
+ 
+         return None
+ 
++    def has_docstring_comment(self) -> bool:
++        for cls in inspect.getmro(self.parent):
++            try:
++                module = safe_getattr(cls, '__module__')
++                qualname = safe_getattr(cls, '__qualname__')
++                analyzer = ModuleAnalyzer.for_module(module)
++                analyzer.analyze()
++                if (qualname, self.objpath[-1]) in analyzer.attr_docstrings:
++                    return True
++            except (AttributeError, PycodeError):
++                pass
++
++        return False
++
+     def get_doc(self, ignore: int = None) -> Optional[List[List[str]]]:
+         # Check the attribute has a docstring-comment
+         comment = self.get_attribute_comment(self.parent, self.objpath[-1])
+diff --git a/sphinx/pycode/__init__.py b/sphinx/pycode/__init__.py
+index 8e79385..2179fdb 100644
+--- a/sphinx/pycode/__init__.py
++++ b/sphinx/pycode/__init__.py
+@@ -16,7 +16,7 @@ from importlib import import_module
+ from inspect import Signature
+ from io import StringIO
+ from os import path
+-from typing import IO, Any, Dict, List, Optional, Tuple
++from typing import IO, Any, Dict, List, Optional, Set, Tuple
+ from zipfile import ZipFile
+ 
+ from sphinx.deprecation import RemovedInSphinx50Warning
+@@ -27,6 +27,7 @@ from sphinx.pycode.parser import Parser
+ class ModuleAnalyzer:
+     annotations: Dict[Tuple[str, str], str]
+     attr_docs: Dict[Tuple[str, str], List[str]]
++    attr_docstrings: Set[Tuple[str, str]]
+     finals: List[str]
+     overloads: Dict[str, List[Signature]]
+     tagorder: Dict[str, int]
+@@ -165,6 +166,8 @@ class ModuleAnalyzer:
+                 else:
+                     self.attr_docs[scope] = ['']
+ 
++            self.attr_docstrings = parser.docstring_comments
++
+             self.annotations = parser.annotations
+             self.finals = parser.finals
+             self.overloads = parser.overloads
+diff --git a/sphinx/pycode/parser.py b/sphinx/pycode/parser.py
+index a00b481..3fe1960 100644
+--- a/sphinx/pycode/parser.py
++++ b/sphinx/pycode/parser.py
+@@ -15,7 +15,7 @@ from collections import OrderedDict
+ from inspect import Signature
+ from token import DEDENT, INDENT, NAME, NEWLINE, NUMBER, OP, STRING
+ from tokenize import COMMENT, NL
+-from typing import Any, Dict, List, Optional, Tuple
++from typing import Any, Dict, List, Optional, Set, Tuple
+ 
+ from sphinx.pycode.ast import ast  # for py37 or older
+ from sphinx.pycode.ast import parse, unparse
+@@ -225,6 +225,7 @@ class VariableCommentPicker(ast.NodeVisitor):
+         self.current_classes: List[str] = []
+         self.current_function: Optional[ast.FunctionDef] = None
+         self.comments: Dict[Tuple[str, str], str] = OrderedDict()
++        self.docstring_comments: Set[Tuple[str, str]] = set()
+         self.annotations: Dict[Tuple[str, str], str] = {}
+         self.previous: Optional[ast.AST] = None
+         self.deforders: Dict[str, int] = {}
+@@ -264,11 +265,16 @@ class VariableCommentPicker(ast.NodeVisitor):
+             overloads = self.overloads.setdefault(".".join(qualname), [])
+             overloads.append(signature_from_ast(func))
+ 
+-    def add_variable_comment(self, name: str, comment: str) -> None:
++    def add_variable_comment(self, name: str, comment: str, docstring: bool = False) -> None:
+         qualname = self.get_qualname_for(name)
+         if qualname:
+             basename = ".".join(qualname[:-1])
+-            self.comments[(basename, name)] = comment
++            key = (basename, name)
++            self.comments[key] = comment
++            if docstring:
++                self.docstring_comments.add(key)
++            else:
++                self.docstring_comments.discard(key)
+ 
+     def add_variable_annotation(self, name: str, annotation: ast.AST) -> None:
+         qualname = self.get_qualname_for(name)
+@@ -411,7 +417,7 @@ class VariableCommentPicker(ast.NodeVisitor):
+                     else:
+                         docstring = node.value.s.decode(self.encoding or 'utf-8')
+ 
+-                    self.add_variable_comment(varname, dedent_docstring(docstring))
++                    self.add_variable_comment(varname, dedent_docstring(docstring), docstring=True)
+                     self.add_entry(varname)
+             except TypeError:
+                 pass  # this assignment is not new definition!
+@@ -545,6 +551,7 @@ class Parser:
+         self.encoding = encoding
+         self.annotations: Dict[Tuple[str, str], str] = {}
+         self.comments: Dict[Tuple[str, str], str] = {}
++        self.docstring_comments: Set[Tuple[str, str]] = set()
+         self.deforders: Dict[str, int] = {}
+         self.definitions: Dict[str, Tuple[str, int, int]] = {}
+         self.finals: List[str] = []
+@@ -562,6 +569,7 @@ class Parser:
+         picker.visit(tree)
+         self.annotations = picker.annotations
+         self.comments = picker.comments
++        self.docstring_comments = picker.docstring_comments
+         self.deforders = picker.deforders
+         self.finals = picker.finals
+         self.overloads = picker.overloads
+diff --git a/tests/roots/test-ext-autodoc/target/genericaliasdoc.py b/tests/roots/test-ext-autodoc/target/genericaliasdoc.py
+new file mode 100644
+index 0000000..bff3696
+--- /dev/null
++++ b/tests/roots/test-ext-autodoc/target/genericaliasdoc.py
+@@ -0,0 +1,38 @@
++from pathlib import Path
++from typing import Any, Callable, Dict, Union
++
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary with PyScaffold's options, see ``pyscaffold.api.create_project``.
++Should be treated as immutable (if required, copy before changing).
++
++Please notice some behaviours given by the options **SHOULD** be observed. For example,
++files should be overwritten when the **force** option is ``True``. Similarly when
++**pretend** is ``True``, no operation should be really performed, but any action should
++be logged as if realized.
++"""
++
++FileContents = Union[str, None]
++"""When the file content is ``None``, the file should not be written to
++disk (empty files are represented by an empty string ``""`` as content).
++"""
++
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of functions considered file operations::
++
++    Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++
++- **path** (:obj:`pathlib.Path`): file path potentially to be written to/changed
++  in the disk.
++- **contents** (:obj:`FileContents`): usually a string that represents a text content
++  of the file. :obj:`None` indicates the file should not be written.
++- **opts** (:obj:`ScaffoldOpts`): a dict with PyScaffold's options.
++
++If the file is written (or more generally changed, such as new access permissions),
++by convention they should return the :obj:`file path <pathlib.Path>`.
++If no file was touched, :obj:`None` should be returned. Please notice a **FileOp**
++might return :obj:`None` if a pre-existing file in the disk is not modified.
++
++.. note::
++    A **FileOp** usually has side effects (e.g. write a file to the disk), see
++    :obj:`FileFileContents` and :obj:`ScaffoldOpts` for other conventions.
++"""
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..a7b551a 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -101,6 +101,53 @@ def test_autodata_GenericAlias(app):
+         ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++@pytest.mark.parametrize(('name', 'documentation'), [
++    ('ScaffoldOpts', [
++        "Dictionary with PyScaffold's options, see ``pyscaffold.api.create_project``.",
++        'Should be treated as immutable (if required, copy before changing).',
++        '',
++        'Please notice some behaviours given by the options **SHOULD** be observed. '
++        'For example,',
++        'files should be overwritten when the **force** option is ``True``. Similarly '
++        'when',
++        '**pretend** is ``True``, no operation should be really performed, but any '
++        'action should',
++        'be logged as if realized.',
++    ]),
++    ('FileContents', [
++        'When the file content is ``None``, the file should not be written to',
++        'disk (empty files are represented by an empty string ``""`` as content).',
++    ]),
++    ('FileOp', [
++        'Signature of functions considered file operations::',
++        '',
++        '    Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]',
++        '',
++        '- **path** (:obj:`pathlib.Path`): file path potentially to be written to/changed',
++        '  in the disk.',
++        '- **contents** (:obj:`FileContents`): usually a string that represents a text '
++        'content',
++        '  of the file. :obj:`None` indicates the file should not be written.',
++        '- **opts** (:obj:`ScaffoldOpts`): a dict with PyScaffold\'s options.',
++        '',
++        'If the file is written (or more generally changed, such as new access permissions),',
++        'by convention they should return the :obj:`file path <pathlib.Path>`.',
++        'If no file was touched, :obj:`None` should be returned. Please notice a **FileOp**',
++        'might return :obj:`None` if a pre-existing file in the disk is not modified.',
++        '',
++        '.. note::',
++        '    A **FileOp** usually has side effects (e.g. write a file to the disk), see',
++        '    :obj:`FileFileContents` and :obj:`ScaffoldOpts` for other conventions.',
++    ]),
++])
++def test_autodata_GenericAlias_with_docstring(app, name, documentation):
++    actual = list(do_autodoc(app, 'data', 'target.genericaliasdoc.%s' % name))
++    start = actual.index('   ' + documentation[0])
++    assert actual[start:] == ['   ' + line if line else '' for line in documentation] + ['']
++    assert not any('alias of ' in line for line in actual)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_NewType(app):
+     actual = do_autodoc(app, 'data', 'target.typevar.T6')
+diff --git a/tests/test_pycode_parser.py b/tests/test_pycode_parser.py
+index e909917..923c311 100644
+--- a/tests/test_pycode_parser.py
++++ b/tests/test_pycode_parser.py
+@@ -90,6 +90,15 @@ def test_comment_picker_location():
+                                ('Foo', 'attr2'): 'comment after assignment',
+                                ('Foo', 'attr3'): 'comment for attr3(3)'}
+ 
++    # a later comment replaces both the documentation and its syntax origin
++    source = ('a = 1\n'
++              '"""string on next line"""\n'
++              'a = 2  #: comment after assignment\n')
++    parser = Parser(source)
++    parser.parse()
++    assert parser.comments == {('', 'a'): 'comment after assignment'}
++    assert parser.docstring_comments == set()
++
+ 
+ def test_annotated_assignment():
+     source = ('a: str = "Sphinx"  #: comment\n'
+@@ -305,6 +314,7 @@ def test_comment_picker_multiline_string():
+     parser.parse()
+     assert parser.comments == {('Foo', 'a'): 'multiline\ndocstring',
+                                ('Foo', 'b'): 'docstring\nstarts with::\n\n    empty line'}
++    assert parser.docstring_comments == {('Foo', 'a'), ('Foo', 'b')}
+ 
+ 
+ def test_decorators():

@@ -1,0 +1,66 @@
+{
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 107,
+      "line_start": 87,
+      "path": "xarray/core/weighted.py",
+      "statement": "Weighted operations require weights to be a DataArray, reject missing values, and otherwise impose no dtype restriction on weights."
+    },
+    {
+      "id": "F2",
+      "line_end": 135,
+      "line_start": 112,
+      "path": "xarray/core/weighted.py",
+      "statement": "The shared weighted reduction delegates directly to dot(da, weights); when dim is None it reduces over all dimensions by setting dim to an ellipsis."
+    },
+    {
+      "id": "F3",
+      "line_end": 150,
+      "line_start": 137,
+      "path": "xarray/core/weighted.py",
+      "statement": "The sum-of-weights calculation creates da.notnull(), which is a boolean mask, and reduces that mask directly with self.weights without casting either operand."
+    },
+    {
+      "id": "F4",
+      "line_end": 174,
+      "line_start": 162,
+      "path": "xarray/core/weighted.py",
+      "statement": "The weighted mean is calculated as weighted_sum divided by sum_of_weights, so the denominator produced by _sum_of_weights directly determines normalization."
+    },
+    {
+      "id": "F5",
+      "line_end": 1214,
+      "line_start": 1191,
+      "path": "xarray/core/computation.py",
+      "statement": "The dot implementation constructs an einsum operation and applies it to the input arrays without an explicit dtype conversion."
+    },
+    {
+      "id": "F6",
+      "line_end": 59,
+      "line_start": 32,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "Existing sum-of-weights tests exercise integer weights, including zero and negative values, but do not include boolean weights."
+    },
+    {
+      "id": "F7",
+      "line_end": 158,
+      "line_start": 110,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "Existing weighted-mean tests exercise numeric weights, equal numeric factors, zero weights, and missing data, but do not include boolean weights."
+    },
+    {
+      "id": "F8",
+      "line_end": 180,
+      "line_start": 161,
+      "path": "xarray/tests/test_weighted.py",
+      "statement": "The test helper expresses the expected denominator through masked_weights.sum rather than dot: it masks weights where data are null, sums them, and converts a zero total to missing."
+    }
+  ],
+  "scope_summary": "At base commit 19b088636eb7d3f65ab7a1046ac672e0689371d8, weighted means compute a weighted sum divided by a separately calculated sum of weights. The denominator path takes a boolean non-null mask and the supplied weights directly through the dot/einsum reduction. Existing weighted tests cover numeric weights but contain no boolean-weight case.",
+  "unknowns": [
+    "The repository does not state which numeric dtype, if any, boolean weights should be converted to.",
+    "The repository does not state whether any correction should be localized to sum-of-weights or applied to the shared dot-based reduction.",
+    "The repository contains no explicit boolean-weight regression case establishing expected behavior for sum_of_weights, sum, DatasetWeighted, dimensional reductions, or dask-backed arrays."
+  ]
+}

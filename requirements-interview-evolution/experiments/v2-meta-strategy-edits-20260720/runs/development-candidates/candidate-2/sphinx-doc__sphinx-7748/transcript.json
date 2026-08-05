@@ -1,0 +1,92 @@
+[
+  {
+    "answer": "Contiguous valid block",
+    "open_material_decisions": [
+      "After resolving behavior, confirm the complete implementation contract before implementation.",
+      "Define the boundary of the leading overload-signature block and behavior at the first non-matching or wrong-name line."
+    ],
+    "question": {
+      "header": "Block boundary",
+      "options": [
+        {
+          "description": "Extract consecutive leading lines that parse as signatures with an accepted object name, then stop at the first other line and preserve that line plus everything after it as content.",
+          "label": "Contiguous valid block",
+          "recommended": true
+        },
+        {
+          "description": "Extract consecutive signature-shaped lines, including lines whose object name differs, until the first non-signature line.",
+          "label": "All leading signature-like",
+          "recommended": false
+        },
+        {
+          "description": "Within the initial paragraph, extract valid matching signatures while preserving non-matching lines and continuing to scan until a blank line.",
+          "label": "Scan until blank",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc recognize multiple overload signatures at the start of a docstring?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Confirm or revise the complete implementation contract before implementation."
+    ],
+    "question": {
+      "header": "Contract approval",
+      "options": [
+        {
+          "description": "Seal this behavior and acceptance boundary as implementation-ready.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the request open so you can specify changes to the proposed behavior or acceptance criteria.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: when autodoc_docstring_signature is enabled and no explicit signature is supplied, FunctionDocumenter and MethodDocumenter will extract every consecutive leading docstring line that parses as a signature and has an already-accepted object name; extraction stops at the first non-signature or wrong-name line, preserving that line and all following content; extracted signatures retain their original order, arguments, and individual return annotations and are rendered as separate aligned directive signature lines; existing single-signature behavior remains unchanged; disabling the option preserves all signature text as content and uses normal introspection; explicit directive signatures continue to take precedence; documentation will describe the leading contiguous signature block; tests will cover multiple overloads, per-overload return annotations, stopping and preservation at prose or a wrong-name signature, the existing single-signature case, and the disabled configuration. Implementation details may be chosen locally without changing these observable rules. Residual risk is limited to docstrings that previously began with multiple matching signature-like lines: those additional leading lines will now be consumed and rendered as overload signatures."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "With autodoc_docstring_signature enabled and no explicit signature, a function or method docstring beginning with multiple consecutive valid matching-name signatures emits every signature as a separate aligned directive signature line.",
+          "Multiple extracted overloads retain source order, argument text, and their individual return annotations.",
+          "Extraction stops at leading prose, preserving that line and all subsequent content.",
+          "Extraction stops at a wrong-name signature, preserving that line and all subsequent content.",
+          "The existing single-signature fixture and expectations continue to pass unchanged.",
+          "With autodoc_docstring_signature disabled, overload signature lines remain in docstring content and the displayed signature comes from normal introspection.",
+          "An explicit directive signature prevents docstring signature extraction and remains authoritative.",
+          "Documentation states that autodoc examines and removes a contiguous leading block of accepted signatures rather than only the first line.",
+          "Relevant autodoc tests pass without regressions."
+        ],
+        "confirmed_decisions": [
+          "Recognize overloads only as a contiguous block of valid, accepted-name signatures at the beginning of a docstring.",
+          "Stop extraction at the first non-signature or wrong-name line and preserve that line and everything following it as docstring content.",
+          "Render all extracted overload signatures as separate aligned directive signature lines in their original order.",
+          "Preserve each overload's arguments and return annotation independently.",
+          "Keep existing single-signature behavior unchanged.",
+          "When autodoc_docstring_signature is disabled, preserve all signature text as content and use normal introspection.",
+          "Explicit directive signatures take precedence over docstring signature extraction.",
+          "Apply the behavior to FunctionDocumenter and MethodDocumenter through their shared DocstringSignatureMixin behavior.",
+          "Update user documentation to describe extraction of a leading contiguous signature block.",
+          "Allow local implementation choices only when they do not alter the approved observable behavior.",
+          "Accept the bounded compatibility change for docstrings already beginning with multiple matching signature-like lines."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "When autodoc_docstring_signature is enabled and no explicit signature is supplied, FunctionDocumenter and MethodDocumenter will extract every consecutive leading docstring line that parses as a signature and has an already-accepted object name. Extraction stops at the first non-signature or wrong-name line, preserving that line and all following content. Extracted signatures retain their original order, arguments, and individual return annotations and are rendered as separate aligned directive signature lines. Existing single-signature behavior remains unchanged; disabling the option preserves all signature text as content and uses normal introspection; explicit directive signatures continue to take precedence. Documentation will describe the leading contiguous signature block. Implementation details may be chosen locally without changing these observable rules. The acknowledged residual risk is limited to docstrings that previously began with multiple matching signature-like lines: additional leading lines will now be consumed and rendered as overload signatures."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner approved the complete contract, and all material behavioral and compatibility decisions are resolved."
+    },
+    "turn": 3
+  }
+]

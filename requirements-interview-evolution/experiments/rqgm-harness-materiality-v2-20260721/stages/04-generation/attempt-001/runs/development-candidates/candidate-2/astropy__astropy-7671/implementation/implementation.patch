@@ -1,0 +1,58 @@
+diff --git a/astropy/utils/introspection.py b/astropy/utils/introspection.py
+index 3e784f9..5204d25 100644
+--- a/astropy/utils/introspection.py
++++ b/astropy/utils/introspection.py
+@@ -6,6 +6,7 @@
+ import inspect
+ import types
+ import importlib
++import re
+ from distutils.version import LooseVersion
+ 
+ 
+@@ -139,10 +140,26 @@ def minversion(module, version, inclusive=True, version_path='__version__'):
+     else:
+         have_version = resolve_name(module.__name__, version_path)
+ 
+-    if inclusive:
+-        return LooseVersion(have_version) >= LooseVersion(version)
+-    else:
+-        return LooseVersion(have_version) > LooseVersion(version)
++    have_version_parsed = LooseVersion(have_version)
++    version_parsed = LooseVersion(version)
++
++    try:
++        if inclusive:
++            return have_version_parsed >= version_parsed
++        else:
++            return have_version_parsed > version_parsed
++    except TypeError:
++        # LooseVersion cannot compare mixed numeric and string components on
++        # Python 3 (for example, '1.14.3' and '1.14dev').
++        have_version_parsed = LooseVersion(
++            re.sub(r'[^0-9.].*', '', have_version).rstrip('.'))
++        version_parsed = LooseVersion(
++            re.sub(r'[^0-9.].*', '', version).rstrip('.'))
++
++        if inclusive:
++            return have_version_parsed >= version_parsed
++        else:
++            return have_version_parsed > version_parsed
+ 
+ 
+ def find_current_module(depth=1, finddiff=False):
+diff --git a/astropy/utils/tests/test_introspection.py b/astropy/utils/tests/test_introspection.py
+index d8262d4..3743a48 100644
+--- a/astropy/utils/tests/test_introspection.py
++++ b/astropy/utils/tests/test_introspection.py
+@@ -73,3 +73,10 @@ def test_minversion():
+         assert minversion(test_module, version)
+     for version in bad_versions:
+         assert not minversion(test_module, version)
++
++    test_module.__version__ = '1.14.3'
++    assert minversion(test_module, '1.14dev')
++    assert minversion(test_module, '1.14dev', inclusive=False)
++    assert minversion(test_module, '1.14.3')
++    assert not minversion(test_module, '1.14.3', inclusive=False)
++    assert not minversion('_nonexistent_module_', '1.0')

@@ -1,0 +1,72 @@
+{
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 224,
+      "line_start": 213,
+      "path": "django/utils/autoreload.py",
+      "statement": "`get_child_arguments()` imports `django.__main__`, reads `django.__main__.__file__`, converts it to a path, and compares that path with `sys.argv[0]`."
+    },
+    {
+      "id": "F2",
+      "line_end": 227,
+      "line_start": 224,
+      "path": "django/utils/autoreload.py",
+      "statement": "Only when `sys.argv[0]` equals the path of `django.__main__` does the function reconstruct the child command with `-m django`; the package name is hard-coded as `django`."
+    },
+    {
+      "id": "F3",
+      "line_end": 246,
+      "line_start": 244,
+      "path": "django/utils/autoreload.py",
+      "statement": "For an existing script path that is not `django.__main__`, the function appends the original `sys.argv` to the Python executable and warning options, without reconstructing a `-m <package>` invocation."
+    },
+    {
+      "id": "F4",
+      "line_end": 260,
+      "line_start": 254,
+      "path": "django/utils/autoreload.py",
+      "statement": "`restart_with_reloader()` obtains its subprocess arguments exclusively from `get_child_arguments()` and repeatedly launches that command with the autoreload environment marker set."
+    },
+    {
+      "id": "F5",
+      "line_end": 166,
+      "line_start": 159,
+      "path": "tests/utils_tests/test_autoreload.py",
+      "statement": "The direct unit test for module execution patches `sys.argv` to start with `django.__main__.__file__` and expects `[sys.executable, '-m', 'django', 'runserver']`."
+    },
+    {
+      "id": "F6",
+      "line_end": 174,
+      "line_start": 168,
+      "path": "tests/utils_tests/test_autoreload.py",
+      "statement": "The direct unit test for ordinary script execution expects the script filename itself to be retained after the executable and warning option."
+    },
+    {
+      "id": "F7",
+      "line_end": 452,
+      "line_start": 445,
+      "path": "tests/utils_tests/test_autoreload.py",
+      "statement": "The restart integration-style test for `python -m django` supplies a mocked `django.__main__.__file__` matching `argv[0]` and expects the relaunched command to contain `-m django`."
+    },
+    {
+      "id": "F8",
+      "line_end": 9,
+      "line_start": 1,
+      "path": "django/__main__.py",
+      "statement": "Django's own `__main__` module delegates to `management.execute_from_command_line()` when executed as the program entry point."
+    },
+    {
+      "id": "F9",
+      "line_end": 243,
+      "line_start": 228,
+      "path": "django/utils/autoreload.py",
+      "statement": "When `sys.argv[0]` does not exist, `get_child_arguments()` contains separate Windows fallbacks for a matching `.exe` or `-script.py` entry point and otherwise raises `RuntimeError`."
+    }
+  ],
+  "scope_summary": "Base commit 415f50298f97fb17f841a9df38d995ccf347dfcc contains path-based detection specialized to `python -m django`; autoreloader tests cover that invocation, ordinary script invocation, and Windows entry-point fallbacks, but no non-Django `-m` package case is present in the inspected test section.",
+  "unknowns": [
+    "The inspected repository facts do not establish how every supported Python runtime populates `__main__.__spec__`, because the current implementation and cited tests do not inspect it.",
+    "The inspected test section contains no case for launching a package other than Django with `python -m <package> runserver`."
+  ]
+}

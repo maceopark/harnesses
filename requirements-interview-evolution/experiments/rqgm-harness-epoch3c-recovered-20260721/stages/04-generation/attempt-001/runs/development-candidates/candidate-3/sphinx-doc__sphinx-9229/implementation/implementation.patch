@@ -1,0 +1,188 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..e142646 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1785,6 +1785,9 @@ class DataDocumenterMixinBase:
+         """Update docstring for the NewType object."""
+         pass
+ 
++    def has_assignment_docstring(self) -> bool:
++        return False
++
+ 
+ class GenericAliasMixin(DataDocumenterMixinBase):
+     """
+@@ -1797,7 +1800,8 @@ class GenericAliasMixin(DataDocumenterMixinBase):
+                 super().should_suppress_directive_header())
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if inspect.isgenericalias(self.object):
++        if (inspect.isgenericalias(self.object) and
++                not self.has_assignment_docstring()):
+             more_content.append(_('alias of %s') % restify(self.object), '')
+             more_content.append('', '')
+ 
+@@ -1998,6 +2002,15 @@ class DataDocumenter(GenericAliasMixin, NewTypeMixin, TypeVarMixin,
+ 
+         return None
+ 
++    def has_assignment_docstring(self) -> bool:
++        """Return whether source contains a string following this assignment."""
++        try:
++            analyzer = ModuleAnalyzer.for_module(self.modname)
++            analyzer.analyze()
++            return ('', self.objpath[-1]) in analyzer.attr_docstrings
++        except PycodeError:
++            return False
++
+     def get_doc(self, ignore: int = None) -> Optional[List[List[str]]]:
+         # Check the variable has a docstring-comment
+         comment = self.get_module_comment(self.objpath[-1])
+diff --git a/sphinx/pycode/__init__.py b/sphinx/pycode/__init__.py
+index 8e79385..6b5d7f8 100644
+--- a/sphinx/pycode/__init__.py
++++ b/sphinx/pycode/__init__.py
+@@ -16,7 +16,7 @@ from importlib import import_module
+ from inspect import Signature
+ from io import StringIO
+ from os import path
+-from typing import IO, Any, Dict, List, Optional, Tuple
++from typing import IO, Any, Dict, List, Optional, Set, Tuple
+ from zipfile import ZipFile
+ 
+ from sphinx.deprecation import RemovedInSphinx50Warning
+@@ -27,6 +27,7 @@ from sphinx.pycode.parser import Parser
+ class ModuleAnalyzer:
+     annotations: Dict[Tuple[str, str], str]
+     attr_docs: Dict[Tuple[str, str], List[str]]
++    attr_docstrings: Set[Tuple[str, str]]
+     finals: List[str]
+     overloads: Dict[str, List[Signature]]
+     tagorder: Dict[str, int]
+@@ -165,6 +166,8 @@ class ModuleAnalyzer:
+                 else:
+                     self.attr_docs[scope] = ['']
+ 
++            self.attr_docstrings = parser.docstrings
++
+             self.annotations = parser.annotations
+             self.finals = parser.finals
+             self.overloads = parser.overloads
+diff --git a/sphinx/pycode/parser.py b/sphinx/pycode/parser.py
+index a00b481..9b8af55 100644
+--- a/sphinx/pycode/parser.py
++++ b/sphinx/pycode/parser.py
+@@ -15,7 +15,7 @@ from collections import OrderedDict
+ from inspect import Signature
+ from token import DEDENT, INDENT, NAME, NEWLINE, NUMBER, OP, STRING
+ from tokenize import COMMENT, NL
+-from typing import Any, Dict, List, Optional, Tuple
++from typing import Any, Dict, List, Optional, Set, Tuple
+ 
+ from sphinx.pycode.ast import ast  # for py37 or older
+ from sphinx.pycode.ast import parse, unparse
+@@ -225,6 +225,7 @@ class VariableCommentPicker(ast.NodeVisitor):
+         self.current_classes: List[str] = []
+         self.current_function: Optional[ast.FunctionDef] = None
+         self.comments: Dict[Tuple[str, str], str] = OrderedDict()
++        self.docstrings: Set[Tuple[str, str]] = set()
+         self.annotations: Dict[Tuple[str, str], str] = {}
+         self.previous: Optional[ast.AST] = None
+         self.deforders: Dict[str, int] = {}
+@@ -270,6 +271,15 @@ class VariableCommentPicker(ast.NodeVisitor):
+             basename = ".".join(qualname[:-1])
+             self.comments[(basename, name)] = comment
+ 
++    def add_variable_docstring(self, name: str, docstring: str) -> None:
++        """Record documentation from a string following an assignment."""
++        qualname = self.get_qualname_for(name)
++        if qualname:
++            basename = ".".join(qualname[:-1])
++            key = (basename, name)
++            self.comments[key] = docstring
++            self.docstrings.add(key)
++
+     def add_variable_annotation(self, name: str, annotation: ast.AST) -> None:
+         qualname = self.get_qualname_for(name)
+         if qualname:
+@@ -411,7 +421,7 @@ class VariableCommentPicker(ast.NodeVisitor):
+                     else:
+                         docstring = node.value.s.decode(self.encoding or 'utf-8')
+ 
+-                    self.add_variable_comment(varname, dedent_docstring(docstring))
++                    self.add_variable_docstring(varname, dedent_docstring(docstring))
+                     self.add_entry(varname)
+             except TypeError:
+                 pass  # this assignment is not new definition!
+@@ -545,6 +555,7 @@ class Parser:
+         self.encoding = encoding
+         self.annotations: Dict[Tuple[str, str], str] = {}
+         self.comments: Dict[Tuple[str, str], str] = {}
++        self.docstrings: Set[Tuple[str, str]] = set()
+         self.deforders: Dict[str, int] = {}
+         self.definitions: Dict[str, Tuple[str, int, int]] = {}
+         self.finals: List[str] = []
+@@ -562,6 +573,7 @@ class Parser:
+         picker.visit(tree)
+         self.annotations = picker.annotations
+         self.comments = picker.comments
++        self.docstrings = picker.docstrings
+         self.deforders = picker.deforders
+         self.finals = picker.finals
+         self.overloads = picker.overloads
+diff --git a/tests/roots/test-ext-autodoc/target/genericalias.py b/tests/roots/test-ext-autodoc/target/genericalias.py
+index 9909efc..c5efe8e 100644
+--- a/tests/roots/test-ext-autodoc/target/genericalias.py
++++ b/tests/roots/test-ext-autodoc/target/genericalias.py
+@@ -5,6 +5,12 @@ T = List[int]
+ 
+ C = Callable[[int], None]  # a generic alias not having a doccomment
+ 
++S = List[str]
++"""A list of str from an assignment-following string.
++
++The generated alias text is suppressed.
++"""
++
+ 
+ class Class:
+     #: A list of int
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..3aab106 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -101,6 +101,22 @@ def test_autodata_GenericAlias(app):
+         ]
+ 
+ 
++@pytest.mark.skipif(sys.version_info < (3, 7), reason='python 3.7+ is required.')
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodata_GenericAlias_with_assignment_docstring(app):
++    actual = do_autodoc(app, 'data', 'target.genericalias.S')
++    assert list(actual) == [
++        '',
++        '.. py:data:: S',
++        '   :module: target.genericalias',
++        '',
++        '   A list of str from an assignment-following string.',
++        '',
++        '   The generated alias text is suppressed.',
++        '',
++    ]
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_NewType(app):
+     actual = do_autodoc(app, 'data', 'target.typevar.T6')
+diff --git a/tests/test_pycode_parser.py b/tests/test_pycode_parser.py
+index e909917..19b487e 100644
+--- a/tests/test_pycode_parser.py
++++ b/tests/test_pycode_parser.py
+@@ -305,6 +305,7 @@ def test_comment_picker_multiline_string():
+     parser.parse()
+     assert parser.comments == {('Foo', 'a'): 'multiline\ndocstring',
+                                ('Foo', 'b'): 'docstring\nstarts with::\n\n    empty line'}
++    assert parser.docstrings == {('Foo', 'a'), ('Foo', 'b')}
+ 
+ 
+ def test_decorators():

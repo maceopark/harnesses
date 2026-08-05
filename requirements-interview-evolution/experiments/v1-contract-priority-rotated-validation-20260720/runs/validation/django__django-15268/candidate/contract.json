@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "Given alternating same-model AlterUniqueTogether(empty), AlterIndexTogether(empty), AlterUniqueTogether(final), and AlterIndexTogether(final), optimization returns exactly AlterUniqueTogether(final) followed by AlterIndexTogether(final).",
+    "Optimizer coverage proves traversal in both FooTogether crossing directions, enabling a later operation of the same concrete type to replace the earlier operation.",
+    "Optimizer coverage proves unrelated same-model option operations do not receive the approved traversal behavior.",
+    "The autodetector foo-together ordering-change test requires exactly two operations: final-value AlterUniqueTogether followed by final-value AlterIndexTogether.",
+    "Existing adjacent same-type AlterUniqueTogether and AlterIndexTogether reductions continue to pass.",
+    "Targeted migration optimizer and autodetector tests pass."
+  ],
+  "confirmed_decisions": [
+    "Optimizer traversal is limited to AlterUniqueTogether and AlterIndexTogether crossing each other on the same model.",
+    "The exact reported sequence must reduce from four operations to two final-value operations, preserving final Unique-then-Index order.",
+    "The evidenced autodetector ordering-change result must contain two final-value operations rather than four removal/addition operations.",
+    "Other same-model ModelOptionOperation subclasses must not gain general traversal behavior.",
+    "Different-model behavior, field-operation ordering, autodetector generation phases, schema-editor semantics, and existing adjacent same-type reductions remain unchanged.",
+    "The implementer may choose the narrow internal mechanism and minimum fixtures consistent with the approved behavior.",
+    "The owner accepts the bounded risk that longer Unique/Index-only interleavings may reduce according to existing fixed-point optimizer semantics.",
+    "The complete implementation contract is owner-approved."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Optimize migration operation lists within the FooTogether boundary so same-model AlterUniqueTogether and AlterIndexTogether operations may traverse each other, allowing repeated operations of each concrete type to collapse to their final operation. The reported alternating four-operation sequence must optimize to exactly two operations in order: the final AlterUniqueTogether followed by the final AlterIndexTogether. Autodetection of the evidenced foo-together ordering change must likewise return those two final-value operations instead of separate removal and addition pairs. Crossing is limited to AlterUniqueTogether versus AlterIndexTogether on the same model. Existing adjacent same-type reductions remain valid. Other ModelOptionOperation subclasses, different-model behavior, field-operation ordering, autodetector generation phases, and schema-editor semantics are excluded and must remain unchanged. The internal mechanism and minimum fixtures are implementation discretion provided these outcomes and boundaries hold. Accepted residual risk: unusual longer Unique/Index-only interleavings may also reduce under the optimizer's existing fixed-point semantics, but only within the approved FooTogether boundary."
+}

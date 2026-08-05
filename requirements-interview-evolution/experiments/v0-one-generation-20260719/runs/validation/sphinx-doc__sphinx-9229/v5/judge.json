@@ -1,0 +1,21 @@
+{
+  "compatibility_regressions": [
+    "The contract freezes ordinary documented class aliases to their existing “alias of …” behavior, conflicting with the sealed fail-to-pass case and gold patch, which make a documented ordinary class alias render its variable documentation without the generated alias text.",
+    "The contract intentionally removes “alias of …” from documented GenericAlias output on Python 3.7+, changing existing tested automodule and autodata behavior beyond the immediate legacy ClassDocumenter defect."
+  ],
+  "implementation_ready": false,
+  "invented_requirements": [
+    "Limit the docs-only behavior to typing-based aliases while preserving generated alias behavior for ordinary imported or renamed class aliases; the public request did not establish this distinction, and the hindsight regression covers an ordinary documented class alias.",
+    "Change documented GenericAlias output on Python 3.7+ from source documentation plus “alias of …” to source documentation only across both automodule and explicit autodata paths; this follows an interview choice but extends beyond the reported Python 3.6 failure and the gold patch.",
+    "Require a regression fixture containing Dict, Union, Callable, and List across every runtime classification path and every supported Python-version branch; repository evidence did not establish those exact classifications or this coverage matrix.",
+    "Require ClassDocumenter to use the analyzer for the module containing the assignment through a particular module-selection concern; this diagnosis was plausible but not established as a necessary contract-level behavior."
+  ],
+  "material_blockers": [
+    "The contract requires distinguishing typing-based class-like aliases from ordinary class aliases, but the audited repository evidence does not define a reliable cross-version predicate for that distinction, especially on Python 3.6.",
+    "The exclusion for ordinary class aliases is incompatible with the sealed target behavior demonstrated by the hindsight-only regression, so an implementation satisfying the contract would not satisfy the audited fail-to-pass test."
+  ],
+  "owner_recall": 0.94,
+  "redundant_questions": [],
+  "repository_fidelity": 0.46,
+  "summary": "The interview accurately captured the user’s four explicit choices, but the resulting contract is not implementation-ready against the sealed target. It overgeneralizes the fix across GenericAlias/autodata/version paths while simultaneously excluding ordinary documented class aliases—the exact case exercised by the sealed regression and repaired by the gold patch. Hindsight evidence is used only diagnostically here; the primary issue-time concern is that the repository did not establish a workable typing-only boundary or justify the expanded cross-version output changes."
+}

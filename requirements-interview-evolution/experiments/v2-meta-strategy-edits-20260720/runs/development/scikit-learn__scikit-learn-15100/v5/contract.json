@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "`strip_accents_unicode('ñ') == 'n'`.",
+    "`strip_accents_unicode('n\\u0303') == 'n'`.",
+    "Existing direct tests for precomposed Latin accents, the covered Arabic character, and mixed accented text continue to pass.",
+    "Relevant text-feature extraction tests, including vectorizer paths using `strip_accents='unicode'`, pass.",
+    "No changes are made to `strip_accents_ascii` behavior or documentation requirements."
+  ],
+  "confirmed_decisions": [
+    "Remove the equality-based behavior that returns already-NFKD input without filtering combining characters.",
+    "Filter all nonzero `unicodedata.combining` characters after NFKD normalization.",
+    "Cover precomposed `ñ` and decomposed `n\\u0303` in a direct regression test, expecting `n` for both.",
+    "Preserve existing tested Unicode accent-stripping behavior and the behavior exposed through vectorizers using `strip_accents='unicode'`.",
+    "Do not change documentation or ASCII accent stripping.",
+    "Allow implementation discretion over the smallest equivalent code shape consistent with repository conventions.",
+    "Accept the bounded compatibility change that combining marks previously preserved in already-normalized input will now be removed, as required by the documented accent-stripping behavior."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update `strip_accents_unicode` so it always applies NFKD normalization and removes every character for which `unicodedata.combining` returns nonzero, including combining marks already present in NFKD input. Preserve the established behavior for precomposed Latin accents, the covered Arabic character, mixed text, and vectorizers configured with `strip_accents='unicode'`. Add a direct regression test proving both precomposed `ñ` and decomposed `n\\u0303` produce `n`. No documentation or `strip_accents_ascii` changes are required. Implementation may use the smallest equivalent code shape consistent with repository conventions."
+}

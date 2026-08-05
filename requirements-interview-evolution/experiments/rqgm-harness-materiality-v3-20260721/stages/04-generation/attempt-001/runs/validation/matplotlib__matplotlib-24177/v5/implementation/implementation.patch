@@ -1,0 +1,59 @@
+diff --git a/lib/matplotlib/axes/_base.py b/lib/matplotlib/axes/_base.py
+index 4f805e0..056ff7e 100644
+--- a/lib/matplotlib/axes/_base.py
++++ b/lib/matplotlib/axes/_base.py
+@@ -2434,7 +2434,7 @@ class _AxesBase(martist.Artist):
+         # Get all vertices on the path
+         # Loop through each segment to get extrema for Bezier curve sections
+         vertices = []
+-        for curve, code in p.iter_bezier():
++        for curve, code in p.iter_bezier(simplify=False):
+             # Get distance along the curve of any extrema
+             _, dzeros = curve.axis_aligned_extrema()
+             # Calculate vertices of start, end and any extrema in between
+diff --git a/lib/matplotlib/tests/test_axes.py b/lib/matplotlib/tests/test_axes.py
+index bd7940a..5e92255 100644
+--- a/lib/matplotlib/tests/test_axes.py
++++ b/lib/matplotlib/tests/test_axes.py
+@@ -2075,6 +2075,22 @@ def test_hist_density():
+     ax.hist(data, density=True)
+ 
+ 
++@pytest.mark.parametrize("orientation", ["vertical", "horizontal"])
++def test_hist_step_density_autoscale(orientation):
++    data = np.random.RandomState(0).standard_normal(100000) * 1.2
++    fig, ax = plt.subplots()
++    density, _, (polygon,) = ax.hist(
++        data, bins=100, density=True, histtype="step",
++        orientation=orientation)
++
++    assert len(polygon.get_path().vertices) > 128
++    assert polygon.get_path().should_simplify
++    dependent_lim = (ax.get_ylim() if orientation == "vertical"
++                     else ax.get_xlim())
++    assert dependent_lim[0] <= 0 <= dependent_lim[1]
++    assert dependent_lim[1] >= density.max()
++
++
+ def test_hist_unequal_bins_density():
+     # Test correct behavior of normalized histogram with unequal bins
+     # https://github.com/matplotlib/matplotlib/issues/9557
+@@ -8165,6 +8181,18 @@ def test_bezier_autoscale():
+     assert ax.get_ylim()[0] == -0.5
+ 
+ 
++def test_patch_autoscale_without_simplification():
++    vertices = np.column_stack([np.arange(130), np.zeros(130)])
++    vertices[65, 1] = .01
++    path = mpath.Path(vertices)
++    assert path.should_simplify
++
++    fig, ax = plt.subplots()
++    ax.add_patch(mpatches.PathPatch(path))
++
++    assert_array_equal(ax.dataLim.extents, [0, 0, 129, .01])
++
++
+ def test_get_xticklabel():
+     fig, ax = plt.subplots()
+     ax.plot(np.arange(10))

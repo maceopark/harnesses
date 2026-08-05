@@ -1,0 +1,55 @@
+diff --git a/astropy/io/fits/diff.py b/astropy/io/fits/diff.py
+index 100cdf1..d3608ef 100644
+--- a/astropy/io/fits/diff.py
++++ b/astropy/io/fits/diff.py
+@@ -1449,7 +1449,7 @@ class TableDataDiff(_BaseDiff):
+                 arrb.dtype, np.floating
+             ):
+                 diffs = where_not_allclose(arra, arrb, rtol=self.rtol, atol=self.atol)
+-            elif "P" in col.format:
++            elif "P" in col.format or "Q" in col.format:
+                 diffs = (
+                     [
+                         idx
+diff --git a/astropy/io/fits/tests/test_diff.py b/astropy/io/fits/tests/test_diff.py
+index adfebe6..6515595 100644
+--- a/astropy/io/fits/tests/test_diff.py
++++ b/astropy/io/fits/tests/test_diff.py
+@@ -588,6 +588,7 @@ class TestDiff(FitsTestCase):
+         assert diff.diff_values[11][0] == ("J", 0)
+         assert (diff.diff_values[11][1][0] == [0, 1]).all()
+         assert (diff.diff_values[11][1][1] == [1, 2]).all()
++
+         assert diff.diff_values[12][0] == ("J", 1)
+         assert (diff.diff_values[12][1][0] == [2, 3]).all()
+         assert (diff.diff_values[12][1][1] == [3, 4]).all()
+@@ -601,6 +602,29 @@ class TestDiff(FitsTestCase):
+         assert "13 different table data element(s) found (65.00% different)" in report
+         assert report.count("more indices") == 1
+ 
++    def test_q_vla_data(self):
++        column = Column("a", format="QD", array=[[0], [0, 0]])
++        table = BinTableHDU.from_columns([column])
++
++        diff = TableDataDiff(table.data, table.data)
++        assert diff.identical
++        assert diff.diff_values == []
++        assert diff.diff_total == 0
++
++        filename = self.temp("q_vla.fits")
++        table.writeto(filename)
++        assert FITSDiff(filename, filename).identical
++
++        changed_column = Column("a", format="QD", array=[[1], [0, 0]])
++        changed_table = BinTableHDU.from_columns([changed_column])
++        diff = TableDataDiff(table.data, changed_table.data)
++        assert not diff.identical
++        assert diff.diff_values[0][0] == ("a", 0)
++
++        changed_filename = self.temp("q_vla_changed.fits")
++        changed_table.writeto(changed_filename)
++        assert not FITSDiff(filename, changed_filename).identical
++
+     def test_identical_files_basic(self):
+         """Test identicality of two simple, extensionless files."""
+ 

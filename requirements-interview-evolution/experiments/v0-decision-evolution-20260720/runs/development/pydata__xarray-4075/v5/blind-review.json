@@ -1,0 +1,50 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/2",
+          "quoted_value": "When data contains missing values, boolean weights at missing positions are excluded from the denominator and the mean matches the existing mask-then-sum reference semantics."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/3",
+          "quoted_value": "An explicit dimension reduction with boolean weights produces the expected remaining dimensions and numeric values."
+        }
+      ],
+      "description": "The contract is marked implementation-ready, but two required regression checks remain underspecified. “Matches reference semantics” and “expected remaining dimensions and numeric values” do not identify the data, weights, reduction dimension, output dimensions, or numeric results needed to determine pass or fail.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "Acceptance criteria describe expected results without specifying concrete inputs and scalar outputs.",
+      "id": "F-001",
+      "material": true,
+      "observable_signal": "The missing-data and dimension-specific checks cannot be implemented or independently verified from the contract alone because their fixtures and exact expected values are absent."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/6",
+          "quoted_value": "DatasetWeighted-specific and lazy-backend regression tests are not required for this change because they use the shared reduction path."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/unknowns/2",
+          "quoted_value": "The inspected test code does not specify expected boolean-weight behavior for DatasetWeighted, dimension-specific reductions, arrays containing missing data, or lazy array backends."
+        }
+      ],
+      "description": "The decision that lazy-backend regression coverage is unnecessary relies on repository behavior not supported by the audited evidence. The shared-path implementation may suggest propagation, but it does not establish that the integer conversion works through lazy backend dispatch; the audit identifies that behavior as unknown.",
+      "failure_class": "invention",
+      "general_cause": "The contract converts an audited repository unknown into an unsupported architectural assertion.",
+      "id": "F-002",
+      "material": true,
+      "observable_signal": "It waives DatasetWeighted-specific and lazy-backend tests on the stated ground that both use the shared reduction path, while the audit expressly says lazy-backend behavior is not established."
+    }
+  ],
+  "summary": "The contract is not materially implementation-ready: two required regression checks lack executable fixtures and exact outcomes, and the waiver of lazy-backend coverage rests on an unsupported repository assertion."
+}

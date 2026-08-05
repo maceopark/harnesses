@@ -1,0 +1,80 @@
+{
+  "audit_summary": "Accepted 10 facts with direct support in the cited base-commit files; rejected fact-8 because its cited range does not support the verification portion of the statement.",
+  "facts": [
+    {
+      "id": "fact-1",
+      "line_end": 303,
+      "line_start": 289,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "FITSDiff accepts filenames and opens each input independently, including when both inputs name the same file."
+    },
+    {
+      "id": "fact-2",
+      "line_end": 1463,
+      "line_start": 1429,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "TableDataDiff retrieves each common column's arrays and selects its comparison algorithm from the arrays' dtypes and the column format."
+    },
+    {
+      "id": "fact-3",
+      "line_end": 1461,
+      "line_start": 1452,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "The VLA-specific comparison branch is guarded only by the literal condition `\"P\" in col.format`; it compares each row with numpy.allclose and records row indices that fail."
+    },
+    {
+      "id": "fact-4",
+      "line_end": 1463,
+      "line_start": 1452,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "A Q-format VLA does not satisfy the P-format string guard and therefore reaches the generic `np.where(arra != arrb)` branch."
+    },
+    {
+      "id": "fact-5",
+      "line_end": 480,
+      "line_start": 471,
+      "path": "astropy/io/fits/column.py",
+      "statement": "The FITS column implementation defines Q as a subclass of the P-format implementation and documents both as variable-length-array formats; Q differs by using 64-bit array descriptors."
+    },
+    {
+      "id": "fact-6",
+      "line_end": 727,
+      "line_start": 717,
+      "path": "astropy/io/fits/fitsrec.py",
+      "statement": "FITS_rec's field conversion correctly recognizes both P and Q VLAs through `isinstance(recformat, _FormatP)` because Q subclasses P, then routes them to the same VLA conversion method."
+    },
+    {
+      "id": "fact-7",
+      "line_end": 812,
+      "line_start": 793,
+      "path": "astropy/io/fits/fitsrec.py",
+      "statement": "The shared VLA conversion method explicitly documents that it converts raw P or Q descriptors into a VLA column and constructs one array value per table row."
+    },
+    {
+      "id": "fact-9",
+      "line_end": 1485,
+      "line_start": 1465,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "TableDataDiff counts unique row indices returned by the chosen comparison branch as differing table elements and stores the corresponding row values for reporting."
+    },
+    {
+      "id": "fact-10",
+      "line_end": 132,
+      "line_start": 122,
+      "path": "astropy/io/fits/diff.py",
+      "statement": "A diff object's `identical` property is true only when all of its `diff_*` attributes are empty, so any falsely recorded table difference propagates to a false identical result."
+    },
+    {
+      "id": "fact-11",
+      "line_end": 612,
+      "line_start": 604,
+      "path": "astropy/io/fits/tests/test_diff.py",
+      "statement": "The existing basic identical-files regression test writes two separate simple image files and asserts FITSDiff reports them identical; it does not cover binary tables or VLAs."
+    }
+  ],
+  "scope_summary": "Base-commit inspection identifies a format-dispatch gap in FITS table-data comparison: P-format VLA columns receive row-wise tolerant comparison, while Q-format VLA columns fall through to generic object-array inequality despite Q being implemented as a P-format subclass elsewhere.",
+  "unknowns": [
+    "The repository evidence alone does not establish which NumPy object-array comparison behavior produces the reported false row index for the specific QD reproduction across supported NumPy versions.",
+    "The inspected base-commit tests do not establish whether other Q-format element types or VLA row-length patterns exhibit the same false-positive behavior."
+  ]
+}

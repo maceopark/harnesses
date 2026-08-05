@@ -1,0 +1,80 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/5",
+          "quoted_value": "The function continues to accept either an imported module or a module-name string, return `False` when a named module cannot be imported, and reject unsupported module argument types as before."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/4",
+          "quoted_value": "Module-name import failure, imported-module input, unsupported input type, and configured version-path behavior remain unchanged."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/1/statement",
+          "quoted_value": "`minversion` accepts either an imported module or a module-name string; for a string it resolves/imports the module and returns `False` if that import fails."
+        }
+      ],
+      "description": "Rejection behavior for unsupported module argument types is treated as a confirmed compatibility requirement and acceptance condition without support in the allowed evidence. This materially expands the required regression surface.",
+      "failure_class": "invention",
+      "general_cause": "The contract adds preservation requirements that are neither requested publicly nor established by the audited evidence.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "The contract requires unsupported module argument types to remain rejected, but the audited fact describing accepted module inputs and failed imports does not establish unsupported-input behavior."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/6",
+          "quoted_value": "The installed version continues to be obtained through `version_path`, including direct and dotted attribute paths."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/2/statement",
+          "quoted_value": "`minversion` reads the version from the configured module attribute path, whose default is `__version__`."
+        }
+      ],
+      "description": "Direct and dotted `version_path` handling is elevated to a confirmed requirement even though dotted-path behavior is not supported by the audited evidence or public request. This creates an additional implementation and testing obligation without an allowed basis.",
+      "failure_class": "invention",
+      "general_cause": "The contract asserts a specific version-path capability beyond what the audited evidence establishes.",
+      "id": "FINDING-2",
+      "material": true,
+      "observable_signal": "The contract requires preservation of dotted attribute paths, while audited evidence only establishes a configured attribute path with `__version__` as the default."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/1",
+          "quoted_value": "Valid development and prerelease versions follow standard package-version ordering relative to their corresponding final releases."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/unknowns/0",
+          "quoted_value": "The repository facts do not specify which replacement version parser, if any, maintainers intend to use."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/unknowns/1",
+          "quoted_value": "The existing cited tests do not define expected behavior for every development, prerelease, or non-PEP-440 version-string combination."
+        }
+      ],
+      "description": "The selected semantic direction is captured, but the contract does not define what constitutes a valid version or identify the ordering standard. Different parsers can therefore satisfy the concrete reported example while disagreeing on other development or prerelease strings, making the broad acceptance check non-deterministic and undermining the `implementation_ready` claim.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The acceptance criterion relies on undefined normative terms rather than a concrete comparison oracle or sufficiently enumerated cases.",
+      "id": "FINDING-3",
+      "material": true,
+      "observable_signal": "The contract requires “valid” versions to follow “standard package-version ordering,” while the audited evidence states that the intended replacement parser is unknown and existing tests do not define all development and prerelease combinations."
+    }
+  ],
+  "summary": "The contract is not materially implementation-ready: it invents unsupported-input and dotted-version-path preservation obligations beyond the audited evidence, and its broad “standard package-version ordering” acceptance condition lacks a deterministic oracle."
+}

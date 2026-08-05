@@ -1,0 +1,162 @@
+[
+  {
+    "answer": "All xy inputs",
+    "open_material_decisions": [
+      "Whether Annotation should snapshot every accepted xy coordinate input or only NumPy arrays."
+    ],
+    "question": {
+      "header": "Snapshot scope",
+      "options": [
+        {
+          "description": "Snapshot the two coordinate values for every accepted xy sequence, giving consistent behavior for NumPy arrays, lists, and similar mutable inputs.",
+          "label": "All xy inputs",
+          "recommended": true
+        },
+        {
+          "description": "Copy only ndarray inputs, preserving reference behavior for other mutable coordinate containers.",
+          "label": "NumPy arrays only",
+          "recommended": false
+        },
+        {
+          "description": "Keep xy by reference and clarify that callers must copy mutable inputs themselves.",
+          "label": "Document current behavior",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which inputs should be protected from post-construction mutation?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Top-level values",
+    "open_material_decisions": [
+      "Whether to snapshot only the two top-level coordinate entries or recursively/deep-copy objects contained within xy."
+    ],
+    "question": {
+      "header": "Copy depth",
+      "options": [
+        {
+          "description": "Store the two current coordinate entries in a new tuple; later container mutations do not propagate, while coordinate objects themselves retain existing identity and unit behavior.",
+          "label": "Top-level values",
+          "recommended": true
+        },
+        {
+          "description": "Copy the input container when possible, preserving its container type but creating type-dependent behavior.",
+          "label": "Shallow container copy",
+          "recommended": false
+        },
+        {
+          "description": "Recursively copy the container and coordinate objects, maximizing isolation but risking incompatibility with unit-aware or custom coordinate values.",
+          "label": "Deep copy",
+          "recommended": false
+        }
+      ],
+      "prompt": "How deeply should Annotation snapshot an accepted xy input?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Annotation only",
+    "open_material_decisions": [
+      "Whether to apply the xy snapshot only to matplotlib.text.Annotation or to every class using _AnnotationBase."
+    ],
+    "question": {
+      "header": "Fix boundary",
+      "options": [
+        {
+          "description": "Snapshot xy in Annotation construction, fixing Axes.annotate while avoiding behavior changes in other _AnnotationBase users.",
+          "label": "Annotation only",
+          "recommended": true
+        },
+        {
+          "description": "Snapshot xy in _AnnotationBase so every annotation-like class using it receives the same mutation isolation.",
+          "label": "Shared base",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should the new xy snapshot behavior apply?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Keep assignable",
+    "open_material_decisions": [
+      "Whether Annotation.xy should remain deliberately assignable after construction, with only the originally supplied xy container snapshotted."
+    ],
+    "question": {
+      "header": "Later updates",
+      "options": [
+        {
+          "description": "Snapshot the constructor input, but preserve deliberate later annotation.xy assignment and redraw behavior.",
+          "label": "Keep assignable",
+          "recommended": true
+        },
+        {
+          "description": "Make the annotated point immutable after construction, preventing both source-container mutation and deliberate annotation.xy updates.",
+          "label": "Freeze position",
+          "recommended": false
+        }
+      ],
+      "prompt": "After construction, should explicitly assigning a new value to annotation.xy still move the annotated point on the next draw?"
+    },
+    "turn": 4
+  },
+  {
+    "answer": "Every Annotation",
+    "open_material_decisions": [
+      "Whether Annotation snapshots xy regardless of arrowprops, or only when an arrow is present."
+    ],
+    "question": {
+      "header": "Arrow scope",
+      "options": [
+        {
+          "description": "Apply one consistent ownership rule to Annotation.xy whether or not an arrow is created.",
+          "label": "Every Annotation",
+          "recommended": true
+        },
+        {
+          "description": "Limit the change to the reported rendering bug and preserve reference behavior when arrowprops is absent.",
+          "label": "Arrow annotations only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should the constructor snapshot xy for every Annotation, including annotations without arrowprops?"
+    },
+    "turn": 5
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Construct an Annotation through Axes.annotate with a NumPy array as xy and arrowprops enabled; mutating that array afterward does not move the arrow endpoint on draw.",
+          "The reported reproduction renders both arrows horizontally after the source arrays are mutated.",
+          "Construct an Annotation with another mutable accepted xy container, such as a list; mutating the container afterward does not change annotation.xy or its rendered annotated point.",
+          "Immediately after construction, annotation.xy is a distinct two-element tuple containing the original top-level coordinate objects or values.",
+          "Coordinate objects inside xy are not deep-copied, preserving existing identity and unit-conversion behavior.",
+          "Annotations without arrowprops receive the same xy snapshot semantics.",
+          "Assigning a new valid coordinate pair directly to annotation.xy after construction still changes the annotated point on the next draw, including the arrow endpoint when present.",
+          "Other classes that use _AnnotationBase retain their existing xy storage behavior.",
+          "Existing annotation tests continue to pass, including xytext defaulting, coordinate transformations, unit-aware coordinates, drawing, and Axes.annotate signature checks."
+        ],
+        "confirmed_decisions": [
+          "Snapshot all accepted xy coordinate inputs, not only NumPy arrays.",
+          "Snapshot only the two top-level coordinate entries; do not copy the coordinate objects recursively.",
+          "Store the constructor snapshot as a new tuple, providing consistent ownership semantics across mutable input container types.",
+          "Apply the change in Annotation construction rather than _AnnotationBase, avoiding behavior changes for other _AnnotationBase users.",
+          "Apply the snapshot to every Annotation, including annotations without arrows.",
+          "Preserve public assignability of annotation.xy and the existing behavior in which a later explicit assignment changes the annotated point on redraw.",
+          "Do not expand the change to xytext; its two values are already unpacked for Text initialization.",
+          "Keep Axes.annotate forwarding behavior unchanged; Annotation owns the new snapshot responsibility."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Change matplotlib.text.Annotation so construction snapshots every accepted xy input as a new two-element tuple containing the current top-level coordinate values. Apply this only to Annotation, regardless of whether arrowprops is provided. Subsequent mutation of the caller-owned input container must not change the annotation, while deliberate later assignment to annotation.xy must continue to affect subsequent draws."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The interview resolved all material behavioral and implementation-boundary decisions. The resulting contract specifies the snapshot semantics, retained mutability, scope, and regression coverage needed for implementation."
+    },
+    "turn": 6
+  }
+]

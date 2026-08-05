@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "`strip_accents_unicode('\\u00f1')` returns `'n'`.",
+    "`strip_accents_unicode('n\\u0303')` returns `'n'`.",
+    "The direct regression demonstrates equivalent results for precomposed and already-NFKD-equivalent accented inputs.",
+    "A `CountVectorizer` analyzer configured with `strip_accents='unicode'` strips a decomposed accent through the shared preprocessing pipeline and emits the expected unaccented token or tokens.",
+    "Existing relevant tests in `sklearn/feature_extraction/tests/test_text.py` pass.",
+    "The implementation does not change the `strip_accents_ascii` path, callable accent preprocessors, preprocessing order, public signatures, or exception text."
+  ],
+  "confirmed_decisions": [
+    "Always filter combining characters after NFKD normalization, even when the normalized string compares equal to the original input.",
+    "Apply the corrected behavior through the existing shared `strip_accents_unicode` helper; do not introduce vectorizer-specific handling.",
+    "Preserve preprocessing order: optional lowercasing remains before accent stripping.",
+    "Preserve existing APIs, configuration values, analyzer construction, tokenization, n-gram behavior, and error behavior.",
+    "Cover both direct helper behavior and `CountVectorizer` integration with regression tests.",
+    "Accept the bounded compatibility change that already-NFKD strings containing combining characters will now lose those combining marks, consistent with the documented Unicode accent-stripping behavior.",
+    "No documentation change is required because the existing documentation already describes Unicode accent removal using NFKD normalization."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Fix Unicode accent stripping by removing the equality-based early return in `strip_accents_unicode`. The function must always NFKD-normalize its input and remove every character for which `unicodedata.combining(c)` is true. Preserve the public API, preprocessing order, callable selection, analyzer behavior, and all unrelated text-feature-extraction behavior. Add a direct regression showing that precomposed `ñ` and its already-NFKD equivalent `n` plus COMBINING TILDE both produce `n`. Add a `CountVectorizer(strip_accents='unicode')` regression showing that decomposed accented input is stripped through the shared preprocessing/analyzer pipeline. Existing relevant text feature-extraction tests must continue to pass."
+}

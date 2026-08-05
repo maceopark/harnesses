@@ -1,0 +1,20 @@
+{
+  "acceptance_checks": [
+    "Given a module whose resolved installed version is `1.14.3`, `minversion(module, '1.14dev')` returns `True` and does not raise `TypeError`.",
+    "Given the same module, `minversion(module, '1.14dev', inclusive=False)` returns `True` and does not raise `TypeError`.",
+    "The existing `test_minversion` expectations for installed version `0.12.2` continue to pass unchanged.",
+    "Tests covering module-name import failure, accepted argument forms, and version attribute resolution continue to pass where present.",
+    "The targeted introspection test suite passes after the change."
+  ],
+  "confirmed_decisions": [
+    "The required comparison scope is limited to the reported mixed numeric/development shape, exemplified by installed `1.14.3` versus required `1.14dev`; the contract does not require a general standards-aware redefinition of all version ordering.",
+    "Both `inclusive=True` and `inclusive=False` comparison paths must handle the reported shape without raising and return the correct boolean.",
+    "The public `minversion` signature and its availability through `astropy.utils` remain unchanged.",
+    "Existing behavior for module objects, module-name strings, failed imports, and direct or dotted `version_path` lookup remains unchanged.",
+    "Existing tested results for installed `0.12.2` remain valid: `0.12`, `0.12.1`, and `0.12.0.dev` pass, while `1` and `1.2rc1` fail.",
+    "Regression coverage must exercise the reported `1.14.3` versus `1.14dev` comparison in both inclusive and exclusive modes."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Fix `astropy.utils.minversion` so an installed multi-component numeric version can be compared with a shorter development-version requirement without raising a type-comparison error. For the reported shape, an installed version of `1.14.3` must satisfy a required version of `1.14dev` in both inclusive (`>=`) and exclusive (`>`) modes. Preserve the existing public API, module-resolution behavior, version-path behavior, and currently tested comparison results outside this scoped fix."
+}

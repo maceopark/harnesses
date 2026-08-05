@@ -1,0 +1,114 @@
+[
+  {
+    "answer": "Match bar (Recommended)",
+    "open_material_decisions": [
+      "Required autoscaling semantics for density=True with histtype='step', including the compatibility boundary relative to bar histograms."
+    ],
+    "question": {
+      "header": "Autoscaling",
+      "options": [
+        {
+          "description": "The step histogram must include its full density range and use the same automatically selected y-limits as the equivalent bar histogram, subject to ordinary numeric tolerance.",
+          "label": "Match bar (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "The step histogram must include its full density range, but exact y-limit equality with the equivalent bar histogram is not required.",
+          "label": "Fit full step",
+          "recommended": false
+        },
+        {
+          "description": "Require correct full-range autoscaling only for the reproduced vertical, non-stacked, linear-axis case, without a broader bar-equivalence guarantee.",
+          "label": "Only reported case",
+          "recommended": false
+        }
+      ],
+      "prompt": "After plotting the same non-stacked vertical histogram with density=True, what dependent-axis autoscaling behavior must histtype='step' provide?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Step both orientations",
+    "open_material_decisions": [
+      "Whether bar-equivalent dependent-axis autoscaling is required for horizontal density step histograms and/or histtype='stepfilled', in addition to the approved vertical histtype='step' case."
+    ],
+    "question": {
+      "header": "Variant scope",
+      "options": [
+        {
+          "description": "Require bar-equivalent dependent-axis limits for histtype='step' in both vertical and horizontal orientations; leave stepfilled behavior unchanged unless necessarily affected.",
+          "label": "Step both orientations",
+          "recommended": true
+        },
+        {
+          "description": "Require bar-equivalent dependent-axis limits for both step and stepfilled histograms in both orientations.",
+          "label": "Step and stepfilled",
+          "recommended": false
+        },
+        {
+          "description": "Limit the requirement to vertical histtype='step'; other variants are outside the contract and any effects are a bounded residual risk.",
+          "label": "Vertical step only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which histogram variants must the autoscaling contract cover when density=True?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Final approval of the implementation contract and its bounded compatibility/delegation terms."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with the stated scope, tests, delegation boundary, and residual risk.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Do not seal it yet; provide changes to required behavior, coverage, compatibility, or delegation terms.",
+          "label": "Revise scope",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: fix non-stacked density histograms with histtype='step' so their dependent-axis automatic limits match the equivalent bar histogram within ordinary numeric tolerance, for both vertical and horizontal orientations; preserve returned density values and step geometry; add deterministic regression coverage comparing bar and step dependent-axis limits in both orientations; leave stepfilled outside the required scope, recording any unavoidable effect as residual risk; and delegate the internal implementation route to the implementer provided behavior outside this scope is not intentionally changed?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "For deterministic non-stacked data with density=True and vertical orientation, equivalent bar and step histograms have matching automatically selected y-limits within ordinary numeric tolerance.",
+          "For deterministic non-stacked data with density=True and horizontal orientation, equivalent bar and step histograms have matching automatically selected x-limits within ordinary numeric tolerance.",
+          "The complete density range is visible for the covered step histograms.",
+          "Axes.hist continues to return the expected density values for the covered step cases.",
+          "Existing step polygon geometry behavior remains valid under the relevant regression coverage.",
+          "Relevant existing histogram tests and the new targeted regression tests pass.",
+          "Implementation review finds no intentional observable behavior change outside the approved scope; any unavoidable collateral effect is explicitly documented as residual risk."
+        ],
+        "confirmed_decisions": [
+          "For the same non-stacked density histogram, histtype='step' must use bar-equivalent automatically selected dependent-axis limits, not merely limits that contain the full step.",
+          "The required behavior covers histtype='step' in both vertical and horizontal orientations.",
+          "Returned density values must remain consistent with the existing NumPy-backed density calculation.",
+          "Existing step polygon geometry must be preserved.",
+          "Regression tests must deterministically compare the dependent-axis automatic limits of equivalent bar and step density histograms in both orientations.",
+          "histtype='stepfilled' is outside the required behavior and coverage scope.",
+          "The internal implementation route is delegated to the implementer, constrained against intentional behavior changes outside scope.",
+          "Any unavoidable effect on stepfilled or other histogram variants must be reported as a bounded residual risk rather than silently treated as a new requirement."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix non-stacked density histograms using histtype='step' so that automatic dependent-axis limits match those of an equivalent histtype='bar' histogram within ordinary numeric tolerance. This requirement applies to vertical histograms (y-axis limits) and horizontal histograms (x-axis limits). Preserve the density values returned by Axes.hist and the existing step polygon geometry. Add deterministic regression coverage comparing bar and step dependent-axis limits for both orientations. histtype='stepfilled' is outside the required scope. The implementer may choose the internal implementation route provided behavior outside the contracted scope is not intentionally changed."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved an implementation-ready contract after resolving all material behavioral and variant-scope decisions."
+    },
+    "turn": 4
+  }
+]

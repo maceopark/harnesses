@@ -1,0 +1,46 @@
+{
+  "schema": "NativeEvolutionFailureLensSet.v1",
+  "lenses": [
+    {
+      "id": "retry-semantics-ambiguity",
+      "stage": "discovery",
+      "failure_description": "Retry behavior remains materially undefined for different failure classes, attempt limits, and timing boundaries.",
+      "observable_signal": "Two implementers derive different retry schedules or disagree on whether timeouts, connection failures, and specific response codes consume attempts.",
+      "why_material": "The ambiguity changes delivery volume, latency, downstream load, and the point at which a delivery is considered permanently failed.",
+      "minimal_test_shape": "Present timeout, connection-refusal, rate-limit, client-error, and server-error outcomes and compare the expected next state, attempt count, and retry timing for each."
+    },
+    {
+      "id": "signature-contract-mismatch",
+      "stage": "interaction",
+      "failure_description": "The signing and verification contract does not establish exactly which bytes and metadata participate in signature generation and acceptance.",
+      "observable_signal": "A receiver cannot reproduce a valid signature after handling body encoding, timestamp representation, header normalization, or secret rotation.",
+      "why_material": "Legitimate deliveries may be rejected, or altered and replayed deliveries may be accepted, despite both sides appearing to follow the requirements.",
+      "minimal_test_shape": "Evaluate verification outcomes for an unchanged payload, byte-level payload mutation, stale timestamp, missing signature metadata, and delivery during secret rotation."
+    },
+    {
+      "id": "idempotency-scope-conflict",
+      "stage": "synthesis",
+      "failure_description": "Idempotency behavior fails to define the identity, scope, lifetime, and consequences of duplicate delivery attempts.",
+      "observable_signal": "The same event is processed twice, or a distinct event is incorrectly suppressed, when attempts are retried, replayed, or sent to multiple endpoints.",
+      "why_material": "This can create duplicate side effects or data loss and determines what guarantees receivers and operators can rely on.",
+      "minimal_test_shape": "Compare repeated attempts for one event, two distinct events with similar payloads, manual replay, endpoint changes, and reuse after the presumed deduplication window."
+    },
+    {
+      "id": "delivery-history-state-gap",
+      "stage": "handoff",
+      "failure_description": "Operator-visible history lacks a complete mapping between delivery lifecycle states and the evidence shown for each attempt.",
+      "observable_signal": "An operator cannot determine whether a delivery is pending, retrying, succeeded, exhausted, or manually replayed, or cannot correlate a visible entry with an actual attempt.",
+      "why_material": "Operational diagnosis, incident response, and support decisions depend on accurate and interpretable delivery records.",
+      "minimal_test_shape": "Trace one delivery through initial failure, multiple retries, terminal outcome, and manual replay, checking the externally visible state and attempt record after every transition."
+    },
+    {
+      "id": "guarantee-verification-gap",
+      "stage": "verification",
+      "failure_description": "Acceptance evidence validates isolated happy paths but does not establish the combined behavior of retries, signatures, idempotency, and history under partial failure.",
+      "observable_signal": "All component checks pass while an end-to-end scenario produces duplicate processing, unverifiable retries, incorrect terminal status, or missing attempt history.",
+      "why_material": "The feature's material guarantees emerge from interactions among its behaviors rather than from any single component in isolation.",
+      "minimal_test_shape": "Run an end-to-end delivery where the receiver processes an authenticated request but the acknowledgement is lost, then observe the retry, duplicate handling, final delivery status, and operator-visible attempt history."
+    }
+  ],
+  "sha256": "cfac475f2727642e9d188873072c9604c39a336b74093fbae072e55898f238d4"
+}

@@ -1,0 +1,19 @@
+{
+  "acceptance_checks": [
+    "For data [1.0, 1.0, 1.0] with boolean weights [true, true, false], weighted sum_of_weights returns 2 and weighted mean returns 1.0.",
+    "Boolean false weights contribute zero and boolean true weights contribute one when calculating the denominator.",
+    "Weights corresponding to missing data values are excluded from the numeric sum of weights under the existing missing-data semantics.",
+    "An all-false boolean weight array preserves the existing zero-total behavior and yields a missing sum of weights and weighted mean.",
+    "Existing weighted-reduction tests using non-boolean weights continue to pass."
+  ],
+  "confirmed_decisions": [
+    "The fix applies to the shared sum-of-weights denominator path, not only to weighted mean.",
+    "For boolean weights, sum_of_weights returns the numeric count of true weights associated with non-missing data rather than a boolean contraction result.",
+    "Every weighted operation that consumes the shared denominator, including weighted mean, receives the corrected numeric denominator.",
+    "Boolean weights remain valid inputs under the existing public weighted API; they are not rejected.",
+    "Existing zero-total behavior remains unchanged: a zero sum of weights produces a missing denominator/result according to current weighted-reduction semantics."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Correct weighted reductions so boolean weights are treated as numeric indicator weights when calculating the sum of weights. A true weight contributes 1 and a false weight contributes 0. The public sum_of_weights result must report the resulting numeric total, and weighted mean must use that total as its denominator. Existing behavior for supported non-boolean weights, missing data, dimensional reductions, and zero total weight remains unchanged."
+}

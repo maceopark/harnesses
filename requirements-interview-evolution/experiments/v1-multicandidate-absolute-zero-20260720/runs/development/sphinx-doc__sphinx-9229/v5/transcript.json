@@ -1,0 +1,102 @@
+[
+  {
+    "answer": "Docstring plus alias",
+    "open_material_decisions": [
+      "Whether a recovered next-line type-alias docstring supplements or replaces the generated “alias of …” paragraph."
+    ],
+    "question": {
+      "header": "Alias text",
+      "options": [
+        {
+          "description": "Preserve the existing Python 3.7+ convention and fix the inconsistency so every reported alias shows its docstring followed by “alias of …”.",
+          "label": "Docstring plus alias",
+          "recommended": true
+        },
+        {
+          "description": "Suppress the generated “alias of …” paragraph whenever source-level documentation exists, changing established output behavior.",
+          "label": "Docstring only",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has a recovered next-line docstring, what output should autodoc require?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Include Python 3.6",
+    "open_material_decisions": [
+      "Whether the regression fix must cover the reported Python 3.6 behavior or only supported GenericAlias behavior on Python 3.7 and newer."
+    ],
+    "question": {
+      "header": "Python scope",
+      "options": [
+        {
+          "description": "Require all three reported aliases to retain their next-line docstrings on Python 3.6 as well as newer supported versions, matching the reported environment.",
+          "label": "Include Python 3.6",
+          "recommended": true
+        },
+        {
+          "description": "Limit the fix to the repository's stated GenericAlias support boundary and acknowledge Python 3.6 behavior as outside scope.",
+          "label": "Python 3.7+ only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which Python compatibility boundary should the implementation contract require for this regression?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this scope, behavior, compatibility boundary, acceptance evidence, and implementation delegation.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open and provide the specific requirement that should change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: fix autodoc so each of the reported module-level ScaffoldOpts (Dict), FileContents (Union), and FileOp (Callable) aliases retains its multiline next-line string documentation on Python 3.6 and newer supported versions; when the object is recognized as a generic alias, preserve the existing generated “alias of …” paragraph after the recovered documentation. Add a regression fixture covering all three aliases and assertions proving that each complete source docstring is emitted, with the alias paragraph additionally asserted where generic-alias recognition applies. Keep preceding “#:” comments, class aliases, unrelated assignments, and runtime-object docstring fallback behavior compatible. The implementer may choose the smallest parser/autodoc correction and version-conditional test representation consistent with existing conventions, but may not broaden generic-alias classification or suppress alias paragraphs without further owner approval. Acceptance requires the focused parser/autodoc regression tests to pass on available test environments and the existing generic-alias and next-line multiline-docstring tests to remain passing. Residual risk: the repository evidence does not identify the exact Python 3.6 runtime typing-class distinction, so implementation may need runtime-specific diagnosis; nevertheless, all three source docstrings on Python 3.6 remain a required outcome."
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A regression fixture covers the reported module-level Dict, Union, and Callable aliases with multiline next-line string documentation.",
+          "Assertions prove that the complete source docstring for each of ScaffoldOpts, FileContents, and FileOp is emitted.",
+          "Where the runtime recognizes an object as a generic alias, assertions prove that its generated “alias of …” paragraph follows the recovered documentation.",
+          "The required source documentation is retained on Python 3.6 and newer supported versions, using version-conditional expected output where necessary.",
+          "Focused parser/autodoc regression tests pass in available test environments.",
+          "Existing generic-alias and next-line multiline-docstring tests remain passing.",
+          "Preceding “#:” comments, class aliases, unrelated assignments, and runtime-object docstring fallback retain compatible behavior.",
+          "Residual risk is acknowledged: repository evidence does not establish the precise Python 3.6 typing-runtime distinction, so implementation may require runtime-specific diagnosis while still meeting the required Python 3.6 outcome."
+        ],
+        "confirmed_decisions": [
+          "Recovered next-line type-alias documentation supplements rather than replaces the generated “alias of …” paragraph.",
+          "Python 3.6 is within the required compatibility boundary, along with newer supported Python versions.",
+          "The implementer may choose the smallest parser/autodoc correction and version-conditional test representation consistent with existing repository conventions.",
+          "The fix must not broaden generic-alias classification or suppress generated alias paragraphs without further owner approval.",
+          "The owner explicitly approved the contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix autodoc so the reported module-level ScaffoldOpts (Dict), FileContents (Union), and FileOp (Callable) aliases retain their complete multiline next-line string documentation on Python 3.6 and newer supported versions. When an object is recognized as a generic alias, keep the existing generated “alias of …” paragraph after the recovered documentation. Add a regression fixture containing all three aliases and assertions for every complete source docstring, plus version-conditional alias-paragraph assertions where generic-alias recognition applies. Preserve behavior for preceding “#:” comments, class aliases, unrelated assignments, and runtime-object docstring fallback."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved an implementation-ready contract resolving output behavior, Python compatibility, scope, acceptance evidence, delegation boundaries, and residual risk."
+    },
+    "turn": 4
+  }
+]

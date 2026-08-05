@@ -1,0 +1,53 @@
+[
+  {
+    "answer": "Constructor only",
+    "open_material_decisions": [
+      "Whether the non-empty-name requirement applies only to `Blueprint(...)` construction or also to the `name=` override used when registering a blueprint."
+    ],
+    "question": {
+      "header": "Name scope",
+      "options": [
+        {
+          "description": "Raise `ValueError` for `Blueprint(\"\u0000\", ...)`, while leaving registration-time `name=` override behavior unchanged.",
+          "label": "Constructor only",
+          "recommended": true
+        },
+        {
+          "description": "Also raise `ValueError` when blueprint registration receives an empty `name=` override.",
+          "label": "Constructor and override",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should the non-empty-name requirement apply?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Constructing a `Blueprint` with an empty-string name raises `ValueError`.",
+          "The error occurs when the `Blueprint` is constructed, before application registration.",
+          "Constructing a `Blueprint` with an allowed non-empty name still succeeds.",
+          "Constructing a `Blueprint` with a dotted name still raises `ValueError`.",
+          "Registering an otherwise valid blueprint with an empty `name=` override is not newly rejected by this change."
+        ],
+        "confirmed_decisions": [
+          "`Blueprint(\"\", import_name, ...)` raises `ValueError` during construction.",
+          "The requirement applies only to the name passed to the `Blueprint` constructor.",
+          "Registration-time `name=` overrides retain their existing behavior, including for an empty override.",
+          "Existing rejection of constructor names containing `.` remains unchanged.",
+          "Non-empty names continue to be accepted under existing rules; whitespace-only and other non-empty strings are not newly prohibited."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Require the name passed to `Blueprint(...)` to be a non-empty string. Constructing a blueprint with `name=\"\"` raises `ValueError`. Registration-time `name=` override behavior remains unchanged."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The repository evidence and the confirmed constructor-only scope resolve all material decisions. The requested behavior can be implemented without defining additional behavior for registration-time overrides or other non-empty strings."
+    },
+    "turn": 2
+  }
+]

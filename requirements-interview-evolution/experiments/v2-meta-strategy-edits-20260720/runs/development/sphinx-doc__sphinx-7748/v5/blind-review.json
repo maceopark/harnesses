@@ -1,0 +1,35 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/1/statement",
+          "quoted_value": "DocstringSignatureMixin obtains all docstrings but attempts to match only doclines[0] in each docstring against the Python signature regular expression."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/2/statement",
+          "quoted_value": "After a matching first line, _find_signature replaces that docstring with content prepared from doclines[1:], stores one (args, return-annotation) tuple, and immediately breaks out of its loop."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/summary",
+          "quoted_value": "Extend autodoc’s shared function/method docstring-signature extraction so that, when autodoc_docstring_signature is enabled and no explicit signature is supplied, it collects every consecutive valid signature at the beginning of the selected docstring and renders them as overloads. A collected line must match the signature syntax and use a name valid for the documented object under the existing name-validation rules. Collection stops at the first non-signature or invalid-name line; that line and every subsequent line remain docstring content. Only collected signature lines are removed. Preserve explicit-signature precedence, existing single-signature behavior, and the behavior when autodoc_docstring_signature is disabled. Update the configuration documentation to describe the overload behavior."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        }
+      ],
+      "description": "Implementation readiness is materially overstated. The contract must specify whether encountering a terminating first line in one candidate docstring ends all signature discovery or merely rejects that candidate and continues searching later candidate docstrings. Without this boundary, implementations can produce different signatures and content while each plausibly satisfies the stated stopping rule.",
+      "failure_class": "omission",
+      "general_cause": "The contract defines termination within a docstring but does not resolve how that termination interacts with the existing search across multiple candidate docstrings.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "The repository obtains multiple candidate docstrings and examines each, while the contract says an invalid-name or non-signature line terminates collection without specifying whether processing then continues to another candidate docstring."
+    }
+  ],
+  "summary": "One material readiness failure: behavior across multiple candidate docstrings remains unspecified despite the contract being marked implementation-ready."
+}

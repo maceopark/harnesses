@@ -1,0 +1,25 @@
+{
+  "acceptance_checks": [
+    "Running a directly parametrized bytes case equivalent to @pytest.mark.parametrize('data', [b'Hello World']) under each setup-display mode with BytesWarning treated as an error exits successfully.",
+    "SETUP and TEARDOWN output for that case contain the safe representation b'Hello World'.",
+    "Raw string parameters appear using repr-style quoted output in both SETUP and TEARDOWN lines.",
+    "Explicit and callable-generated string IDs remain unquoted and otherwise unchanged.",
+    "A raw parameter whose __repr__ raises does not make setup display fail.",
+    "Existing setup-display tests pass after updating only expectations intentionally changed by universal raw-value saferepr.",
+    "The targeted setup-display test module passes without regressions."
+  ],
+  "confirmed_decisions": [
+    "Use saferepr universally for raw parameter values rather than special-casing bytes or preserving unquoted raw strings.",
+    "Apply saferepr when caching request.param in pytest_fixture_setup, not at final display time, so explicit and generated IDs remain unchanged.",
+    "Reuse the cached safe string for both SETUP and TEARDOWN output.",
+    "Preserve the existing lifecycle that deletes cached_param after teardown.",
+    "Cover all three setup-display modes through the existing shared mode fixture.",
+    "Update existing raw-string output expectations to include saferepr-style quotes.",
+    "Add regression coverage for a directly parametrized bytes value and require successful execution with BytesWarning promoted to an error.",
+    "Keep existing explicit/callable ID expectations unchanged to prove IDs are still rendered verbatim.",
+    "Use the repository's existing _pytest._io.saferepr.saferepr utility with its standard size limit and exception-safe representation behavior."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update setup-display parameter handling so every raw parameter value is converted with pytest's existing saferepr helper before it is cached for display. This applies consistently to --setup-show, --setup-only, and --setup-plan and therefore to both SETUP and TEARDOWN lines. Raw bytes such as b'Hello World' must display as b'Hello World' without raising BytesWarning under Python's strict bytes-warning mode. Raw strings will consequently display with quotes, long representations will use saferepr's size bound, and objects with failing __repr__ methods must not crash setup display. Explicit IDs and callable/list-generated IDs must bypass saferepr and retain their existing verbatim display, such as FOO without quotes."
+}

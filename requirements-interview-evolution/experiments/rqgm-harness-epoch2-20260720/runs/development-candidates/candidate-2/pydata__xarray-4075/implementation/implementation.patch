@@ -1,0 +1,51 @@
+diff --git a/xarray/core/weighted.py b/xarray/core/weighted.py
+index 996d2e4..768dc1f 100644
+--- a/xarray/core/weighted.py
++++ b/xarray/core/weighted.py
+@@ -106,6 +106,9 @@ class Weighted:
+                 "Missing values can be replaced by `weights.fillna(0)`."
+             )
+ 
++        if weights.dtype.kind == "b":
++            weights = weights.astype(int)
++
+         self.obj = obj
+         self.weights = weights
+ 
+diff --git a/xarray/tests/test_weighted.py b/xarray/tests/test_weighted.py
+index 2453121..f39b8ff 100644
+--- a/xarray/tests/test_weighted.py
++++ b/xarray/tests/test_weighted.py
+@@ -29,6 +29,32 @@ def test_weighted_weights_nan_raises(as_dataset, weights):
+         data.weighted(DataArray(weights))
+ 
+ 
++@pytest.mark.parametrize("operation", ("sum_of_weights", "sum", "mean"))
++@pytest.mark.parametrize("as_dataset", (True, False))
++@pytest.mark.parametrize("skipna", (None, True, False))
++@pytest.mark.parametrize("dim", ("a", None))
++def test_weighted_boolean_weights(operation, as_dataset, skipna, dim):
++    data = DataArray(
++        [[1.0, np.nan], [1.0, 1.0]], dims=("a", "b"), coords={"a": [0, 1]}
++    )
++    boolean_weights = DataArray(
++        [[True, False], [True, False]], dims=("a", "b"), coords={"a": [0, 1]}
++    )
++    integer_weights = boolean_weights.astype(int)
++
++    if as_dataset:
++        data = data.to_dataset(name="data")
++
++    kwargs = {"dim": dim}
++    if operation != "sum_of_weights":
++        kwargs["skipna"] = skipna
++
++    actual = getattr(data.weighted(boolean_weights), operation)(**kwargs)
++    expected = getattr(data.weighted(integer_weights), operation)(**kwargs)
++
++    assert_equal(actual, expected)
++
++
+ @pytest.mark.parametrize(
+     ("weights", "expected"),
+     (([1, 2], 3), ([2, 0], 2), ([0, 0], np.nan), ([-1, 1], np.nan)),

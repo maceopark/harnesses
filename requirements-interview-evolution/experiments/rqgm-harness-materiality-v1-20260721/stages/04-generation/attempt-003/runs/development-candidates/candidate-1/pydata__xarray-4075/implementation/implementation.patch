@@ -1,0 +1,57 @@
+diff --git a/xarray/core/weighted.py b/xarray/core/weighted.py
+index 996d2e4..37516e9 100644
+--- a/xarray/core/weighted.py
++++ b/xarray/core/weighted.py
+@@ -129,6 +129,11 @@ class Weighted:
+         if skipna or (skipna is None and da.dtype.kind in "cfO"):
+             da = da.fillna(0.0)
+ 
++        # numpy's einsum reduces two boolean operands with boolean arithmetic.
++        # Treat boolean weights as the numeric 0/1 weights they represent.
++        if weights.dtype.kind == "b":
++            weights = weights.astype(int)
++
+         # `dot` does not broadcast arrays, so this avoids creating a large
+         # DataArray (if `weights` has additional dimensions)
+         # maybe add fasttrack (`(da * weights).sum(dims=dim, skipna=skipna)`)
+diff --git a/xarray/tests/test_weighted.py b/xarray/tests/test_weighted.py
+index 2453121..7359283 100644
+--- a/xarray/tests/test_weighted.py
++++ b/xarray/tests/test_weighted.py
+@@ -139,6 +139,36 @@ def test_weighted_mean_no_nan(weights, expected):
+     assert_equal(expected, result)
+ 
+ 
++def test_weighted_mean_boolean_weights():
++
++    da = DataArray([1.0, 1.0, 1.0])
++    weights = DataArray([True, True, False])
++
++    result = da.weighted(weights).mean()
++
++    assert_equal(DataArray(1.0), result)
++
++
++@pytest.mark.parametrize("operation", ("sum_of_weights", "sum", "mean"))
++@pytest.mark.parametrize("weights", ([True, True, False], [False, False, False]))
++@pytest.mark.parametrize("as_dataset", (True, False))
++def test_weighted_operations_boolean_weights(operation, weights, as_dataset):
++
++    data = DataArray([True, False, True], dims="x")
++    if as_dataset:
++        data = xr.Dataset(
++            {"bool_data": data, "float_data": ("x", [1.0, 2.0, 3.0])}
++        )
++
++    bool_weights = DataArray(weights, dims="x")
++    numeric_weights = bool_weights.astype(int)
++
++    result = getattr(data.weighted(bool_weights), operation)()
++    expected = getattr(data.weighted(numeric_weights), operation)()
++
++    assert_equal(expected, result)
++
++
+ @pytest.mark.parametrize(
+     ("weights", "expected"), (([4, 6], 2.0), ([1, 0], np.nan), ([0, 0], np.nan))
+ )

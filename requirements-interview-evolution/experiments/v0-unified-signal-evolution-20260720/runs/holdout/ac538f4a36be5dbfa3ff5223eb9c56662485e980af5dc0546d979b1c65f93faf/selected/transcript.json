@@ -1,0 +1,130 @@
+[
+  {
+    "answer": "Safe repr for all (Recommended)",
+    "open_material_decisions": [
+      "Whether safe representation applies to all un-IDed parameter values or only bytes-like values, and the exact expected display for bytes versus strings."
+    ],
+    "question": {
+      "header": "Display rule",
+      "options": [
+        {
+          "description": "Render every raw parameter with `saferepr`, so bytes appear as `b'Hello World'`, strings appear quoted, long values are bounded, and broken `__repr__` methods cannot fail setup display.",
+          "label": "Safe repr for all (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Keep existing unquoted string output, but use `saferepr` for bytes and other non-string values to avoid implicit `str()` warnings.",
+          "label": "Preserve strings",
+          "recommended": false
+        },
+        {
+          "description": "Special-case bytes with `repr` or `saferepr` and leave all other parameter formatting unchanged.",
+          "label": "Bytes only",
+          "recommended": false
+        }
+      ],
+      "prompt": "What should `--setup-show` display for parameters that have no explicit ID?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Keep literal",
+    "open_material_decisions": [
+      "Formatting of explicit string IDs from `ids=[...]` or callable `ids=`."
+    ],
+    "question": {
+      "header": "Explicit IDs",
+      "options": [
+        {
+          "description": "Apply `saferepr` only to raw un-IDed values; preserve explicit IDs exactly as today, such as `FOO` rather than `'FOO'`.",
+          "label": "Keep literal (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Apply `saferepr` to explicit IDs too, causing string IDs to appear quoted and changing existing output.",
+          "label": "Safe repr IDs",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should `--setup-show` render explicit parameter IDs?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "All three modes",
+    "open_material_decisions": [
+      "Whether the bytes regression must be verified only for --setup-show or across --setup-show, --setup-only, and --setup-plan."
+    ],
+    "question": {
+      "header": "Test scope",
+      "options": [
+        {
+          "description": "Use the existing parametrized mode fixture to verify --setup-show, --setup-only, and --setup-plan remain successful and display the safe bytes representation.",
+          "label": "All three modes",
+          "recommended": true
+        },
+        {
+          "description": "Add a focused regression covering only the exact reported --setup-show failure.",
+          "label": "Setup-show only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which setup-display modes must the bytes-parameter regression cover?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Fatal warning (Recommended)",
+    "open_material_decisions": [
+      "How the regression test must make BytesWarning fatal while exercising the three setup-display modes."
+    ],
+    "question": {
+      "header": "Warning check",
+      "options": [
+        {
+          "description": "Run each covered mode with `BytesWarning` treated as an error, equivalent to the reported `python -bb` behavior, and require success plus the expected `b'Hello World'` output.",
+          "label": "Fatal warning (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Require success and the expected safe representation in all three modes without explicitly making `BytesWarning` fatal.",
+          "label": "Output only",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should the regression prove that bytes parameters no longer trigger `BytesWarning`?"
+    },
+    "turn": 4
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "For an un-IDed `b'Hello World'` parameter, each covered setup-display mode exits successfully with `BytesWarning` configured as an error.",
+          "Setup and teardown output render the bytes parameter as `[b'Hello World']` wherever that mode displays fixture actions.",
+          "All un-IDed parameters are formatted through `saferepr`, avoiding implicit `str()` conversion and inheriting bounded, exception-safe representation behavior.",
+          "Existing raw-string expectations are updated to quoted representations such as `['foo']` and `['bar']`.",
+          "Explicit string IDs remain literal and unquoted, including callable results such as `[FOO]` and `[BAR]`.",
+          "The targeted setup-display test suite passes without regressions."
+        ],
+        "confirmed_decisions": [
+          "Apply `saferepr` to all raw parameter values that have no explicit ID, not only bytes-like values.",
+          "Cache the resulting safe representation rather than the original un-IDed parameter object so both setup and teardown use the same safe text.",
+          "Expect bytes parameters to display with their bytes literal representation, including the `b` prefix and quotes.",
+          "Accept the intentional output change for un-IDed string parameters from unquoted values to quoted representations.",
+          "Preserve explicit IDs from `ids=[...]` and callable `ids=` exactly as currently displayed, without adding quotes.",
+          "Cover the bytes regression through the existing mode parametrization for `--setup-show`, `--setup-only`, and `--setup-plan`.",
+          "Make `BytesWarning` fatal during the regression and require every covered mode to exit successfully."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update setup-display parameter handling so every parameter without an explicit ID is converted once with the repository’s `saferepr` utility before being cached and displayed. This prevents implicit `str()` conversion and makes representations bounded and resilient to failing `__repr__` implementations. Consequently, bytes display as `[b'Hello World']` and raw strings become quoted, such as `['foo']`. Preserve explicit list-based and callable IDs literally, without applying `saferepr`, so outputs such as `[FOO]` remain unchanged. Add regression coverage across `--setup-show`, `--setup-only`, and `--setup-plan`, treating `BytesWarning` as an error."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "All material behavior and verification decisions are resolved, and the requested change can be implemented directly from the repository evidence and confirmed answers."
+    },
+    "turn": 5
+  }
+]

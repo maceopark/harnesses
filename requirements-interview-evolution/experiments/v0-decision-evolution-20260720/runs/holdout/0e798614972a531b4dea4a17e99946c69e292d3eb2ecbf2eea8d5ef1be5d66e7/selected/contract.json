@@ -1,0 +1,25 @@
+{
+  "acceptance_checks": [
+    "A regression test loads `ignore-paths = [\"^src/gen/.*$\"]` through `pyproject.toml`, enables recursive mode, lints `src/`, and verifies no file under `src/gen/` is analyzed.",
+    "The same anchored pattern excludes `src/gen/` when the recursive target is supplied as an absolute path and Pylint runs from the project root.",
+    "Recursive discovery prunes a directory when its CWD-relative path matches `ignore-paths`.",
+    "Recursive discovery excludes an individual `.py` file when its path matches `ignore-paths` even if its parent directory does not.",
+    "Equivalent ignore patterns work with POSIX and Windows separators.",
+    "Existing traversal-path or absolute-path patterns continue to match after the change.",
+    "An outside-CWD target exposes a CWD-relative candidate containing leading `../` segments and can be ignored by a matching expression.",
+    "Existing recursive-ignore, module-expansion, configuration parsing, and end-to-end lint tests continue to pass."
+  ],
+  "confirmed_decisions": [
+    "The canonical added matching basis is the discovered path relative to the process current working directory, not relative to the recursive target.",
+    "Preserve matching against the existing traversal/path representation in addition to the new CWD-relative representation, avoiding regressions for existing configurations.",
+    "Apply recursive `ignore-paths` filtering to both directory roots and every individually discovered `.py` file.",
+    "Absolute recursive target arguments still receive a CWD-relative candidate, allowing project-relative anchored patterns to behave identically for relative and absolute inputs.",
+    "Paths outside the current working directory use normal CWD-relative semantics with leading `../` segments.",
+    "Both POSIX and Windows path forms must match, consistent with the option’s documented contract and existing regex-path transformation.",
+    "Existing `ignore` and `ignore-patterns` basename behavior remains unchanged.",
+    "The fix belongs in recursive discovery/path-ignore evaluation; TOML parsing already loads nested `MASTER` values correctly and should not be redesigned."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Fix recursive discovery so `ignore-paths` consistently evaluates both directory roots and individual discovered Python files against CWD-relative path candidates, while retaining the existing traversal-path candidate for backward compatibility. CWD-relative candidates must be available for both relative and absolute recursive target arguments, including `../` segments for targets outside the current working directory, and must support POSIX and Windows separators. With `[tool.pylint.MASTER] ignore-paths = [\"^src/gen/.*$\"]`, running `pylint --recursive=y src/` from the project root must exclude all files under `src/gen/`. Add regression coverage proving configuration loaded from `pyproject.toml` works in recursive mode, since existing recursive tests cover only command-line configuration."
+}

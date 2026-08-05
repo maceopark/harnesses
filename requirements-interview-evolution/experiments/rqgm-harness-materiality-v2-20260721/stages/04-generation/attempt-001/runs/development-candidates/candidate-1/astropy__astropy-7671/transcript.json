@@ -1,0 +1,135 @@
+[
+  {
+    "answer": "Standard ordering",
+    "open_material_decisions": [
+      "Whether minversion must support standards-compliant ordering across all accepted release, development, pre-release, and post-release version strings, or only prevent the reported mixed-component failure while preserving existing behavior."
+    ],
+    "question": {
+      "header": "Version scope",
+      "options": [
+        {
+          "description": "Require minversion to compare standard release, development, pre-release, and post-release versions without LooseVersion mixed-component errors, including 1.14.3 versus 1.14dev.",
+          "label": "Standard ordering",
+          "recommended": true
+        },
+        {
+          "description": "Require only the reported 1.14.3 versus 1.14dev comparison to return the correct result without raising, while otherwise preserving current behavior.",
+          "label": "Reported case only",
+          "recommended": false
+        }
+      ],
+      "prompt": "What observable version-comparison scope should the fix guarantee?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Preserve compatibility",
+    "open_material_decisions": [
+      "How minversion should behave when either the installed version or required version is not standards-compliant."
+    ],
+    "question": {
+      "header": "Invalid versions",
+      "options": [
+        {
+          "description": "Use standard ordering where applicable while retaining a compatibility comparison for non-standard versions, avoiding new exceptions where practical.",
+          "label": "Preserve compatibility",
+          "recommended": true
+        },
+        {
+          "description": "Require standards-compliant versions and allow a clear parsing error for non-standard inputs.",
+          "label": "Reject invalid versions",
+          "recommended": false
+        },
+        {
+          "description": "Treat any unparseable installed or required version as not satisfying the requirement.",
+          "label": "Return false",
+          "recommended": false
+        }
+      ],
+      "prompt": "What observable behavior should minversion guarantee for non-standard or invalid version strings?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "PEP 440",
+    "open_material_decisions": [
+      "Which standard defines ordering for compliant version strings."
+    ],
+    "question": {
+      "header": "Ordering rule",
+      "options": [
+        {
+          "description": "Use Python packaging semantics for release, development, pre-release, and post-release versions.",
+          "label": "PEP 440",
+          "recommended": true
+        },
+        {
+          "description": "Use SemVer precedence, which differs for Python-style dev, rc, and post-release forms.",
+          "label": "Semantic Versioning",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which version-ordering standard should define minversion’s comparisons?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Legacy fallback",
+    "open_material_decisions": [
+      "The fallback comparison rule when either the installed or required version string is not PEP 440 compliant."
+    ],
+    "question": {
+      "header": "Fallback rule",
+      "options": [
+        {
+          "description": "Fall back to the prior LooseVersion comparison behavior for that pair, preserving historical results and exceptions.",
+          "label": "Legacy fallback",
+          "recommended": true
+        },
+        {
+          "description": "Compare the original version strings lexicographically, avoiding parser errors but potentially changing historical ordering.",
+          "label": "String fallback",
+          "recommended": false
+        },
+        {
+          "description": "Treat any pair containing a non-PEP-440 version as not satisfying the requirement.",
+          "label": "Return false",
+          "recommended": false
+        }
+      ],
+      "prompt": "When either version is not PEP 440 compliant, which compatibility behavior should minversion guarantee?"
+    },
+    "turn": 4
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A module reporting version 1.14.3 satisfies an inclusive 1.14dev requirement without raising an exception.",
+          "Representative PEP 440 development, pre-release, final-release, and post-release pairs follow PEP 440 ordering in both inclusive and exclusive modes.",
+          "Existing ordinary release, development, and release-candidate comparison outcomes remain correct under the selected ordering rules.",
+          "A comparison containing a non-PEP-440 version follows the prior LooseVersion outcome or exception for that same pair.",
+          "Existing module-object, import-name, failed-import, invalid-argument, and version_path behavior remains unchanged.",
+          "Existing Astropy import-time and NumPy compatibility uses of minversion continue to produce boolean comparison results for their valid version inputs."
+        ],
+        "confirmed_decisions": [
+          "PEP 440 defines ordering for compliant release, development, pre-release, and post-release version strings.",
+          "The reported comparison of installed version 1.14.3 against required version 1.14dev returns true in inclusive mode and does not raise the LooseVersion mixed-component TypeError.",
+          "Inclusive comparisons continue to mean installed version greater than or equal to the requirement; exclusive comparisons continue to mean installed version strictly greater than the requirement.",
+          "If either compared version is not PEP 440 compliant, the pair uses the prior LooseVersion behavior, preserving historical results and exceptions.",
+          "minversion continues to accept a module object or import-name string; an unavailable named module returns false and unsupported module argument types raise ValueError.",
+          "Version discovery continues to use version_path, defaulting to __version__, including support for dotted attribute paths.",
+          "minversion remains publicly available from astropy.utils."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update astropy.utils.minversion so that PEP 440-compliant installed and required version strings are ordered according to PEP 440. In particular, an installed version of 1.14.3 satisfies a requirement of 1.14dev without raising TypeError. Preserve the existing inclusive and exclusive comparison semantics, module lookup behavior, version_path behavior, and public API. When either version string is not PEP 440 compliant, retain the prior LooseVersion comparison behavior for that pair, including its historical results and exceptions."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "All material decisions affecting observable behavior and compatibility have been resolved. The contract defines the comparison standard, legacy fallback, existing API behavior, and the reported regression outcome."
+    },
+    "turn": 5
+  }
+]

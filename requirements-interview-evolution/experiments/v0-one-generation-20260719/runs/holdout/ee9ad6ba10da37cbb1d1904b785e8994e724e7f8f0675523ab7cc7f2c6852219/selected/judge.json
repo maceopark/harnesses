@@ -1,0 +1,18 @@
+{
+  "compatibility_regressions": [
+    "The contract changes empty-list behavior from the existing implicit IndexError to a no-op, beyond both the public request and the hindsight gold patch.",
+    "Value-aware PYTHONPATH cleanup can preserve entries that the existing index-based implementation would remove, creating a broader behavioral change than the sealed issue-time request and gold patch."
+  ],
+  "implementation_ready": true,
+  "invented_requirements": [
+    "Treat an empty sys.path as valid input and leave it unchanged instead of raising IndexError; this was selected from an interviewer-introduced edge case, not requested in the public issue.",
+    "Redesign PYTHONPATH leading/trailing-colon cleanup to be value-aware when an unrelated custom entry is first; the public request only asked to guard removal of sys.path[0].",
+    "Require preservation of an unrelated value at the computed PYTHONPATH cleanup position; this extends behavior beyond the issue and audited existing semantics.",
+    "Require the two existing module-execution integration tests to remain passing as explicit acceptance checks; sensible regression coverage, but not an owner-stated requirement."
+  ],
+  "material_blockers": [],
+  "owner_recall": 1,
+  "redundant_questions": [],
+  "repository_fidelity": 0.86,
+  "summary": "The interview accurately retained the owner's explicit core decision: only remove the leading sys.path entry when it is empty, '.', or os.getcwd(), and preserve unrelated runpy-inserted paths. Repository scope and entry-point distinctions were captured well. However, the interview introduced two broader behavioral decisions—empty-list tolerance and value-aware PYTHONPATH cleanup—that were not required by the public issue and are not present in the hindsight gold implementation. These additions remain implementable, but reduce repository fidelity and carry compatibility risk."
+}

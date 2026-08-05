@@ -1,0 +1,99 @@
+diff --git a/astropy/utils/introspection.py b/astropy/utils/introspection.py
+index 3e784f9..ac54004 100644
+--- a/astropy/utils/introspection.py
++++ b/astropy/utils/introspection.py
+@@ -6,6 +6,7 @@
+ import inspect
+ import types
+ import importlib
++import re
+ from distutils.version import LooseVersion
+ 
+ 
+@@ -16,6 +17,34 @@ __all__ = ['resolve_name', 'minversion', 'find_current_module',
+ __doctest_skip__ = ['find_current_module']
+ 
+ 
++_PRERELEASE_RE = re.compile(
++    r'^(\d+(?:\.\d+)*)(?:[.-]?(dev|a|alpha|b|beta|rc)(\d*))?$',
++    re.IGNORECASE)
++_PRERELEASE_ORDER = {'dev': 0, 'a': 1, 'alpha': 1,
++                     'b': 2, 'beta': 2, 'rc': 3}
++
++
++def _prerelease_key(version):
++    """Return a comparison key for simple final and prerelease versions."""
++    match = _PRERELEASE_RE.match(version)
++    if match is None:
++        return None
++
++    release = [int(part) for part in match.group(1).split('.')]
++    while len(release) > 1 and release[-1] == 0:
++        release.pop()
++
++    prerelease = match.group(2)
++    if prerelease is None:
++        stage = len(_PRERELEASE_ORDER)
++        number = 0
++    else:
++        stage = _PRERELEASE_ORDER[prerelease.lower()]
++        number = int(match.group(3) or 0)
++
++    return tuple(release), stage, number
++
++
+ def resolve_name(name, *additional_parts):
+     """Resolve a name like ``module.object`` to an object and return it.
+ 
+@@ -139,10 +168,22 @@ def minversion(module, version, inclusive=True, version_path='__version__'):
+     else:
+         have_version = resolve_name(module.__name__, version_path)
+ 
++    have_key = _prerelease_key(have_version)
++    required_key = _prerelease_key(version)
++    use_prerelease_order = (
++        have_key is not None and required_key is not None and
++        (have_key[1] < len(_PRERELEASE_ORDER) or
++         required_key[1] < len(_PRERELEASE_ORDER)))
++
++    if use_prerelease_order:
++        left, right = have_key, required_key
++    else:
++        left, right = LooseVersion(have_version), LooseVersion(version)
++
+     if inclusive:
+-        return LooseVersion(have_version) >= LooseVersion(version)
++        return left >= right
+     else:
+-        return LooseVersion(have_version) > LooseVersion(version)
++        return left > right
+ 
+ 
+ def find_current_module(depth=1, finddiff=False):
+diff --git a/astropy/utils/tests/test_introspection.py b/astropy/utils/tests/test_introspection.py
+index d8262d4..e31e1fa 100644
+--- a/astropy/utils/tests/test_introspection.py
++++ b/astropy/utils/tests/test_introspection.py
+@@ -73,3 +73,22 @@ def test_minversion():
+         assert minversion(test_module, version)
+     for version in bad_versions:
+         assert not minversion(test_module, version)
++
++
++@pytest.mark.parametrize(('have_version', 'required_version', 'inclusive',
++                          'expected'), [
++    ('1.14.3', '1.14dev', True, True),
++    ('1.14.3', '1.14dev', False, True),
++    ('1.14dev', '1.14', True, False),
++    ('1.14rc1', '1.14', True, False),
++    ('1.14', '1.14', True, True),
++    ('1.14', '1.14', False, False),
++])
++def test_minversion_prerelease(have_version, required_version, inclusive,
++                               expected):
++    from types import ModuleType
++    test_module = ModuleType(str('test_module'))
++    test_module.__version__ = have_version
++
++    assert minversion(test_module, required_version,
++                      inclusive=inclusive) is expected

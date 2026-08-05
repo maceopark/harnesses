@@ -1,0 +1,172 @@
+[
+  {
+    "answer": "Invocation-relative paths",
+    "open_material_decisions": [
+      "Define which path representation recursive `ignore-paths` patterns must match, especially for anchored expressions and Windows separators."
+    ],
+    "question": {
+      "header": "Path basis",
+      "options": [
+        {
+          "description": "Match paths as expressed from the command’s working directory, normalize both POSIX and Windows forms, and make the reported `pylint --recursive=y src/` case exclude `src/gen/*`.",
+          "label": "Invocation-relative paths",
+          "recommended": true
+        },
+        {
+          "description": "Match relative to each recursive target, so the equivalent anchored pattern would be `^gen/.*$` when linting `src/`.",
+          "label": "Target-relative paths",
+          "recommended": false
+        },
+        {
+          "description": "Keep matching traversal paths as absolute or environment-derived paths, requiring patterns to account for the full filesystem prefix.",
+          "label": "Absolute paths",
+          "recommended": false
+        }
+      ],
+      "prompt": "During recursive discovery, what path should an anchored `ignore-paths` regex such as `^src/gen/.*$` match?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Match both (Recommended)",
+    "open_material_decisions": [
+      "Confirm that ignore-paths must be applied to both recursively discovered directories and individual Python files.",
+      "Decide whether recursive matching should add invocation-relative candidates or replace the existing traversal-path candidate."
+    ],
+    "question": {
+      "header": "Compatibility",
+      "options": [
+        {
+          "description": "Test each directory and discovered Python file against invocation-relative POSIX/Windows forms plus the existing path form, preserving existing configurations.",
+          "label": "Match both (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Use only invocation-relative POSIX/Windows forms, giving anchored patterns one strict basis but potentially breaking existing absolute-path patterns.",
+          "label": "Relative only",
+          "recommended": false
+        },
+        {
+          "description": "Add invocation-relative matching only while pruning directory subtrees, leaving file-specific recursive ignore-path behavior unchanged.",
+          "label": "Directories only",
+          "recommended": false
+        }
+      ],
+      "prompt": "When adding invocation-relative matching, should recursive `ignore-paths` continue matching the existing traversal or absolute path representation too?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Directories and files",
+    "open_material_decisions": [
+      "Confirm file-level matching during recursive discovery."
+    ],
+    "question": {
+      "header": "File matching",
+      "options": [
+        {
+          "description": "Apply compatible invocation-relative and existing-path matching to both directory roots and each discovered `.py` file.",
+          "label": "Directories and files",
+          "recommended": true
+        },
+        {
+          "description": "Prune matching directory subtrees, but do not filter individual discovered files by `ignore-paths`.",
+          "label": "Directories only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should recursive `ignore-paths` filtering evaluate every discovered Python file, including patterns that match a filename but not its parent directory?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Use CWD-relative",
+    "open_material_decisions": [
+      "Define whether invocation-relative candidates are derived from the current working directory even when the recursive target argument is absolute."
+    ],
+    "question": {
+      "header": "Absolute input",
+      "options": [
+        {
+          "description": "Always add a current-working-directory-relative candidate when possible, so the same configured pattern works with relative and absolute target arguments.",
+          "label": "Use CWD-relative",
+          "recommended": true
+        },
+        {
+          "description": "Preserve the target argument’s form, so an absolute target requires a pattern matching an absolute path.",
+          "label": "Argument form only",
+          "recommended": false
+        },
+        {
+          "description": "Add invocation-relative candidates only when the original recursive target was relative, leaving absolute-target behavior unchanged.",
+          "label": "Relative targets only",
+          "recommended": false
+        }
+      ],
+      "prompt": "If the user runs Pylint from the project root but supplies an absolute recursive target, should `^src/gen/.*$` still match the discovered files relative to the current working directory?"
+    },
+    "turn": 4
+  },
+  {
+    "answer": "Use ../ paths",
+    "open_material_decisions": [
+      "Decide whether recursive discovery should offer a `../...` CWD-relative candidate for paths outside the current working directory, or only add CWD-relative matching for paths contained by it."
+    ],
+    "question": {
+      "header": "Outside CWD",
+      "options": [
+        {
+          "description": "Always derive the candidate with CWD-relative semantics, including leading `../` segments for targets outside the working directory.",
+          "label": "Use ../ paths",
+          "recommended": true
+        },
+        {
+          "description": "Add a CWD-relative candidate only for paths contained by the working directory; otherwise retain only existing path matching.",
+          "label": "Inside CWD only",
+          "recommended": false
+        },
+        {
+          "description": "For outside targets, use an absolute normalized candidate in place of a `../`-prefixed relative candidate.",
+          "label": "Absolute fallback",
+          "recommended": false
+        }
+      ],
+      "prompt": "When an absolute recursive target is outside the current working directory, how should the added CWD-relative `ignore-paths` candidate behave?"
+    },
+    "turn": 5
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A regression test loads `ignore-paths = [\"^src/gen/.*$\"]` through `pyproject.toml`, enables recursive mode, lints `src/`, and verifies no file under `src/gen/` is analyzed.",
+          "The same anchored pattern excludes `src/gen/` when the recursive target is supplied as an absolute path and Pylint runs from the project root.",
+          "Recursive discovery prunes a directory when its CWD-relative path matches `ignore-paths`.",
+          "Recursive discovery excludes an individual `.py` file when its path matches `ignore-paths` even if its parent directory does not.",
+          "Equivalent ignore patterns work with POSIX and Windows separators.",
+          "Existing traversal-path or absolute-path patterns continue to match after the change.",
+          "An outside-CWD target exposes a CWD-relative candidate containing leading `../` segments and can be ignored by a matching expression.",
+          "Existing recursive-ignore, module-expansion, configuration parsing, and end-to-end lint tests continue to pass."
+        ],
+        "confirmed_decisions": [
+          "The canonical added matching basis is the discovered path relative to the process current working directory, not relative to the recursive target.",
+          "Preserve matching against the existing traversal/path representation in addition to the new CWD-relative representation, avoiding regressions for existing configurations.",
+          "Apply recursive `ignore-paths` filtering to both directory roots and every individually discovered `.py` file.",
+          "Absolute recursive target arguments still receive a CWD-relative candidate, allowing project-relative anchored patterns to behave identically for relative and absolute inputs.",
+          "Paths outside the current working directory use normal CWD-relative semantics with leading `../` segments.",
+          "Both POSIX and Windows path forms must match, consistent with the option’s documented contract and existing regex-path transformation.",
+          "Existing `ignore` and `ignore-patterns` basename behavior remains unchanged.",
+          "The fix belongs in recursive discovery/path-ignore evaluation; TOML parsing already loads nested `MASTER` values correctly and should not be redesigned."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix recursive discovery so `ignore-paths` consistently evaluates both directory roots and individual discovered Python files against CWD-relative path candidates, while retaining the existing traversal-path candidate for backward compatibility. CWD-relative candidates must be available for both relative and absolute recursive target arguments, including `../` segments for targets outside the current working directory, and must support POSIX and Windows separators. With `[tool.pylint.MASTER] ignore-paths = [\"^src/gen/.*$\"]`, running `pylint --recursive=y src/` from the project root must exclude all files under `src/gen/`. Add regression coverage proving configuration loaded from `pyproject.toml` works in recursive mode, since existing recursive tests cover only command-line configuration."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested behavior and success criteria are fully specified by the repository evidence and five confirmed answers. No material implementation decision remains open."
+    },
+    "turn": 6
+  }
+]

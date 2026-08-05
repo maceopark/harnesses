@@ -1,0 +1,30 @@
+[
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "strip_accents_unicode(\"ñ\") and strip_accents_unicode(\"n\\u0303\") both produce \"n\".",
+          "Equivalent composed and decomposed accented input produces identical unaccented output from strip_accents_unicode.",
+          "A CountVectorizer analyzer configured with strip_accents='unicode' produces the same analyzed terms for equivalent composed and decomposed accented text.",
+          "Previously supported composed Latin, composed Arabic, mixed accented/plain, and unaccented inputs continue to produce their established results.",
+          "Existing behavior for ASCII accent stripping and configurations that do not select Unicode accent stripping is unchanged."
+        ],
+        "confirmed_decisions": [
+          "strip_accents_unicode returns \"n\" for both the precomposed input \"ñ\" and its decomposed equivalent \"n\\u0303\".",
+          "Already-decomposed combining accents are removed instead of being preserved merely because the input is already in NFKD form.",
+          "Existing Unicode accent-stripping behavior for precomposed accented Latin text, precomposed Arabic text, mixed accented/plain text, and plain unaccented text remains compatible.",
+          "CountVectorizer and related vectorizers using strip_accents='unicode' treat composed and decomposed equivalents consistently across the analyzers that use the shared preprocessor.",
+          "The change is limited to correcting Unicode accent stripping; strip_accents='ascii', callable accent preprocessors, and disabled accent stripping retain their existing behavior."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Correct Unicode accent stripping so canonically equivalent composed and already-decomposed accented text produces the same unaccented output. In particular, strip_accents_unicode must remove combining accents from input already in NFKD form, and vectorizers configured with strip_accents='unicode' must expose the corrected behavior through their shared preprocessing path."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested behavior, compatibility obligation, and scope are fully determined by the public request and audited repository evidence; no material clarification is needed."
+    },
+    "turn": 1
+  }
+]

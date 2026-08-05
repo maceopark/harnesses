@@ -1,0 +1,20 @@
+{
+  "acceptance_checks": [
+    "strip_accents_unicode(\"ñ\") returns \"n\".",
+    "strip_accents_unicode(\"n\\u0303\") returns \"n\" rather than preserving the combining tilde.",
+    "Canonically equivalent precomposed and decomposed accented inputs yield identical accent-free output.",
+    "A vectorizer analyzer configured with strip_accents='unicode' removes combining accents from already-NFKD input before producing features.",
+    "Previously supported composed Latin, Arabic, mixed-text, and vectorizer accent-stripping outcomes remain unchanged."
+  ],
+  "confirmed_decisions": [
+    "strip_accents_unicode must remove combining marks from input that is already in NFKD form instead of returning that input unchanged.",
+    "A precomposed accented character and its equivalent decomposed base-character-plus-combining-mark sequence must produce the same stripped result; specifically, both \"ñ\" and \"n\\u0303\" must produce \"n\".",
+    "The corrected behavior must apply through the shared vectorizer preprocessing path whenever strip_accents='unicode' is selected, including CountVectorizer and inherited TfidfVectorizer behavior.",
+    "Existing Unicode accent-stripping behavior for precomposed Latin text, precomposed Arabic text, mixed accented and unaccented text, and ordinary unaccented text must remain compatible.",
+    "strip_accents_ascii behavior is outside the change scope because it does not have the equality-based early-return defect.",
+    "No public API or parameter semantics change is required beyond correcting the inconsistent handling of already-decomposed Unicode input."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Correct Unicode accent stripping so canonically equivalent precomposed and already-NFKD inputs produce the same accent-free text, including when used through vectorizers configured with strip_accents='unicode'."
+}

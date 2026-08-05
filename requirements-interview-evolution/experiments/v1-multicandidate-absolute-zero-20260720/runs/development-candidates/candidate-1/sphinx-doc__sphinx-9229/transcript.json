@@ -1,0 +1,199 @@
+[
+  {
+    "answer": "Custom docs only",
+    "open_material_decisions": [
+      "Whether parsed custom documentation for a type alias replaces the generated “alias of …” paragraph or coexists with it."
+    ],
+    "question": {
+      "header": "Alias output",
+      "options": [
+        {
+          "description": "Show the parsed documentation and suppress “alias of …”, matching the issue’s stated expected behavior but intentionally changing existing tested output.",
+          "label": "Custom docs only",
+          "recommended": true
+        },
+        {
+          "description": "Preserve the existing tested “alias of …” paragraph and fix only the cases where parsed next-line documentation is currently lost.",
+          "label": "Docs plus alias",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a recognized type alias has parsed variable documentation, which rendered output should the fix require?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Generic aliases only",
+    "open_material_decisions": [
+      "Whether suppression of the generated “alias of …” paragraph when parsed variable documentation exists is limited to recognized generic aliases or also applies to NewType and TypeVar aliases."
+    ],
+    "question": {
+      "header": "Alias scope",
+      "options": [
+        {
+          "description": "Fix the reported typing generic-alias cases while preserving existing NewType and TypeVar output; this is the narrowest evidence-backed compatibility boundary.",
+          "label": "Generic aliases only",
+          "recommended": true
+        },
+        {
+          "description": "Apply the replacement rule to generic aliases, NewType, and TypeVar whenever parsed variable documentation exists, broadening observable behavior beyond the reported case.",
+          "label": "All alias kinds",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which alias classifications should use custom parsed documentation instead of the generated “alias of …” paragraph?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Module data only",
+    "open_material_decisions": [
+      "Whether “custom docs only” applies only to module-level data aliases from the reported case or also to documented class attributes recognized as generic aliases."
+    ],
+    "question": {
+      "header": "Member scope",
+      "options": [
+        {
+          "description": "Limit the behavior change to module-level data aliases, matching the reported reproduction and preserving existing class-attribute output.",
+          "label": "Module data only",
+          "recommended": true
+        },
+        {
+          "description": "Apply the same rule to module-level aliases and class-level generic-alias attributes, changing both existing output paths.",
+          "label": "Data and attributes",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should parsed custom documentation suppress the generated “alias of …” paragraph for recognized generic aliases?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Include Python 3.6",
+    "open_material_decisions": [
+      "Whether the acceptance boundary must include the reported Python 3.6.9 environment or may be limited to runtime objects recognized by Sphinx as generic aliases on Python 3.7 and newer."
+    ],
+    "question": {
+      "header": "Python scope",
+      "options": [
+        {
+          "description": "Require the exact reported reproduction to pass on Python 3.6.9, allowing a bounded change outside the existing generic-alias classification path.",
+          "label": "Include Python 3.6",
+          "recommended": true
+        },
+        {
+          "description": "Limit the contract to recognized generic aliases on Python 3.7 and newer; the reporter’s stated Python 3.6.9 reproduction is not an acceptance requirement.",
+          "label": "Python 3.7+ only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Must the fix make all three reported next-line alias docstrings replace the default text on Python 3.6.9, even though that runtime does not classify them through Sphinx’s generic-alias path?"
+    },
+    "turn": 4
+  },
+  {
+    "answer": "Reported forms",
+    "open_material_decisions": [
+      "On Python 3.6, whether the replacement behavior must cover the reported typing alias forms specifically or every module-level type alias with parsed next-line documentation."
+    ],
+    "question": {
+      "header": "3.6 coverage",
+      "options": [
+        {
+          "description": "Require Dict, Union, and Callable aliases from the reproduction, without promising broader Python 3.6 alias detection.",
+          "label": "Reported forms",
+          "recommended": true
+        },
+        {
+          "description": "Require the behavior for every module-level type alias Sphinx can identify on Python 3.6, creating a broader compatibility commitment.",
+          "label": "All type aliases",
+          "recommended": false
+        }
+      ],
+      "prompt": "For Python 3.6, how broadly must module-level aliases with parsed next-line documentation receive custom-docs-only output?"
+    },
+    "turn": 5
+  },
+  {
+    "answer": "All parsed docs",
+    "open_material_decisions": [
+      "Whether generated “alias of …” text is suppressed for all parsed documentation attached to an in-scope module-level generic alias, including existing `#:` comments, or only for next-line string-expression documentation."
+    ],
+    "question": {
+      "header": "Doc syntax",
+      "options": [
+        {
+          "description": "Apply one consistent rule to next-line strings and `#:` comments, updating the existing documented-generic-alias expectation to custom documentation only.",
+          "label": "All parsed docs",
+          "recommended": true
+        },
+        {
+          "description": "Fix only the reported next-line string syntax while preserving docs-plus-alias output for existing `#:` documentation comments.",
+          "label": "Next-line only",
+          "recommended": false
+        }
+      ],
+      "prompt": "For an in-scope module-level alias, which parsed documentation syntaxes should replace the generated “alias of …” text?"
+    },
+    "turn": 6
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the complete implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this behavior, compatibility boundary, acceptance evidence, and constrained implementation delegation.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open and specify which requirement or boundary should change.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: For module-level data aliases with parsed variable documentation, render only that custom documentation and suppress the generated “alias of …” paragraph. Apply this to all parsed documentation syntaxes, including next-line string expressions and `#:` comments. On Python 3.7+, scope the change to objects Sphinx recognizes as generic aliases. On Python 3.6, additionally cover the reproduction’s typing.Dict, typing.Union, and typing.Callable alias forms, without promising general type-alias detection. Preserve current behavior for class attributes, NewType, TypeVar, aliases without parsed documentation, and non-alias data. Add regression coverage using the three reported multiline next-line docstrings, asserting that every custom body is retained and no generated “alias of …” text appears; update existing module-level documented-generic-alias expectations from docs-plus-alias to custom-docs-only while retaining class-attribute docs-plus-alias expectations. Acceptance requires targeted autodoc tests to pass, including evidence for the bounded Python 3.6 path; if Python 3.6 cannot run in the current environment, a version-controlled or isolated test of that branch is acceptable. Residual risk: Python 3.6 typing internals may require implementation-specific detection, but it must remain bounded to the three approved forms. May the implementer choose the smallest compatible internal mechanism within these constraints?"
+    },
+    "turn": 7
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Add a regression fixture using the three reported multiline next-line docstrings for typing.Dict, typing.Union, and typing.Callable aliases.",
+          "Assert that each of the three aliases retains its complete custom documentation body.",
+          "Assert that none of those three documented module-level aliases renders a generated “alias of …” paragraph.",
+          "Update existing module-level documented-generic-alias expectations using `#:` comments from docs-plus-alias to custom-docs-only.",
+          "Retain existing class-attribute expectations showing custom documentation plus the generated alias paragraph.",
+          "Verify aliases without parsed documentation retain generated alias output.",
+          "Verify NewType, TypeVar, and non-alias data behavior remains unchanged.",
+          "Run the targeted autodoc tests successfully.",
+          "Provide acceptance evidence for the bounded Python 3.6 branch; if Python 3.6 cannot run in the current environment, use a version-controlled or isolated test that exercises that branch.",
+          "Acknowledge the bounded residual risk that Python 3.6 typing internals may require implementation-specific detection; no behavior beyond Dict, Union, and Callable is guaranteed there."
+        ],
+        "confirmed_decisions": [
+          "Parsed custom documentation replaces, rather than coexists with, the generated “alias of …” paragraph.",
+          "The behavior change is limited to generic aliases; NewType and TypeVar output remains unchanged.",
+          "The behavior change applies only to module-level data aliases; class-level generic-alias attributes retain their current output.",
+          "Python 3.6.9 is included in the compatibility boundary.",
+          "On Python 3.6, required alias detection is bounded to the reported typing.Dict, typing.Union, and typing.Callable forms.",
+          "The replacement rule applies to all parsed variable-documentation syntaxes, including next-line string expressions and `#:` comments.",
+          "Aliases without parsed documentation continue to show their generated default alias text.",
+          "The implementer is delegated to select the smallest compatible internal mechanism, provided Python 3.6 handling remains bounded to the approved forms."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "For module-level data aliases with parsed variable documentation, render only the custom documentation and suppress the generated “alias of …” paragraph. Apply this consistently to next-line string-expression documentation and `#:` comments. On Python 3.7 and newer, this applies to objects Sphinx recognizes as generic aliases. On Python 3.6, additionally support the reproduction’s typing.Dict, typing.Union, and typing.Callable alias forms, without establishing general Python 3.6 type-alias detection. Preserve existing behavior for class attributes, NewType, TypeVar, aliases without parsed documentation, and non-alias data. The implementer may choose the smallest compatible internal mechanism satisfying these constraints."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the complete contract, including all observable behavior, compatibility boundaries, acceptance evidence, implementation delegation, and residual risk. No material decision remains open."
+    },
+    "turn": 8
+  }
+]

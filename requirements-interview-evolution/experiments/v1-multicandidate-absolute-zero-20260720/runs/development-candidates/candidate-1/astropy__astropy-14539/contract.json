@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "Create a FITS binary table containing `fits.Column('a', format='QD', array=[[0], [0, 0]])`, write it to disk, and verify `fits.FITSDiff(path, path).identical` is true.",
+    "Verify the report for that identical same-file QD comparison contains the normal no-differences outcome and does not report table-data differences.",
+    "Compare Q-format VLA table data with at least one genuine row-value difference and verify `TableDataDiff` or `FITSDiff` is non-identical and reports the affected table row through the existing difference-reporting behavior.",
+    "Run the focused FITS diff test module and confirm existing P-format VLA and ordinary table-diff tests still pass.",
+    "Confirm the implementation change is confined to FITS diff comparison logic and focused regression tests, with no changes to FITS table parsing, serialization, or format definitions."
+  ],
+  "confirmed_decisions": [
+    "All Q-format VLA columns must match the existing P-format VLA row-by-row, tolerance-aware comparison semantics; the fix is not limited to QD or same-file identity checks.",
+    "The reported QD file compared with itself must be identical because FITSDiff independently opens both filename inputs and delegates table data to TableDataDiff.",
+    "Regression coverage must include the reported identical same-file QD case and a genuinely different Q-format VLA case.",
+    "Genuinely different Q-format VLA row data must continue to populate the normal table-difference result and report path.",
+    "Existing behavior for P-format VLAs and non-VLA columns must remain unchanged.",
+    "Implementation details may be chosen within these behavioral and scope constraints.",
+    "The owner approved the contract.",
+    "Bounded residual risk is accepted: required tests cover the reported QD identity case and one genuine Q-VLA difference case, not a matrix of every Q element type."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update `astropy/io/fits/diff.py` so `TableDataDiff` recognizes every Q-format variable-length-array column as a VLA and compares its corresponding row arrays using the same `numpy.allclose` behavior and configured `rtol`/`atol` semantics already used for P-format VLAs. Preserve existing behavior for P-format VLAs and non-VLA columns. Limit the change to the FITS diff implementation and focused regression tests in `astropy/io/fits/tests/test_diff.py`; do not change FITS table parsing, storage, or format handling."
+}

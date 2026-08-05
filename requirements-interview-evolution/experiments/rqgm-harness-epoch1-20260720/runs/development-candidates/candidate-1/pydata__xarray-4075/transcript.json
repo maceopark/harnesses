@@ -1,0 +1,88 @@
+[
+  {
+    "answer": "Shared denominator (Recommended)",
+    "open_material_decisions": [
+      "Whether boolean-weight support must be corrected only for weighted mean or consistently for every operation that exposes the shared sum-of-weights denominator."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Make sum_of_weights correct for boolean weights and thereby fix mean consistently for DataArray and Dataset weighted operations.",
+          "label": "Shared denominator (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Require only weighted mean to return the expected result, without guaranteeing direct sum_of_weights behavior.",
+          "label": "Mean only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which public behavior should the contract require for boolean weights?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Numeric value only",
+    "open_material_decisions": [
+      "Whether a boolean-weight sum_of_weights result must preserve a specific numeric dtype or only its numeric value and missing-value semantics."
+    ],
+    "question": {
+      "header": "Result dtype",
+      "options": [
+        {
+          "description": "Require correct counts and existing zero-to-missing behavior while allowing the backend-compatible numeric dtype produced by the implementation.",
+          "label": "Numeric value only",
+          "recommended": true
+        },
+        {
+          "description": "Require nonzero boolean-weight denominators to use an integer dtype wherever missing-value representation does not force promotion.",
+          "label": "Integer count",
+          "recommended": false
+        },
+        {
+          "description": "Require boolean-weight denominators to be converted to floating point consistently.",
+          "label": "Floating result",
+          "recommended": false
+        }
+      ],
+      "prompt": "What dtype requirement should the contract impose on sum_of_weights computed from boolean weights?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A regression test using the reported MCVE verifies that DataArray.weighted(boolean_weights).mean() returns 1 rather than 2.",
+          "A direct regression test verifies that sum_of_weights with boolean weights [true, true, false] is numerically 2.",
+          "Boolean-weight tests include missing data and verify that weights paired with missing values are excluded from sum_of_weights and weighted mean.",
+          "Boolean-weight tests verify that an all-false effective weight set preserves the existing zero-to-missing behavior.",
+          "Dataset weighted operations are covered to verify that the shared denominator correction applies through the Dataset public API.",
+          "Existing integer-weight sum_of_weights and weighted-mean tests continue to pass.",
+          "Tests do not require a particular integer or floating dtype for a non-missing boolean-weight denominator, but do require a numeric value rather than a boolean result.",
+          "Dimension-specific and omitted-dimension reductions continue to use the existing reduction semantics while producing correct boolean-weight denominators."
+        ],
+        "confirmed_decisions": [
+          "Fix the shared sum-of-weights denominator rather than special-casing weighted mean.",
+          "The corrected shared behavior applies consistently to DataArray and Dataset weighted operations.",
+          "Boolean weights are supported as numeric zero/one weights.",
+          "For the reported DataArray values [1.0, 1.0, 1.0] and boolean weights [true, true, false], sum_of_weights is numerically 2 and weighted mean is 1.",
+          "Missing data continues to exclude its corresponding weight from the denominator.",
+          "An all-false or otherwise zero total weight continues to produce a missing denominator and weighted mean.",
+          "No exact result dtype is mandated for boolean-weight denominators; correct numeric value and missing-value semantics are sufficient.",
+          "Existing behavior for non-boolean numeric weights must remain unchanged.",
+          "The implementation may choose the internal coercion strategy; the contract does not require casting the mask or weights at a particular layer."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Correct boolean-weight handling in the shared weighted denominator path. When weights are boolean, sum_of_weights must numerically equal the sum of weights corresponding to non-missing data, rather than the boolean result of a bool-by-bool dot product. This shared correction must make weighted mean return the expected value for both DataArray and Dataset weighted operations while preserving existing numeric-weight behavior, dimension reduction behavior, and zero-denominator-to-missing semantics. No specific integer or floating result dtype is required, only a backend-compatible numeric result with the correct value and missing-value behavior."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The two material ambiguities have been resolved: the fix applies to the shared sum-of-weights denominator used by DataArray and Dataset weighted operations, and correctness is defined by numeric value rather than a prescribed numeric dtype. Repository evidence supplies the remaining behavior and test boundaries, so no material blocker remains."
+    },
+    "turn": 3
+  }
+]

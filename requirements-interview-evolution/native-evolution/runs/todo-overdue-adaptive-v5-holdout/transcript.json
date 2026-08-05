@@ -1,0 +1,163 @@
+[
+  {
+    "turn": 1,
+    "open_material_decisions": [
+      "CLI shape: whether --overdue is a boolean flag or accepts a value.",
+      "Filter composition: whether --overdue combines conjunctively with --priority and --due, especially the meaning of --overdue plus an exact --due date.",
+      "Overdue eligibility: whether due today qualifies and whether completed past-due tasks qualify.",
+      "Reference date: which clock/timezone determines today and how tests inject or control it."
+    ],
+    "question": {
+      "header": "Overdue rule",
+      "prompt": "Which tasks should `todo list --overdue` include? This determines the filter’s core observable behavior.",
+      "options": [
+        {
+          "label": "Incomplete, before today",
+          "description": "Include only unfinished tasks whose due date is strictly earlier than today; due-today, completed, and undated tasks are excluded.",
+          "recommended": true
+        },
+        {
+          "label": "All before today",
+          "description": "Include completed and unfinished tasks whose due date is strictly earlier than today; due-today and undated tasks are excluded.",
+          "recommended": false
+        },
+        {
+          "label": "Incomplete, due by today",
+          "description": "Include only unfinished tasks whose due date is today or earlier; completed and undated tasks are excluded.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Incomplete, before today"
+  },
+  {
+    "turn": 2,
+    "open_material_decisions": [
+      "CLI shape: whether --overdue is a boolean flag or accepts a value.",
+      "Filter composition: whether --overdue combines conjunctively with --priority and --due, especially the meaning of --overdue plus an exact --due date.",
+      "Reference date: which clock/timezone determines today and how tests inject or control it."
+    ],
+    "question": {
+      "header": "Combining",
+      "prompt": "How should `--overdue` interact with the existing `--priority` and `--due` filters?",
+      "options": [
+        {
+          "label": "Combine with both",
+          "description": "Apply all supplied filters conjunctively; `--due DATE --overdue` matches only when that exact date is before today and the task is incomplete.",
+          "recommended": true
+        },
+        {
+          "label": "Priority only",
+          "description": "Allow `--overdue` with `--priority`, but reject its use with `--due` as a usage error.",
+          "recommended": false
+        },
+        {
+          "label": "Use alone",
+          "description": "Reject `--overdue` whenever either existing filter is also supplied.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "Combine with both"
+  },
+  {
+    "turn": 3,
+    "open_material_decisions": [
+      "CLI shape: whether `--overdue` is a value-free boolean flag or accepts a value.",
+      "Reference date: whether “today” is the machine-local calendar date or UTC, and how tests control it deterministically."
+    ],
+    "question": {
+      "header": "Today source",
+      "prompt": "Which calendar date should define “before today” for `--overdue`? This changes results around timezone boundaries and determines the test seam.",
+      "options": [
+        {
+          "label": "Local date + seam",
+          "description": "Use the machine-local calendar date in production and an internal injectable/patchable date provider for deterministic tests.",
+          "recommended": true
+        },
+        {
+          "label": "UTC date + seam",
+          "description": "Use the UTC calendar date in production and an internal injectable/patchable date provider for deterministic tests.",
+          "recommended": false
+        },
+        {
+          "label": "Local date direct",
+          "description": "Call the machine-local date directly and rely on process-level clock control or patching the imported date in tests.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "UTC date + seam"
+  },
+  {
+    "turn": 4,
+    "open_material_decisions": [
+      "CLI shape: whether `--overdue` is a value-free boolean flag or accepts a value."
+    ],
+    "question": {
+      "header": "CLI shape",
+      "prompt": "How should users activate the overdue filter? This determines parsing, help text, and invalid-input behavior.",
+      "options": [
+        {
+          "label": "Boolean flag",
+          "description": "Use `todo list --overdue` as a value-free `store_true` flag; this matches the request’s wording and conventional filter syntax.",
+          "recommended": true
+        },
+        {
+          "label": "Boolean value",
+          "description": "Require a value such as `--overdue true`, adding parsing and validation behavior without enabling another requested use case.",
+          "recommended": false
+        },
+        {
+          "label": "Optional value",
+          "description": "Accept both `--overdue` and forms such as `--overdue true|false`, offering flexibility at the cost of a more complex public interface.",
+          "recommended": false
+        }
+      ]
+    },
+    "answer": "{\"answer\":\"Boolean flag\"}"
+  },
+  {
+    "turn": 5,
+    "interviewer": {
+      "action": "complete",
+      "reason": "All material decisions are resolved, the interactions are coherent, and executable acceptance checks can distinguish success from failure. The original change request authorizes implementation.",
+      "open_material_decisions": [],
+      "question": null,
+      "contract": {
+        "summary": "Add a value-free `--overdue` boolean filter to `todo list` while preserving existing behavior. An overdue task is incomplete, has a due date strictly before the current UTC calendar date, and may be filtered conjunctively with `--priority` and `--due`. Production code must use UTC through an internal injectable or patchable date provider so tests are deterministic. The persisted task schema, row format, established sorting, exit behavior, and standard-library-only constraint remain unchanged.",
+        "implementation_ready": true,
+        "confirmed_decisions": [
+          "`--overdue` is a value-free boolean flag on the `list` command.",
+          "A task is overdue only when it is incomplete and its due date is strictly earlier than today.",
+          "Tasks due today are not overdue.",
+          "Completed tasks, including completed tasks with past due dates, are not overdue.",
+          "Undated tasks are not overdue.",
+          "`--overdue`, `--priority`, and `--due` combine conjunctively when supplied together.",
+          "`--overdue --due DATE` matches only incomplete tasks whose due date exactly equals DATE and DATE is strictly before today.",
+          "Today is the current UTC calendar date.",
+          "Production date lookup uses an internal injectable or patchable seam for deterministic tests.",
+          "Filtering remains read-only and does not add an `overdue` field to persisted task data.",
+          "Existing row formatting, post-filter sort order, empty-result behavior, storage behavior, and exit-code conventions must remain unchanged.",
+          "No runtime dependency may be added; Python 3.10 or newer remains supported.",
+          "Implementation is authorized by the original request."
+        ],
+        "open_material_decisions": [],
+        "acceptance_checks": [
+          "With the injected UTC date set to 2026-07-19 and tasks consisting of incomplete due 2026-07-18, incomplete due 2026-07-19, incomplete due 2026-07-20, incomplete undated, completed due 2026-07-18, and completed undated, running `todo list --overdue` prints only the incomplete task due 2026-07-18, using the unchanged tab-separated row format, and returns 0.",
+          "With the injected UTC date set to 2026-07-19 and incomplete overdue tasks of multiple priorities, `todo list --overdue --priority high` prints only high-priority overdue tasks and returns 0.",
+          "With the injected UTC date set to 2026-07-19, `todo list --overdue --due 2026-07-18` prints only incomplete tasks due exactly 2026-07-18, while `todo list --overdue --due 2026-07-19` prints nothing; both commands return 0.",
+          "With the injected UTC date set to 2026-07-19, `todo list --overdue --priority high --due 2026-07-18` applies all three filters conjunctively and prints only incomplete high-priority tasks due exactly 2026-07-18.",
+          "When multiple tasks match `--overdue`, output retains the established ordering: incomplete state, descending priority, ascending due date with undated tasks last, then ascending ID; because overdue excludes done and undated tasks, the remaining effective ordering is priority, due date, then ID.",
+          "Running `todo list --overdue` when the store does not exist prints nothing to stdout or stderr, returns 0, and does not create the store file.",
+          "Running `todo list --overdue` when no tasks qualify prints nothing and returns 0 without modifying the store.",
+          "Running `todo list --overdue true` is rejected by argument parsing as unexpected input and returns usage exit code 2 without propagating `SystemExit` or modifying the store.",
+          "Existing valid and invalid `--due` behavior remains unchanged, including exact calendar-date validation and usage exit code 2 for invalid dates.",
+          "A before-and-after byte comparison of the store around every `list` command using `--overdue`, alone or combined with other filters, shows no persisted changes.",
+          "Existing list commands without `--overdue` preserve their filtering, output, sorting, and exit behavior, and the full existing test suite plus new overdue regression tests passes.",
+          "The README documents `todo list [--priority {low,medium,high}] [--due YYYY-MM-DD] [--overdue]`, the strict-before-current-UTC-date rule, exclusion of completed and undated tasks, and conjunctive combination with existing filters."
+        ]
+      }
+    }
+  }
+]

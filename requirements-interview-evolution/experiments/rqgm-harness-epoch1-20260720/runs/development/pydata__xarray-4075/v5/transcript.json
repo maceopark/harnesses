@@ -1,0 +1,36 @@
+[
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A regression test demonstrates that DataArray([1.0, 1.0, 1.0]).weighted(DataArray([True, True, False])).mean() equals scalar 1.0.",
+          "A regression test demonstrates that the same boolean-weight case returns an arithmetic sum of weights equal to 2 rather than boolean True.",
+          "Boolean weights containing all False values produce a missing sum of weights and NaN weighted mean, preserving zero-total-weight behavior.",
+          "A case with missing data confirms that only boolean weights corresponding to non-null data contribute to the denominator.",
+          "Equivalent Dataset weighted operations produce correct results through the shared implementation.",
+          "Existing weighted tests for integer and other numeric weights continue to pass, including zero and cancelling totals.",
+          "The targeted weighted test suite passes without requiring a behavioral change to the public dot API."
+        ],
+        "confirmed_decisions": [
+          "Boolean weights are supported; they are not rejected by constructor validation.",
+          "Boolean False and True weights have numeric weighting semantics equivalent to 0 and 1.",
+          "For data [1.0, 1.0, 1.0] and boolean weights [True, True, False], weighted mean returns 1.0 and sum of weights returns 2, not True.",
+          "The correction belongs in the shared sum-of-weights calculation, where a boolean validity mask is currently reduced against potentially boolean weights through dot/einsum.",
+          "The fix must preserve existing numeric-weight behavior, including positive, zero, and cancelling negative weights.",
+          "A zero total weight remains invalid and produces NaN for weighted mean.",
+          "Missing data continues to exclude its corresponding weight from the denominator.",
+          "The shared behavior applies to both DataArrayWeighted and DatasetWeighted operations.",
+          "The general dot/einsum API is not required to change; the bug can be corrected within weighted reduction semantics."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix weighted reductions so that sum-of-weights uses arithmetic summation when weights are boolean, rather than boolean einsum semantics. In the shared implementation in xarray/core/weighted.py, ensure the validity-mask/weight reduction has a numeric operand (or an equivalently correct arithmetic reduction) before dot/einsum. Preserve existing handling of missing data and zero total weight. Add regression coverage for boolean weights, including the reported weighted-mean case and direct sum-of-weights behavior; verify the shared behavior for both DataArrayWeighted and DatasetWeighted."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The request and audited repository evidence fully determine the externally observable behavior. No material product or scope decision remains: boolean weights must retain ordinary 0/1 weighting semantics, including correct normalization, through the shared DataArray/Dataset weighted-reduction path."
+    },
+    "turn": 1
+  }
+]

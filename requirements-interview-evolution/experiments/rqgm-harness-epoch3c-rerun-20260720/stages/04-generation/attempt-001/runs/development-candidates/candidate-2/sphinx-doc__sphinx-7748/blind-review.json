@@ -1,0 +1,50 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/summary",
+          "quoted_value": "Extend autodoc_docstring_signature so functions and methods may expose an overload block consisting of consecutive valid signature lines at the start of a docstring. Each collected signature is displayed separately, preserves its own return annotation, and is removed from rendered docstring content."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/0",
+          "quoted_value": "A method docstring beginning with two valid matching signatures followed by prose produces two method signature lines in the same order, and neither signature appears in the rendered prose."
+        }
+      ],
+      "description": "Function behavior is left without an observable acceptance check even though it is part of the sealed scope. A method-only implementation could therefore satisfy every listed check while failing the contract summary for functions.",
+      "failure_class": "omission",
+      "general_cause": "The contract promises overload extraction for both functions and methods, but its acceptance checks exercise only methods.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "The summary explicitly includes functions and methods, while the principal overload acceptance check is method-specific and no acceptance check covers a function documenter."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/5",
+          "quoted_value": "Existing accepted-name behavior remains unchanged, including the additional names accepted for class documenters."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/2/statement",
+          "quoted_value": "A docstring signature is accepted only when its parsed base name matches the documented object's final path component; class documenters additionally accept __init__ and class names from the MRO."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/3",
+          "quoted_value": "A signature-shaped line with an unaccepted object name terminates collection and remains in rendered content together with every following line."
+        }
+      ],
+      "description": "The extraction loop must change, and a regression that rejects existing class aliases could pass all stated checks. This leaves a repository-established compatibility behavior unprotected despite the contract explicitly requiring its preservation.",
+      "failure_class": "omission",
+      "general_cause": "A compatibility decision preserving class-specific accepted signature names is not backed by a corresponding acceptance check.",
+      "id": "FINDING-2",
+      "material": true,
+      "observable_signal": "The contract confirms that __init__ and MRO class-name acceptance must remain unchanged, but the checks cover matching method names and rejected names without exercising either class-specific accepted-name case."
+    }
+  ],
+  "summary": "The behavioral decisions are resolved, but the contract is not fully implementation-ready because its acceptance suite omits promised function coverage and explicit protection of existing class-specific accepted-name behavior."
+}

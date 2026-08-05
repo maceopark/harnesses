@@ -1,0 +1,115 @@
+{
+  "audit_summary": "All 15 facts are directly supported by the cited repository files.",
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 6463,
+      "line_start": 6460,
+      "path": "lib/matplotlib/axes/_axes.py",
+      "statement": "Axes.hist forwards bins, range, density, and weights to numpy.histogram; its documented density formula divides counts by total counts and bin width so the integrated area is one."
+    },
+    {
+      "id": "F2",
+      "line_end": 6526,
+      "line_start": 6520,
+      "path": "lib/matplotlib/axes/_axes.py",
+      "statement": "The density documentation specifies density = counts / (sum(counts) * np.diff(bins)) and states that np.sum(density * np.diff(bins)) equals 1."
+    },
+    {
+      "id": "F3",
+      "line_end": 6752,
+      "line_start": 6739,
+      "path": "lib/matplotlib/axes/_axes.py",
+      "statement": "For a non-stacked density histogram, Axes.hist passes density=True to numpy.histogram, then stores the returned bin values in tops as floating-point data."
+    },
+    {
+      "id": "F4",
+      "line_end": 6812,
+      "line_start": 6795,
+      "path": "lib/matplotlib/axes/_axes.py",
+      "statement": "Bar histograms are rendered through Axes.bar or Axes.barh using the computed bin values as bar heights."
+    },
+    {
+      "id": "F5",
+      "line_end": 6835,
+      "line_start": 6823,
+      "path": "lib/matplotlib/axes/_axes.py",
+      "statement": "Step and stepfilled histograms use a separate polygon-building branch that allocates perimeter coordinate arrays from the bin edges and initializes the baseline to zero when bottom is None."
+    },
+    {
+      "id": "F6",
+      "line_end": 6871,
+      "line_start": 6852,
+      "path": "lib/matplotlib/axes/_axes.py",
+      "statement": "The step branch assigns each histogram top coordinate from the computed values plus bottom; for vertical orientation these polygon coordinates are retained as x=bin perimeter and y=histogram perimeter."
+    },
+    {
+      "id": "F7",
+      "line_end": 6885,
+      "line_start": 6873,
+      "path": "lib/matplotlib/axes/_axes.py",
+      "statement": "The step branch renders each perimeter through Axes.fill; unfilled step histograms are truncated at 2 * len(bins), use an edge color, and set fill to None."
+    },
+    {
+      "id": "F8",
+      "line_end": 6891,
+      "line_start": 6886,
+      "path": "lib/matplotlib/axes/_axes.py",
+      "statement": "After creating step polygons, the implementation adds a sticky edge at numeric zero on the density/count axis: y for vertical histograms and x for horizontal histograms."
+    },
+    {
+      "id": "F9",
+      "line_end": 6907,
+      "line_start": 6896,
+      "path": "lib/matplotlib/axes/_axes.py",
+      "statement": "General histogram patch keyword arguments are applied to the first and remaining returned patches only after the bar or step rendering branch has created those artists."
+    },
+    {
+      "id": "F10",
+      "line_end": 2418,
+      "line_start": 2407,
+      "path": "lib/matplotlib/axes/_base.py",
+      "statement": "Axes.add_patch updates the axes data limits from the patch before appending the patch to the axes."
+    },
+    {
+      "id": "F11",
+      "line_end": 2458,
+      "line_start": 2433,
+      "path": "lib/matplotlib/axes/_base.py",
+      "statement": "Patch-limit calculation extracts path extrema, transforms them into data coordinates, and passes them to update_datalim for the axes represented by the patch transform."
+    },
+    {
+      "id": "F12",
+      "line_end": 2075,
+      "line_start": 2070,
+      "path": "lib/matplotlib/tests/test_axes.py",
+      "statement": "The existing test_hist_density uses density=True without specifying histtype, so it exercises the default bar histogram rather than the step branch."
+    },
+    {
+      "id": "F13",
+      "line_end": 2086,
+      "line_start": 2078,
+      "path": "lib/matplotlib/tests/test_axes.py",
+      "statement": "The unequal-bin density test compares Matplotlib's returned heights with numpy.histogram density heights, but also leaves histtype at its default value."
+    },
+    {
+      "id": "F14",
+      "line_end": 2064,
+      "line_start": 2051,
+      "path": "lib/matplotlib/tests/test_axes.py",
+      "statement": "The existing step/stepfilled image test exercises stacked rendering and explicitly fixes the lower y limit, but does not request density normalization."
+    },
+    {
+      "id": "F15",
+      "line_end": 6566,
+      "line_start": 6558,
+      "path": "lib/matplotlib/axes/_axes.py",
+      "statement": "The histogram API documents histtype='step' as an unfilled line plot and histtype='stepfilled' as a filled line plot."
+    }
+  ],
+  "scope_summary": "Base commit 493d608e39d32a67173c23a7bbc47d6bfedcef61 contains separate bar and step histogram rendering paths. Existing density tests exercise the default bar histogram, but no cited test combines density=True with histtype='step' and verifies autoscaling.",
+  "unknowns": [
+    "The repository citations establish the distinct rendering and test-coverage paths, but do not by themselves prove which internal operation causes the reported upper-limit clipping.",
+    "No existing cited regression test at the base commit specifies the expected axis limits for density=True combined with histtype='step'."
+  ]
+}

@@ -1,0 +1,148 @@
+[
+  {
+    "answer": "Stop at first nonmatch",
+    "open_material_decisions": [
+      "How distinct return annotations are preserved across overload signatures",
+      "Termination behavior for the leading overload-signature scan",
+      "Whether overload signatures are exposed to autodoc-process-signature individually or as one combined value"
+    ],
+    "question": {
+      "header": "Scan boundary",
+      "options": [
+        {
+          "description": "Consume consecutive leading lines that are valid signatures for the documented object, then preserve that line and everything after it as docstring content.",
+          "label": "Stop at first nonmatch",
+          "recommended": true
+        },
+        {
+          "description": "Continue searching beyond non-signature or mismatched lines, potentially extracting later signatures while leaving intervening lines in the content.",
+          "label": "Skip malformed lines",
+          "recommended": false
+        },
+        {
+          "description": "Stop scanning at the first invalid or mismatched line and discard that boundary line along with the extracted signatures.",
+          "label": "First mismatch ends all",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc determine the end of the overload-signature block at the start of a docstring?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Preserve each annotation",
+    "open_material_decisions": [
+      "How distinct return annotations are preserved across overload signatures",
+      "Whether overload signatures are exposed to autodoc-process-signature individually or as one combined value"
+    ],
+    "question": {
+      "header": "Return types",
+      "options": [
+        {
+          "description": "Display every overload with the return annotation written on its corresponding docstring line.",
+          "label": "Preserve each annotation",
+          "recommended": true
+        },
+        {
+          "description": "Apply the first overload's return annotation to all displayed overloads.",
+          "label": "Use first annotation",
+          "recommended": false
+        },
+        {
+          "description": "Display all overload argument lists without return annotations.",
+          "label": "Omit annotations",
+          "recommended": false
+        }
+      ],
+      "prompt": "When leading overload signatures have different return annotations, how should autodoc display them?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Process individually",
+    "open_material_decisions": [
+      "Whether each overloaded docstring signature is passed through autodoc-process-signature separately or all overloads are passed as one combined value"
+    ],
+    "question": {
+      "header": "Signature event",
+      "options": [
+        {
+          "description": "Invoke the event once per overload so extensions can transform each argument list and its corresponding return annotation independently.",
+          "label": "Process individually",
+          "recommended": true
+        },
+        {
+          "description": "Invoke the event once with all overloads encoded together in newline-separated signature values.",
+          "label": "Process combined",
+          "recommended": false
+        },
+        {
+          "description": "Display extracted overloads without exposing them to the signature-processing event.",
+          "label": "Bypass for overloads",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc expose multiple docstring overloads to the existing autodoc-process-signature event?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "{\"selection\":\"Functions and methods\"}",
+    "open_material_decisions": [
+      "Whether leading overload signatures should be recognized for methods only or for both functions and methods"
+    ],
+    "question": {
+      "header": "Object scope",
+      "options": [
+        {
+          "description": "Extend the existing shared docstring-signature behavior consistently for both function and method documenters.",
+          "label": "Functions and methods",
+          "recommended": true
+        },
+        {
+          "description": "Add overload extraction only for methods, leaving functions limited to one docstring signature.",
+          "label": "Methods only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which autodoc object types should support consecutive leading overload signatures?"
+    },
+    "turn": 4
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "With two or more consecutive valid leading signatures for a function, generated output contains a separate displayed signature for each overload in source order and excludes all consumed signature lines from the body.",
+          "With two or more consecutive valid leading signatures for a normal, static, or class method, generated output contains a separate displayed signature for each overload in source order and excludes all consumed signature lines from the body.",
+          "When overloads have different return annotations, each displayed signature shows its own corresponding annotation.",
+          "When a valid leading overload block is followed by prose, malformed signature text, or a signature for a different object, extraction stops and preserves that boundary line and everything after it as body content.",
+          "Each extracted overload is independently exposed to autodoc-process-signature, and transformations returned for one overload do not overwrite the other overloads' arguments or return annotations.",
+          "A single valid leading docstring signature continues to produce the existing single-signature output.",
+          "Disabling autodoc_docstring_signature preserves all leading signature lines in the docstring body and does not use them as displayed signatures.",
+          "Providing an explicit signature prevents extraction of the leading docstring overload block, preserving the existing explicit-signature precedence."
+        ],
+        "confirmed_decisions": [
+          "The behavior applies to both functions and methods through their existing docstring-signature support.",
+          "Autodoc consumes consecutive leading docstring lines only while each line is a valid signature for the documented object.",
+          "Scanning stops at the first non-signature, malformed signature, or signature whose object name does not match the documented object; that boundary line and all subsequent lines remain in the rendered docstring content.",
+          "Every consumed overload-signature line is removed from the rendered docstring content.",
+          "All extracted overloads are displayed as separate signatures for the same documented object, in their original docstring order.",
+          "Each displayed overload preserves the return annotation from its corresponding docstring line, including when overloads have different return annotations.",
+          "The autodoc-process-signature event is invoked separately for each extracted overload, allowing its argument list and corresponding return annotation to be transformed independently.",
+          "A docstring with only one valid leading signature retains the existing observable behavior.",
+          "When autodoc_docstring_signature is disabled, leading signature text remains docstring content and autodoc continues using its ordinary signature behavior.",
+          "An explicitly supplied signature continues to take precedence over docstring-signature extraction."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "When autodoc_docstring_signature is enabled and no explicit signature is supplied, autodoc must recognize every consecutive valid signature for the documented function or method at the start of its docstring and render those signatures as overloads."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "All material behavior decisions are resolved, and the resulting observable contract is implementation-ready."
+    },
+    "turn": 5
+  }
+]

@@ -1,0 +1,34 @@
+diff --git a/sklearn/feature_extraction/tests/test_text.py b/sklearn/feature_extraction/tests/test_text.py
+index 7b7697f..cb10a5d 100644
+--- a/sklearn/feature_extraction/tests/test_text.py
++++ b/sklearn/feature_extraction/tests/test_text.py
+@@ -78,6 +78,13 @@ def lazy_analyze(s):
+ 
+ 
+ def test_strip_accents():
++    # check canonically equivalent composed and decomposed accents
++    assert strip_accents_unicode('\u00f1') == 'n'
++    assert strip_accents_unicode('n\u0303') == 'n'
++
++    # check already-normalized text without combining characters
++    assert strip_accents_unicode('hello') == 'hello'
++
+     # check some classical latin accentuated symbols
+     a = 'àáâãäåçèéêë'
+     expected = 'aaaaaaceeee'
+diff --git a/sklearn/feature_extraction/text.py b/sklearn/feature_extraction/text.py
+index bb5a9d6..11236d9 100644
+--- a/sklearn/feature_extraction/text.py
++++ b/sklearn/feature_extraction/text.py
+@@ -130,10 +130,7 @@ def strip_accents_unicode(s):
+         ASCII equivalent.
+     """
+     normalized = unicodedata.normalize('NFKD', s)
+-    if normalized == s:
+-        return s
+-    else:
+-        return ''.join([c for c in normalized if not unicodedata.combining(c)])
++    return ''.join([c for c in normalized if not unicodedata.combining(c)])
+ 
+ 
+ def strip_accents_ascii(s):

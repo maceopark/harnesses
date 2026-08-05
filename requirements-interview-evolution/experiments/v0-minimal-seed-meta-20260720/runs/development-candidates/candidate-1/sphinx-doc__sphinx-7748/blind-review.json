@@ -1,0 +1,35 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/4/statement",
+          "quoted_value": "For each nonempty docstring block, _find_signature matches only doclines[0] against py_ext_sig_re."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/6/statement",
+          "quoted_value": "After accepting a signature, the implementation rebuilds that docstring from all lines after the first, stores one args/return-annotation pair, and immediately stops searching."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/summary",
+          "quoted_value": "Extend autodoc_docstring_signature so functions and methods can derive multiple displayed signatures from consecutive valid signature lines at the start of a docstring. Starting at the first line, collect signatures in source order while each line matches the existing signature syntax and names the documented object under the existing accepted-name rules. Stop at the first line that is not a valid matching signature; preserve that line and everything after it as docstring content. Remove only the collected signature lines from rendered content. Format the collected signatures as newline-separated signature text so the existing directive-header renderer emits one aligned directive signature line per overload. Preserve existing gating and fallback behavior: extraction occurs only when autodoc_docstring_signature is enabled and no explicit signature was supplied; if the first line is not a valid matching signature, extract nothing and preserve the full docstring."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        }
+      ],
+      "description": "The contract does not specify whether the existing multi-block search must remain intact. An implementation following the contract literally could inspect only the first retrieved block and stop when its first line is invalid, changing existing behavior for objects whose usable signature occurs in a later docstring block. This compatibility behavior needs an explicit decision and acceptance check before the contract is implementation-ready.",
+      "failure_class": "compatibility-regression",
+      "general_cause": "The contract reduces extraction to a single docstring-level leading prefix without preserving the repository’s existing search across multiple docstring blocks.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "Repository evidence says extraction iterates over all retrieved docstring blocks and can skip a nonmatching block before accepting a later one, while the contract states that a nonmatching first line causes extraction to stop and preserve the full docstring."
+    }
+  ],
+  "summary": "The contract is not materially implementation-ready because it leaves existing multi-docstring-block search behavior unspecified and may direct a compatibility regression."
+}

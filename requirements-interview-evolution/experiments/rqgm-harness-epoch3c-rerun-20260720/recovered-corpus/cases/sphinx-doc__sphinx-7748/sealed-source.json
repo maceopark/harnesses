@@ -1,0 +1,250 @@
+{
+  "alias": "sphinx-doc__sphinx-7748",
+  "evidence": [
+    {
+      "cache_required": true,
+      "excerpt": "autodoc_docstring_signature with overloaded methods\nWhen using swig to wrap C++ classes for python, if they have overloaded methods, I believe the convention is to place the signatures for each of the overloaded C++ methods at the start of the docstring. Currently, `autodoc_docstring_signature` can only pick up the first one. It would be nice to be able to pick up all of them.\n",
+      "excerpt_digest": "fcffd96b0276a1bbe6039ae7bbc758f0ca78aa55cf4c32a1f0c18a939995c24b",
+      "id": "issue",
+      "knowledge_timing": "issue_time_author_knowable",
+      "locator": "sha256:8d2fa20fad9e7875f1cfb475ed77cbdea0daee392ce09045da39a7468b6e1c99",
+      "source": "issue",
+      "source_digest": "8d2fa20fad9e7875f1cfb475ed77cbdea0daee392ce09045da39a7468b6e1c99"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py\n--- a/sphinx/ext/autodoc/__init__.py\n+++ b/sphinx/ext/autodoc/__init__.py\n@@ -1036,39 +1036,71 @@ class DocstringSignatureMixin:\n     Mixin for FunctionDocumenter and MethodDocumenter to provide the\n     feature of reading the signature from the docstring.\n     \"\"\"\n+    _new_docstrings = None  # type: List[List[str]]\n+    _signatures = None      # type: List[str]\n \n     def _find_signature(self, encoding: str = None) -> Tuple[str, str]:\n         if encoding is not None:\n             warnings.warn(\"The 'encoding' argument to autodoc.%s._find_signature() is \"\n                           \"deprecated.\" % self.__class__.__name__,\n                           RemovedInSphinx40Warning, stacklevel=2)\n+\n+        # candidates of the object name\n+        valid_names = [self.objpath[-1]]  # type: ignore\n+        if isinstance(self, ClassDocumenter):\n+            valid_names.append('__init__')",
+      "excerpt_digest": "a59bbef00d5e973873fe21097c4092ded0a96d93da857bc571fa0190255e69a9",
+      "id": "gold-patch",
+      "knowledge_timing": "hindsight_only",
+      "locator": "sha256:7d37ba7279fb7eb44ea743a104eeeb6d23af1eb0c0cecfdfa6e009cfb8917f58",
+      "source": "patch",
+      "source_digest": "7d37ba7279fb7eb44ea743a104eeeb6d23af1eb0c0cecfdfa6e009cfb8917f58"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "diff --git a/tests/roots/test-ext-autodoc/target/docstring_signature.py b/tests/roots/test-ext-autodoc/target/docstring_signature.py\n--- a/tests/roots/test-ext-autodoc/target/docstring_signature.py\n+++ b/tests/roots/test-ext-autodoc/target/docstring_signature.py\n@@ -17,3 +17,9 @@ def __new__(cls):\n class D:\n     def __init__(self):\n         \"\"\"D(foo, bar, baz)\"\"\"\n+\n+\n+class E:\n+    def __init__(self):\n+        \"\"\"E(foo: int, bar: int, baz: int) -> None \\\\\n+        E(foo: str, bar: str, baz: str) -> None\"\"\"\ndiff --git a/tests/test_ext_autodoc_configs.py b/tests/test_ext_autodoc_configs.py\n--- a/tests/test_ext_autodoc_configs.py\n+++ b/tests/test_ext_autodoc_configs.py\n@@ -346,6 +346,10 @@ def test_autoclass_content_and_docstring_signature_class(app):\n         '',\n         '.. py:class:: D()',\n         '   :module: target.docstring_signature',",
+      "excerpt_digest": "a86e6db0599a149422817573fc7ea444e49d0dd6bd20f3daf76ad0fbfe57606f",
+      "id": "test-patch",
+      "knowledge_timing": "hindsight_only",
+      "locator": "sha256:17fb70496e66a38d5d61206ae7907a49ffae28da35e39a3e01a23e70ee177de7",
+      "source": "test",
+      "source_digest": "17fb70496e66a38d5d61206ae7907a49ffae28da35e39a3e01a23e70ee177de7"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "[\"tests/test_ext_autodoc_configs.py::test_autoclass_content_and_docstring_signature_init\",\"tests/test_ext_autodoc_configs.py::test_autoclass_content_and_docstring_signature_both\"]",
+      "excerpt_digest": "4f25fff0b74cce729c2d11327db7900c837267d85663cf2c56d60ed6f50c4618",
+      "id": "fail-to-pass",
+      "knowledge_timing": "hindsight_only",
+      "locator": "sha256:4f25fff0b74cce729c2d11327db7900c837267d85663cf2c56d60ed6f50c4618",
+      "source": "test",
+      "source_digest": "4f25fff0b74cce729c2d11327db7900c837267d85663cf2c56d60ed6f50c4618"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "[\"tests/test_ext_autodoc_configs.py::test_autoclass_content_class\",\"tests/test_ext_autodoc_configs.py::test_autoclass_content_init\",\"tests/test_ext_autodoc_configs.py::test_autoclass_content_both\",\"tests/test_ext_autodoc_configs.py::test_autodoc_inherit_docstrings\",\"tests/test_ext_autodoc_configs.py::test_autodoc_docstring_signature\",\"tests/test_ext_autodoc_configs.py::test_autoclass_content_and_docstring_signature_class\",\"tests/test_ext_autodoc_configs.py::test_mocked_module_imports\",\"tests/test_ext_autodoc_configs.py::test_autodoc_typehints_signature\",\"tests/test_ext_autodoc_configs.py::test_autodoc_typehints_none\",\"tests/test_ext_autodoc_configs.py::test_autodoc_typehints_description\",\"tests/test_ext_autodoc_configs.py::test_autodoc_default_options\",\"tests/test_ext_autodoc_configs.py::test_autodoc_default_options_with_values\"]",
+      "excerpt_digest": "b26f22d5deda93846646952fc05c77cdffd39acc89a7387983c668480814c069",
+      "id": "pass-to-pass",
+      "knowledge_timing": "hindsight_only",
+      "locator": "sha256:b26f22d5deda93846646952fc05c77cdffd39acc89a7387983c668480814c069",
+      "source": "test",
+      "source_digest": "b26f22d5deda93846646952fc05c77cdffd39acc89a7387983c668480814c069"
+    },
+    {
+      "cache_required": true,
+      "excerpt": ".. confval:: autodoc_docstring_signature\n\n   Functions imported from C modules cannot be introspected, and therefore the\n   signature for such functions cannot be automatically determined.  However, it\n   is an often-used convention to put the signature into the first line of the\n   function's docstring.\n\n   If this boolean value is set to ``True`` (which is the default), autodoc will\n   look at the first line of the docstring for functions and methods, and if it\n   looks like a signature, use the line as the signature and remove it from the\n   docstring content.\n\n   .. versionadded:: 1.1",
+      "excerpt_digest": "a242da2d69ab4fddb6140f2ea0f0c5c9ad8a078985eb36675bc1603faf2c3ee9",
+      "id": "repository:fact-1",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "doc/usage/extensions/autodoc.rst:L445-L457",
+      "source": "repository",
+      "source_digest": "f16bda007a918cbb8081d338266a65ee9ebca35dc4a6b6102e940941d9265eb0"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "class MethodDocumenter(DocstringSignatureMixin, ClassLevelDocumenter):  # type: ignore\n    \"\"\"\n    Specialized Documenter subclass for methods (normal, static and class).\n    \"\"\"\n    objtype = 'method'\n    directivetype = 'method'\n    member_order = 50\n    priority = 1  # must be more than FunctionDocumenter",
+      "excerpt_digest": "5b5120b89079ff44834dfc14cb4d565984487da25515a04b22bd6e6a07eace06",
+      "id": "repository:fact-2",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "sphinx/ext/autodoc/__init__.py:L1547-L1554",
+      "source": "repository",
+      "source_digest": "43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "    def _find_signature(self, encoding: str = None) -> Tuple[str, str]:\n        if encoding is not None:\n            warnings.warn(\"The 'encoding' argument to autodoc.%s._find_signature() is \"\n                          \"deprecated.\" % self.__class__.__name__,\n                          RemovedInSphinx40Warning, stacklevel=2)\n        docstrings = self.get_doc()\n        self._new_docstrings = docstrings[:]\n        result = None\n        for i, doclines in enumerate(docstrings):\n            # no lines in docstring, no match\n            if not doclines:\n                continue\n            # match first line of docstring against signature RE\n            match = py_ext_sig_re.match(doclines[0])\n            if not match:\n                continue\n            exmod, path, base, args, retann = match.groups()",
+      "excerpt_digest": "b92a51e38128d3e97b0a2da72258a9533cda29ca5c181bcea04a15d523cd2da6",
+      "id": "repository:fact-3",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "sphinx/ext/autodoc/__init__.py:L1040-L1056",
+      "source": "repository",
+      "source_digest": "43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "            # the base name must match ours\n            valid_names = [self.objpath[-1]]  # type: ignore\n            if isinstance(self, ClassDocumenter):\n                valid_names.append('__init__')\n                if hasattr(self.object, '__mro__'):\n                    valid_names.extend(cls.__name__ for cls in self.object.__mro__)\n            if base not in valid_names:\n                continue\n            # re-prepare docstring to ignore more leading indentation\n            tab_width = self.directive.state.document.settings.tab_width  # type: ignore\n            self._new_docstrings[i] = prepare_docstring('\\n'.join(doclines[1:]),\n                                                        tabsize=tab_width)\n            result = args, retann\n            # don't look any further\n            break\n        return result",
+      "excerpt_digest": "781a488236b50ac6b8ec0caf867622909c3a2dfffc07445507df3d005b82607f",
+      "id": "repository:fact-4",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "sphinx/ext/autodoc/__init__.py:L1057-L1072",
+      "source": "repository",
+      "source_digest": "43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "    def format_signature(self, **kwargs: Any) -> str:\n        if self.args is None and self.env.config.autodoc_docstring_signature:  # type: ignore\n            # only act if a signature is not explicitly given already, and if\n            # the feature is enabled\n            result = self._find_signature()\n            if result is not None:\n                self.args, self.retann = result\n        return super().format_signature(**kwargs)  # type: ignore",
+      "excerpt_digest": "eb0c917a5f1ea432fc39bac6b49069780e00c77d6369b8515b3bacfc2477abd2",
+      "id": "repository:fact-5",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "sphinx/ext/autodoc/__init__.py:L1084-L1091",
+      "source": "repository",
+      "source_digest": "43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "    def add_directive_header(self, sig: str) -> None:\n        \"\"\"Add the directive header and options to the generated content.\"\"\"\n        domain = getattr(self, 'domain', 'py')\n        directive = getattr(self, 'directivetype', self.objtype)\n        name = self.format_name()\n        sourcename = self.get_sourcename()\n\n        # one signature per line, indented by column\n        prefix = '.. %s:%s:: ' % (domain, directive)\n        for i, sig_line in enumerate(sig.split(\"\\n\")):\n            self.add_line('%s%s%s' % (prefix, name, sig_line),\n                          sourcename)\n            if i == 0:\n                prefix = \" \" * len(prefix)",
+      "excerpt_digest": "ed4d6920922020855e56f1aaae129711f1be71eb91da10ca747a6ce22e4f1988",
+      "id": "repository:fact-6",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "sphinx/ext/autodoc/__init__.py:L441-L454",
+      "source": "repository",
+      "source_digest": "43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "    def format_signature(self, **kwargs: Any) -> str:\n        sig = super().format_signature(**kwargs)\n        sigs = [sig]\n\n        if inspect.is_singledispatch_function(self.object):\n            # append signature of singledispatch'ed functions\n            for typ, func in self.object.registry.items():\n                if typ is object:\n                    pass  # default implementation. skipped.\n                else:\n                    self.annotate_to_first_argument(func, typ)\n\n                    documenter = FunctionDocumenter(self.directive, '')\n                    documenter.object = func\n                    sigs.append(documenter.format_signature())\n\n        return \"\\n\".join(sigs)",
+      "excerpt_digest": "4df789bbe13b5bf3c30db4fabf385b2853c56c4f9aea3605a490eac62e2e97c9",
+      "id": "repository:fact-7",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "sphinx/ext/autodoc/__init__.py:L1159-L1175",
+      "source": "repository",
+      "source_digest": "43cac90101c34f7573848908dbefe897222031952949cd710fae63216c2de26c"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "        '.. py:class:: Foo()',\n        '   :module: target.singledispatchmethod',\n        '',\n        '   docstring',\n        '',\n        '',\n        '   .. py:method:: Foo.meth(arg, kwarg=None)',\n        '                  Foo.meth(arg: int, kwarg=None)',\n        '                  Foo.meth(arg: str, kwarg=None)',\n        '      :module: target.singledispatchmethod',\n        '',\n        '      A method for general use.',\n        '',\n    ]",
+      "excerpt_digest": "172ab71dd755e7ebd0c1a3c997c3c82cf400c26c3b00fd5a07c1e691ee324329",
+      "id": "repository:fact-8",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "tests/test_ext_autodoc.py:L1661-L1674",
+      "source": "repository",
+      "source_digest": "d647f6b467eed4760698fc2cc397f5daf387cc8d357a9e41804f2e91eb14e6a3"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "class DocstringSig(object):\n    def meth(self):\n        \"\"\"meth(FOO, BAR=1) -> BAZ\nFirst line of docstring\n\n        rest of docstring\n        \"\"\"\n\n    def meth2(self):\n        \"\"\"First line, no signature\n        Second line followed by indentation::\n\n            indented line\n        \"\"\"",
+      "excerpt_digest": "3b516a94329b8c9c912c55ce7ebd8477331d71529f2bcbf6f8dd03e77ab4d450",
+      "id": "repository:fact-9",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "tests/roots/test-ext-autodoc/target/__init__.py:L117-L130",
+      "source": "repository",
+      "source_digest": "93e85038a0cfa5561772353979d64f1f9ad91491b40d8b725d102e288ba68e97"
+    },
+    {
+      "cache_required": true,
+      "excerpt": "@pytest.mark.sphinx('html', testroot='ext-autodoc')\ndef test_autodoc_docstring_signature(app):\n    options = {\"members\": None}\n    actual = do_autodoc(app, 'class', 'target.DocstringSig', options)\n    assert list(actual) == [\n        '',\n        '.. py:class:: DocstringSig()',\n        '   :module: target',\n        '',\n        '',\n        '   .. py:method:: DocstringSig.meth(FOO, BAR=1) -> BAZ',\n        '      :module: target',\n        '',\n        '      First line of docstring',\n        '',\n        '      rest of docstring',\n        '',",
+      "excerpt_digest": "ca47dbf6e186d147d17a130119485e42cc7a293527cf834bb855023dea049a65",
+      "id": "repository:fact-10",
+      "knowledge_timing": "repository_discoverable",
+      "locator": "tests/test_ext_autodoc_configs.py:L235-L251",
+      "source": "repository",
+      "source_digest": "efe58e80757e6f93ef0535d3694253b76813536641ac18daadaf89985ed64782"
+    }
+  ],
+  "hindsight_observations": [
+    {
+      "description": "The gold implementation used a trailing backslash as an explicit continuation signal: it continued collecting after a matching signature only when that line ended in a backslash, and otherwise stopped.",
+      "evidence_ids": [
+        "gold-patch",
+        "test-patch"
+      ],
+      "id": "hindsight-1"
+    },
+    {
+      "description": "The added fixture and assertions exercised overloaded constructor signatures for a class whose effective signature came from __init__, expecting two aligned py:class signature lines under the init and both content modes.",
+      "evidence_ids": [
+        "test-patch",
+        "fail-to-pass"
+      ],
+      "id": "hindsight-2"
+    },
+    {
+      "description": "The selected regression set showed that the existing single-signature behavior and adjacent autodoc configuration behaviors were expected to remain intact.",
+      "evidence_ids": [
+        "pass-to-pass"
+      ],
+      "id": "hindsight-3"
+    }
+  ],
+  "implementation_incidentals": [
+    {
+      "description": "The gold patch stored additional formatted signatures in a new _signatures instance attribute and joined them with the primary formatted signature using newline characters.",
+      "evidence_ids": [
+        "gold-patch",
+        "repository:fact-6"
+      ],
+      "id": "incidental-1"
+    },
+    {
+      "description": "The gold patch restructured _find_signature into nested docstring-line loops, moved valid-name construction outside those loops, and repeatedly rebuilt the remaining docstring after each recognized entry.",
+      "evidence_ids": [
+        "gold-patch"
+      ],
+      "id": "incidental-2"
+    },
+    {
+      "description": "The gold patch assigned a placeholder objpath to temporary FunctionDocumenter instances used for singledispatch formatting because its refactored signature lookup accessed objpath earlier; this is an implementation-specific compatibility adjustment, not requested overload behavior.",
+      "evidence_ids": [
+        "gold-patch",
+        "repository:fact-7"
+      ],
+      "id": "incidental-3"
+    }
+  ],
+  "inputs": {
+    "fail_to_pass": {
+      "cache_key": "sha256:4f25fff0b74cce729c2d11327db7900c837267d85663cf2c56d60ed6f50c4618",
+      "digest": "4f25fff0b74cce729c2d11327db7900c837267d85663cf2c56d60ed6f50c4618"
+    },
+    "gold_patch": {
+      "cache_key": "sha256:7d37ba7279fb7eb44ea743a104eeeb6d23af1eb0c0cecfdfa6e009cfb8917f58",
+      "digest": "7d37ba7279fb7eb44ea743a104eeeb6d23af1eb0c0cecfdfa6e009cfb8917f58"
+    },
+    "issue": {
+      "cache_key": "sha256:8d2fa20fad9e7875f1cfb475ed77cbdea0daee392ce09045da39a7468b6e1c99",
+      "digest": "8d2fa20fad9e7875f1cfb475ed77cbdea0daee392ce09045da39a7468b6e1c99"
+    },
+    "pass_to_pass": {
+      "cache_key": "sha256:b26f22d5deda93846646952fc05c77cdffd39acc89a7387983c668480814c069",
+      "digest": "b26f22d5deda93846646952fc05c77cdffd39acc89a7387983c668480814c069"
+    },
+    "test_patch": {
+      "cache_key": "sha256:17fb70496e66a38d5d61206ae7907a49ffae28da35e39a3e01a23e70ee177de7",
+      "digest": "17fb70496e66a38d5d61206ae7907a49ffae28da35e39a3e01a23e70ee177de7"
+    }
+  },
+  "material_decisions": [
+    {
+      "description": "Define the boundary of the leading overload-signature block: which signature-looking entries at the start of a docstring are collected, and what terminates collection before ordinary documentation content begins.",
+      "evidence_ids": [
+        "issue"
+      ],
+      "failure_if_missed": "An implementation may still emit only one overload, may scan too far into prose, or may require an undocumented delimiter that SWIG-generated docstrings do not provide.",
+      "id": "decision-1",
+      "knowledge_timing": "issue_time_author_knowable",
+      "materiality": "This determines whether every intended overload is rendered and whether signature-like prose later in the docstring can be consumed accidentally.",
+      "owner_answer": "Collect every valid signature for the documented object in the initial overload block, preserving its order, and stop when that leading block ends so subsequent prose remains docstring content.",
+      "question_intent": "Should autodoc treat the start of the docstring as a contiguous overload-signature block, and precisely what should end that block?",
+      "sources": [
+        "issue",
+        "inferred"
+      ]
+    }
+  ],
+  "review_state": {
+    "dispositions_complete": true,
+    "status": "approved"
+  },
+  "schema": "SealedSWEbenchSource.v1"
+}

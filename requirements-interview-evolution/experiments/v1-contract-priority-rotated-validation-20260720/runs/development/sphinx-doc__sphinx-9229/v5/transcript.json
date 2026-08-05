@@ -1,0 +1,152 @@
+[
+  {
+    "answer": "Docs plus alias (Recommended)",
+    "open_material_decisions": [
+      "Rendered output policy for a type alias that has source-level documentation."
+    ],
+    "question": {
+      "header": "Alias output",
+      "options": [
+        {
+          "description": "Render the source documentation followed by “alias of …”, preserving the established Python 3.7+ GenericAlias behavior while fixing the inconsistent missing documentation.",
+          "label": "Docs plus alias (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Render the source documentation and suppress “alias of …” for documented aliases, matching the issue’s literal “instead of” wording but changing established output.",
+          "label": "Docs only",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has a recognized source docstring, what should autodoc render?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Include Python 3.6",
+    "open_material_decisions": [
+      "Whether the fix must make all three reported typing aliases retain next-line source documentation on Python 3.6 as well as on Python 3.7+."
+    ],
+    "question": {
+      "header": "Version scope",
+      "options": [
+        {
+          "description": "Require ScaffoldOpts, FileContents, and FileOp to render their source documentation plus “alias of …” on Python 3.6 and later, directly covering the reported environment while preserving established documented-alias output.",
+          "label": "Include Python 3.6",
+          "recommended": true
+        },
+        {
+          "description": "Require consistent output only where Sphinx explicitly recognizes GenericAlias objects, leaving the reported Python 3.6 behavior outside the fix.",
+          "label": "Python 3.7+ only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which Python-version boundary must the implementation satisfy for the three reported aliases?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "General typing aliases",
+    "open_material_decisions": [
+      "Whether Python 3.6 behavior should be generalized to all autodoc-recognizable typing aliases or narrowly limited to the three reported alias forms."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Apply consistent source-documentation handling to supported typing aliases generally, with regression coverage for the three reported aliases and preservation of undocumented-alias behavior.",
+          "label": "General typing aliases",
+          "recommended": true
+        },
+        {
+          "description": "Limit the compatibility requirement to Dict, Union, and Callable aliases matching the reproduction, minimizing behavior changes outside the report.",
+          "label": "Reported forms only",
+          "recommended": false
+        }
+      ],
+      "prompt": "How broadly should the Python 3.6 fix apply beyond ScaffoldOpts, FileContents, and FileOp?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "Module and class",
+    "open_material_decisions": [
+      "Whether the generalized Python 3.6 typing-alias fix applies only to module-level aliases or also to aliases assigned as class attributes."
+    ],
+    "question": {
+      "header": "Alias context",
+      "options": [
+        {
+          "description": "Apply the rule to documented typing aliases at both module scope and class scope, matching the existing Python 3.7+ GenericAlias coverage.",
+          "label": "Module and class",
+          "recommended": true
+        },
+        {
+          "description": "Limit the required fix to module-level aliases, directly covering the reported reproduction and avoiding new class-attribute requirements.",
+          "label": "Module only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where must consistent source-documentation handling apply?"
+    },
+    "turn": 4
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the complete implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this scope, behavior, acceptance evidence, delegation boundary, and residual risk as implementation-ready.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Keep the contract open so you can specify a material correction before implementation.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: update autodoc so supported typing aliases on Python 3.6 and later consistently retain recognized source-level variable documentation at both module and class scope; documented aliases render that documentation followed by the existing “alias of …” message, while undocumented aliases retain existing alias-only behavior. Add regression coverage using next-line multiline string documentation for ScaffoldOpts = Dict[str, Any], FileContents = Union[str, None], and FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]], covering module and class contexts and the Python 3.6 compatibility path; preserve established Python 3.7+ GenericAlias output and avoid changing unrelated class/data documentation. Implementation may choose the internal typing-alias detection and documenter-routing mechanism, but must keep it limited to typing alias objects and prove the stated output through focused autodoc tests. Residual risk: Python typing internals vary by runtime version, so untested third-party alias-like objects and unrelated non-typing objects are outside the compatibility guarantee. Is this contract approved for implementation?"
+    },
+    "turn": 5
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "On Python 3.6 and later, autodoc recognizes and retains next-line source documentation for ScaffoldOpts = Dict[str, Any], FileContents = Union[str, None], and FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]].",
+          "Each documented alias renders its source documentation before the existing “alias of …” message.",
+          "The required output is verified at both module scope and class scope.",
+          "An undocumented supported typing alias continues to render only the existing alias message.",
+          "Existing Python 3.7+ GenericAlias regression expectations remain passing.",
+          "Focused tests exercise the Python 3.6 compatibility branch.",
+          "Tests demonstrate that unrelated class/data documentation and non-typing objects retain existing behavior."
+        ],
+        "confirmed_decisions": [
+          "Documented type aliases render source documentation followed by the existing “alias of …” message.",
+          "The compatibility requirement includes Python 3.6 and later.",
+          "The fix applies generally to supported typing aliases, not only Dict, Union, and Callable.",
+          "The behavior applies at both module and class scope.",
+          "Undocumented typing aliases retain existing alias-only behavior.",
+          "Regression tests must use next-line multiline string documentation and cover the three reported aliases.",
+          "Established Python 3.7+ GenericAlias output must be preserved.",
+          "Unrelated class/data documentation and non-typing objects must not change.",
+          "Internal detection and routing details are delegated to implementation, constrained to typing alias objects and focused autodoc test proof.",
+          "The owner approved the complete implementation contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update autodoc so supported typing aliases on Python 3.6 and later consistently retain recognized source-level variable documentation at both module and class scope. Documented aliases must render that documentation followed by the existing “alias of …” message; undocumented aliases must retain existing alias-only behavior. Add focused regression coverage using next-line multiline string documentation for ScaffoldOpts = Dict[str, Any], FileContents = Union[str, None], and FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]], covering module and class contexts and the Python 3.6 compatibility path. Preserve established Python 3.7+ GenericAlias output and avoid changing unrelated class or data documentation. Implementation may choose the internal typing-alias detection and documenter-routing mechanism, provided it remains limited to typing alias objects. Untested third-party alias-like objects and unrelated non-typing objects remain outside the compatibility guarantee because Python typing internals vary by runtime version."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the complete contract, and no material decisions remain unresolved."
+    },
+    "turn": 6
+  }
+]

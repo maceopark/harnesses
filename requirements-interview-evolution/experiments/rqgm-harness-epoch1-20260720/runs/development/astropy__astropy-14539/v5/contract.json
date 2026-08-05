@@ -1,0 +1,24 @@
+{
+  "acceptance_checks": [
+    "A Q-format VLA column is routed through the row-wise VLA comparison branch rather than generic `np.where(arra != arrb)`.",
+    "A focused TableDataDiff regression using equivalent Q-VLA columns with unequal row lengths yields `diff.identical == True` and `diff.diff_total == 0`.",
+    "An end-to-end regression writes the Q-VLA reproduction to disk and verifies `FITSDiff(path, path).identical == True`.",
+    "The end-to-end diff contains no differing HDUs or table-data difference report for the identical file.",
+    "Existing tests for identical tables, including the P-format VLA column, remain green.",
+    "A targeted test run for the modified FITS diff tests passes without warnings or failures attributable to the change."
+  ],
+  "confirmed_decisions": [
+    "Scope is limited to correcting comparison of Q-format VLAs in the existing FITSDiff/HDUDiff/TableDataDiff table-data path.",
+    "P- and Q-format VLAs must use the same existing row-wise comparison semantics because both are supported VLA descriptor formats and Q derives from the shared P format implementation.",
+    "Existing `numpy.allclose` tolerance behavior for VLA row values must remain unchanged.",
+    "Existing difference counting, stored differing-row values, and report formatting must remain unchanged for genuine differences.",
+    "Regression coverage must exercise both levels selected by the owner: a focused TableDataDiff comparison and an end-to-end FITSDiff filename comparison.",
+    "The end-to-end regression must write a FITS file containing a Q-format VLA column, compare the file to itself through FITSDiff, and verify that no difference is reported.",
+    "The focused regression must compare equivalent Q-VLA table data and verify `identical` is true and the total number of table-data differences is zero.",
+    "Tests should include variable-length rows matching the reproduction, such as `format=\"QD\"` with values `[[0], [0, 0]]`, so generic object-array inequality would expose the prior defect.",
+    "Existing P-format behavior and coverage must continue to pass."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Fix FITS table-data comparison so Q-format variable-length-array columns receive the same row-wise comparison already used for P-format VLAs. At base commit c0a24c1dc957a3b565294213f435fefb2ec99714, TableDataDiff recognizes VLA columns by searching only for the literal `P` in the column format; Q VLAs therefore fall through to generic object-array inequality and can produce false differences even when independently opened data are identical. Update the VLA branch to recognize both supported FITS VLA descriptor formats while retaining its existing row-wise `numpy.allclose` behavior, `rtol`/`atol` handling, differing-row collection, difference counts, and reporting behavior. Add focused lower-level and public-workflow regression coverage using Q-format VLA rows of unequal lengths, including the reported `QD` shape pattern."
+}

@@ -1,0 +1,24 @@
+{
+  "acceptance_checks": [
+    "The public QD reproduction returns True from FITSDiff(path, path).identical.",
+    "Printing or generating the report for the identical QD file does not contain a column-data difference.",
+    "A Q-format VLA comparison with equal row arrays remains identical even when different rows have different element counts.",
+    "A Q-format VLA comparison with a changed element records the correct column and row in TableDataDiff.diff_values and increments diff_total consistently with existing P-format behavior.",
+    "Nonzero rtol or atol affects Q-format VLA equality through np.allclose in the same manner as P-format VLA equality.",
+    "Existing P-format variable-length comparison tests continue to pass.",
+    "Existing fixed-size table and image diff tests continue to pass.",
+    "The targeted FITS diff test module passes after the change."
+  ],
+  "confirmed_decisions": [
+    "Treat Q-format VLAs as semantically equivalent to P-format VLAs for FITSDiff comparison.",
+    "Select the existing row-wise np.allclose comparison path for both P and Q variable-length column formats.",
+    "Apply FITSDiff's existing rtol and atol values during Q-format VLA comparisons.",
+    "Cover the public regression by writing a table containing format='QD' with rows [[0], [0, 0]] and comparing the resulting file to itself.",
+    "Assert that the QD self-comparison has identical == true and records no HDU or table-data differences.",
+    "Add a negative Q-format regression in which corresponding VLA row contents genuinely differ, asserting that the differing row is present in diff_values and the diff is not identical.",
+    "Keep existing P-format behavior unchanged and avoid changes to FITS_rec VLA loading, reporting format, or non-VLA comparison paths."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update FITSDiff table-data comparison so every Q-format variable-length array column is handled like a P-format VLA: compare corresponding contained arrays row by row with np.allclose using the configured rtol and atol. Add regression coverage demonstrating that an identical Q-format file, including the reported QD example with unequal row lengths, produces no differences, while genuinely different Q-format VLA row data is still recorded and reported."
+}

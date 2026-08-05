@@ -1,0 +1,27 @@
+{
+  "compatibility_regressions": [
+    "Changing recursive matching to a newly defined project-relative basis could alter previously unspecified behavior for patterns written against walked or target-relative paths.",
+    "Switching recursive discovery from self.config.ignore_paths to self._ignore_paths could prevent later configuration mutations from affecting discovery, despite no audited evidence that this behavior should change.",
+    "A broad project-relative-path implementation could diverge from the focused normalization fix demonstrated by hindsight evidence and affect more matching cases than necessary."
+  ],
+  "implementation_ready": false,
+  "invented_requirements": [
+    "Recursive ignore-path matching must use paths relative to the invocation/config project directory.",
+    "Recursive discovery must use the initialization-time captured ignore-path configuration rather than the live configuration value.",
+    "The regression test must prove exclusion by inspecting linted paths while also proving a non-ignored file remains linted.",
+    "The behavior must be covered end-to-end for both POSIX and Windows path forms.",
+    "The change must verify configuration precedence and all non-recursive semantics remain unchanged."
+  ],
+  "material_blockers": [
+    "The contract seals project-relative matching semantics that are not established by the public request or audited repository evidence and are not demonstrated by the hindsight implementation.",
+    "The contract requires use of captured ignore-path configuration, but the repository audit explicitly identifies the intended source as unknown and hindsight evidence does not validate this change.",
+    "The acceptance checks do not match the observed regression shape: hindsight tests recursive discovery from the current directory and validates normalized path matching, rather than the sealed src/ project-configuration scenario and its broader path-basis guarantees."
+  ],
+  "owner_recall": 1,
+  "redundant_questions": [
+    "The config-source question forced a decision between captured and live values even though the reported failure and audited facts did not establish that configuration capture caused the bug.",
+    "The match-basis question offered project-relative semantics as the recommended solution before establishing whether simple normalization of the existing candidate path resolved the reported Windows/current-directory failure."
+  ],
+  "repository_fidelity": 0.45,
+  "summary": "The interview accurately retained every explicit owner answer, but it converted two repository unknowns into broad mandatory behavior without evidence that either was needed for the bug. Hindsight shows a narrower shared-path normalization fix and a current-directory regression test. Because the sealed contract would direct implementation toward unsupported path-basis and configuration-lifecycle changes, it is not implementation-ready despite complete owner recall."
+}

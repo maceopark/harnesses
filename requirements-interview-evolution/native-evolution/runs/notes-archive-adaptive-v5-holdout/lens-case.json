@@ -1,0 +1,76 @@
+{
+  "public_request": "Add an `notes export` command to my personal notes application so I can archive a selected group of notes for offline use. The export should preserve the notes’ useful metadata and attachments, and it should tell me clearly if only part of the selection was exported. I also need a practical way to verify afterward that the archive is complete and internally consistent.",
+  "target_lens_ids": [
+    "selection-scope-mismatch",
+    "archive-representation-ambiguity",
+    "metadata-fidelity-loss",
+    "partial-failure-opacity",
+    "verification-without-completeness-evidence"
+  ],
+  "objective_failure_signals": [
+    "The specification does not define whether selection is expressed by explicit identifiers, current UI state, folders, tags, filters, or combinations of these, including the treatment of hidden, deleted, and zero-match notes.",
+    "The specification does not determine exact archive entries, note-body encoding, attachment layout, filename collision handling, or metadata serialization.",
+    "The specification permits source identifiers, timestamps, tags, source locations, or other reconstruction-relevant metadata to be omitted, normalized, or conflated.",
+    "The specification does not define item-level exported, skipped, and failed outcomes or a process exit status for partial success.",
+    "The specification provides no machine-checkable manifest, integrity data, or verification operation capable of detecting missing, extra, or truncated archive content."
+  ],
+  "oracle": {
+    "material_decisions": [
+      {
+        "id": "selection-interface",
+        "answer": "Selection is supplied only through repeatable command-line selectors: `--id`, `--folder`, and `--tag`. Different selector types are intersected; repeated values of the same type are unioned. At least one selector is required. The command must resolve the complete selection before writing the archive.",
+        "why_material": "A deterministic selector model prevents the export from depending on transient UI state and fixes how combined filters determine archive membership."
+      },
+      {
+        "id": "selection-item-states",
+        "answer": "Ordinary and hidden notes may be selected and exported. Deleted or trashed notes are excluded unless `--include-deleted` is present. Folder selectors include descendant folders. Tag matching is exact and case-sensitive. A selection resolving to zero exportable notes produces no archive and exits with status 2.",
+        "why_material": "These rules determine whether sensitive, hidden, deleted, nested, or nonexistent records enter the archive."
+      },
+      {
+        "id": "archive-container",
+        "answer": "Produce one ZIP archive. It contains `manifest.json`, one UTF-8 Markdown file per exported note under `notes/`, attachments under `attachments/<note-id>/`, and `report.json`. JSON is UTF-8 encoded and uses RFC 3339 timestamps with the original recorded offset and fractional precision preserved.",
+        "why_material": "A fixed container and encoding make the artifact inspectable and interoperable outside the application."
+      },
+      {
+        "id": "note-and-filename-representation",
+        "answer": "Each note file contains the source body converted to CommonMark Markdown without rewriting textual content. Its filename is `<note-id>.md`; titles never determine filenames. Attachment filenames use their source attachment identifier followed by the original extension, preventing title and filename collisions.",
+        "why_material": "Stable identifier-based paths keep duplicate titles and special characters from making records ambiguous or overwriting one another."
+      },
+      {
+        "id": "attachment-treatment",
+        "answer": "Every attachment belonging to an exported note is copied byte-for-byte. The manifest records attachment identifier, original filename, media type, byte length, SHA-256 digest, and archive path. An attachment copy failure does not remove an otherwise readable note, but marks that note as partially exported.",
+        "why_material": "This defines whether the offline archive preserves binary material and how missing or altered attachments are detected."
+      },
+      {
+        "id": "metadata-fidelity",
+        "answer": "For every exported note, `manifest.json` records the immutable source note identifier, exact title, creation timestamp, modification timestamp, ordered tag list, source folder identifier and path, hidden flag, deleted flag, note archive path, body byte length, and body SHA-256 digest. Values must equal the source values; tags and timestamps must not be regenerated or normalized.",
+        "why_material": "Exact source metadata distinguishes duplicate titles and supports audit, reconstruction, migration, and deduplication."
+      },
+      {
+        "id": "partial-failure-semantics",
+        "answer": "The command continues after item-level failures. `report.json` and the terminal summary list every resolved note identifier exactly once with outcome `exported`, `partial`, `skipped`, or `failed`, plus a stable reason code and human-readable message for every non-exported outcome. Exit status is 0 only when all resolved notes are fully exported, 1 for any partial, skipped, or failed item, and 2 for invocation or selection errors.",
+        "why_material": "Item-level outcomes and distinct exit statuses prevent incomplete archives from appearing fully successful."
+      },
+      {
+        "id": "manifest-completeness",
+        "answer": "The manifest records the normalized selectors, resolved note identifiers, counts by outcome, every expected archive path, byte length, and SHA-256 digest. It also includes a schema version and export identifier. The manifest itself is referenced by `report.json` with its byte length and SHA-256 digest.",
+        "why_material": "The manifest supplies an independent inventory against which missing, extra, altered, and truncated entries can be checked."
+      },
+      {
+        "id": "verification-operation",
+        "answer": "Provide `notes export verify <archive.zip>`. It validates ZIP readability, schema version, report-to-manifest integrity, outcome counts, exact expected-entry membership, byte lengths, and SHA-256 digests. It exits 0 only when all checks pass; otherwise it exits 1 and lists each missing, extra, malformed, or digest-mismatched entry. Verification does not require access to the live notes database.",
+        "why_material": "A standalone verification command makes archive completeness and internal consistency objectively testable after export."
+      }
+    ],
+    "owner_rules": [
+      "No current UI selection or implicit application state participates in command-line selection.",
+      "The archive must never contain a deleted note unless `--include-deleted` was explicitly supplied.",
+      "Every resolved note identifier appears exactly once in the report, regardless of outcome.",
+      "An archive with any `partial`, `skipped`, or `failed` outcome is visibly incomplete and cannot produce exit status 0 from export.",
+      "Duplicate titles and special characters cannot cause path collisions because note and attachment paths are identifier-based.",
+      "Verification must detect a removed or truncated note or attachment without consulting the source application.",
+      "Source metadata is preserved as data in the manifest; ZIP filesystem timestamps are not authoritative metadata.",
+      "The export writes to a temporary destination and atomically publishes the ZIP only after the manifest and report are complete; interrupted unpublished output is not presented as a completed archive."
+    ]
+  }
+}

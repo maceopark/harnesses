@@ -1,0 +1,61 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..268f4e1 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1675,6 +1675,11 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+ 
+     def get_doc(self, ignore: int = None) -> Optional[List[List[str]]]:
+         if self.doc_as_attr:
++            if self.analyzer:
++                attr_doc = self.analyzer.attr_docs.get(('', self.objpath[-1]))
++                if attr_doc:
++                    return [list(attr_doc)]
++
+             # Don't show the docstring of the class when it is an alias.
+             return None
+ 
+@@ -1723,7 +1728,7 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+ 
+     def add_content(self, more_content: Optional[StringList], no_docstring: bool = False
+                     ) -> None:
+-        if self.doc_as_attr:
++        if self.doc_as_attr and not self.get_doc():
+             try:
+                 more_content = StringList([_('alias of %s') % restify(self.object)], source='')
+             except AttributeError:
+diff --git a/tests/roots/test-ext-autodoc/target/classes.py b/tests/roots/test-ext-autodoc/target/classes.py
+index a3b4c64..95ea837 100644
+--- a/tests/roots/test-ext-autodoc/target/classes.py
++++ b/tests/roots/test-ext-autodoc/target/classes.py
+@@ -30,3 +30,9 @@ class Quux(List[Union[int, float]]):
+ 
+ 
+ Alias = Foo
++
++DocumentedAlias = Foo
++"""Explicit documentation for the alias.
++
++It can span multiple lines.
++"""
+diff --git a/tests/test_ext_autodoc_autoclass.py b/tests/test_ext_autodoc_autoclass.py
+index 096dc93..15ac0c5 100644
+--- a/tests/test_ext_autodoc_autoclass.py
++++ b/tests/test_ext_autodoc_autoclass.py
+@@ -327,3 +327,17 @@ def test_class_alias(app):
+         '',
+         '   alias of :class:`target.classes.Foo`',
+     ]
++
++
++def test_class_alias_with_source_documentation(app):
++    actual = do_autodoc(app, 'class', 'target.classes.DocumentedAlias')
++    assert list(actual) == [
++        '',
++        '.. py:attribute:: DocumentedAlias',
++        '   :module: target.classes',
++        '',
++        '   Explicit documentation for the alias.',
++        '',
++        '   It can span multiple lines.',
++        '',
++    ]

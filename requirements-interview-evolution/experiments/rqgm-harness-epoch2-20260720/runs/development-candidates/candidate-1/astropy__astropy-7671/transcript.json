@@ -1,0 +1,57 @@
+[
+  {
+    "answer": "Standard ordering",
+    "open_material_decisions": [
+      "Whether `minversion` should adopt standard package-version ordering generally or only guarantee the reported development-suffix comparison while preserving other existing behavior."
+    ],
+    "question": {
+      "header": "Version semantics",
+      "options": [
+        {
+          "description": "Require standard Python package-version ordering for supported version strings, including `1.14.3 >= 1.14dev`, even where results may differ from `LooseVersion`.",
+          "label": "Standard ordering",
+          "recommended": true
+        },
+        {
+          "description": "Require the reported development-suffix cases to return booleans without errors while otherwise preserving existing comparison outcomes as far as practical.",
+          "label": "Narrow regression fix",
+          "recommended": false
+        }
+      ],
+      "prompt": "What comparison semantics should the contract require for `minversion`?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "With a synthetic or imported module whose version is 1.14.3, minversion(module, '1.14dev') returns True and does not raise TypeError.",
+          "Standard ordering is applied consistently to supported development, prerelease, and release version strings rather than only to the literal 1.14dev example.",
+          "The existing expectations for installed version 0.12.2 remain true: requirements 0.12, 0.12.1, and 0.12.0.dev pass, while 1 and 1.2rc1 fail.",
+          "Inclusive and exclusive comparisons differ correctly at an equal version: inclusive comparison succeeds and exclusive comparison fails.",
+          "Calling minversion with an unimportable module-name string still returns False.",
+          "Calling minversion through astropy.utils continues to work."
+        ],
+        "confirmed_decisions": [
+          "Use standard Python package-version ordering generally for supported version strings, including cases where that ordering differs from distutils.version.LooseVersion.",
+          "For inclusive comparisons, minversion returns whether the installed version is greater than or equal to the requested version.",
+          "For exclusive comparisons, minversion returns whether the installed version is strictly greater than the requested version.",
+          "An installed version of 1.14.3 satisfies an inclusive minimum requirement of 1.14dev without raising an exception.",
+          "minversion continues to accept either a module object or a module-name string.",
+          "A module-name string that cannot be imported continues to produce False.",
+          "The installed version continues to be obtained from version_path, including dotted version paths.",
+          "The public astropy.utils.minversion entry point remains available."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update astropy.utils.minversion so supported version strings are compared using standard Python package-version ordering. Comparisons such as an installed version of 1.14.3 against a required version of 1.14dev must return the correct boolean instead of raising TypeError, while the function's existing inputs, version lookup behavior, import-failure behavior, and inclusive/exclusive contract remain unchanged."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The supplied answer resolves the only material product decision: minversion must use standard Python package-version ordering rather than merely special-case the reported failure. The repository evidence defines the existing API behavior that remains in scope, so the contract is implementation-ready without inventing additional behavior."
+    },
+    "turn": 2
+  }
+]

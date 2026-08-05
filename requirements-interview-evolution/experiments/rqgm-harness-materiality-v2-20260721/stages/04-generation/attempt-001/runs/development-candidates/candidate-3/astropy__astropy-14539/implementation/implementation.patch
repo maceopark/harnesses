@@ -1,0 +1,61 @@
+diff --git a/astropy/io/fits/diff.py b/astropy/io/fits/diff.py
+index 100cdf1..d3608ef 100644
+--- a/astropy/io/fits/diff.py
++++ b/astropy/io/fits/diff.py
+@@ -1449,7 +1449,7 @@ class TableDataDiff(_BaseDiff):
+                 arrb.dtype, np.floating
+             ):
+                 diffs = where_not_allclose(arra, arrb, rtol=self.rtol, atol=self.atol)
+-            elif "P" in col.format:
++            elif "P" in col.format or "Q" in col.format:
+                 diffs = (
+                     [
+                         idx
+diff --git a/astropy/io/fits/tests/test_diff.py b/astropy/io/fits/tests/test_diff.py
+index adfebe6..ad530c7 100644
+--- a/astropy/io/fits/tests/test_diff.py
++++ b/astropy/io/fits/tests/test_diff.py
+@@ -624,6 +624,43 @@ class TestDiff(FitsTestCase):
+         report = diff.report()
+         assert "No differences found." in report
+ 
++    def test_identical_q_format_vla(self, capsys):
++        column = Column("a", format="QD", array=[[0], [0, 0]])
++        hdu = BinTableHDU.from_columns([column])
++        path_a = self.temp("vla_a.fits")
++        path_b = self.temp("vla_b.fits")
++        hdu.writeto(path_a)
++        hdu.writeto(path_b)
++
++        assert FITSDiff(path_a, path_a).identical
++        assert FITSDiff(path_a, path_b).identical
++
++        fits.printdiff(path_a, path_a)
++        report = capsys.readouterr().out
++        assert "Data contains differences" not in report
++        assert "No differences found." in report
++
++    def test_q_format_vla_difference_respects_tolerance(self):
++        path_a = self.temp("vla_a.fits")
++        path_b = self.temp("vla_b.fits")
++        BinTableHDU.from_columns(
++            [Column("a", format="QD", array=[[1.0], [2.0, 3.0]])]
++        ).writeto(path_a)
++        BinTableHDU.from_columns(
++            [Column("a", format="QD", array=[[1.05], [2.0, 4.0]])]
++        ).writeto(path_b)
++
++        diff = FITSDiff(path_a, path_b, atol=0.1)
++        assert not diff.identical
++        assert diff.diff_hdus[0][1].diff_data.diff_values[0][0] == ("a", 1)
++
++        diff = FITSDiff(path_a, path_b, atol=0.01)
++        assert not diff.identical
++        assert [value[0] for value in diff.diff_hdus[0][1].diff_data.diff_values] == [
++            ("a", 0),
++            ("a", 1),
++        ]
++
+     def test_partially_identical_files1(self):
+         """
+         Test files that have some identical HDUs but a different extension

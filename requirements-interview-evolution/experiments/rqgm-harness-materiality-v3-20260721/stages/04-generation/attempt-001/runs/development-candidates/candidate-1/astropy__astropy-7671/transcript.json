@@ -1,0 +1,58 @@
+[
+  {
+    "answer": "Standard package ordering",
+    "open_material_decisions": [
+      "Define the intended ordering semantics for non-numeric version suffixes such as dev and rc."
+    ],
+    "question": {
+      "header": "Version ordering",
+      "options": [
+        {
+          "description": "Use established Python package-version semantics, so 1.14dev < 1.14 < 1.14.3 and comparisons return booleans without this TypeError.",
+          "label": "Standard package ordering",
+          "recommended": true
+        },
+        {
+          "description": "Keep LooseVersion-compatible results wherever possible and only prevent the reported mixed int/string comparison from raising.",
+          "label": "Preserve LooseVersion",
+          "recommended": false
+        },
+        {
+          "description": "Require only that installed 1.14.3 satisfies minimum 1.14dev without defining broader prerelease ordering.",
+          "label": "Reported case only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which observable ordering should minversion use for development and release-candidate versions?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Comparing installed version 1.14.3 against minimum 1.14dev returns True and does not raise an exception.",
+          "Development, release-candidate, final, and later patch versions are ordered according to standard Python package-version semantics.",
+          "Inclusive comparisons accept equal versions; exclusive comparisons reject equal versions.",
+          "The existing minversion cases for installed version 0.12.2 continue to classify 0.12, 0.12.1, and 0.12.0.dev as satisfied and 1 and 1.2rc1 as unsatisfied.",
+          "A module-name string that cannot be imported still returns False, and version lookup through the configured version path continues to work."
+        ],
+        "confirmed_decisions": [
+          "Use standard package-version ordering for non-numeric suffixes: development releases precede the corresponding final release, which precedes later patch releases (for example, 1.14dev < 1.14 < 1.14.3).",
+          "minversion with an installed version of 1.14.3 and a minimum version of 1.14dev returns True without raising TypeError.",
+          "The existing inclusive and exclusive comparison meanings remain unchanged: inclusive accepts equality, while exclusive requires the installed version to be greater.",
+          "Existing public behavior remains unchanged for imported-module and module-name inputs, failed module imports, configured version attribute paths, and invalid module argument types.",
+          "The change is localized to minversion behavior and its unit-test coverage."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update astropy.utils.minversion so version comparisons use standard Python package-version ordering and return a boolean instead of raising TypeError when numeric release components are compared with development or release-candidate suffixes."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested behavior and ordering semantics are sufficiently defined by the issue, repository evidence, and the confirmed interview answer. No material implementation decision remains open."
+    },
+    "turn": 2
+  }
+]

@@ -1,0 +1,80 @@
+[
+  {
+    "answer": "Docs plus alias",
+    "open_material_decisions": [
+      "Whether a documented type alias should render its source documentation alone or render it together with the generated “alias of …” paragraph."
+    ],
+    "question": {
+      "header": "Alias output",
+      "options": [
+        {
+          "description": "Preserve all source documentation and also retain the existing generated “alias of …” paragraph, matching established GenericAlias tests and limiting compatibility impact.",
+          "label": "Docs plus alias (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Show the source documentation and suppress the generated “alias of …” paragraph for documented aliases, changing current tested behavior.",
+          "label": "Docs only",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has next-line source documentation, what output must autodoc produce?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Owner approval of the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready without expanding scope.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Do not seal it; provide corrections or additional constraints.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: update autodoc so every recognized module-level GenericAlias with next-line source documentation preserves that complete documentation and also renders the existing “alias of …” paragraph, regardless of which autodoc documenter currently claims the runtime alias; undocumented aliases retain the existing generated alias output; preserve existing directive/header behavior and avoid changing non-GenericAlias objects. Add regression coverage using the reported Dict, Union, and Callable alias shapes with multiline next-line docstrings, asserting that each document renders its source text plus alias text and that an undocumented GenericAlias still renders alias text. Acceptance requires the targeted autodoc tests and relevant existing GenericAlias tests to pass. Implementation may choose the smallest internal routing/content-handling change consistent with existing conventions. Residual compatibility risk is limited to documented GenericAlias cases that previously lost source documentation: they will gain that documentation while retaining existing generated text."
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Regression tests cover documented Dict, Union, and Callable aliases using multiline next-line string documentation.",
+          "Each documented alias renders all source documentation and the generated alias text.",
+          "An undocumented GenericAlias continues to render the generated alias text.",
+          "Relevant existing GenericAlias tests continue to pass.",
+          "Targeted autodoc tests pass.",
+          "Existing directive/header behavior remains unchanged in the tested output.",
+          "Non-GenericAlias autodoc behavior is not changed by the implementation."
+        ],
+        "confirmed_decisions": [
+          "Documented GenericAlias output must contain both its complete next-line source documentation and the generated “alias of …” paragraph.",
+          "Undocumented GenericAlias output must continue to contain the generated alias paragraph.",
+          "The fix applies to recognized module-level GenericAlias objects, including reported Dict, Union, and Callable shapes, even when different autodoc documenters currently claim them.",
+          "Existing directive and header behavior must remain unchanged.",
+          "Objects that are not recognized GenericAlias instances are outside the behavior change.",
+          "The implementer may choose the smallest internal routing or content-handling change that follows existing repository conventions.",
+          "No broader compatibility guarantees or unrelated autodoc changes are required."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Update autodoc so every recognized module-level GenericAlias with next-line source documentation preserves the complete source documentation and also renders the existing “alias of …” paragraph, regardless of which autodoc documenter claims the runtime alias. Undocumented GenericAlias objects retain the existing generated alias output. Preserve existing directive/header behavior and do not change non-GenericAlias objects. Add regression coverage using Dict, Union, and Callable alias shapes with multiline next-line docstrings. Implementation may use the smallest internal routing or content-handling change consistent with existing conventions. The bounded residual compatibility risk is that documented GenericAlias cases which previously lost source documentation will now gain it while retaining the generated alias text."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the proposed contract, resolving the only material behavior decision. The contract is bounded by repository evidence and is ready for implementation."
+    },
+    "turn": 3
+  }
+]

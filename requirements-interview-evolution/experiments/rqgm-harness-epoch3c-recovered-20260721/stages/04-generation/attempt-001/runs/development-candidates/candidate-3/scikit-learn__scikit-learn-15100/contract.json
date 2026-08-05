@@ -1,0 +1,20 @@
+{
+  "acceptance_checks": [
+    "A decomposed NFKD input containing a base character followed by a combining accent is returned without the combining accent.",
+    "Canonically equivalent composed and decomposed accented inputs yield the same accent-free output.",
+    "Previously supported composed Latin, Arabic, and mixed accented inputs continue to yield their established accent-free outputs.",
+    "A CountVectorizer analyzer using strip_accents='unicode' produces accent-free tokens from already-decomposed accented text.",
+    "The relevant feature-extraction text tests pass without regressions."
+  ],
+  "confirmed_decisions": [
+    "strip_accents_unicode removes combining accent marks even when its input is already in NFKD form.",
+    "The composed string \"ñ\" and the decomposed sequence \"n\" followed by COMBINING TILDE both produce \"n\".",
+    "Existing Unicode accent stripping behavior for composed accented text remains intact.",
+    "CountVectorizer preprocessing configured with strip_accents='unicode' applies the corrected behavior to decomposed input.",
+    "The corrected shared preprocessing behavior also applies to consumers inheriting or using the same vectorizer preprocessing path, including TfidfVectorizer and supported analyzer modes.",
+    "The change is limited to correcting strip_accents_unicode behavior; strip_accents_ascii and unrelated text preprocessing behavior remain unchanged."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Correct Unicode accent stripping so canonically equivalent composed and already-NFKD-decomposed text produces the same accent-free result throughout the shared vectorizer preprocessing path."
+}

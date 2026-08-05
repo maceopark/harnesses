@@ -1,0 +1,84 @@
+[
+  {
+    "answer": "Denominator only",
+    "open_material_decisions": [
+      "Whether boolean-to-numeric coercion should apply only when computing sum_of_weights or to stored weights/all weighted reductions."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Coerce the non-null mask or one operand in _sum_of_weights so boolean weights work for mean and sum_of_weights without changing weighted sums.",
+          "label": "Denominator only",
+          "recommended": true
+        },
+        {
+          "description": "Convert boolean weights when the weighted object is constructed, affecting mean, sum, and every other weighted reduction.",
+          "label": "All operations",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should boolean-to-numeric coercion occur?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Cast mask to int",
+    "open_material_decisions": [
+      "Which operand and numeric dtype should be used to prevent boolean-by-boolean dot semantics in _sum_of_weights."
+    ],
+    "question": {
+      "header": "Coercion",
+      "options": [
+        {
+          "description": "Convert da.notnull() to an integer mask before dot, fixing boolean weights while leaving stored weights unchanged.",
+          "label": "Cast mask to int",
+          "recommended": true
+        },
+        {
+          "description": "Use a numeric form of boolean weights only inside _sum_of_weights, following the issue's weights * 1 example.",
+          "label": "Promote boolean weights",
+          "recommended": false
+        },
+        {
+          "description": "Convert da.notnull() to floating point before dot, making the denominator floating point for every weight dtype.",
+          "label": "Cast mask to float",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should _sum_of_weights make the boolean dot operation numeric?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "For `DataArray([1.0, 1.0, 1.0]).weighted(DataArray([True, True, False])).mean()`, the result equals scalar `1.0`, not `2.0`.",
+          "For boolean weights `[True, True, False]` over three non-null values, `sum_of_weights()` equals scalar `2` numerically rather than boolean `True`.",
+          "Boolean weights continue to be accepted as a `DataArray`; construction does not coerce or reject them.",
+          "Weighted sums and other weighted reductions retain their existing behavior because coercion is confined to `_sum_of_weights`.",
+          "Missing data remains excluded from the denominator through the non-null mask.",
+          "All-false boolean weights preserve the existing zero-weight result of missing/NaN for `sum_of_weights()` and `mean()`.",
+          "Existing integer- and floating-weight tests continue to pass.",
+          "The focused weighted test module passes after the change."
+        ],
+        "confirmed_decisions": [
+          "Apply boolean-to-numeric coercion only to the sum-of-weights denominator path, not during weighted-object construction and not across all weighted operations.",
+          "In `_sum_of_weights`, cast the `da.notnull()` mask to an integer before passing it with `self.weights` to `_reduce`.",
+          "Preserve the stored weight DataArray and its dtype.",
+          "Preserve existing zero-denominator behavior: a zero sum of weights remains invalid and is returned as missing.",
+          "Add focused regression tests for boolean weights rather than changing the public API documentation or rejecting boolean weights."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix boolean-weighted means by changing `Weighted._sum_of_weights` in `xarray/core/weighted.py` so the `da.notnull()` mask is cast to an integer dtype before it is reduced with the stored weights. Keep the original weights unchanged and do not alter weighted-sum or other weighted-reduction semantics. Add regression coverage in `xarray/tests/test_weighted.py` proving that boolean weights are counted numerically in both `sum_of_weights()` and `mean()`, including the reported `[True, True, False]` case."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The supplied repository evidence and prior interview answers resolve the material implementation choices: limit the fix to denominator calculation and cast the non-null mask to an integer before the dot product. The resulting change and regression coverage are implementation-ready without inventing broader dtype behavior."
+    },
+    "turn": 3
+  }
+]

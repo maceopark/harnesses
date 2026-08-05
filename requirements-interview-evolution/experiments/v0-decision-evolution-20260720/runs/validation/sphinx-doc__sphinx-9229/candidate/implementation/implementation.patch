@@ -1,0 +1,280 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..b60185a 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1724,10 +1724,14 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+     def add_content(self, more_content: Optional[StringList], no_docstring: bool = False
+                     ) -> None:
+         if self.doc_as_attr:
+-            try:
+-                more_content = StringList([_('alias of %s') % restify(self.object)], source='')
+-            except AttributeError:
+-                pass  # Invalid class object is passed.
++            attr_docs = self.analyzer.find_attr_docs() if self.analyzer else {}
++            key = ('.'.join(self.objpath[:-1]), self.objpath[-1])
++            if not more_content and key not in attr_docs:
++                try:
++                    more_content = StringList([_('alias of %s') % restify(self.object)],
++                                              source='')
++                except AttributeError:
++                    pass  # Invalid class object is passed.
+ 
+         super().add_content(more_content)
+ 
+@@ -1785,6 +1789,10 @@ class DataDocumenterMixinBase:
+         """Update docstring for the NewType object."""
+         pass
+ 
++    def has_documentation(self, more_content: StringList) -> bool:
++        """Check whether source or directive documentation is available."""
++        return bool(more_content)
++
+ 
+ class GenericAliasMixin(DataDocumenterMixinBase):
+     """
+@@ -1797,7 +1805,7 @@ class GenericAliasMixin(DataDocumenterMixinBase):
+                 super().should_suppress_directive_header())
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if inspect.isgenericalias(self.object):
++        if inspect.isgenericalias(self.object) and not self.has_documentation(more_content):
+             more_content.append(_('alias of %s') % restify(self.object), '')
+             more_content.append('', '')
+ 
+@@ -2006,6 +2014,10 @@ class DataDocumenter(GenericAliasMixin, NewTypeMixin, TypeVarMixin,
+         else:
+             return super().get_doc(ignore)
+ 
++    def has_documentation(self, more_content: StringList) -> bool:
++        return (self.get_module_comment(self.objpath[-1]) is not None or
++                super().has_documentation(more_content))
++
+     def add_content(self, more_content: Optional[StringList], no_docstring: bool = False
+                     ) -> None:
+         # Disable analyzing variable comment on Documenter.add_content() to control it on
+@@ -2587,6 +2599,10 @@ class AttributeDocumenter(GenericAliasMixin, NewTypeMixin, SlotsMixin,  # type:
+         finally:
+             self.config.autodoc_inherit_docstrings = orig  # type: ignore
+ 
++    def has_documentation(self, more_content: StringList) -> bool:
++        return (self.get_attribute_comment(self.parent, self.objpath[-1]) is not None or
++                super().has_documentation(more_content))
++
+     def add_content(self, more_content: Optional[StringList], no_docstring: bool = False
+                     ) -> None:
+         # Disable analyzing attribute comment on Documenter.add_content() to control it on
+diff --git a/tests/roots/test-ext-autodoc/target/alias_precedence.py b/tests/roots/test-ext-autodoc/target/alias_precedence.py
+new file mode 100644
+index 0000000..7b505be
+--- /dev/null
++++ b/tests/roots/test-ext-autodoc/target/alias_precedence.py
+@@ -0,0 +1,40 @@
++from pathlib import Path
++from typing import Any, Callable, Dict, Union
++
++
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary with options.
++
++Options should be treated as immutable.
++"""
++
++FileContents = Union[str, None]
++"""A missing file content means that the file is not written.
++
++An empty string represents an empty file.
++"""
++
++FileOp = Callable[[Path, FileContents, ScaffoldOpts], Union[Path, None]]
++"""Signature of a file operation.
++
++The return value is the path that was changed.
++"""
++
++#: A documented alias using a comment.
++CommentedAlias = Dict[str, Any]
++
++UndocumentedAlias = Callable[[int], None]
++
++
++class Original:
++    pass
++
++
++#: A documented ordinary class alias.
++RenamedClass = Original
++
++
++class Aliases:
++    ClassContents = Union[str, None]
++    """A documented class-attribute alias."""
++
+diff --git a/tests/test_ext_autodoc.py b/tests/test_ext_autodoc.py
+index 4c16886..1b34698 100644
+--- a/tests/test_ext_autodoc.py
++++ b/tests/test_ext_autodoc.py
+@@ -30,7 +30,7 @@ except ImportError:
+     pyximport = None
+ 
+ 
+-def do_autodoc(app, objtype, name, options=None):
++def do_autodoc(app, objtype, name, options=None, content=None):
+     if options is None:
+         options = {}
+     app.env.temp_data.setdefault('docname', 'index')  # set dummy docname
+@@ -40,7 +40,7 @@ def do_autodoc(app, objtype, name, options=None):
+     state.document.settings.tab_width = 8
+     bridge = DocumenterBridge(app.env, LoggingReporter(''), docoptions, 1, state)
+     documenter = doccls(bridge, name)
+-    documenter.generate()
++    documenter.generate(more_content=content)
+ 
+     return bridge.result
+ 
+@@ -1921,12 +1921,14 @@ def test_autodoc_GenericAlias(app):
+             '   .. py:attribute:: Class.T',
+             '      :module: target.genericalias',
+             '',
+-            '      alias of :class:`~typing.List`\\ [:class:`int`]',
++            '      A list of int',
++            '',
+             '',
+             '.. py:attribute:: T',
+             '   :module: target.genericalias',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
++            '   A list of int',
++            '',
+         ]
+     else:
+         assert list(actual) == [
+@@ -1943,19 +1945,34 @@ def test_autodoc_GenericAlias(app):
+             '',
+             '      A list of int',
+             '',
+-            '      alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+             '',
+             '.. py:data:: T',
+             '   :module: target.genericalias',
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_alias_documentation_precedence(app):
++    options = {'members': None, 'undoc-members': None}
++    actual = list(do_autodoc(app, 'module', 'target.alias_precedence', options))
++
++    for line in (
++        '   Dictionary with options.',
++        '   A missing file content means that the file is not written.',
++        '   Signature of a file operation.',
++        '   A documented alias using a comment.',
++        '      A documented class-attribute alias.',
++        '   A documented ordinary class alias.',
++    ):
++        assert line in actual
++
++    # Only the alias without source documentation retains generated content.
++    assert sum('alias of ' in line for line in actual) == 1
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodoc_TypeVar(app):
+     options = {"members": None,
+diff --git a/tests/test_ext_autodoc_autoattribute.py b/tests/test_ext_autodoc_autoattribute.py
+index 5e72202..173fcf0 100644
+--- a/tests/test_ext_autodoc_autoattribute.py
++++ b/tests/test_ext_autodoc_autoattribute.py
+@@ -156,8 +156,6 @@ def test_autoattribute_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
+diff --git a/tests/test_ext_autodoc_autoclass.py b/tests/test_ext_autodoc_autoclass.py
+index 096dc93..17f5f3e 100644
+--- a/tests/test_ext_autodoc_autoclass.py
++++ b/tests/test_ext_autodoc_autoclass.py
+@@ -12,6 +12,7 @@
+ import sys
+ 
+ import pytest
++from docutils.statemachine import ViewList
+ 
+ from .test_ext_autodoc import do_autodoc
+ 
+@@ -327,3 +328,19 @@ def test_class_alias(app):
+         '',
+         '   alias of :class:`target.classes.Foo`',
+     ]
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_class_alias_documentation_precedence(app):
++    content = ViewList(['Explicit directive content.'], source='test')
++    actual = list(do_autodoc(app, 'class',
++                             'target.alias_precedence.RenamedClass',
++                             content=content))
++    assert actual.index('   A documented ordinary class alias.') < \
++        actual.index('   Explicit directive content.')
++    assert not any('alias of ' in line for line in actual)
++
++    actual = list(do_autodoc(app, 'class', 'target.classes.Alias',
++                             content=content))
++    assert '   Explicit directive content.' in actual
++    assert not any('alias of ' in line for line in actual)
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..8907d15 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -12,6 +12,7 @@
+ import sys
+ 
+ import pytest
++from docutils.statemachine import ViewList
+ 
+ from .test_ext_autodoc import do_autodoc
+ 
+@@ -96,11 +97,31 @@ def test_autodata_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodata_alias_documentation_precedence(app):
++    actual = list(do_autodoc(app, 'data',
++                             'target.alias_precedence.ScaffoldOpts'))
++    assert '   Dictionary with options.' in actual
++    assert '   Options should be treated as immutable.' in actual
++    assert not any('alias of ' in line for line in actual)
++
++    content = ViewList(['Explicit directive content.'], source='test')
++    actual = list(do_autodoc(app, 'data',
++                             'target.alias_precedence.ScaffoldOpts', content=content))
++    assert actual.index('   Dictionary with options.') < \
++        actual.index('   Explicit directive content.')
++    assert not any('alias of ' in line for line in actual)
++
++    actual = list(do_autodoc(app, 'data',
++                             'target.alias_precedence.UndocumentedAlias',
++                             content=content))
++    assert '   Explicit directive content.' in actual
++    assert not any('alias of ' in line for line in actual)
++
++
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+ def test_autodata_NewType(app):
+     actual = do_autodoc(app, 'data', 'target.typevar.T6')

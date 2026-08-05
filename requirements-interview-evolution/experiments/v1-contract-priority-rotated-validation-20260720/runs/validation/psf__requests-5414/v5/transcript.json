@@ -1,0 +1,81 @@
+[
+  {
+    "answer": "Leading dot only",
+    "open_material_decisions": [
+      "Whether validation is limited to the reported leading-dot hostname case or broadened to other ASCII empty-label forms."
+    ],
+    "question": {
+      "header": "Validation scope",
+      "options": [
+        {
+          "description": "Reject ASCII hosts beginning with '.' during request preparation, raising InvalidURL with exactly 'URL has an invalid label.'; preserve all other hostname behavior and add focused preparation regression coverage.",
+          "label": "Leading dot only",
+          "recommended": true
+        },
+        {
+          "description": "Also reject other ASCII empty-label forms such as consecutive or trailing dots, expanding observable behavior beyond the reported case.",
+          "label": "All empty labels",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which hostname-validation scope should the implementation contract require?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve contract",
+    "open_material_decisions": [
+      "Owner approval of the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with no remaining material decisions.",
+          "label": "Approve contract",
+          "recommended": true
+        },
+        {
+          "description": "Do not seal it; provide changes needed to scope, behavior, acceptance criteria, or risk boundaries.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: at base commit 39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e, change PreparedRequest.prepare_url so an ASCII hostname beginning with '.' is rejected during request preparation with requests.exceptions.InvalidURL and exactly the message 'URL has an invalid label.'; add focused regression coverage for preparing 'http://.example.com'; preserve behavior for all other hostname forms, including consecutive or trailing dots; make no dependency or adapter changes. Acceptance requires the focused test to demonstrate the exact exception type and message and the relevant existing URL-preparation tests to pass. Implementation may choose the smallest repository-consistent conditional/test placement, but may not broaden hostname validation. Residual risk: downstream dependencies may reject other malformed ASCII labels differently, and that behavior is intentionally outside scope. Is this contract approved for implementation?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A focused regression test preparing 'http://.example.com' raises requests.exceptions.InvalidURL.",
+          "The focused regression test verifies the exception message is exactly 'URL has an invalid label.'.",
+          "Relevant existing URL-preparation tests pass.",
+          "No validation is added for consecutive-dot or trailing-dot hostnames.",
+          "No dependency or adapter files are changed."
+        ],
+        "confirmed_decisions": [
+          "Validation is limited to ASCII hostnames beginning with '.'.",
+          "The rejection occurs during request preparation in PreparedRequest.prepare_url.",
+          "The required exception is requests.exceptions.InvalidURL.",
+          "The required exception message is exactly 'URL has an invalid label.'.",
+          "Focused regression coverage must prepare 'http://.example.com' and assert the exact exception type and message.",
+          "Behavior for all other hostname forms, explicitly including consecutive dots and trailing dots, must remain unchanged.",
+          "No dependency or adapter changes are permitted.",
+          "Implementation may choose the smallest repository-consistent conditional and test placement without broadening validation.",
+          "Downstream handling of other malformed ASCII labels remains an accepted, out-of-scope residual risk.",
+          "The owner explicitly approved the contract."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "At base commit 39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e, change PreparedRequest.prepare_url so an ASCII hostname beginning with '.' is rejected during request preparation with requests.exceptions.InvalidURL and exactly the message 'URL has an invalid label.'. Add focused regression coverage for preparing 'http://.example.com'. Preserve behavior for every other hostname form, including consecutive dots and trailing dots. Make no dependency or adapter changes. Implementation may choose the smallest repository-consistent conditional and test placement, but must not broaden hostname validation. The acknowledged residual risk is that downstream dependencies may reject other malformed ASCII labels differently; that behavior is intentionally outside scope."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the proposed contract. All material behavioral, compatibility, acceptance, delegation, and residual-risk decisions are resolved."
+    },
+    "turn": 3
+  }
+]

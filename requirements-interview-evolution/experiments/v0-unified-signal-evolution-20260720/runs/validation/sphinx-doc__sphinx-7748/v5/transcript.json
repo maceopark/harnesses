@@ -1,0 +1,66 @@
+[
+  {
+    "answer": "Consecutive valid lines",
+    "open_material_decisions": [
+      "Define where scanning of consecutive docstring overload signatures stops and what remains in rendered docstring content."
+    ],
+    "question": {
+      "header": "Overload block",
+      "options": [
+        {
+          "description": "Extract every consecutive leading line that is a valid signature for the documented object, then stop at the first non-matching or invalid line and preserve that line plus everything after it as docstring content.",
+          "label": "Consecutive valid lines",
+          "recommended": true
+        },
+        {
+          "description": "Extract consecutive signature-like leading lines even when an object name does not match, stopping only at the first line that does not resemble a signature.",
+          "label": "Signature-like lines",
+          "recommended": false
+        },
+        {
+          "description": "Extract matching signatures beyond intervening prose or invalid lines, removing them wherever found in the docstring.",
+          "label": "Scan through docstring",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc identify the leading block of overloaded signatures in a function or method docstring?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "With the option enabled, a method docstring beginning with two or more consecutive valid signatures for that method produces the same number of aligned py:method signature lines, in source order.",
+          "Per-signature return annotations are preserved in the corresponding generated signature lines.",
+          "All extracted signature lines are absent from rendered docstring content, while the first following prose or invalid line and everything after it are preserved.",
+          "A signature-like leading line naming a different object is not extracted; extraction stops there and preserves it and subsequent content.",
+          "A valid first signature followed by an invalid or mismatched line extracts only the first signature and preserves the stopping line onward.",
+          "The existing single-signature enabled test continues to pass unchanged in behavior.",
+          "With autodoc_docstring_signature disabled, generated directives use the existing introspected signature and preserve every signature-like docstring line as content.",
+          "An explicit signature in the autodoc directive continues to override docstring signatures.",
+          "Function and method documenters both receive the behavior through DocstringSignatureMixin, including normal, static, and class methods.",
+          "The targeted autodoc configuration tests pass, followed by the relevant broader autodoc test suite."
+        ],
+        "confirmed_decisions": [
+          "The overload block consists only of consecutive valid leading signature lines for the documented object.",
+          "Scanning stops at the first non-matching or invalid line; that line and all following content remain in the rendered docstring.",
+          "Each extracted overload is emitted as its own aligned directive signature line using the existing newline-separated signature-header path.",
+          "Each overload retains its own argument list and return annotation.",
+          "Explicit directive signatures continue to take precedence and must not trigger docstring-signature extraction.",
+          "When autodoc_docstring_signature is false, introspected signature behavior remains unchanged and all signature-like docstring lines remain content.",
+          "Existing single-signature behavior remains backward compatible.",
+          "Implementation should modify DocstringSignatureMixin extraction/formatting in sphinx/ext/autodoc/__init__.py, extend the fixture in tests/roots/test-ext-autodoc/target/__init__.py, add enabled and disabled regression expectations in tests/test_ext_autodoc_configs.py, and update doc/usage/extensions/autodoc.rst."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend autodoc_docstring_signature so functions and methods may obtain multiple overload signatures from a consecutive leading docstring block. Starting at the first docstring line, extract each consecutive line only while it parses as a valid Python signature and its object name is accepted for the current documenter. Preserve each overload's arguments and return annotation, format the extracted signatures as a newline-separated result, and remove exactly those extracted lines from rendered docstring content. Stop at the first non-signature or invalid-name line and preserve that line and everything after it. Retain current behavior for a single signature, disabled configuration, explicit directive signatures, and docstrings without a valid leading signature. Update the autodoc configuration documentation to describe consecutive leading signatures and add regression coverage using an overloaded method fixture."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested behavior and stopping rule are sufficiently defined by the public request, repository evidence, and confirmed interview answer. No material implementation decision remains open."
+    },
+    "turn": 2
+  }
+]

@@ -1,0 +1,79 @@
+[
+  {
+    "answer": "Docs plus alias (Recommended)",
+    "open_material_decisions": [
+      "Whether a documented type alias should render only its explicit variable documentation or render that documentation together with the generated “alias of …” paragraph."
+    ],
+    "question": {
+      "header": "Alias output",
+      "options": [
+        {
+          "description": "Preserve the established DataDocumenter behavior: show the explicit documentation and retain the generated “alias of …” paragraph, while fixing paths that currently discard the documentation.",
+          "label": "Docs plus alias (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Show explicit variable documentation and suppress the generated “alias of …” paragraph whenever such documentation exists, changing the existing tested behavior for documented generic aliases.",
+          "label": "Docs only",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has explicit variable documentation, what output should the fix require?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Approve",
+    "open_material_decisions": [
+      "Whether the proposed contract accurately captures the intended scope and compatibility boundary."
+    ],
+    "question": {
+      "header": "Approve fix",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with the stated scope, tests, and compatibility boundary.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Keep requirements open so you can specify a different scope or compatibility boundary.",
+          "label": "Revise contract",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this implementation contract: preserve next-line variable documentation when autodoc handles documented type aliases, including the reported Dict, Union, and Callable forms; render that documentation together with “alias of …” wherever existing generic-alias recognition already generates it; add regression coverage for all three reported forms and verify no documented form loses its text; do not broaden generic-alias recognition or change output for undocumented aliases, ordinary data, or Python/version paths that do not currently generate alias text; accept bounded residual risk that fixing shared ClassDocumenter/DataDocumenter routing may affect other documented aliases following the same discard path, provided their explicit documentation is preserved and existing alias text behavior remains unchanged?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A regression fixture defines the reported Dict, Union, and Callable aliases with immediately following multiline string documentation.",
+          "Autodoc output for each of the three aliases contains its explicit documentation text.",
+          "For every reported alias already recognized as a generic alias on the active Python version, output also retains the existing generated “alias of …” paragraph.",
+          "Existing generic-alias/autodata tests continue to pass, including the established documented-alias output containing both documentation and alias text.",
+          "Tests demonstrate no intentional output change for undocumented aliases, ordinary data, or Python/version branches that do not currently generate alias text.",
+          "The implementation does not expand inspect.isgenericalias recognition beyond the existing typing._GenericAlias, types.GenericAlias, and typing._SpecialGenericAlias checks."
+        ],
+        "confirmed_decisions": [
+          "Explicit variable documentation and an existing generated “alias of …” paragraph must both be rendered; explicit documentation does not suppress alias text.",
+          "The fix must cover the reported Dict[str, Any], Union[str, None], and Callable[[...], Union[...]] aliases documented by immediately following multiline strings.",
+          "Regression coverage must verify that none of the three explicit documentation strings is discarded.",
+          "Generic-alias recognition remains limited to the implementation types already recognized by inspect.isgenericalias.",
+          "Undocumented aliases retain their existing output.",
+          "Ordinary non-alias data and version paths that do not currently generate alias text retain their existing output.",
+          "A shared routing fix may affect other documented aliases following the same discard path only insofar as their explicit documentation becomes preserved; their existing alias-text behavior must remain unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Fix autodoc so next-line string documentation attached to module-level type aliases is preserved for the reported Dict, Union, and Callable forms. When existing generic-alias recognition generates an “alias of …” paragraph, render it together with the explicit variable documentation. Add regression fixtures and assertions for all three reported forms. Do not broaden generic-alias recognition or intentionally change output for undocumented aliases, ordinary data, or Python/version paths that do not currently generate alias text."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the proposed contract, resolving the only material behavior decision and the scope/compatibility boundary. The contract is implementation-ready."
+    },
+    "turn": 3
+  }
+]

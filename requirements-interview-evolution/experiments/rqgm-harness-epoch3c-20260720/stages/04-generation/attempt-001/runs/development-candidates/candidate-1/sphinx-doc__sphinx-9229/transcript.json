@@ -1,0 +1,101 @@
+[
+  {
+    "answer": "Keep alias fallback",
+    "open_material_decisions": [
+      "Behavior for type aliases that do not have explicit next-line variable documentation."
+    ],
+    "question": {
+      "header": "Fallback",
+      "options": [
+        {
+          "description": "Suppress “alias of …” only when explicit variable documentation exists; undocumented aliases retain the generated fallback.",
+          "label": "Keep alias fallback",
+          "recommended": true
+        },
+        {
+          "description": "Never render the generated “alias of …” text for type aliases, including undocumented ones.",
+          "label": "Suppress for all",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has no explicit next-line documentation, what should autodoc render?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "All recognized forms",
+    "open_material_decisions": [
+      "Whether suppression of the generated “alias of …” text applies to every parser-recorded variable documentation form or only to next-line string documentation."
+    ],
+    "question": {
+      "header": "Doc forms",
+      "options": [
+        {
+          "description": "Any variable documentation recognized by ModuleAnalyzer, including next-line strings and `#:` comments, suppresses the alias fallback.",
+          "label": "All recognized forms",
+          "recommended": true
+        },
+        {
+          "description": "Only documentation written as a string immediately after the assignment suppresses the fallback; existing `#:` behavior remains unchanged.",
+          "label": "Next-line strings only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which explicit variable-documentation forms should replace the generated “alias of …” text for a type alias?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Module and class aliases",
+    "open_material_decisions": [
+      "Whether explicit recognized variable documentation replaces the generated “alias of …” text only for module-level type aliases or for both module-level and class-level type aliases."
+    ],
+    "question": {
+      "header": "Alias scope",
+      "options": [
+        {
+          "description": "Apply the behavior consistently to documented type aliases at module and class scope.",
+          "label": "Module and class aliases",
+          "recommended": true
+        },
+        {
+          "description": "Limit the change to the module-level aliases demonstrated by the bug report.",
+          "label": "Module aliases only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should explicit recognized variable documentation replace the generated “alias of …” fallback?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A module-level recognized generic alias with multiline next-line string documentation renders the complete documentation and omits “alias of …”.",
+          "A module-level recognized generic alias with `#:` documentation renders that documentation and omits “alias of …”.",
+          "A class-level recognized generic alias with explicit ModuleAnalyzer variable documentation renders that documentation and omits “alias of …”.",
+          "A recognized generic alias with no explicit variable documentation still renders “alias of <rendered object>”.",
+          "The reported Dict, Union, and Callable aliases each render their supplied multiline next-line documentation without an “alias of …” paragraph when they are recognized as generic aliases by the running Python version.",
+          "Existing autodoc behavior for objects not recognized as generic aliases remains unchanged."
+        ],
+        "confirmed_decisions": [
+          "A recognized generic type alias with explicit ModuleAnalyzer variable documentation renders that documentation and does not render the generated “alias of …” text.",
+          "The replacement behavior applies to every variable-documentation form already recognized by ModuleAnalyzer, including next-line string documentation and `#:` documentation comments.",
+          "The replacement behavior applies to documented aliases at both module scope and class scope.",
+          "A recognized generic type alias without explicit variable documentation retains the generated “alias of …” fallback.",
+          "Multiline variable documentation is preserved and rendered as the alias documentation rather than being replaced or followed by the generated alias fallback.",
+          "The change does not expand which objects are recognized as generic aliases or introduce new variable-documentation syntax."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "For generic type aliases recognized by autodoc, explicit variable documentation must be rendered as the alias documentation instead of the generated “alias of …” message. This applies to all variable-documentation forms already recognized by ModuleAnalyzer and to aliases at both module and class scope. An undocumented recognized generic alias must continue to render the generated “alias of …” fallback."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The supplied repository evidence and interview answers resolve all material behavioral decisions. The requested behavior is bounded by existing autodoc recognition of generic aliases and variable documentation, so the contract is implementation-ready without inventing new syntax or alias detection behavior."
+    },
+    "turn": 4
+  }
+]

@@ -1,0 +1,95 @@
+[
+  {
+    "answer": "Consecutive valid lines",
+    "open_material_decisions": [
+      "Define how autodoc determines where a leading overload-signature block ends."
+    ],
+    "question": {
+      "header": "Block boundary",
+      "options": [
+        {
+          "description": "Consume every consecutive leading line that parses as a signature and has an accepted object name, then stop at the first other line and preserve that line plus everything after it as content.",
+          "label": "Consecutive valid lines",
+          "recommended": true
+        },
+        {
+          "description": "Consume consecutive signature-shaped lines, but stop and preserve content when a parsed signature uses a different object name.",
+          "label": "Consecutive signature shapes",
+          "recommended": false
+        },
+        {
+          "description": "Scan all nonblank lines at the start and extract any valid matching signatures, potentially skipping intervening non-signature text.",
+          "label": "All leading nonblank lines",
+          "recommended": false
+        }
+      ],
+      "prompt": "How should autodoc identify the overload signatures at the start of a docstring?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Functions and methods",
+    "open_material_decisions": [
+      "Decide whether consecutive overload-signature extraction applies to both functions and methods or only methods."
+    ],
+    "question": {
+      "header": "Feature scope",
+      "options": [
+        {
+          "description": "Extend the shared behavior consistently for both object types covered by autodoc_docstring_signature.",
+          "label": "Functions and methods",
+          "recommended": true
+        },
+        {
+          "description": "Limit the new multi-signature behavior to normal, static, and class methods; functions keep single-signature extraction.",
+          "label": "Methods only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which autodoc objects should support consecutive leading docstring signatures?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Add a fixture for a function with at least two consecutive valid leading signatures followed by prose; verify both signatures appear as aligned directive signature lines in source order and neither appears in the rendered body.",
+          "Add a fixture for a method with at least two consecutive valid leading signatures followed by prose; verify both signatures appear as aligned method directive lines and the prose remains.",
+          "Cover normal method behavior and ensure the shared implementation remains applicable to static and class methods without object-type-specific regression.",
+          "Verify extraction stops when a consecutive line is not a valid signature and preserves that line plus all subsequent content.",
+          "Verify extraction stops when a signature-shaped line has a base name rejected by the existing validation and preserves that line plus all subsequent content.",
+          "Verify a blank line ends the overload block and subsequent content is preserved.",
+          "Verify signatures with distinct return annotations retain the correct annotation on each emitted signature.",
+          "Verify the existing single-signature enabled test remains unchanged in behavior.",
+          "Verify autodoc_docstring_signature=False retains all signature-like docstring lines in the body and uses the normal introspected signature.",
+          "Verify an explicit directive signature continues to suppress docstring-signature extraction.",
+          "Update the autodoc_docstring_signature documentation to state that one or more consecutive matching signatures at the start of function and method docstrings are used and removed from the content.",
+          "Run the targeted autodoc configuration tests and relevant autodoc multiline-signature tests successfully."
+        ],
+        "confirmed_decisions": [
+          "The overload block consists only of consecutive valid, accepted signatures beginning on the first docstring line.",
+          "Extraction stops at the first line that is blank, is not signature-shaped, or has a base name rejected by the existing name-validation rules.",
+          "The stopping line and every subsequent line remain in the rendered docstring content.",
+          "The feature applies consistently to both functions and methods covered by autodoc_docstring_signature, including normal, static, and class methods through the shared mixin behavior.",
+          "Extracted overload signatures retain their source order.",
+          "Each extracted signature retains its own argument list and optional return annotation.",
+          "Multiple extracted signatures are emitted as newline-separated formatted signatures, using the existing directive-header support for aligned multiple signature lines.",
+          "An explicitly supplied directive signature continues to take precedence and prevents docstring-signature extraction.",
+          "When autodoc_docstring_signature is disabled, no leading signature lines are extracted or removed.",
+          "Existing accepted-name behavior remains unchanged; no broader signature grammar or object-name matching is introduced.",
+          "A docstring containing only one valid leading signature continues to produce the existing output.",
+          "Documentation must describe consecutive leading signature extraction rather than first-line-only extraction."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Extend autodoc_docstring_signature so functions and methods can extract an ordered block of consecutive valid signatures from the beginning of a docstring. Starting at the first line, consume each consecutive line only while it matches the existing signature grammar and its base name is accepted by the existing object-name validation. Stop at the first blank, malformed, or nonmatching-name line; preserve that line and all following lines as docstring content. Format all extracted signatures as newline-separated directive signatures using the existing multiline header path. Preserve current configuration gating, explicit-signature precedence, accepted-name rules, and single-signature behavior."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The request, audited repository evidence, and two confirmed interview decisions resolve the material behavior and scope. The remaining implementation details follow existing autodoc conventions without requiring additional product choices."
+    },
+    "turn": 3
+  }
+]

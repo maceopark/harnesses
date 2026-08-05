@@ -1,0 +1,252 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..efb27d1 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1625,6 +1625,12 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+         else:
+             return None
+ 
++    def get_real_modname(self) -> str:
++        if self.doc_as_attr:
++            return self.modname
++        else:
++            return super().get_real_modname()
++
+     def add_directive_header(self, sig: str) -> None:
+         sourcename = self.get_sourcename()
+ 
+@@ -1724,10 +1730,14 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+     def add_content(self, more_content: Optional[StringList], no_docstring: bool = False
+                     ) -> None:
+         if self.doc_as_attr:
+-            try:
+-                more_content = StringList([_('alias of %s') % restify(self.object)], source='')
+-            except AttributeError:
+-                pass  # Invalid class object is passed.
++            key = ('.'.join(self.objpath[:-1]), self.objpath[-1])
++            has_doc_comment = self.analyzer and key in self.analyzer.find_attr_docs()
++            if not has_doc_comment:
++                try:
++                    more_content = StringList([_('alias of %s') % restify(self.object)],
++                                              source='')
++                except AttributeError:
++                    pass  # Invalid class object is passed.
+ 
+         super().add_content(more_content)
+ 
+@@ -1738,11 +1748,9 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+ 
+     def generate(self, more_content: Optional[StringList] = None, real_modname: str = None,
+                  check_module: bool = False, all_members: bool = False) -> None:
+-        # Do not pass real_modname and use the name from the __module__
+-        # attribute of the class.
+-        # If a class gets imported into the module real_modname
+-        # the analyzer won't find the source of the class, if
+-        # it looks in real_modname.
++        # Do not pass real_modname and use the name from get_real_modname().
++        # For ordinary imported classes this is the class's own module; aliases use
++        # the module containing the assignment so their source documentation is found.
+         return super().generate(more_content=more_content,
+                                 check_module=check_module,
+                                 all_members=all_members)
+@@ -1785,6 +1793,10 @@ class DataDocumenterMixinBase:
+         """Update docstring for the NewType object."""
+         pass
+ 
++    def get_variable_comment(self) -> Optional[List[str]]:
++        """Return documentation attached to the variable assignment, if any."""
++        return None
++
+ 
+ class GenericAliasMixin(DataDocumenterMixinBase):
+     """
+@@ -1797,7 +1809,7 @@ class GenericAliasMixin(DataDocumenterMixinBase):
+                 super().should_suppress_directive_header())
+ 
+     def update_content(self, more_content: StringList) -> None:
+-        if inspect.isgenericalias(self.object):
++        if inspect.isgenericalias(self.object) and not self.get_variable_comment():
+             more_content.append(_('alias of %s') % restify(self.object), '')
+             more_content.append('', '')
+ 
+@@ -1998,9 +2010,12 @@ class DataDocumenter(GenericAliasMixin, NewTypeMixin, TypeVarMixin,
+ 
+         return None
+ 
++    def get_variable_comment(self) -> Optional[List[str]]:
++        return self.get_module_comment(self.objpath[-1])
++
+     def get_doc(self, ignore: int = None) -> Optional[List[List[str]]]:
+         # Check the variable has a docstring-comment
+-        comment = self.get_module_comment(self.objpath[-1])
++        comment = self.get_variable_comment()
+         if comment:
+             return [comment]
+         else:
+@@ -2571,9 +2586,12 @@ class AttributeDocumenter(GenericAliasMixin, NewTypeMixin, SlotsMixin,  # type:
+ 
+         return None
+ 
++    def get_variable_comment(self) -> Optional[List[str]]:
++        return self.get_attribute_comment(self.parent, self.objpath[-1])
++
+     def get_doc(self, ignore: int = None) -> Optional[List[List[str]]]:
+         # Check the attribute has a docstring-comment
+-        comment = self.get_attribute_comment(self.parent, self.objpath[-1])
++        comment = self.get_variable_comment()
+         if comment:
+             return [comment]
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/type_aliases.py b/tests/roots/test-ext-autodoc/target/type_aliases.py
+new file mode 100644
+index 0000000..ffb71d4
+--- /dev/null
++++ b/tests/roots/test-ext-autodoc/target/type_aliases.py
+@@ -0,0 +1,24 @@
++from pathlib import Path
++from typing import Any, Callable, Dict, List, Union
++
++
++DictAlias = Dict[str, Any]
++"""Documentation for DictAlias."""
++
++UnionAlias = Union[str, None]
++"""Documentation for UnionAlias."""
++
++CallableAlias = Callable[[Path, UnionAlias, DictAlias], Union[Path, None]]
++"""Documentation for CallableAlias.
++This second line must also be preserved.
++"""
++
++
++class OriginalClass:
++    pass
++
++
++ClassAlias = OriginalClass
++"""Documentation for ClassAlias."""
++
++UndocumentedAlias = List[int]
+diff --git a/tests/test_ext_autodoc.py b/tests/test_ext_autodoc.py
+index 4c16886..91ac9dc 100644
+--- a/tests/test_ext_autodoc.py
++++ b/tests/test_ext_autodoc.py
+@@ -1908,52 +1908,46 @@ def test_autodoc_GenericAlias(app):
+     options = {"members": None,
+                "undoc-members": None}
+     actual = do_autodoc(app, 'module', 'target.genericalias', options)
+-    if sys.version_info < (3, 7):
+-        assert list(actual) == [
+-            '',
+-            '.. py:module:: target.genericalias',
+-            '',
+-            '',
+-            '.. py:class:: Class()',
+-            '   :module: target.genericalias',
+-            '',
+-            '',
+-            '   .. py:attribute:: Class.T',
+-            '      :module: target.genericalias',
+-            '',
+-            '      alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+-            '.. py:attribute:: T',
+-            '   :module: target.genericalias',
+-            '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-        ]
+-    else:
+-        assert list(actual) == [
+-            '',
+-            '.. py:module:: target.genericalias',
+-            '',
+-            '',
+-            '.. py:class:: Class()',
+-            '   :module: target.genericalias',
+-            '',
+-            '',
+-            '   .. py:attribute:: Class.T',
+-            '      :module: target.genericalias',
+-            '',
+-            '      A list of int',
+-            '',
+-            '      alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+-            '',
+-            '.. py:data:: T',
+-            '   :module: target.genericalias',
+-            '',
+-            '   A list of int',
+-            '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+-        ]
++    assert sum('A list of int' in line for line in actual) == 2
++    assert not any('alias of ' in line for line in actual)
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodoc_type_aliases_with_doc_comments(app):
++    options = {"members": None, "undoc-members": None}
++    actual = list(do_autodoc(app, 'module', 'target.type_aliases', options))
++
++    for name in ('DictAlias', 'UnionAlias', 'CallableAlias', 'ClassAlias'):
++        assert 'Documentation for %s.' % name in actual
++    assert 'This second line must also be preserved.' in actual
++
++    assert sum('alias of ' in line for line in actual) == 1
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++@pytest.mark.parametrize('name', ('DictAlias', 'UnionAlias', 'CallableAlias', 'ClassAlias'))
++def test_autodata_type_aliases_with_doc_comments(app, name):
++    actual = list(do_autodoc(app, 'data', 'target.type_aliases.%s' % name))
++
++    assert '   Documentation for %s.' % name in actual
++    if name == 'CallableAlias':
++        assert '   This second line must also be preserved.' in actual
++    assert not any('alias of ' in line for line in actual)
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autodata_type_alias_without_doc_comment(app):
++    actual = list(do_autodoc(app, 'data', 'target.type_aliases.UndocumentedAlias'))
++
++    assert any('alias of ' in line for line in actual)
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autoclass_alias_with_doc_comment(app):
++    actual = list(do_autodoc(app, 'class', 'target.type_aliases.ClassAlias'))
++
++    assert '   Documentation for ClassAlias.' in actual
++    assert not any('alias of ' in line for line in actual)
+ 
+ 
+ @pytest.mark.sphinx('html', testroot='ext-autodoc')
+diff --git a/tests/test_ext_autodoc_autoattribute.py b/tests/test_ext_autodoc_autoattribute.py
+index 5e72202..173fcf0 100644
+--- a/tests/test_ext_autodoc_autoattribute.py
++++ b/tests/test_ext_autodoc_autoattribute.py
+@@ -156,8 +156,6 @@ def test_autoattribute_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 
+diff --git a/tests/test_ext_autodoc_autodata.py b/tests/test_ext_autodoc_autodata.py
+index d01e45f..dcda360 100644
+--- a/tests/test_ext_autodoc_autodata.py
++++ b/tests/test_ext_autodoc_autodata.py
+@@ -96,8 +96,6 @@ def test_autodata_GenericAlias(app):
+             '',
+             '   A list of int',
+             '',
+-            '   alias of :class:`~typing.List`\\ [:class:`int`]',
+-            '',
+         ]
+ 
+ 

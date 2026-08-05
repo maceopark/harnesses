@@ -1,0 +1,24 @@
+{
+  "acceptance_checks": [
+    "For each reported ScaffoldOpts/Dict, FileContents/Union, and FileOp/Callable alias, autodoc output contains its complete multiline next-line documentation.",
+    "None of those documented aliases emits `alias of …`, regardless of which existing documenter class wins runtime selection.",
+    "A generic alias documented with a preceding `#:` comment emits the recorded comment but no generated `alias of …` text.",
+    "An alias with no recorded variable documentation retains the repository's existing generated alias/default rendering.",
+    "Tests cover the version-dependent classification behavior supported by the test suite, with expectations enforcing the same documented-alias rule on all branches.",
+    "The targeted autodoc test modules pass, and no existing documented-alias assertion remains that expects authored documentation followed by generated alias text."
+  ],
+  "confirmed_decisions": [
+    "Authored documentation suppresses generated `alias of …` text; the two must not be combined.",
+    "The rule applies consistently across every Python version supported by this repository, including the affected Python 3.6 classification path and the existing Python 3.7+ path.",
+    "The rule applies to every variable-documentation form recorded by ModuleAnalyzer, including next-line string documentation and preceding `#:` comments.",
+    "The behavior is based on analyzer-recorded documentation, not on whether DataDocumenter, ClassDocumenter, or another existing autodoc path happens to classify the runtime alias.",
+    "Existing behavior remains unchanged for aliases without analyzer-recorded documentation: generated alias/default information may still be rendered.",
+    "The fix should reuse the existing ModuleAnalyzer attribute-documentation mapping and existing autodoc content pipeline; it should not add a new parsing syntax or dependency.",
+    "Regression coverage must include module-level Dict, Union, and Callable aliases with multiline next-line string documentation, demonstrating that all authored lines render and `alias of …` does not.",
+    "Existing generic-alias fixtures and expectations that currently combine recorded documentation with `alias of …` must be updated to the new custom-documentation-only contract, including the Python 3.7+ branches.",
+    "Coverage must also verify that a documented alias using a `#:` comment suppresses generated alias text and that an undocumented alias continues to show its existing generated alias/default output."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Make autodoc render only authored variable documentation for documented type aliases. When ModuleAnalyzer has recorded documentation for a module-level alias—whether from a next-line string or a preceding `#:` comment—that documentation must survive runtime documenter classification and replace generated `alias of …` content on every supported Python version. Preserve existing alias/default rendering for aliases without recorded documentation."
+}

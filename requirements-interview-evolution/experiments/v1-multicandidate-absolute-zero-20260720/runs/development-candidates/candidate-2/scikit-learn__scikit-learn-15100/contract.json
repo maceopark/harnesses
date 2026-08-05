@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "A direct test verifies `strip_accents_unicode('\\u00f1') == 'n'`.",
+    "A direct test verifies `strip_accents_unicode('n\\u0303') == 'n'`.",
+    "A vectorizer/analyzer regression test verifies that `strip_accents='unicode'` removes the combining tilde from already-decomposed input.",
+    "Relevant existing tests in `sklearn/feature_extraction/tests/test_text.py` pass, including existing composed accented Latin, Arabic, mixed-text, and vectorizer behavior.",
+    "The implementation retains the existing public function signature and introduces no broader API or documentation changes."
+  ],
+  "confirmed_decisions": [
+    "Already-NFKD input must have all characters with nonzero `unicodedata.combining` removed.",
+    "Composed and decomposed forms of `ñ` must both yield `n`.",
+    "The public `strip_accents_unicode` signature must remain unchanged.",
+    "Existing composed-input accent-stripping behavior must be preserved.",
+    "Regression evidence must cover both the direct function and the vectorizer preprocessing path using `strip_accents='unicode'`.",
+    "The implementer may select the minimal internal implementation shape provided the required behavior and relevant existing text-feature tests pass.",
+    "No documentation change or broader API change is required.",
+    "The owner acknowledges the bounded compatibility impact on all already-NFKD strings containing combining characters, not only combining tilde."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update `strip_accents_unicode` so it always NFKD-normalizes input and removes every character for which `unicodedata.combining` is nonzero, including when the input was already in NFKD form. Preserve the public signature and existing behavior for composed accented input. Add direct regression coverage proving both composed `ñ` and decomposed `n` plus combining tilde produce `n`, and vectorizer-path coverage proving `strip_accents='unicode'` removes the decomposed mark. No documentation or broader API change is required. The implementer may choose the minimal internal code shape consistent with this contract. Bounded residual risk: already-NFKD strings containing combining characters will change by design, including marks beyond the reported tilde."
+}

@@ -1,0 +1,64 @@
+diff --git a/astropy/io/fits/diff.py b/astropy/io/fits/diff.py
+index 100cdf1..d3608ef 100644
+--- a/astropy/io/fits/diff.py
++++ b/astropy/io/fits/diff.py
+@@ -1449,7 +1449,7 @@ class TableDataDiff(_BaseDiff):
+                 arrb.dtype, np.floating
+             ):
+                 diffs = where_not_allclose(arra, arrb, rtol=self.rtol, atol=self.atol)
+-            elif "P" in col.format:
++            elif "P" in col.format or "Q" in col.format:
+                 diffs = (
+                     [
+                         idx
+diff --git a/astropy/io/fits/tests/test_diff.py b/astropy/io/fits/tests/test_diff.py
+index adfebe6..f101be3 100644
+--- a/astropy/io/fits/tests/test_diff.py
++++ b/astropy/io/fits/tests/test_diff.py
+@@ -624,6 +624,46 @@ class TestDiff(FitsTestCase):
+         report = diff.report()
+         assert "No differences found." in report
+ 
++    def test_q_vla_data(self):
++        identical_a = BinTableHDU.from_columns(
++            [Column("a", format="QD", array=[[0], [0, 0]])]
++        )
++        identical_b = BinTableHDU.from_columns(
++            [Column("a", format="QD", array=[[0], [0, 0]])]
++        )
++
++        diff = TableDataDiff(identical_a.data, identical_b.data)
++        assert diff.identical
++        assert diff.diff_values == []
++
++        different = BinTableHDU.from_columns(
++            [Column("a", format="QD", array=[[0], [0, 1]])]
++        )
++        diff = TableDataDiff(identical_a.data, different.data)
++        assert not diff.identical
++        assert len(diff.diff_values) == 1
++        assert diff.diff_values[0][0] == ("a", 1)
++
++        close = BinTableHDU.from_columns(
++            [Column("a", format="QD", array=[[0], [0, 0.01]])]
++        )
++        assert TableDataDiff(
++            identical_a.data, close.data, atol=0.02
++        ).identical
++
++    def test_identical_file_with_q_vla(self):
++        filename = self.temp("q-vla.fits")
++        BinTableHDU.from_columns(
++            [Column("a", format="QD", array=[[0], [0, 0]])]
++        ).writeto(filename)
++
++        diff = FITSDiff(filename, filename)
++        assert diff.identical
++        report = diff.report()
++        assert "Extension HDU" not in report
++        assert "Data contains differences" not in report
++        assert "No differences found." in report
++
+     def test_partially_identical_files1(self):
+         """
+         Test files that have some identical HDUs but a different extension

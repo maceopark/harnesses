@@ -1,0 +1,30 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/summary",
+          "quoted_value": "Fix module-level type aliases routed through ClassDocumenter so analyzer-provided next-line source documentation is preserved rather than overwritten. Documented aliases must render both their source documentation and the existing “alias of …” message. Add a regression fixture/test covering the reported Dict, Union, and Callable aliases and their multiline documentation. Preserve existing behavior for undocumented aliases, ordinary class aliases, and DataDocumenter/GenericAlias paths; do not redesign documenter selection. The implementation may use the smallest conforming code structure."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/6",
+          "quoted_value": "Version-conditional expectations remain valid, and every affected documenter path available under the test runtime is exercised."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/unknowns/1",
+          "quoted_value": "The repository code alone does not establish how Python 3.6.9 runtime typing objects classify each supplied alias under isinstance(member, type) or Sphinx's generic-alias inspection helpers; that classification determines which documenter path is selected."
+        }
+      ],
+      "description": "The contract is not implementation-ready for the reported version-dependent failure. It requires every affected path “available under the test runtime,” but audited evidence says repository inspection cannot establish how the three aliases classify on Python 3.6.9. Consequently, a test environment that routes all three aliases through unaffected paths could satisfy the fixture and output checks while never exercising the path the contract says must change. Acceptance needs an explicit supported-version test condition or another deterministic way to force/verify the affected ClassDocumenter alias path.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The acceptance contract makes runtime-dependent path coverage the criterion without requiring the Python 3.6 classification and documenter path implicated by the reported reproduction.",
+      "id": "F1",
+      "material": true,
+      "observable_signal": "The regression can pass on a newer test runtime where Dict, Union, and Callable select different documenters, without demonstrating that the affected Python 3.6 ClassDocumenter path is exercised or fixed."
+    }
+  ],
+  "summary": "One material readiness failure: the version-dependent ClassDocumenter regression can evade the acceptance suite when tests run under a runtime with different typing-object classification."
+}

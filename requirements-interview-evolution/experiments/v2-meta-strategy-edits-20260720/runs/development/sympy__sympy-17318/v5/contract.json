@@ -1,0 +1,19 @@
+{
+  "acceptance_checks": [
+    "A targeted regression asserts `sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) == 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2` and completes without `IndexError`.",
+    "The existing `sympy/simplify/tests/test_sqrtdenest.py` test suite passes.",
+    "No changes are made to `sympy/simplify/radsimp.py` implementations of `split_surds` or `_split_gcd`.",
+    "Existing valid denesting results and existing unchanged-return assertions continue to pass."
+  ],
+  "confirmed_decisions": [
+    "Handle the empty-surds condition in `_sqrt_match`, before calling `split_surds`.",
+    "Limit the compatibility boundary to sqrt denesting; do not define new general behavior for empty `split_surds` or `_split_gcd` calls.",
+    "The reported expression must be returned in its normal expanded unchanged form and must not raise.",
+    "Add the regression to `sympy/simplify/tests/test_sqrtdenest.py`, including the missing `I` import.",
+    "Preserve behavior for non-empty `split_surds` inputs and existing sqrtdenest denesting and unchanged-return cases.",
+    "Owner approved the complete contract without revisions."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "In `sympy/simplify/sqrtdenest.py`, add a guard in `_sqrt_match` so that an Add whose terms have rational squares but yields no coefficient-stripped `Pow` surds returns no match before invoking `split_surds`. For `sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2)`, the function must not raise `IndexError` and must return the expanded unchanged expression `3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2`. Add a regression test in `sympy/simplify/tests/test_sqrtdenest.py` and import `I` there. Do not modify `split_surds` or `_split_gcd`. Preserve existing behavior for valid non-empty `split_surds` inputs and all existing denesting and unchanged-return cases. The bounded residual risk is that other `_sqrt_match` Add inputs with no recognized surd powers will now produce no match instead of raising an exception."
+}

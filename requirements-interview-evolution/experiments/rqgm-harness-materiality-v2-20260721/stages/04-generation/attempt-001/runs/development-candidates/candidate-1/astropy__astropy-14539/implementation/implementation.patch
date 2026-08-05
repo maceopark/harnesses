@@ -1,0 +1,52 @@
+diff --git a/astropy/io/fits/diff.py b/astropy/io/fits/diff.py
+index 100cdf1..d3608ef 100644
+--- a/astropy/io/fits/diff.py
++++ b/astropy/io/fits/diff.py
+@@ -1449,7 +1449,7 @@ class TableDataDiff(_BaseDiff):
+                 arrb.dtype, np.floating
+             ):
+                 diffs = where_not_allclose(arra, arrb, rtol=self.rtol, atol=self.atol)
+-            elif "P" in col.format:
++            elif "P" in col.format or "Q" in col.format:
+                 diffs = (
+                     [
+                         idx
+diff --git a/astropy/io/fits/tests/test_diff.py b/astropy/io/fits/tests/test_diff.py
+index adfebe6..b60d93e 100644
+--- a/astropy/io/fits/tests/test_diff.py
++++ b/astropy/io/fits/tests/test_diff.py
+@@ -419,6 +419,34 @@ class TestDiff(FitsTestCase):
+         assert diff.diff_ratio == 0
+         assert diff.diff_total == 0
+ 
++    def test_identical_q_vla_tables(self, capsys):
++        column = Column("A", format="QD", array=[[0], [0, 0]])
++        hdu = BinTableHDU.from_columns([column])
++        path_a = self.temp("q_vla_a.fits")
++        path_b = self.temp("q_vla_b.fits")
++        hdu.writeto(path_a)
++        hdu.writeto(path_b)
++
++        assert FITSDiff(path_a, path_a).identical
++        assert FITSDiff(path_a, path_b).identical
++
++        fits.printdiff(path_a, path_a)
++        report = capsys.readouterr().out
++        assert "No differences found." in report
++        assert "Data contains differences" not in report
++
++    def test_different_q_vla_table_row(self):
++        column_a = Column("A", format="QD", array=[[0], [0, 0]])
++        column_b = Column("A", format="QD", array=[[0], [0, 1]])
++        table_a = BinTableHDU.from_columns([column_a])
++        table_b = BinTableHDU.from_columns([column_b])
++
++        diff = TableDataDiff(table_a.data, table_b.data)
++
++        assert not diff.identical
++        assert diff.diff_total == 1
++        assert diff.diff_values[0][0] == ("A", 1)
++
+     def test_diff_empty_tables(self):
+         """
+         Regression test for https://aeon.stsci.edu/ssb/trac/pyfits/ticket/178

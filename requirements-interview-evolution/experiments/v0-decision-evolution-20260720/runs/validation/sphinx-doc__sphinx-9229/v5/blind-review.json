@@ -1,0 +1,85 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "transcript",
+          "pointer": "/1/answer",
+          "quoted_value": "All documented aliases"
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/1",
+          "quoted_value": "The rule applies consistently to module-level aliases, class attributes, and aliased classes."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/2",
+          "quoted_value": "Add coverage for documented class attributes and classes exposed under alias names; recognized source documentation is preserved rather than replaced by “alias of …”."
+        }
+      ],
+      "description": "The public request reports three module-level aliases and asks that their following docstrings replace default alias text. Extending the requirement to documented class attributes and classes exposed under alias names is a material new behavior decision rather than clarification of the reported case.",
+      "failure_class": "invention",
+      "general_cause": "The interview broadened the requested module-level type-alias fix into behavior for class attributes and aliased classes without audited evidence that this broader scope was required by the public request.",
+      "id": "F1",
+      "material": true,
+      "observable_signal": "The contract mandates one rule across module aliases, class attributes, and aliased classes, and adds corresponding regression coverage."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "transcript",
+          "pointer": "/3/answer",
+          "quoted_value": "All recognized forms"
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/2",
+          "quoted_value": "Both immediately following string docstrings and assignment comments such as #: comments count when recognized by ModuleAnalyzer."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/1",
+          "quoted_value": "Add or update coverage for documented aliases using #: assignment comments; recognized documentation is rendered and “alias of …” is absent."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/10/statement",
+          "quoted_value": "An existing autodata regression test expects a documented generic alias to render both its source comment ('A list of int') and a following 'alias of typing.List[int]' block on Python 3.7 or newer."
+        }
+      ],
+      "description": "Treating #: comments as suppressors of generated alias text materially changes an existing documented-alias case beyond the syntax and behavior requested by the reporter.",
+      "failure_class": "invention",
+      "general_cause": "The interview generalized the requested next-line multiline-docstring behavior to every ModuleAnalyzer assignment-documentation form, including #: comments, without support from the public request.",
+      "id": "F2",
+      "material": true,
+      "observable_signal": "The contract requires changed output and new coverage for #: assignment comments even though the reported reproduction uses only immediately following string docstrings."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/5",
+          "quoted_value": "Behavior must not depend on whether a runtime or Python version classifies an alias for ClassDocumenter, DataDocumenter, or another existing alias-capable documenter: whichever documenter is selected must honor recognized source documentation."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/unknowns/1",
+          "quoted_value": "Repository evidence alone does not establish which of the three reported aliases selected ClassDocumenter versus DataDocumenter in the reporter's Python 3.6 environment."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/scope_summary",
+          "quoted_value": "Inspected repository state at base commit 876fa81e0a038cda466925b85ccf6c5452e0f685. Existing autodoc behavior depends on whether an alias is handled as module data or as a class exposed under another name."
+        }
+      ],
+      "description": "The reported inconsistency supports fixing the observed aliases, but the contract additionally mandates documenter-independent behavior for ClassDocumenter, DataDocumenter, and any other existing alias-capable documenter. That universal requirement is not established by the audited evidence and materially expands the implementation surface.",
+      "failure_class": "invention",
+      "general_cause": "The contract converts an unresolved runtime-classification uncertainty into a universal cross-documenter behavioral requirement.",
+      "id": "F3",
+      "material": true,
+      "observable_signal": "It requires every selected alias-capable documenter to discover and honor ModuleAnalyzer documentation despite evidence not establishing which documenters handled the reported aliases."
+    }
+  ],
+  "summary": "The contract is not materially implementation-ready because it invents three substantial scope expansions: class attributes and aliased classes, #: assignment comments, and a universal requirement across all alias-capable documenters. These go beyond the reported module-level next-line-docstring inconsistency and alter existing tested behavior."
+}

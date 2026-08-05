@@ -1,0 +1,321 @@
+{
+  "role": "adversarial-reviewer",
+  "prompt": "You are a blind Adversarial Reviewer. Inspect only the public request, audited evidence, transcript, final contract, and frozen failure lenses. Report only material blockers in the allowed categories. Every finding must cite exact JSON pointers and exact quoted values from those artifacts. Pointer roots are the artifact values themselves: contract uses /implementation_ready rather than /final_contract/implementation_ready, transcript uses /0/... rather than /transcript/0/..., and evidence uses /facts/... rather than /audited_repository_evidence/facts/.... You do not have the private owner oracle and must not invent product requirements or preferred architecture.\nReturn only the JSON object required by the supplied output schema.\nINPUT:\n{\"audited_repository_evidence\":{\"audit_summary\":\"not applicable\",\"facts\":[],\"scope_summary\":\"greenfield; no repository evidence\",\"unknowns\":[],\"unresolved_conflicts\":[]},\"final_contract\":{\"acceptance_checks\":[\"Given identical incident data, evaluation time, workflow configuration, and versioned role schedules, separate evaluations derive identical results.\",\"Recipient identities are resolved only from the supplied versioned role schedule and the incident's applicable service and role inputs.\",\"Every accepted incident is assigned exactly one of three severity levels once classification criteria are defined.\",\"The final specification includes boundary tests for severity classification, acknowledgement and ownership races, escalation deadlines, and notification-delivery outages.\",\"The final specification includes one complete timestamped trace showing recipients, delivery attempts, acknowledgements, ownership, state transitions, deadlines, escalations, recovery actions, and terminal outcome.\",\"Implementation must not begin until all listed open material decisions are confirmed or explicitly approved as assumptions.\"],\"confirmed_decisions\":[\"The authoritative responder and escalation-contact source is versioned role schedules supplied with each evaluation.\",\"The severity taxonomy has three levels.\",\"The workflow must classify incidents, route notifications, support acknowledgement and ownership, escalate unmet obligations, and recover predictably from notification-delivery outages.\",\"Identical inputs must deterministically produce identical recipients, owner, state transitions, deadlines, and final outcome.\",\"The deliverable must include a state model, deterministic routing and escalation rules, failure-recovery behavior, boundary-focused acceptance tests, and one complete timestamped incident trace.\"],\"implementation_ready\":false,\"open_material_decisions\":[\"Deterministic classification criteria and tie-breaking for the three severity levels\",\"Per-severity acknowledgement, ownership, and resolution obligations and deadlines\",\"Acknowledgement and ownership semantics, including eligibility, reassignment, release, and concurrent actions\",\"Escalation chain, timing, repetition, recipient expansion, and terminal outcome\",\"Notification-delivery outage detection, retry schedule, channel fallback, deduplication, recovery ordering, and treatment of response deadlines\"],\"summary\":\"Partial contract for a deterministic 24/7 incident-notification workflow. Incidents must use a three-level severity taxonomy and derive service-specific primary, secondary, incident-commander, and manager contacts from versioned role schedules supplied as authoritative evaluation inputs. The requested state model, routing rules, escalation behavior, outage recovery, boundary tests, and timestamped trace cannot yet be sealed because their observable semantics depend on unresolved material decisions. This interview does not authorize implementation.\"},\"frozen_failure_lenses\":[{\"failure_description\":\"The workflow cannot consistently determine an incident's severity from the same reported conditions.\",\"id\":\"severity-classification-ambiguity\",\"minimal_test_shape\":\"Present the same boundary-case incident description to multiple participants and compare the assigned severity and resulting route.\",\"observable_signal\":\"Different participants assign different severity levels to an identical incident, causing different routing or escalation outcomes.\",\"stage\":\"discovery\",\"why_material\":\"Severity controls who is notified, how quickly they must respond, and which escalation path applies; inconsistent classification makes the workflow nondeterministic.\"},{\"failure_description\":\"An acknowledgement is recorded without a shared, observable meaning for ownership, response commitment, or incident status.\",\"id\":\"acknowledgement-state-ambiguity\",\"minimal_test_shape\":\"Trigger an alert, record an acknowledgement, then independently ask involved participants who owns the incident, what obligation began, and whether escalation remains active.\",\"observable_signal\":\"After an acknowledgement, multiple responders assume someone else owns the incident, or escalation stops despite no active response.\",\"stage\":\"interaction\",\"why_material\":\"Acknowledgement is a state transition that directly affects accountability and escalation; ambiguous semantics can leave incidents unattended.\"},{\"failure_description\":\"The handoff describes escalation without objectively determining when it starts, pauses, advances, retries, or ends.\",\"id\":\"escalation-trigger-nondeterminism\",\"minimal_test_shape\":\"Apply one timestamped event sequence to the stated escalation rules and check whether independent evaluators produce the same next state and recipient set.\",\"observable_signal\":\"The same sequence of elapsed time, acknowledgements, and responder actions produces different escalation decisions across interpretations.\",\"stage\":\"synthesis\",\"why_material\":\"Escalation timing and transitions determine whether severe incidents reach an available responder within the required window.\"},{\"failure_description\":\"The requirements identify notification failures but do not define externally observable recovery completion or the disposition of alerts created during the failure.\",\"id\":\"failure-recovery-criteria-gap\",\"minimal_test_shape\":\"Simulate a delivery outage spanning one or more new incidents, restore delivery, and compare the expected final status and notification history for each incident.\",\"observable_signal\":\"After delivery capability returns, participants cannot determine whether missed alerts must be replayed, escalated, marked failed, or considered resolved.\",\"stage\":\"handoff\",\"why_material\":\"Undefined recovery behavior can permanently lose incidents or create duplicate and contradictory notifications after an outage.\"},{\"failure_description\":\"The workflow can pass component-level checks while no objective end-to-end criterion establishes that the correct responder received, acknowledged, and retained ownership of an incident within the required bounds.\",\"id\":\"unverifiable-end-to-end-outcome\",\"minimal_test_shape\":\"Run a timestamped incident from creation through routing, acknowledgement, escalation, and closure, then assert the resulting recipients, state transitions, accountable owner, and timing bounds against one expected trace.\",\"observable_signal\":\"All recorded actions appear successful, yet the incident has no provable accountable responder or breached timing limits without a failed test.\",\"stage\":\"verification\",\"why_material\":\"A workflow that cannot detect missed ownership or timing breaches cannot demonstrate that its central incident-response obligation is met.\"}],\"public_request\":\"Design an incident-notification workflow for a 24/7 engineering team. The workflow must classify incidents by severity, route notifications to the appropriate responders, support acknowledgement and ownership, escalate when response obligations are not met, and recover predictably from notification-delivery outages. Produce a state model, deterministic routing and escalation rules, failure-recovery behavior, and acceptance tests covering boundary cases and one complete timestamped incident trace. The design must let independent implementers and testers derive the same recipients, owner, state transitions, deadlines, and final outcome from identical inputs.\",\"transcript\":[{\"answer\":\"Role schedules\",\"open_material_decisions\":[\"Acknowledgement and ownership semantics, including reassignment and concurrent actions\",\"Authoritative responder and escalation-contact source\",\"Escalation chain, timing, repetition, and terminal outcome\",\"Notification-delivery outage detection, retry, deduplication, recovery, and deadline treatment\",\"Per-severity acknowledgement, ownership, and resolution obligations\",\"Severity taxonomy and deterministic classification criteria\"],\"question\":{\"header\":\"Responder source\",\"options\":[{\"description\":\"Resolve service-specific primary, secondary, incident commander, and manager roles from versioned on-call schedules supplied with each evaluation; this is deterministic and supports 24/7 rotation.\",\"label\":\"Role schedules\",\"recommended\":true},{\"description\":\"Resolve recipients from a versioned service-to-people matrix, which is simpler but requires roster updates whenever rotations change.\",\"label\":\"Ownership matrix\",\"recommended\":false},{\"description\":\"Use the same ordered responder roster for every incident, minimizing configuration while sacrificing service-specific routing.\",\"label\":\"Fixed global roster\",\"recommended\":false}],\"prompt\":\"Which authoritative input model must the workflow use to derive notification recipients and escalation contacts?\"},\"turn\":1},{\"answer\":\"Three levels\",\"open_material_decisions\":[\"Acknowledgement and ownership semantics, including reassignment and concurrent actions\",\"Escalation chain, timing, repetition, and terminal outcome\",\"Notification-delivery outage detection, retry, deduplication, recovery, and deadline treatment\",\"Per-severity acknowledgement, ownership, and resolution obligations\",\"Severity taxonomy and deterministic classification criteria\"],\"question\":{\"header\":\"Severity model\",\"options\":[{\"description\":\"Use SEV1–SEV4 with ordered impact, scope, and urgency criteria plus explicit tie-breaking to the highest matching severity; this offers useful operational precision at moderate complexity.\",\"label\":\"Four levels\",\"recommended\":true},{\"description\":\"Use Critical, Major, and Minor with explicit criteria and highest-match tie-breaking; this is simpler but provides less routing and deadline granularity.\",\"label\":\"Three levels\",\"recommended\":false},{\"description\":\"Use Urgent and Standard with explicit criteria; this minimizes configuration but cannot express nuanced escalation obligations.\",\"label\":\"Two levels\",\"recommended\":false}],\"prompt\":\"Which deterministic severity taxonomy should govern classification? This choice changes recipients, response deadlines, escalation paths, and acceptance-test boundaries.\"},\"turn\":2},{\"interviewer\":{\"action\":\"complete\",\"contract\":{\"acceptance_checks\":[\"Given identical incident data, evaluation time, workflow configuration, and versioned role schedules, separate evaluations derive identical results.\",\"Recipient identities are resolved only from the supplied versioned role schedule and the incident's applicable service and role inputs.\",\"Every accepted incident is assigned exactly one of three severity levels once classification criteria are defined.\",\"The final specification includes boundary tests for severity classification, acknowledgement and ownership races, escalation deadlines, and notification-delivery outages.\",\"The final specification includes one complete timestamped trace showing recipients, delivery attempts, acknowledgements, ownership, state transitions, deadlines, escalations, recovery actions, and terminal outcome.\",\"Implementation must not begin until all listed open material decisions are confirmed or explicitly approved as assumptions.\"],\"confirmed_decisions\":[\"The authoritative responder and escalation-contact source is versioned role schedules supplied with each evaluation.\",\"The severity taxonomy has three levels.\",\"The workflow must classify incidents, route notifications, support acknowledgement and ownership, escalate unmet obligations, and recover predictably from notification-delivery outages.\",\"Identical inputs must deterministically produce identical recipients, owner, state transitions, deadlines, and final outcome.\",\"The deliverable must include a state model, deterministic routing and escalation rules, failure-recovery behavior, boundary-focused acceptance tests, and one complete timestamped incident trace.\"],\"implementation_ready\":false,\"open_material_decisions\":[\"Deterministic classification criteria and tie-breaking for the three severity levels\",\"Per-severity acknowledgement, ownership, and resolution obligations and deadlines\",\"Acknowledgement and ownership semantics, including eligibility, reassignment, release, and concurrent actions\",\"Escalation chain, timing, repetition, recipient expansion, and terminal outcome\",\"Notification-delivery outage detection, retry schedule, channel fallback, deduplication, recovery ordering, and treatment of response deadlines\"],\"summary\":\"Partial contract for a deterministic 24/7 incident-notification workflow. Incidents must use a three-level severity taxonomy and derive service-specific primary, secondary, incident-commander, and manager contacts from versioned role schedules supplied as authoritative evaluation inputs. The requested state model, routing rules, escalation behavior, outage recovery, boundary tests, and timestamped trace cannot yet be sealed because their observable semantics depend on unresolved material decisions. This interview does not authorize implementation.\"},\"open_material_decisions\":[\"Deterministic classification criteria and tie-breaking for the three severity levels\",\"Per-severity acknowledgement, ownership, and resolution obligations and deadlines\",\"Acknowledgement and ownership semantics, including eligibility, reassignment, release, and concurrent actions\",\"Escalation chain, timing, repetition, recipient expansion, and terminal outcome\",\"Notification-delivery outage detection, retry schedule, channel fallback, deduplication, recovery ordering, and treatment of response deadlines\"],\"question\":null,\"reason\":\"Forced close at the safety ceiling. The interview established the authoritative responder source and severity-level count, but consequential operational semantics remain unresolved; inventing them would prevent independent implementers and testers from deriving identical behavior.\"},\"termination\":\"safety_ceiling\"}]}",
+  "prompt_sha256": "b6f9b9633c5df5a014a11098af04f57cfe97f891744c3af309cc63e1ed92c527",
+  "input": {
+    "public_request": "Design an incident-notification workflow for a 24/7 engineering team. The workflow must classify incidents by severity, route notifications to the appropriate responders, support acknowledgement and ownership, escalate when response obligations are not met, and recover predictably from notification-delivery outages. Produce a state model, deterministic routing and escalation rules, failure-recovery behavior, and acceptance tests covering boundary cases and one complete timestamped incident trace. The design must let independent implementers and testers derive the same recipients, owner, state transitions, deadlines, and final outcome from identical inputs.",
+    "audited_repository_evidence": {
+      "scope_summary": "greenfield; no repository evidence",
+      "facts": [],
+      "unknowns": [],
+      "unresolved_conflicts": [],
+      "audit_summary": "not applicable"
+    },
+    "transcript": [
+      {
+        "turn": 1,
+        "open_material_decisions": [
+          "Acknowledgement and ownership semantics, including reassignment and concurrent actions",
+          "Authoritative responder and escalation-contact source",
+          "Escalation chain, timing, repetition, and terminal outcome",
+          "Notification-delivery outage detection, retry, deduplication, recovery, and deadline treatment",
+          "Per-severity acknowledgement, ownership, and resolution obligations",
+          "Severity taxonomy and deterministic classification criteria"
+        ],
+        "question": {
+          "header": "Responder source",
+          "prompt": "Which authoritative input model must the workflow use to derive notification recipients and escalation contacts?",
+          "options": [
+            {
+              "label": "Role schedules",
+              "description": "Resolve service-specific primary, secondary, incident commander, and manager roles from versioned on-call schedules supplied with each evaluation; this is deterministic and supports 24/7 rotation.",
+              "recommended": true
+            },
+            {
+              "label": "Ownership matrix",
+              "description": "Resolve recipients from a versioned service-to-people matrix, which is simpler but requires roster updates whenever rotations change.",
+              "recommended": false
+            },
+            {
+              "label": "Fixed global roster",
+              "description": "Use the same ordered responder roster for every incident, minimizing configuration while sacrificing service-specific routing.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Role schedules"
+      },
+      {
+        "turn": 2,
+        "open_material_decisions": [
+          "Acknowledgement and ownership semantics, including reassignment and concurrent actions",
+          "Escalation chain, timing, repetition, and terminal outcome",
+          "Notification-delivery outage detection, retry, deduplication, recovery, and deadline treatment",
+          "Per-severity acknowledgement, ownership, and resolution obligations",
+          "Severity taxonomy and deterministic classification criteria"
+        ],
+        "question": {
+          "header": "Severity model",
+          "prompt": "Which deterministic severity taxonomy should govern classification? This choice changes recipients, response deadlines, escalation paths, and acceptance-test boundaries.",
+          "options": [
+            {
+              "label": "Four levels",
+              "description": "Use SEV1–SEV4 with ordered impact, scope, and urgency criteria plus explicit tie-breaking to the highest matching severity; this offers useful operational precision at moderate complexity.",
+              "recommended": true
+            },
+            {
+              "label": "Three levels",
+              "description": "Use Critical, Major, and Minor with explicit criteria and highest-match tie-breaking; this is simpler but provides less routing and deadline granularity.",
+              "recommended": false
+            },
+            {
+              "label": "Two levels",
+              "description": "Use Urgent and Standard with explicit criteria; this minimizes configuration but cannot express nuanced escalation obligations.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Three levels"
+      },
+      {
+        "termination": "safety_ceiling",
+        "interviewer": {
+          "action": "complete",
+          "reason": "Forced close at the safety ceiling. The interview established the authoritative responder source and severity-level count, but consequential operational semantics remain unresolved; inventing them would prevent independent implementers and testers from deriving identical behavior.",
+          "open_material_decisions": [
+            "Deterministic classification criteria and tie-breaking for the three severity levels",
+            "Per-severity acknowledgement, ownership, and resolution obligations and deadlines",
+            "Acknowledgement and ownership semantics, including eligibility, reassignment, release, and concurrent actions",
+            "Escalation chain, timing, repetition, recipient expansion, and terminal outcome",
+            "Notification-delivery outage detection, retry schedule, channel fallback, deduplication, recovery ordering, and treatment of response deadlines"
+          ],
+          "question": null,
+          "contract": {
+            "summary": "Partial contract for a deterministic 24/7 incident-notification workflow. Incidents must use a three-level severity taxonomy and derive service-specific primary, secondary, incident-commander, and manager contacts from versioned role schedules supplied as authoritative evaluation inputs. The requested state model, routing rules, escalation behavior, outage recovery, boundary tests, and timestamped trace cannot yet be sealed because their observable semantics depend on unresolved material decisions. This interview does not authorize implementation.",
+            "implementation_ready": false,
+            "confirmed_decisions": [
+              "The authoritative responder and escalation-contact source is versioned role schedules supplied with each evaluation.",
+              "The severity taxonomy has three levels.",
+              "The workflow must classify incidents, route notifications, support acknowledgement and ownership, escalate unmet obligations, and recover predictably from notification-delivery outages.",
+              "Identical inputs must deterministically produce identical recipients, owner, state transitions, deadlines, and final outcome.",
+              "The deliverable must include a state model, deterministic routing and escalation rules, failure-recovery behavior, boundary-focused acceptance tests, and one complete timestamped incident trace."
+            ],
+            "open_material_decisions": [
+              "Deterministic classification criteria and tie-breaking for the three severity levels",
+              "Per-severity acknowledgement, ownership, and resolution obligations and deadlines",
+              "Acknowledgement and ownership semantics, including eligibility, reassignment, release, and concurrent actions",
+              "Escalation chain, timing, repetition, recipient expansion, and terminal outcome",
+              "Notification-delivery outage detection, retry schedule, channel fallback, deduplication, recovery ordering, and treatment of response deadlines"
+            ],
+            "acceptance_checks": [
+              "Given identical incident data, evaluation time, workflow configuration, and versioned role schedules, separate evaluations derive identical results.",
+              "Recipient identities are resolved only from the supplied versioned role schedule and the incident's applicable service and role inputs.",
+              "Every accepted incident is assigned exactly one of three severity levels once classification criteria are defined.",
+              "The final specification includes boundary tests for severity classification, acknowledgement and ownership races, escalation deadlines, and notification-delivery outages.",
+              "The final specification includes one complete timestamped trace showing recipients, delivery attempts, acknowledgements, ownership, state transitions, deadlines, escalations, recovery actions, and terminal outcome.",
+              "Implementation must not begin until all listed open material decisions are confirmed or explicitly approved as assumptions."
+            ]
+          }
+        }
+      }
+    ],
+    "final_contract": {
+      "summary": "Partial contract for a deterministic 24/7 incident-notification workflow. Incidents must use a three-level severity taxonomy and derive service-specific primary, secondary, incident-commander, and manager contacts from versioned role schedules supplied as authoritative evaluation inputs. The requested state model, routing rules, escalation behavior, outage recovery, boundary tests, and timestamped trace cannot yet be sealed because their observable semantics depend on unresolved material decisions. This interview does not authorize implementation.",
+      "implementation_ready": false,
+      "confirmed_decisions": [
+        "The authoritative responder and escalation-contact source is versioned role schedules supplied with each evaluation.",
+        "The severity taxonomy has three levels.",
+        "The workflow must classify incidents, route notifications, support acknowledgement and ownership, escalate unmet obligations, and recover predictably from notification-delivery outages.",
+        "Identical inputs must deterministically produce identical recipients, owner, state transitions, deadlines, and final outcome.",
+        "The deliverable must include a state model, deterministic routing and escalation rules, failure-recovery behavior, boundary-focused acceptance tests, and one complete timestamped incident trace."
+      ],
+      "open_material_decisions": [
+        "Deterministic classification criteria and tie-breaking for the three severity levels",
+        "Per-severity acknowledgement, ownership, and resolution obligations and deadlines",
+        "Acknowledgement and ownership semantics, including eligibility, reassignment, release, and concurrent actions",
+        "Escalation chain, timing, repetition, recipient expansion, and terminal outcome",
+        "Notification-delivery outage detection, retry schedule, channel fallback, deduplication, recovery ordering, and treatment of response deadlines"
+      ],
+      "acceptance_checks": [
+        "Given identical incident data, evaluation time, workflow configuration, and versioned role schedules, separate evaluations derive identical results.",
+        "Recipient identities are resolved only from the supplied versioned role schedule and the incident's applicable service and role inputs.",
+        "Every accepted incident is assigned exactly one of three severity levels once classification criteria are defined.",
+        "The final specification includes boundary tests for severity classification, acknowledgement and ownership races, escalation deadlines, and notification-delivery outages.",
+        "The final specification includes one complete timestamped trace showing recipients, delivery attempts, acknowledgements, ownership, state transitions, deadlines, escalations, recovery actions, and terminal outcome.",
+        "Implementation must not begin until all listed open material decisions are confirmed or explicitly approved as assumptions."
+      ]
+    },
+    "frozen_failure_lenses": [
+      {
+        "id": "severity-classification-ambiguity",
+        "stage": "discovery",
+        "failure_description": "The workflow cannot consistently determine an incident's severity from the same reported conditions.",
+        "observable_signal": "Different participants assign different severity levels to an identical incident, causing different routing or escalation outcomes.",
+        "why_material": "Severity controls who is notified, how quickly they must respond, and which escalation path applies; inconsistent classification makes the workflow nondeterministic.",
+        "minimal_test_shape": "Present the same boundary-case incident description to multiple participants and compare the assigned severity and resulting route."
+      },
+      {
+        "id": "acknowledgement-state-ambiguity",
+        "stage": "interaction",
+        "failure_description": "An acknowledgement is recorded without a shared, observable meaning for ownership, response commitment, or incident status.",
+        "observable_signal": "After an acknowledgement, multiple responders assume someone else owns the incident, or escalation stops despite no active response.",
+        "why_material": "Acknowledgement is a state transition that directly affects accountability and escalation; ambiguous semantics can leave incidents unattended.",
+        "minimal_test_shape": "Trigger an alert, record an acknowledgement, then independently ask involved participants who owns the incident, what obligation began, and whether escalation remains active."
+      },
+      {
+        "id": "escalation-trigger-nondeterminism",
+        "stage": "synthesis",
+        "failure_description": "The handoff describes escalation without objectively determining when it starts, pauses, advances, retries, or ends.",
+        "observable_signal": "The same sequence of elapsed time, acknowledgements, and responder actions produces different escalation decisions across interpretations.",
+        "why_material": "Escalation timing and transitions determine whether severe incidents reach an available responder within the required window.",
+        "minimal_test_shape": "Apply one timestamped event sequence to the stated escalation rules and check whether independent evaluators produce the same next state and recipient set."
+      },
+      {
+        "id": "failure-recovery-criteria-gap",
+        "stage": "handoff",
+        "failure_description": "The requirements identify notification failures but do not define externally observable recovery completion or the disposition of alerts created during the failure.",
+        "observable_signal": "After delivery capability returns, participants cannot determine whether missed alerts must be replayed, escalated, marked failed, or considered resolved.",
+        "why_material": "Undefined recovery behavior can permanently lose incidents or create duplicate and contradictory notifications after an outage.",
+        "minimal_test_shape": "Simulate a delivery outage spanning one or more new incidents, restore delivery, and compare the expected final status and notification history for each incident."
+      },
+      {
+        "id": "unverifiable-end-to-end-outcome",
+        "stage": "verification",
+        "failure_description": "The workflow can pass component-level checks while no objective end-to-end criterion establishes that the correct responder received, acknowledged, and retained ownership of an incident within the required bounds.",
+        "observable_signal": "All recorded actions appear successful, yet the incident has no provable accountable responder or breached timing limits without a failed test.",
+        "why_material": "A workflow that cannot detect missed ownership or timing breaches cannot demonstrate that its central incident-response obligation is met.",
+        "minimal_test_shape": "Run a timestamped incident from creation through routing, acknowledgement, escalation, and closure, then assert the resulting recipients, state transitions, accountable owner, and timing bounds against one expected trace."
+      }
+    ]
+  },
+  "output": {
+    "findings": [
+      {
+        "id": "F1",
+        "lens_id": "severity-classification-ambiguity",
+        "blocker_type": "handoff-decision-gap",
+        "description": "The contract fixes the number of severity levels but leaves their classification criteria and tie-breaking unresolved, so identical boundary-case incidents cannot yet be classified deterministically.",
+        "why_material": "Severity determines routing and escalation behavior. A three-level taxonomy alone does not let independent implementers derive the same severity or downstream outcome.",
+        "citations": [
+          {
+            "artifact": "contract",
+            "pointer": "/confirmed_decisions/1",
+            "quoted_text": "The severity taxonomy has three levels."
+          },
+          {
+            "artifact": "contract",
+            "pointer": "/open_material_decisions/0",
+            "quoted_text": "Deterministic classification criteria and tie-breaking for the three severity levels"
+          },
+          {
+            "artifact": "contract",
+            "pointer": "/implementation_ready",
+            "quoted_text": "false"
+          }
+        ]
+      },
+      {
+        "id": "F2",
+        "lens_id": "acknowledgement-state-ambiguity",
+        "blocker_type": "handoff-decision-gap",
+        "description": "Acknowledgement and ownership transitions remain undefined, including who may own an incident and how reassignment, release, and concurrent actions resolve.",
+        "why_material": "Without these semantics, the same responder actions can yield different owners, obligations, escalation states, and terminal outcomes.",
+        "citations": [
+          {
+            "artifact": "contract",
+            "pointer": "/open_material_decisions/2",
+            "quoted_text": "Acknowledgement and ownership semantics, including eligibility, reassignment, release, and concurrent actions"
+          },
+          {
+            "artifact": "contract",
+            "pointer": "/confirmed_decisions/2",
+            "quoted_text": "The workflow must classify incidents, route notifications, support acknowledgement and ownership, escalate unmet obligations, and recover predictably from notification-delivery outages."
+          },
+          {
+            "artifact": "transcript",
+            "pointer": "/0/open_material_decisions/0",
+            "quoted_text": "Acknowledgement and ownership semantics, including reassignment and concurrent actions"
+          }
+        ]
+      },
+      {
+        "id": "F3",
+        "lens_id": "escalation-trigger-nondeterminism",
+        "blocker_type": "handoff-decision-gap",
+        "description": "The escalation chain and its timing, repetition, recipient expansion, and stopping condition are still open, as are the per-severity obligations that would trigger escalation.",
+        "why_material": "Independent evaluators cannot derive the same deadlines, next state, recipient set, or final outcome from a timestamped event sequence until these rules are fixed.",
+        "citations": [
+          {
+            "artifact": "contract",
+            "pointer": "/open_material_decisions/1",
+            "quoted_text": "Per-severity acknowledgement, ownership, and resolution obligations and deadlines"
+          },
+          {
+            "artifact": "contract",
+            "pointer": "/open_material_decisions/3",
+            "quoted_text": "Escalation chain, timing, repetition, recipient expansion, and terminal outcome"
+          },
+          {
+            "artifact": "contract",
+            "pointer": "/confirmed_decisions/3",
+            "quoted_text": "Identical inputs must deterministically produce identical recipients, owner, state transitions, deadlines, and final outcome."
+          }
+        ]
+      },
+      {
+        "id": "F4",
+        "lens_id": "failure-recovery-criteria-gap",
+        "blocker_type": "handoff-decision-gap",
+        "description": "Notification-outage detection, retry and fallback behavior, deduplication, recovery ordering, and deadline treatment remain unresolved.",
+        "why_material": "The contract cannot determine the externally observable disposition of alerts created or delayed during an outage, including whether notifications are replayed, escalated, deduplicated, or terminally failed.",
+        "citations": [
+          {
+            "artifact": "contract",
+            "pointer": "/open_material_decisions/4",
+            "quoted_text": "Notification-delivery outage detection, retry schedule, channel fallback, deduplication, recovery ordering, and treatment of response deadlines"
+          },
+          {
+            "artifact": "contract",
+            "pointer": "/summary",
+            "quoted_text": "The requested state model, routing rules, escalation behavior, outage recovery, boundary tests, and timestamped trace cannot yet be sealed because their observable semantics depend on unresolved material decisions."
+          },
+          {
+            "artifact": "transcript",
+            "pointer": "/1/open_material_decisions/2",
+            "quoted_text": "Notification-delivery outage detection, retry, deduplication, recovery, and deadline treatment"
+          }
+        ]
+      },
+      {
+        "id": "F5",
+        "lens_id": "unverifiable-end-to-end-outcome",
+        "blocker_type": "unverifiable-acceptance",
+        "description": "The end-to-end acceptance check requires a trace containing events and fields, but it supplies no fixed expected trace or assertions proving that the correct responder obtained and retained ownership within defined timing bounds.",
+        "why_material": "A trace can be complete as a record while still representing incorrect routing, missed ownership, or breached deadlines. Those expected outcomes cannot be asserted while ownership, deadline, escalation, and recovery semantics remain open.",
+        "citations": [
+          {
+            "artifact": "contract",
+            "pointer": "/acceptance_checks/4",
+            "quoted_text": "The final specification includes one complete timestamped trace showing recipients, delivery attempts, acknowledgements, ownership, state transitions, deadlines, escalations, recovery actions, and terminal outcome."
+          },
+          {
+            "artifact": "contract",
+            "pointer": "/open_material_decisions/1",
+            "quoted_text": "Per-severity acknowledgement, ownership, and resolution obligations and deadlines"
+          },
+          {
+            "artifact": "contract",
+            "pointer": "/open_material_decisions/2",
+            "quoted_text": "Acknowledgement and ownership semantics, including eligibility, reassignment, release, and concurrent actions"
+          },
+          {
+            "artifact": "contract",
+            "pointer": "/implementation_ready",
+            "quoted_text": "false"
+          }
+        ]
+      }
+    ],
+    "review_summary": "The contract correctly declares itself non-implementation-ready, but the requested workflow remains materially blocked by unresolved severity, ownership, escalation, outage-recovery, and executable end-to-end acceptance semantics."
+  }
+}

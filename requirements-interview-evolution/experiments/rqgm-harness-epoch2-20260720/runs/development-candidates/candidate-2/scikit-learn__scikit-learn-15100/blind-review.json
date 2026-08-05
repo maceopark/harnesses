@@ -1,0 +1,55 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/2",
+          "quoted_value": "The corrected behavior must apply through the shared vectorizer preprocessing path whenever strip_accents='unicode' is selected, including CountVectorizer and inherited TfidfVectorizer behavior."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/3/statement",
+          "quoted_value": "Vectorizer preprocessing maps strip_accents='unicode' directly to strip_accents_unicode and passes it into the preprocessing function."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        }
+      ],
+      "description": "Requiring inherited TfidfVectorizer behavior materially expands the implementation and verification scope beyond the audited evidence. The unaudited repository_facts cannot be used to supply the missing inheritance fact, so implementation readiness is overstated until TfidfVectorizer applicability is audited or the class-specific requirement is removed.",
+      "failure_class": "invention",
+      "general_cause": "The contract names a specific affected class and inheritance relationship that the audited evidence does not establish.",
+      "id": "F-001",
+      "material": true,
+      "observable_signal": "TfidfVectorizer is made an explicit compatibility target even though the audited evidence only establishes the shared vectorizer preprocessing mapping."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/3",
+          "quoted_value": "Existing Unicode accent-stripping behavior for precomposed Latin text, precomposed Arabic text, mixed accented and unaccented text, and ordinary unaccented text must remain compatible."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/4",
+          "quoted_value": "Previously supported composed Latin, Arabic, mixed-text, and vectorizer accent-stripping outcomes remain unchanged."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/0/statement",
+          "quoted_value": "strip_accents_unicode first normalizes its input to NFKD, but returns the original string immediately when normalization does not change it; combining characters are filtered only in the other branch."
+        }
+      ],
+      "description": "The contract requires ordinary unaccented text to remain compatible, yet its regression check covers only composed Latin, Arabic, mixed text, and vectorizer outcomes. This leaves one confirmed compatibility boundary without an explicit verification criterion.",
+      "failure_class": "synthesis-loss",
+      "general_cause": "A confirmed compatibility requirement was not carried into the acceptance checks.",
+      "id": "F-002",
+      "material": true,
+      "observable_signal": "Ordinary unaccented text is explicitly protected by a confirmed decision but omitted from the compatibility acceptance check."
+    }
+  ],
+  "summary": "The contract is not materially implementation-ready: it introduces an unaudited TfidfVectorizer-specific obligation and loses the confirmed ordinary-unaccented-text compatibility requirement from acceptance verification."
+}

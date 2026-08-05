@@ -1,0 +1,75 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/1",
+          "quoted_value": "Recursive discovery uses the same initialization-time captured ignore-path configuration as normal module expansion."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/0",
+          "quoted_value": "Add an end-to-end regression test that loads `ignore-paths = [\"^src/gen/.*$\"]` from project configuration and runs recursive linting on `src/`."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/unknowns/0",
+          "quoted_value": "The repository does not establish whether recursive discovery is intended to use the live self.config.ignore_paths value or the captured self._ignore_paths value."
+        }
+      ],
+      "description": "The contract requires recursive discovery to use the initialization-time captured ignore-path configuration, but none of the acceptance checks mutates or otherwise differentiates the live configuration from the captured configuration. An implementation that continues using `self.config.ignore_paths` could satisfy the listed end-to-end checks, leaving a confirmed material decision unverified.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "A material internal-state decision is stated without an acceptance check that distinguishes it from the alternative behavior.",
+      "id": "F1",
+      "material": true,
+      "observable_signal": "The regression scenario loads configuration normally, where the live and initialization-time captured ignore-path values can be identical; therefore it cannot prove recursive discovery actually uses the captured value."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/0",
+          "quoted_value": "Add an end-to-end regression test that loads `ignore-paths = [\"^src/gen/.*$\"]` from project configuration and runs recursive linting on `src/`."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/scope_summary",
+          "quoted_value": "At base commit 3c5eca2ded3dd2b59ebaf23eb289453b5d2930f0, recursive discovery consults the live config.ignore_paths value while later module expansion uses the separately captured _ignore_paths value. Existing recursive-ignore tests cover command-line patterns containing leading wildcards, but not an anchored relative ignore-path loaded from project configuration."
+        }
+      ],
+      "description": "The regression check does not require `pyproject.toml` or the reported `[tool.pylint.MASTER]` configuration path. Because the requested failure specifically concerns an anchored ignore path supplied through project TOML, the contract can be accepted without reproducing that material input route.",
+      "failure_class": "omission",
+      "general_cause": "The acceptance criteria generalize the reported configuration source and omit the specific configuration-loading path implicated by the request.",
+      "id": "F2",
+      "material": true,
+      "observable_signal": "The contract asks only for configuration loaded from an unspecified “project configuration,” so a test using another supported configuration format could pass without exercising TOML loading."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/4",
+          "quoted_value": "Run and preserve all existing recursive-ignore tests."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/5",
+          "quoted_value": "Verify `ignore`, `ignore-patterns`, configuration precedence, and non-recursive behavior remain unchanged."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/9/statement",
+          "quoted_value": "Existing end-to-end recursive ignore-path tests pass ignore paths on the command line as patterns beginning with '.*' and assert that the targeted failing file is absent from the linted paths."
+        }
+      ],
+      "description": "The contract declares preservation of `ignore`, `ignore-patterns`, configuration precedence, and non-recursive behavior, but provides no executable checks for those distinct guarantees. Running existing recursive-ignore tests only partially covers the first two and does not establish configuration precedence or non-recursive compatibility.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "A broad compatibility requirement lacks concrete observable cases or a defined verification method.",
+      "id": "F3",
+      "material": true,
+      "observable_signal": "The final acceptance check groups four distinct behavior surfaces under “remain unchanged” without specifying representative inputs, expected outputs, or tests."
+    }
+  ],
+  "summary": "The contract is not materially implementation-ready: it cannot verify the captured-versus-live configuration decision, does not require reproduction through the reported pyproject.toml configuration path, and states broad compatibility guarantees without executable acceptance criteria."
+}

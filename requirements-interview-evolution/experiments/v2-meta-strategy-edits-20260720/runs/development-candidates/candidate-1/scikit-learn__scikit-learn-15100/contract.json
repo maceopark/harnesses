@@ -1,0 +1,21 @@
+{
+  "acceptance_checks": [
+    "A direct test verifies `strip_accents_unicode('\\u00f1') == 'n'`.",
+    "A direct test verifies `strip_accents_unicode('n\\u0303') == 'n'`.",
+    "The existing `strip_accents_unicode` accent tests continue to pass.",
+    "The targeted text-feature extraction test suite passes.",
+    "No changes are made to `strip_accents_ascii` behavior."
+  ],
+  "confirmed_decisions": [
+    "Remove the equality-based early return from `strip_accents_unicode` so combining-character filtering always occurs after NFKD normalization.",
+    "Apply the behavior consistently to direct calls and all vectorizers using `strip_accents='unicode'` through the existing shared preprocessor mapping.",
+    "Do not change `strip_accents_ascii`.",
+    "Require a direct regression test for canonically equivalent composed and decomposed `ñ` inputs, both producing `n`.",
+    "Preserve the existing accent-removal test expectations.",
+    "Accept the intentional compatibility change for any already-NFKD input containing characters with a truthy `unicodedata.combining` value.",
+    "Do not assert broader Unicode compatibility beyond the documented NFKD-plus-combining-character-removal behavior."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Update `strip_accents_unicode` so it always applies NFKD normalization and removes every character for which `unicodedata.combining` is truthy, including when the input is already NFKD. Preserve existing behavior for inputs without combining characters and leave `strip_accents_ascii` unchanged. Add direct regression coverage proving both composed `ñ` and decomposed `n\\u0303` return `n`. This intentionally changes outputs for all already-NFKD strings containing combining characters; unusual combining-mark behavior is an acknowledged bounded consequence of the documented accent-removal rule, without a broader Unicode compatibility guarantee."
+}

@@ -1,0 +1,104 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 1f4c982..9936cba 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1725,7 +1725,16 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:
+                     ) -> None:
+         if self.doc_as_attr:
+             try:
+-                more_content = StringList([_('alias of %s') % restify(self.object)], source='')
++                analyzer = ModuleAnalyzer.for_module(self.modname)
++                analyzer.analyze()
++                self.analyzer = analyzer
++                self.directive.record_dependencies.add(analyzer.srcname)
++            except PycodeError:
++                pass
++
++            try:
++                more_content = StringList([_('alias of %s') % restify(self.object)],
++                                          source='')
+             except AttributeError:
+                 pass  # Invalid class object is passed.
+ 
+diff --git a/tests/roots/test-ext-autodoc/target/aliasdocs.py b/tests/roots/test-ext-autodoc/target/aliasdocs.py
+new file mode 100644
+index 0000000..87a5da7
+--- /dev/null
++++ b/tests/roots/test-ext-autodoc/target/aliasdocs.py
+@@ -0,0 +1,35 @@
++from typing import Any, Callable, Dict, Union
++
++
++class Original:
++    pass
++
++
++ScaffoldOpts = Dict[str, Any]
++"""Dictionary with options.
++
++    A literal block.
++
++.. note::
++    Preserve directives and indentation.
++"""
++
++FileContents = Union[str, None]
++"""File contents may be ``None``.
++"""
++
++FileOp = Callable[[FileContents, ScaffoldOpts], Union[str, None]]
++"""Signature of file operations.
++"""
++
++ClassShapedAlias = Original
++"""A documented class-shaped alias.
++"""
++
++
++class Container:
++    Alias = Original
++    """A documented class alias.
++
++    With a second paragraph.
++    """
+diff --git a/tests/test_ext_autodoc.py b/tests/test_ext_autodoc.py
+index 4c16886..3ce4f1a 100644
+--- a/tests/test_ext_autodoc.py
++++ b/tests/test_ext_autodoc.py
+@@ -45,6 +45,36 @@ def do_autodoc(app, objtype, name, options=None):
+     return bridge.result
+ 
+ 
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_automodule_documented_type_aliases(app):
++    actual = do_autodoc(app, 'module', 'target.aliasdocs', {'members': None})
++    output = '\n'.join(actual)
++
++    for name, documentation in [('ScaffoldOpts', 'Dictionary with options.'),
++                                ('FileContents', 'File contents may be ``None``.'),
++                                ('FileOp', 'Signature of file operations.')]:
++        section = output[output.index(name):]
++        assert documentation in section
++        assert section.index(documentation) < section.index('alias of')
++
++    assert '    A literal block.' in output
++    assert '.. note::' in output
++    assert '    Preserve directives and indentation.' in output
++    section = output[output.index('ClassShapedAlias'):]
++    assert 'A documented class-shaped alias.' in section
++    assert section.index('A documented class-shaped alias.') < section.index('alias of')
++
++
++@pytest.mark.sphinx('html', testroot='ext-autodoc')
++def test_autoclass_documented_type_alias(app):
++    actual = do_autodoc(app, 'class', 'target.aliasdocs.Container', {'members': None})
++    output = '\n'.join(actual)
++
++    assert 'A documented class alias.' in output
++    assert 'With a second paragraph.' in output
++    assert output.index('A documented class alias.') < output.index('alias of')
++
++
+ def make_directive_bridge(env):
+     options = Options(
+         inherited_members = False,

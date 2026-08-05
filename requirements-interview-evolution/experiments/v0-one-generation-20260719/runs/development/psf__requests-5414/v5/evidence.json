@@ -1,0 +1,66 @@
+{
+  "audit_summary": "Accepted F1–F8 as directly supported by the reopened repository files. Rejected F9 because its conclusion about absent urllib3 implementation exceeds the cited evidence.",
+  "facts": [
+    {
+      "id": "F1",
+      "line_end": 322,
+      "line_start": 312,
+      "path": "requests/models.py",
+      "statement": "`PreparedRequest.prepare` delegates URL handling to `prepare_url` before preparing headers, cookies, body, or authentication."
+    },
+    {
+      "id": "F2",
+      "line_end": 395,
+      "line_start": 382,
+      "path": "requests/models.py",
+      "statement": "`prepare_url` converts urllib3 `LocationParseError` into Requests `InvalidURL` and separately rejects URLs whose parsed host is empty."
+    },
+    {
+      "id": "F3",
+      "line_end": 407,
+      "line_start": 397,
+      "path": "requests/models.py",
+      "statement": "Hostname IDNA encoding and its `UnicodeError`-to-`InvalidURL('URL has an invalid label.')` conversion run only when the host contains non-ASCII characters; the ASCII branch rejects only hosts beginning with `*`. Consequently, the nonempty ASCII host `.example.com` matches neither rejection path."
+    },
+    {
+      "id": "F4",
+      "line_end": 419,
+      "line_start": 409,
+      "path": "requests/models.py",
+      "statement": "After hostname validation, the host is appended to the network location, a missing path is replaced with `/`, and the reconstructed URL is assigned to the prepared request."
+    },
+    {
+      "id": "F5",
+      "line_end": 358,
+      "line_start": 350,
+      "path": "requests/models.py",
+      "statement": "The helper used for non-ASCII hosts translates `idna.IDNAError` into `UnicodeError`, which is the error type handled by the non-ASCII branch of `prepare_url`."
+    },
+    {
+      "id": "F6",
+      "line_end": 91,
+      "line_start": 90,
+      "path": "requests/exceptions.py",
+      "statement": "Requests defines `InvalidURL` as both a `RequestException` and a `ValueError`."
+    },
+    {
+      "id": "F7",
+      "line_end": 415,
+      "line_start": 395,
+      "path": "requests/adapters.py",
+      "statement": "During adapter sending, `get_connection(request.url, proxies)` is wrapped only for urllib3 `LocationValueError`, which is converted to `InvalidURL`; this block does not catch `UnicodeError`."
+    },
+    {
+      "id": "F8",
+      "line_end": 2497,
+      "line_start": 2484,
+      "path": "tests/test_requests.py",
+      "statement": "Existing URL-preparation regression cases expect `InvalidURL` for wildcard hosts and a snowman IDN, but contain no leading-dot hostname case."
+    }
+  ],
+  "scope_summary": "At the supplied base commit, Requests validates IDNA failures for non-ASCII hosts and leading-wildcard ASCII hosts, but its preparation logic allows the nonempty ASCII host `.example.com` through unchanged. The adapter later catches only urllib3 `LocationValueError` during connection lookup, not `UnicodeError`.",
+  "unknowns": [
+    "The exact urllib3 source line that raises the reported `UnicodeError` is not present in the supplied repository.",
+    "The repository contains no regression test documenting expected behavior specifically for `http://.example.com`."
+  ]
+}

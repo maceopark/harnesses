@@ -1,0 +1,101 @@
+[
+  {
+    "answer": "Custom docs only",
+    "open_material_decisions": [
+      "Whether assignment-following documentation should replace or accompany the generated generic-alias message."
+    ],
+    "question": {
+      "header": "Alias output",
+      "options": [
+        {
+          "description": "Render the supplied variable documentation and suppress the generated “alias of …” message for that documented alias.",
+          "label": "Custom docs only",
+          "recommended": true
+        },
+        {
+          "description": "Render the supplied variable documentation followed by the generated “alias of …” message, preserving the current Python 3.7+ convention.",
+          "label": "Custom docs plus alias",
+          "recommended": false
+        }
+      ],
+      "prompt": "When a type alias has assignment-following documentation, what should autodoc render?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Next-line strings only",
+    "open_material_decisions": [
+      "Whether “custom docs only” applies exclusively to assignment-following string documentation or to every source-derived variable documentation form, including preceding `#:` comments."
+    ],
+    "question": {
+      "header": "Doc syntax",
+      "options": [
+        {
+          "description": "Change only the reported assignment-following string syntax and preserve existing `#:` comment behavior.",
+          "label": "Next-line strings only",
+          "recommended": true
+        },
+        {
+          "description": "Suppress the alias message whenever source-derived variable documentation exists, including preceding `#:` comments.",
+          "label": "All variable docs",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which documented type aliases should suppress the generated “alias of …” message?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "Module and class aliases",
+    "open_material_decisions": [
+      "Whether suppression for assignment-following string documentation applies only to module-level type aliases, as reported, or also to class-level type aliases documented with the same syntax."
+    ],
+    "question": {
+      "header": "Alias scope",
+      "options": [
+        {
+          "description": "Apply the same observable behavior to documented type aliases at module and class scope.",
+          "label": "Module and class aliases",
+          "recommended": true
+        },
+        {
+          "description": "Limit the change to the module-level aliases demonstrated by the report.",
+          "label": "Module aliases only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should next-line string documentation suppress the generated “alias of …” message?"
+    },
+    "turn": 3
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A module-level `Dict` type alias followed immediately by a multiline string renders the string’s content and does not render “alias of …”.",
+          "A module-level `Union` type alias followed immediately by a multiline string renders the string’s content and does not render “alias of …”.",
+          "A module-level nested `Callable` type alias followed immediately by a multiline string renders the complete string content and does not render “alias of …”.",
+          "A class-level type alias using the same assignment-following string syntax renders its custom documentation without “alias of …”.",
+          "A type alias documented with a preceding `#:` comment continues to produce the repository’s existing output, including the generated alias message where currently applicable.",
+          "An undocumented type alias continues to render its existing generated alias description.",
+          "Non-alias variable documentation and ordinary object-docstring behavior remain unchanged."
+        ],
+        "confirmed_decisions": [
+          "For a type alias with an immediately following string expression used as variable documentation, autodoc renders that custom documentation and does not render the generated “alias of …” message.",
+          "The suppression behavior applies to documented type aliases at both module scope and class scope.",
+          "The change is limited to assignment-following string documentation; type aliases documented through preceding `#:` comments retain their existing output behavior.",
+          "Undocumented type aliases retain their existing generated “alias of …” output.",
+          "Multiline assignment-following documentation is preserved and rendered for aliases including `Dict`, `Union`, and nested `Callable` forms such as those in the reported reproducer."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Autodoc must render assignment-following string documentation as the sole descriptive content for documented type aliases, suppressing the generated “alias of …” message. This applies to type aliases at both module and class scope. Existing behavior for aliases documented with preceding `#:` comments remains unchanged."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The interview resolved all material behavioral decisions, and the audited repository evidence is sufficient to define an implementable contract without inventing behavior."
+    },
+    "turn": 4
+  }
+]

@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "For `DataArray([1.0, 1.0, 1.0]).weighted(DataArray([True, True, False])).mean()`, the scalar result is `1.0`, not `2.0`.",
+    "For the same boolean weights and fully valid data, `sum_of_weights()` returns the numeric value `2`, not boolean `True`.",
+    "Boolean weights containing only `False` values retain existing zero-total behavior: `sum_of_weights()` and `mean()` produce missing scalar results.",
+    "When data contains missing values, boolean weights associated with missing data are excluded from the denominator, matching the existing masked-weights reference calculation.",
+    "Existing focused weighted-mean and sum-of-weights tests using integer weights continue to pass unchanged.",
+    "The broader weighted-operation test suite passes, confirming no regression in dimension handling, `skipna` behavior, Dataset/DataArray dispatch, or non-boolean weights."
+  ],
+  "confirmed_decisions": [
+    "Boolean `DataArray` weights remain valid inputs; the constructor must not reject them.",
+    "Boolean weights have numeric indicator semantics: `True` contributes weight 1 and `False` contributes weight 0.",
+    "The production denominator calculation must perform numeric accumulation rather than boolean einsum semantics when both the validity mask and weights are boolean.",
+    "The fix belongs in the sum-of-weights path used by weighted mean, rather than changing the general behavior of `xarray.dot` or `duck_array_ops.einsum`.",
+    "Existing behavior for integer, floating-point, and other already-supported non-boolean weights must remain unchanged.",
+    "Missing data must continue to exclude the corresponding weight through the validity mask.",
+    "A zero numeric sum of weights must continue to yield a missing result through the existing `where` post-processing.",
+    "No new public API, dependency, or weights normalization step is required."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Fix weighted reductions so boolean weights are treated numerically (False as 0 and True as 1) when computing the sum of weights. In `Weighted._sum_of_weights`, prevent the boolean validity-mask/boolean-weights dot operation from producing a boolean denominator; ensure at least one operand is converted to an appropriate numeric dtype before `_reduce`. Preserve the existing handling of missing data, zero total weights, dimensions, alignment, and non-boolean weight dtypes. Add focused regression tests demonstrating that boolean weights produce the correct sum of weights and weighted mean, including the reported `[True, True, False]` case."
+}

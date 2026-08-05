@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "strip_accents_unicode('\\u00f1') returns 'n'.",
+    "strip_accents_unicode('n\\u0303') returns 'n'.",
+    "The composed and already-NFKD forms normalize to identical unaccented output.",
+    "CountVectorizer configured with strip_accents='unicode' produces the same unaccented token for composed and decomposed forms.",
+    "Existing feature-extraction text tests continue to pass.",
+    "The implementation changes only the Unicode accent-removal behavior needed to eliminate the already-NFKD early-return bug."
+  ],
+  "confirmed_decisions": [
+    "Remove the equality-based early return from strip_accents_unicode, or otherwise ensure it cannot bypass combining-character removal.",
+    "Continue using unicodedata.normalize('NFKD', s) as the normalization step.",
+    "Filter combining characters from the normalized string on every call, including when the original input is already NFKD-normalized.",
+    "Do not change strip_accents_ascii or the vectorizer preprocessing/analyzer routing.",
+    "Add a direct helper regression test using equivalent composed and decomposed accented text, including the reported decomposed n plus combining tilde case.",
+    "Add an end-to-end CountVectorizer regression test with strip_accents='unicode' showing that already-NFKD input yields unaccented tokens.",
+    "Retain the existing composed Latin, Arabic, mixed-text, and French analyzer expectations."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Fix Unicode accent stripping for input that is already NFKD-normalized. In strip_accents_unicode, normalize the input with NFKD and remove every code point for which unicodedata.combining returns nonzero regardless of whether normalization changed the string. Preserve the existing behavior for composed accented input and unaccented input. Add regression coverage proving that canonically equivalent composed and decomposed forms both produce the same unaccented result, directly through strip_accents_unicode and through CountVectorizer with strip_accents='unicode'."
+}

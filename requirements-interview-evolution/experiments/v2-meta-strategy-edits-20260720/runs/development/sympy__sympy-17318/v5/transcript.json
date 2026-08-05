@@ -1,0 +1,86 @@
+[
+  {
+    "answer": "Guard sqrtdenest (Recommended)",
+    "open_material_decisions": [
+      "Choose the compatibility boundary and implementation locus for the empty-surds case."
+    ],
+    "question": {
+      "header": "Fix boundary",
+      "options": [
+        {
+          "description": "Make _sqrt_match return no match before calling split_surds, fixing the reported IndexError while minimizing behavior changes outside sqrtdenest.",
+          "label": "Guard sqrtdenest (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Define general behavior for split_surds when no surds are found, affecting all current and future callers.",
+          "label": "Harden split_surds",
+          "recommended": false
+        },
+        {
+          "description": "Allow the implementer to choose either locus after targeted tests, constrained to preserve existing non-empty split_surds behavior and return the reported expression unchanged.",
+          "label": "Implementation delegation",
+          "recommended": false
+        }
+      ],
+      "prompt": "Where should the empty-surds condition be handled?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "{\"selection\":\"Approve (Recommended)\"}",
+    "open_material_decisions": [
+      "Approve or revise the proposed implementation contract."
+    ],
+    "question": {
+      "header": "Contract",
+      "options": [
+        {
+          "description": "Seal this contract as implementation-ready with the stated scope, compatibility boundary, tests, and residual risk.",
+          "label": "Approve (Recommended)",
+          "recommended": true
+        },
+        {
+          "description": "Reopen the required observable result or compatibility boundary before sealing the contract.",
+          "label": "Revise behavior",
+          "recommended": false
+        },
+        {
+          "description": "Keep the fix locus but change the required regression or verification scope before sealing.",
+          "label": "Revise tests",
+          "recommended": false
+        }
+      ],
+      "prompt": "Approve this contract: add an empty-surds guard in `_sqrt_match` before `split_surds`; for the reported input, `sqrtdenest` must not raise and must return the expanded unchanged expression `3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2`; add a regression test in `test_sqrtdenest.py` (including importing `I`); preserve existing behavior for valid non-empty `split_surds` inputs and existing denesting/unchanged-return tests; do not change `split_surds` or `_split_gcd`; acceptance requires the targeted regression and existing sqrtdenest tests to pass. Residual risk is limited to other `_sqrt_match` Add inputs with no recognized surd powers now producing no match instead of raising. Is this contract approved?"
+    },
+    "turn": 2
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A targeted regression asserts `sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2) == 3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2` and completes without `IndexError`.",
+          "The existing `sympy/simplify/tests/test_sqrtdenest.py` test suite passes.",
+          "No changes are made to `sympy/simplify/radsimp.py` implementations of `split_surds` or `_split_gcd`.",
+          "Existing valid denesting results and existing unchanged-return assertions continue to pass."
+        ],
+        "confirmed_decisions": [
+          "Handle the empty-surds condition in `_sqrt_match`, before calling `split_surds`.",
+          "Limit the compatibility boundary to sqrt denesting; do not define new general behavior for empty `split_surds` or `_split_gcd` calls.",
+          "The reported expression must be returned in its normal expanded unchanged form and must not raise.",
+          "Add the regression to `sympy/simplify/tests/test_sqrtdenest.py`, including the missing `I` import.",
+          "Preserve behavior for non-empty `split_surds` inputs and existing sqrtdenest denesting and unchanged-return cases.",
+          "Owner approved the complete contract without revisions."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "In `sympy/simplify/sqrtdenest.py`, add a guard in `_sqrt_match` so that an Add whose terms have rational squares but yields no coefficient-stripped `Pow` surds returns no match before invoking `split_surds`. For `sqrtdenest((3 - sqrt(2)*sqrt(4 + 3*I) + 3*I)/2)`, the function must not raise `IndexError` and must return the expanded unchanged expression `3/2 - sqrt(2)*sqrt(4 + 3*I)/2 + 3*I/2`. Add a regression test in `sympy/simplify/tests/test_sqrtdenest.py` and import `I` there. Do not modify `split_surds` or `_split_gcd`. Preserve existing behavior for valid non-empty `split_surds` inputs and all existing denesting and unchanged-return cases. The bounded residual risk is that other `_sqrt_match` Add inputs with no recognized surd powers will now produce no match instead of raising an exception."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The owner explicitly approved the proposed contract, resolving the only material decision: the empty-surds condition will be handled locally in `_sqrt_match`. The contract is implementable from the supplied repository evidence with no remaining material blockers."
+    },
+    "turn": 3
+  }
+]

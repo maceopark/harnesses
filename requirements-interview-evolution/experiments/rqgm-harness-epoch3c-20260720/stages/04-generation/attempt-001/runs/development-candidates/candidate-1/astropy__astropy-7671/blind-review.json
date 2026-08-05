@@ -1,0 +1,60 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/2",
+          "quoted_value": "Exclusive mode returns results according to strict greater-than ordering and does not reproduce the mixed-component `TypeError`."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/4",
+          "quoted_value": "Inclusive comparison continues to mean installed version greater than or equal to the requested version; exclusive comparison continues to mean strictly greater."
+        }
+      ],
+      "description": "Exclusive comparison readiness is not objectively testable from the contract as written. The check should name representative installed/requested versions and the expected boolean result, including equality to distinguish `>` from `>=`.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "An acceptance check states comparison semantics without specifying concrete exclusive-mode inputs and expected boolean outputs.",
+      "id": "FINDING-1",
+      "material": true,
+      "observable_signal": "The exclusive-mode check requires “strict greater-than ordering” but provides no equality, greater-than, or less-than example with an exact expected result."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/7",
+          "quoted_value": "`minversion` remains publicly available through `astropy.utils`."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/8",
+          "quoted_value": "Import-time NumPy compatibility checks and Astropy’s minimum-NumPy check must continue to receive boolean results from `minversion` for valid version strings."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/4/statement",
+          "quoted_value": "minversion is exported through astropy.utils because that package wildcard-imports the introspection module."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/5/statement",
+          "quoted_value": "NumPy compatibility flags invoke minversion with thresholds 1.14, 1.14.1, and 1.14.2 during module initialization."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/6/statement",
+          "quoted_value": "Astropy's import-time NumPy check calls minversion with the imported NumPy module and Astropy's configured minimum NumPy version."
+        }
+      ],
+      "description": "Readiness is incomplete because implementation could satisfy every listed acceptance check while accidentally removing the `astropy.utils` export or breaking the repository’s import-time NumPy checks. Both confirmed requirements need explicit checks.",
+      "failure_class": "synthesis-loss",
+      "general_cause": "Confirmed compatibility requirements were not translated into explicit acceptance checks.",
+      "id": "FINDING-2",
+      "material": true,
+      "observable_signal": "The contract confirms continued public export and safe import-time consumer behavior, but none of the acceptance checks explicitly verifies either requirement."
+    }
+  ],
+  "summary": "The contract captures the reported regression and major compatibility constraints, but it is not materially implementation-ready: exclusive-mode acceptance lacks concrete expected outputs, and two confirmed compatibility requirements—public export and import-time NumPy consumers—have no explicit acceptance coverage."
+}

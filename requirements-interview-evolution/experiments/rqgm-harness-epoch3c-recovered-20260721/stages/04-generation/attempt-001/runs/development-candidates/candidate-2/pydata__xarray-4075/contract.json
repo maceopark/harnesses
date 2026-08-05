@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "For a DataArray containing [1.0, 1.0, 1.0] with boolean weights [True, True, False], weighted mean returns 1.0.",
+    "For boolean weights, DataArray weighted sum_of_weights equals the numeric count of True weights associated with non-missing data values.",
+    "Dataset weighted mean and sum_of_weights apply the same boolean-as-0/1 semantics to their variables.",
+    "A False weight contributes nothing to the weighted denominator, while a True weight contributes one.",
+    "Boolean weights associated with missing data values are excluded from the denominator under the existing missing-data semantics.",
+    "An all-False boolean weighting preserves the existing public behavior for a zero total weight.",
+    "Existing weighted results for non-boolean weights remain unchanged."
+  ],
+  "confirmed_decisions": [
+    "The fix covers shared behavior for both DataArray and Dataset weighted APIs, not only the reported DataArray mean example.",
+    "Boolean weights have numeric 0/1 semantics: True is weight 1 and False is weight 0.",
+    "sum_of_weights returns the numeric sum of applicable boolean weights rather than a boolean reduction result.",
+    "weighted mean uses the corrected numeric sum of boolean weights as its denominator.",
+    "Weights corresponding to missing data values do not contribute to sum_of_weights, consistent with existing weighted behavior.",
+    "Existing behavior for non-boolean weights and zero total weights is preserved."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Boolean DataArray weights are supported as numeric indicator weights across the shared DataArray and Dataset weighted APIs: True contributes weight 1 and False contributes weight 0. Public sum-of-weights results must numerically total the applicable True weights, excluding weights corresponding to missing data values, and weighted means must use that numeric total as their denominator. Consequently, weighting [1.0, 1.0, 1.0] by [True, True, False] produces a mean of 1.0 rather than 2.0. Existing behavior for non-boolean weights remains unchanged, including missing-value handling and the treatment of a zero total weight."
+}

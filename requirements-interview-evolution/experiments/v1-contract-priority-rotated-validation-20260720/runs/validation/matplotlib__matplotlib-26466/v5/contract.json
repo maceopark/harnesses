@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "Construct an annotation with a NumPy array as `xy`, mutate the original array afterward, redraw, and verify that the annotation retains its construction-time annotated position.",
+    "For an annotation with `arrowprops`, mutate the original NumPy `xy` array after construction, redraw, and verify that the arrow endpoint remains at the construction-time position.",
+    "Construct an annotation with at least one built-in mutable two-value container as `xy`, mutate the original container afterward, and verify that the annotation remains unchanged.",
+    "Explicitly assign a new value to `ann.xy`, redraw, and verify that the annotation uses the new position.",
+    "Where supported by the retained `ann.xy` value, mutate through `ann.xy`, redraw, and verify that the annotation reflects that mutation.",
+    "Verify that `xytext` retains its existing behavior and is not newly copied by this change.",
+    "Run the relevant annotation/text regression tests and confirm existing annotation-position behavior remains passing."
+  ],
+  "confirmed_decisions": [
+    "Copy only `xy`; do not copy `xytext`.",
+    "Apply the snapshot behavior to all annotations, not only annotations with arrows.",
+    "Isolate all supported mutable two-value coordinate containers, including NumPy arrays and built-in mutable containers.",
+    "Preserve supported post-construction updates through `Annotation.xy`.",
+    "Use a type-preserving shallow snapshot rather than deep copying or coordinate normalization.",
+    "Implementation may select the smallest repository-consistent shallow-copy mechanism.",
+    "Bounded residual risk is accepted: unusual custom coordinate containers may have distinct copying semantics, but the implementation must not intentionally broaden into deep copying or normalization."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "At `Annotation` construction, take a type-preserving shallow snapshot of the caller-supplied `xy` for every annotation, whether or not `arrowprops` is provided. Leave `xytext` behavior unchanged. Later mutation of the original mutable `xy` container must not change the annotation, while explicit post-construction assignment to or mutation through `ann.xy` must continue to affect subsequent positioning and draws. Use the smallest repository-consistent shallow-copy mechanism; do not normalize coordinate types or introduce deep-copy semantics."
+}

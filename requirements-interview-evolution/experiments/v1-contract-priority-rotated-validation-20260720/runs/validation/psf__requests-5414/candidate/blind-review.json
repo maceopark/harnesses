@@ -1,0 +1,55 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/summary",
+          "quoted_value": "At base commit 39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e, change Requests so preparing a Python text URL whose parsed ASCII hostname begins with a dot—specifically including `http://.example.com`—raises `requests.exceptions.InvalidURL` with the exact message `URL has an invalid label.` before sending or adapter connection setup. The public `requests.get` path must exhibit the same preparation-time exception because it uses normal Session preparation. Add the minimum regression coverage proving that the reported text URL raises that exception and message during preparation; existing valid URL-preparation behavior must continue to pass the repository’s relevant tests. Scope is limited to leading-dot ASCII hostnames supplied as text URLs. Consecutive internal empty labels, trailing-dot hostnames, byte-string URLs, non-HTTP schemes, changes to urllib3/idna, and broader hostname validation are excluded and remain unchanged or at implementation discretion where this contract does not otherwise constrain them. The implementation mechanism and exact test placement are delegated to the implementer, provided the check occurs early enough to satisfy the preparation-time oracle and introduces no new dependencies. Compatibility is bounded to the repository’s declared urllib3 and idna ranges and supported test environments. Accepted residual risk: other ASCII empty-label forms may retain their existing downstream behavior because broader normalization or rejection was not authorized. This contract is authorized by the public request and expected result, audited repository evidence F1–F16, and the owner decisions `Leading dot only`, `Text URLs only`, and `Approve contract`."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/scope_summary",
+          "quoted_value": "Inspected base commit 39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e. URL preparation, exception definitions, adapter handling, and existing URL tests are directly relevant."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        }
+      ],
+      "description": "This creates an unsupported compatibility obligation whose concrete bounds cannot be derived or verified from the permitted audited evidence. Because the contract declares itself implementation-ready while relying on those absent bounds, compatibility verification is materially underspecified.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The contract asserts compatibility against dependency ranges that are not present in the audited evidence set.",
+      "id": "F-1",
+      "material": true,
+      "observable_signal": "The summary bounds compatibility to declared urllib3 and idna ranges, but the audited scope and accepted facts provide no dependency-version ranges."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/summary",
+          "quoted_value": "At base commit 39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e, change Requests so preparing a Python text URL whose parsed ASCII hostname begins with a dot—specifically including `http://.example.com`—raises `requests.exceptions.InvalidURL` with the exact message `URL has an invalid label.` before sending or adapter connection setup. The public `requests.get` path must exhibit the same preparation-time exception because it uses normal Session preparation. Add the minimum regression coverage proving that the reported text URL raises that exception and message during preparation; existing valid URL-preparation behavior must continue to pass the repository’s relevant tests. Scope is limited to leading-dot ASCII hostnames supplied as text URLs. Consecutive internal empty labels, trailing-dot hostnames, byte-string URLs, non-HTTP schemes, changes to urllib3/idna, and broader hostname validation are excluded and remain unchanged or at implementation discretion where this contract does not otherwise constrain them. The implementation mechanism and exact test placement are delegated to the implementer, provided the check occurs early enough to satisfy the preparation-time oracle and introduces no new dependencies. Compatibility is bounded to the repository’s declared urllib3 and idna ranges and supported test environments. Accepted residual risk: other ASCII empty-label forms may retain their existing downstream behavior because broader normalization or rejection was not authorized. This contract is authorized by the public request and expected result, audited repository evidence F1–F16, and the owner decisions `Leading dot only`, `Text URLs only`, and `Approve contract`."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/audit_summary",
+          "quoted_value": "Accepted 15 facts as directly supported by the cited files. Rejected F2 because it incorrectly characterizes the missing-scheme exception."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        }
+      ],
+      "description": "The implementation-ready declaration is grounded partly on evidence that the audit did not accept. The contract must remove the rejected fact from its authorization claim or identify only the accepted evidence before readiness can be trusted.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The contract represents the full F1–F16 range as accepted authorization despite the audit explicitly rejecting F2.",
+      "id": "F-2",
+      "material": true,
+      "observable_signal": "The authorization statement cites audited evidence F1–F16, while the audit says F2 was rejected."
+    }
+  ],
+  "summary": "The behavioral oracle is otherwise coherent, but the contract is not materially implementation-ready because it asserts an unaudited dependency compatibility boundary and incorrectly treats rejected fact F2 as accepted authorization."
+}

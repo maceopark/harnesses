@@ -1,0 +1,56 @@
+[
+  {
+    "answer": "Shared behavior",
+    "open_material_decisions": [
+      "Whether boolean-weight correctness is required only for weighted mean or for every public operation that exposes the shared sum-of-weights calculation."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Require correct numeric weight totals and means wherever the shared sum-of-weights behavior is observable, including DataArray and Dataset weighted operations.",
+          "label": "Shared behavior",
+          "recommended": true
+        },
+        {
+          "description": "Require only weighted mean results to be corrected; other weighted operations are outside scope.",
+          "label": "Mean only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which public behavior should the contract require for boolean weights?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "For data [1.0, 1.0, 1.0] and boolean weights [True, True, False], weighted mean returns 1.0.",
+          "For the same inputs, sum_of_weights returns the numeric value 2 rather than the boolean value True.",
+          "Boolean weights produce results equivalent to corresponding 0/1 numeric weights for weighted mean and sum_of_weights.",
+          "When data contain missing values, sum_of_weights includes only True weights associated with data values eligible under the existing missing-data behavior.",
+          "All-False boolean weights retain the existing zero-total behavior: sum_of_weights and weighted mean yield missing results.",
+          "Boolean-weight correctness holds for explicit dimension reductions and the default reduction over all applicable dimensions.",
+          "Dataset weighted mean and sum_of_weights apply the same boolean-weight semantics to each eligible variable.",
+          "Existing weighted behavior for integer and floating-point weights remains unchanged."
+        ],
+        "confirmed_decisions": [
+          "Boolean weights remain accepted rather than rejected.",
+          "True is treated as weight 1 and False as weight 0.",
+          "The correction applies wherever the shared sum-of-weights result is publicly observable, including weighted mean and sum_of_weights.",
+          "The corrected behavior applies to both DataArray and Dataset weighted operations.",
+          "Existing semantics for missing data, dimensional reductions, coordinate alignment, non-boolean weights, and zero total weight remain unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Boolean DataArray weights are supported as numeric indicator weights throughout the public weighted-reduction behavior that depends on the sum of weights. True contributes weight 1 and False contributes weight 0. The sum of weights is the numeric total of applicable True weights, excluding weights whose corresponding data values are missing under the existing missing-data semantics. Weighted means divide by that numeric total. This behavior applies to both DataArray and Dataset weighted operations, while preserving existing behavior for non-boolean weights and zero-total weights."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The reported expected result, audited repository evidence, and the confirmed shared-behavior scope resolve all material decisions without requiring implementation details to be invented."
+    },
+    "turn": 2
+  }
+]

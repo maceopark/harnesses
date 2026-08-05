@@ -1,0 +1,333 @@
+{
+  "role": "interviewer",
+  "prompt": "You are the Interviewer. Follow the supplied skill. Treat audited repository evidence as discoverable ground truth and never ask the Owner to repeat it. Ask one material structured question or complete when no open material decision remains. Report the current open material decisions explicitly.\nReturn only the JSON object required by the supplied output schema.\nINPUT:\n{\"audited_repository_evidence\":{\"audit_summary\":\"Reopened all cited files. Their SHA-256 hashes and repository HEAD match the supplied snapshot. Fourteen facts are directly supported; F1 and F9 contain unsupported overclaims. No conflicts were reported, so none required disposition.\",\"facts\":[{\"authority\":\"code\",\"claim\":\"Due dates are validated as exact YYYY-MM-DD calendar dates using date.fromisoformat and an ISO round trip; invalid or datetime-like values are rejected.\",\"evidence\":[{\"line_end\":83,\"line_start\":66,\"path\":\"todo_cli.py\",\"quoted_text\":\"def parse_due(value: str | None) -> str | None:\\n    \\\"\\\"\\\"Validate an exact ISO ``YYYY-MM-DD`` date, or ``None``.\\n\\n    Rejects datetime-like strings and invalid calendar dates by requiring a\\n    round-trip through :func:`datetime.date.fromisoformat` /\\n    :meth:`datetime.date.isoformat`.\\n    \\\"\\\"\\\"\\n    if value is None:\\n        return None\\n    if not isinstance(value, str):\\n        raise ValueError(f\\\"invalid date: {value!r}\\\")\\n    try:\\n        parsed = date.fromisoformat(value)\\n    except ValueError as exc:\\n        raise ValueError(f\\\"invalid date: {value!r}\\\") from exc\\n    if parsed.isoformat() != value:\\n        raise ValueError(f\\\"invalid date: {value!r}\\\")\\n    return value\",\"quoted_text_sha256\":\"ac20b48fc0179ef88c51c2247789aad5528f2e8ee7ca2b6c784d3f4bfe062b26\"}],\"id\":\"F2\"},{\"authority\":\"code\",\"claim\":\"The persisted task schema permits exactly id, title, done, due, and priority fields, so overdue is not currently stored as task state.\",\"evidence\":[{\"line_end\":127,\"line_start\":96,\"path\":\"todo_cli.py\",\"quoted_text\":\"def task_from_dict(raw: object) -> Task:\\n    if not isinstance(raw, dict):\\n        raise StoreError(\\\"task entry must be an object\\\")\\n\\n    allowed = {\\\"id\\\", \\\"title\\\", \\\"done\\\", \\\"due\\\", \\\"priority\\\"}\\n    extra = set(raw.keys()) - allowed\\n    if extra:\\n        raise StoreError(f\\\"unexpected task fields: {sorted(extra)}\\\")\\n\\n    task_id = raw.get(\\\"id\\\")\\n    if not isinstance(task_id, int) or isinstance(task_id, bool) or task_id <= 0:\\n        raise StoreError(f\\\"invalid task id: {task_id!r}\\\")\\n\\n    title = raw.get(\\\"title\\\")\\n    if not isinstance(title, str) or title.strip() == \\\"\\\":\\n        raise StoreError(f\\\"invalid task title: {title!r}\\\")\\n\\n    done = raw.get(\\\"done\\\", False)\\n    if not isinstance(done, bool):\\n        raise StoreError(f\\\"invalid task done flag: {done!r}\\\")\\n\\n    due_raw = raw.get(\\\"due\\\", None)\\n    if due_raw is not None and not isinstance(due_raw, str):\\n        raise StoreError(f\\\"invalid task due: {due_raw!r}\\\")\\n    try:\\n        due = parse_due(due_raw)\\n    except ValueError as exc:\\n        raise StoreError(str(exc)) from exc\\n\\n    priority = validate_priority(raw.get(\\\"priority\\\", DEFAULT_PRIORITY))\\n\\n    return Task(id=task_id, title=title, done=done, due=due, priority=priority)\",\"quoted_text_sha256\":\"c38f1dc3a4ba203331a85b3663b57938c464b0fc843341057089aceec2d138b5\"}],\"id\":\"F3\"},{\"authority\":\"code\",\"claim\":\"The existing pure filter_tasks operation accepts only optional priority and due filters. Both are exact-match filters and, when combined, are applied conjunctively. It does not currently consider completion state or the current date.\",\"evidence\":[{\"line_end\":276,\"line_start\":268,\"path\":\"todo_cli.py\",\"quoted_text\":\"def filter_tasks(\\n    tasks: list[Task], priority: str | None = None, due: str | None = None\\n) -> list[Task]:\\n    result = list(tasks)\\n    if priority is not None:\\n        result = [t for t in result if t.priority == priority]\\n    if due is not None:\\n        result = [t for t in result if t.due == due]\\n    return result\",\"quoted_text_sha256\":\"62622254c1d7000e5d65017d72aa2d8a34c250ef3a7a5bfcd73263a04052799a\"}],\"id\":\"F4\"},{\"authority\":\"code\",\"claim\":\"The list parser currently exposes only --priority and --due options; --overdue is not recognized.\",\"evidence\":[{\"line_end\":335,\"line_start\":309,\"path\":\"todo_cli.py\",\"quoted_text\":\"def build_parser() -> argparse.ArgumentParser:\\n    parser = argparse.ArgumentParser(prog=\\\"todo\\\", description=\\\"Simple todo CLI.\\\")\\n    subparsers = parser.add_subparsers(dest=\\\"command\\\", required=True)\\n\\n    add_p = subparsers.add_parser(\\\"add\\\", help=\\\"add a task\\\")\\n    add_p.add_argument(\\\"title\\\", help=\\\"task title\\\")\\n    add_p.add_argument(\\\"--due\\\", type=parse_due_arg, default=None, help=\\\"YYYY-MM-DD\\\")\\n    add_p.add_argument(\\n        \\\"--priority\\\",\\n        choices=tuple(PRIORITIES.keys()),\\n        default=DEFAULT_PRIORITY,\\n        help=\\\"task priority\\\",\\n    )\\n\\n    list_p = subparsers.add_parser(\\\"list\\\", help=\\\"list tasks\\\")\\n    list_p.add_argument(\\n        \\\"--priority\\\", choices=tuple(PRIORITIES.keys()), default=None\\n    )\\n    list_p.add_argument(\\\"--due\\\", type=parse_due_arg, default=None, help=\\\"YYYY-MM-DD\\\")\\n\\n    done_p = subparsers.add_parser(\\\"done\\\", help=\\\"mark a task done\\\")\\n    done_p.add_argument(\\\"id\\\", type=positive_int_arg, help=\\\"task id\\\")\\n\\n    rm_p = subparsers.add_parser(\\\"rm\\\", help=\\\"remove a task\\\")\\n    rm_p.add_argument(\\\"id\\\", type=positive_int_arg, help=\\\"task id\\\")\\n\\n    return parser\",\"quoted_text_sha256\":\"ef553e72f86a8c3ed66807280dbc0a2cbd1d245089fcce39b949f79938316e0a\"}],\"id\":\"F5\"},{\"authority\":\"code\",\"claim\":\"The list command loads the store, filters tasks, applies the established sort, prints each formatted row, and returns exit code 0 without saving the store.\",\"evidence\":[{\"line_end\":359,\"line_start\":338,\"path\":\"todo_cli.py\",\"quoted_text\":\"def _format_row(task: Task) -> str:\\n    status = \\\"[x]\\\" if task.done else \\\"[ ]\\\"\\n    due = task.due if task.due is not None else \\\"-\\\"\\n    return f\\\"{task.id}\\\\t{status}\\\\t{task.priority}\\\\t{due}\\\\t{task.title}\\\"\\n\\n\\ndef _cmd_add(args: argparse.Namespace) -> int:\\n    path = get_store_path()\\n    store = load_store(path)\\n    new_store, task = add_task(store, args.title, args.due, args.priority)\\n    save_store(new_store, path)\\n    print(f\\\"added {task.id}\\\")\\n    return EXIT_OK\\n\\n\\ndef _cmd_list(args: argparse.Namespace) -> int:\\n    path = get_store_path()\\n    store = load_store(path)\\n    tasks = filter_tasks(store.tasks, priority=args.priority, due=args.due)\\n    for task in sort_tasks(tasks):\\n        print(_format_row(task))\\n    return EXIT_OK\",\"quoted_text_sha256\":\"5c7b96f9898da112b426e08581dd1c94beae0011b146009ee1a5c979821e9a5e\"}],\"id\":\"F6\"},{\"authority\":\"code\",\"claim\":\"Existing list output includes both incomplete and completed tasks, displaying [ ] or [x], and preserves the row format id, status, priority, due-or-dash, and title.\",\"evidence\":[{\"line_end\":341,\"line_start\":338,\"path\":\"todo_cli.py\",\"quoted_text\":\"def _format_row(task: Task) -> str:\\n    status = \\\"[x]\\\" if task.done else \\\"[ ]\\\"\\n    due = task.due if task.due is not None else \\\"-\\\"\\n    return f\\\"{task.id}\\\\t{status}\\\\t{task.priority}\\\\t{due}\\\\t{task.title}\\\"\",\"quoted_text_sha256\":\"6c6c4a9adf3f01e0bf99c733302e2f1aeab83ddeb2aa40d5b77700c8ff2d8bdf\"}],\"id\":\"F7\"},{\"authority\":\"code\",\"claim\":\"The established list sort order is completion state first, then descending priority, ascending due date with undated tasks last, and ascending id.\",\"evidence\":[{\"line_end\":284,\"line_start\":279,\"path\":\"todo_cli.py\",\"quoted_text\":\"def sort_tasks(tasks: list[Task]) -> list[Task]:\\n    def key(task: Task) -> tuple[bool, int, date, int]:\\n        due_date = date.fromisoformat(task.due) if task.due is not None else date.max\\n        return (task.done, -PRIORITIES[task.priority], due_date, task.id)\\n\\n    return sorted(tasks, key=key)\",\"quoted_text_sha256\":\"f17bb60b5d9036693cd4b0ec48f7f794bc86400de03fcb8f2ece24ee37131627\"}],\"id\":\"F8\"},{\"authority\":\"test\",\"claim\":\"Tests lock exact-match priority and due filtering and their conjunctive combination.\",\"evidence\":[{\"line_end\":181,\"line_start\":156,\"path\":\"tests/test_todo.py\",\"quoted_text\":\"# --------------------------------------------------------------------------\\n# AC4 filters\\n# --------------------------------------------------------------------------\\ndef test_list_filter_priority(todo_file, capsys):\\n    todo_cli.main([\\\"add\\\", \\\"h\\\", \\\"--priority\\\", \\\"high\\\"])\\n    todo_cli.main([\\\"add\\\", \\\"l\\\", \\\"--priority\\\", \\\"low\\\"])\\n    capsys.readouterr()\\n    assert todo_cli.main([\\\"list\\\", \\\"--priority\\\", \\\"high\\\"]) == 0\\n    assert _list_ids(capsys) == [1]\\n\\n\\ndef test_list_filter_due(todo_file, capsys):\\n    todo_cli.main([\\\"add\\\", \\\"a\\\", \\\"--due\\\", \\\"2026-07-10\\\"])\\n    todo_cli.main([\\\"add\\\", \\\"b\\\", \\\"--due\\\", \\\"2026-07-11\\\"])\\n    capsys.readouterr()\\n    assert todo_cli.main([\\\"list\\\", \\\"--due\\\", \\\"2026-07-10\\\"]) == 0\\n    assert _list_ids(capsys) == [1]\\n\\n\\ndef test_list_filter_priority_and_due_combined(todo_file, capsys):\\n    todo_cli.main([\\\"add\\\", \\\"a\\\", \\\"--priority\\\", \\\"high\\\", \\\"--due\\\", \\\"2026-07-10\\\"])\\n    todo_cli.main([\\\"add\\\", \\\"b\\\", \\\"--priority\\\", \\\"high\\\", \\\"--due\\\", \\\"2026-07-11\\\"])\\n    todo_cli.main([\\\"add\\\", \\\"c\\\", \\\"--priority\\\", \\\"low\\\", \\\"--due\\\", \\\"2026-07-10\\\"])\\n    capsys.readouterr()\\n    assert todo_cli.main([\\\"list\\\", \\\"--priority\\\", \\\"high\\\", \\\"--due\\\", \\\"2026-07-10\\\"]) == 0\\n    assert _list_ids(capsys) == [1]\",\"quoted_text_sha256\":\"be44c1de437028a9a656e56f9835128ce8e4a8fe331bb5767ed7eb0ff40e870a\"}],\"id\":\"F10\"},{\"authority\":\"test\",\"claim\":\"Listing a missing store produces no stdout or stderr, returns 0, and does not create the store file.\",\"evidence\":[{\"line_end\":48,\"line_start\":43,\"path\":\"tests/test_todo.py\",\"quoted_text\":\"def test_missing_file_list_empty_exit0_no_create(todo_file, capsys):\\n    assert todo_cli.main([\\\"list\\\"]) == 0\\n    out = capsys.readouterr()\\n    assert out.out == \\\"\\\"\\n    assert out.err == \\\"\\\"\\n    assert not todo_file.exists()\",\"quoted_text_sha256\":\"c9dd732f8a6cf6f305d02cf78febe18195d11f003c09fadfd8c61ed001fb9bf7\"}],\"id\":\"F11\"},{\"authority\":\"documentation\",\"claim\":\"The documented list contract currently advertises only --priority and --due, says filters can be combined, requires empty results to print nothing and exit 0, and documents the existing post-filter sort order.\",\"evidence\":[{\"line_end\":81,\"line_start\":59,\"path\":\"README.md\",\"quoted_text\":\"### list\\n\\n```bash\\ntodo list [--priority {low,medium,high}] [--due YYYY-MM-DD]\\n```\\n\\n- Prints one row per task:\\n\\n  ```\\n  {id}\\\\t{[ ]|[x]}\\\\t{priority}\\\\t{due|-}\\\\t{title}\\n  ```\\n\\n  where the status is `[ ]` for incomplete and `[x]` for done, and the due\\n  column shows `-` when there is no due date.\\n- Filters (`--priority`, `--due`) are exact matches and can be combined.\\n- An empty list prints nothing and exits 0.\\n\\n**Default sort order** (applied after filtering):\\n\\n1. incomplete tasks before done tasks,\\n2. higher priority first (`high` > `medium` > `low`),\\n3. nearer due date first (tasks with no due date sort *after* any dated task),\\n4. lower id first as a deterministic tiebreaker.\",\"quoted_text_sha256\":\"a85e551dfd4e002b6df9bab97ed98eaaa99fcc010dc7aadf0c4ab20993288bc5\"}],\"id\":\"F12\"},{\"authority\":\"test\",\"claim\":\"Invalid list due-date input is expected to return usage exit code 2 rather than propagating SystemExit.\",\"evidence\":[{\"line_end\":223,\"line_start\":215,\"path\":\"tests/test_todo.py\",\"quoted_text\":\"def test_add_invalid_due_returns_2_no_systemexit_no_write(todo_file, capsys):\\n    assert todo_cli.main([\\\"add\\\", \\\"x\\\", \\\"--due\\\", \\\"2026-02-30\\\"]) == 2\\n    err = capsys.readouterr().err\\n    assert \\\"invalid date\\\" in err.lower() or \\\"2026-02-30\\\" in err\\n    assert not todo_file.exists()\\n\\n\\ndef test_list_invalid_due_returns_2_no_systemexit(todo_file):\\n    assert todo_cli.main([\\\"list\\\", \\\"--due\\\", \\\"2026-02-30\\\"]) == 2\",\"quoted_text_sha256\":\"57a35ae68aa7b4a003143ec648f08311f6b87131842a841f634a2fa6f687de87\"}],\"id\":\"F13\"},{\"authority\":\"code\",\"claim\":\"The CLI converts argparse SystemExit into return codes and maps storage and domain failures to exit codes 3 and 1 with stderr messages.\",\"evidence\":[{\"line_end\":410,\"line_start\":391,\"path\":\"todo_cli.py\",\"quoted_text\":\"def main(argv: list[str] | None = None) -> int:\\n    parser = build_parser()\\n    try:\\n        args = parser.parse_args(argv)\\n    except SystemExit as exc:\\n        if isinstance(exc.code, int):\\n            return exc.code\\n        if exc.code is None:\\n            return EXIT_OK\\n        return EXIT_USAGE\\n\\n    handler = _HANDLERS[args.command]\\n    try:\\n        return handler(args)\\n    except StoreError as exc:\\n        print(f\\\"error: {exc}\\\", file=sys.stderr)\\n        return EXIT_STORAGE\\n    except TodoError as exc:\\n        print(f\\\"error: {exc}\\\", file=sys.stderr)\\n        return EXIT_DOMAIN\",\"quoted_text_sha256\":\"e1f5bec1061465f588f6961cbd64f92154e2dc8613daef79f212d7ae81d69555\"}],\"id\":\"F14\"},{\"authority\":\"configuration\",\"claim\":\"The project has no runtime dependencies and requires Python 3.10 or newer.\",\"evidence\":[{\"line_end\":13,\"line_start\":5,\"path\":\"pyproject.toml\",\"quoted_text\":\"[project]\\nname = \\\"todo-cli-deep-interview\\\"\\nversion = \\\"0.1.0\\\"\\ndescription = \\\"A 4-command (add/list/done/rm) standard-library-only todo CLI.\\\"\\nrequires-python = \\\">=3.10\\\"\\ndependencies = []\\n\\n[project.optional-dependencies]\\ntest = [\\\"pytest\\\"]\",\"quoted_text_sha256\":\"5b87550b7b1eedd1ed6a15d09b13d2456d4ae4c38ac023adb52ecc750021cc6f\"}],\"id\":\"F15\"},{\"authority\":\"runtime-artifact\",\"claim\":\"The checked-in test report records 145 passing tests for the combined primary and red-team suites, with zero failures; this is a historical artifact rather than a fresh execution for the requested change.\",\"evidence\":[{\"line_end\":7,\"line_start\":5,\"path\":\"artifacts/redteam-report.json\",\"quoted_text\":\"  \\\"invocation\\\": \\\"python -m pytest tests/test_todo.py tests/test_redteam.py\\\",\\n  \\\"totalPassed\\\": 145,\\n  \\\"totalFailed\\\": 0,\",\"quoted_text_sha256\":\"0456eed07b63971ca6fbd121c6be7bf6cd7a217501f11d96e89b2facba21cc3b\"},{\"line_end\":47,\"line_start\":47,\"path\":\"artifacts/redteam-report.json\",\"quoted_text\":\"  \\\"rawSummaryLine\\\": \\\"145 passed in 0.29s\\\"\",\"quoted_text_sha256\":\"6ac4df4127263d10b2e572ebd54e08ce72355f4673bd9ed093094b8a536ed6ea\"}],\"id\":\"F16\"}],\"repository_snapshot\":{\"cited_file_sha256\":{\"README.md\":\"fa0dc77f0025340f0a8109bcc27aab2185a1bb225feaccb4b998dd4c88f78307\",\"artifacts/redteam-report.json\":\"a78f8b9c69231b82c34e3301ba2df5be6a6d11e79254975afa02c66e792b3899\",\"pyproject.toml\":\"75cbfd0b6b9b8d3c42429bc9f4784dea7c008e6991578a1788ea091119d1f92d\",\"tests/test_todo.py\":\"6a388c86d1f961c8b6e6e814d2815b20d10225aa252998c71930a18abad92375\",\"todo_cli.py\":\"aab51fc04d2c069ef749a7c8667212c18419144559a21285af5da497b8901567\"},\"git_head\":\"2753f9dc12efb3cadfea9aa9751289fd397d749e\",\"git_status_sha256\":\"108363946fc2de95ffa696432807881ca6089c5b705c5bdefa1a8aabfe156add\"},\"resolved_conflicts\":[],\"scope_summary\":\"The repository is a single-module, standard-library Python todo CLI. The requested change is localized primarily to list-command argument parsing, task filtering, documentation, and regression tests. No existing --overdue option or overdue-domain definition is present.\",\"unknowns\":[\"The repository does not define whether a task due today is overdue or only dates strictly before today are overdue.\",\"The repository does not define whether completed tasks with past due dates should be included by --overdue.\",\"The repository does not specify whether --overdue may be combined with --due and, if so, what that combination means; combination with --priority is likewise undocumented for the new filter.\",\"The repository does not define the clock or timezone used to determine the current date, nor a date-injection mechanism for deterministic tests.\",\"The public request names --overdue but does not explicitly state whether it is a boolean flag or accepts a value.\"],\"unresolved_conflicts\":[]},\"force_close\":false,\"public_request\":\"Preserve all existing behavior while adding an optional --overdue filter to the todo list command.\",\"skill_md\":\"---\\nname: clarify-requirements\\ndescription: Turn ambiguous product, software, workflow, or change requests into an agreed and testable contract before planning or implementation. Use when requirements are vague, behavior or scope has multiple plausible interpretations, acceptance criteria are missing, consequential defaults would otherwise be invented, or the user asks for an interview, clarification, specification, PRD, or implementation handoff.\\n---\\n\\n# Clarify Requirements\\n\\nResolve only ambiguity that can materially change the result. Do not implement unless the user authorizes implementation. Treat an explicit request to implement, build, fix, or change the system as implementation authorization; do not reopen authorization as a separate decision unless the user made it conditional or later withdrew it.\\n\\n## Build the decision map\\n\\n1. Restate the requested outcome in one sentence.\\n2. Inspect user-authorized context for answers that are safely discoverable. Do not ask the user to repeat facts already established.\\n3. List plausible interpretations privately. Treat a choice as material when it changes observable behavior, scope, safety, compatibility, cost, reversibility, or acceptance.\\n4. Track each material decision as `confirmed`, `inferred`, or `open`, with its evidence. Never silently default an open material decision.\\n\\nConsider these lenses only when relevant: actors and permissions; inputs and outputs; happy path; edge, failure, and misuse behavior; data lifecycle; compatibility; operational constraints; rollout and rollback; acceptance evidence.\\n\\n## Interview\\n\\nAsk the highest-leverage open question first. Ask one bounded decision per turn unless the user explicitly prefers batching.\\n\\nUse an adaptive interview budget. Do not set or optimize for a predetermined number of questions or turns. After every answer, recompute the set of material blockers from the decision map, repository evidence, acceptance needs, and any contradictions exposed so far. Continue while at least one material blocker remains. Prefer the next question that resolves the most consequential blocker or unlocks several dependent decisions. Prioritize decisions required to make critical guarantees executable and internally consistent before secondary presentation preferences. A runtime safety ceiling is an emergency runaway guard, never an interview budget or a reason to claim readiness.\\n\\nAs the conversation grows, periodically consolidate confirmed decisions and remaining blockers so context size does not silently become the stopping condition. Reserve enough context to synthesize and challenge the final contract. If an operational limit is reached while a material blocker remains, return a non-ready contract that preserves confirmed decisions and names every remaining blocker; never compress an unresolved material choice into an assumption merely to finish.\\n\\nUse the runtime's structured question UI whenever it is available. Put the decision in a short header, state the material consequence in the prompt, provide two or three mutually exclusive choices, mark the recommended choice, give each choice a one-sentence tradeoff, and preserve a free-form answer path. Fall back to the same structure in plain text only when the runtime has no structured question mechanism.\\n\\nFor each question:\\n\\n- explain in one short sentence why the answer changes the result;\\n- offer two or three concrete, mutually exclusive options when the space is known;\\n- recommend one option and state its tradeoff when evidence supports a recommendation;\\n- accept a free-form answer;\\n- update the decision map before selecting the next question.\\n\\nDo not ask about low-impact preferences one at a time. When several low-risk choices are conventional, reversible, and do not alter the core outcome or safety posture, collect two to five recommended defaults into one structured approval question. Show the bundle explicitly, let the user approve all defaults or identify exceptions, and record the approved items separately. Never bundle a destructive, security-sensitive, irreversible, costly, or scope-changing decision.\\n\\nDo not convert examples into requirements, infer permission for destructive behavior, or widen the requested scope. If the user cannot decide, record an explicit assumption only after explaining its consequence and obtaining approval.\\n\\n## Challenge the emerging contract\\n\\nBefore closing, assess implementation readiness from multiple relevant angles: representative happy path, edge case, failure case, misuse case, data lifecycle, compatibility, operability, and acceptance evidence. Reopen only a material decision exposed by this challenge.\\n\\nPerform a coherence pass across interacting decisions. Every specified interruption, cancellation, revocation, retry, recovery, and resume action must map to an authoritative state, outcome, transition reason, and recovery path. If one decision introduces a cause or transition absent from the state model, or requires reviving work previously declared terminal or cancelled, keep the contract open until the mismatch is resolved. Do not invent a nearby but false state or cause during synthesis.\\n\\n## Make acceptance executable\\n\\nWrite acceptance checks as directly runnable or mechanically implementable scenarios, not instructions to define tests later. Each check must identify:\\n\\n- the fixture and relevant initial state;\\n- the action, input, or injected failure;\\n- the exact observable result, including persisted state and externally visible effects;\\n- prohibited effects or invariants that must remain unchanged.\\n\\nFor policies with enumerated outcomes, boundaries, or retries, provide a table or explicit scenario per equivalence class and boundary. For cross-component guarantees, test the interaction rather than each component in isolation—for example commit versus rollback, send versus lost acknowledgement, crash recovery versus stale fencing, cancellation versus later resumption, and replay versus deduplication expiry.\\n\\nKeep superficially similar cases distinct when their identity or boundary is material, such as two byte-identical events with different IDs, a one-byte payload mutation, replay inside versus outside a deduplication window, retries before versus after configuration changes, and missing versus invalid authentication metadata. Never use phrases such as `define tests`, `test later`, or `after decisions are confirmed` in a sealed contract. If an exact expected result cannot yet be written, the underlying decision remains a material blocker.\\n\\n## Close\\n\\nStop when every material decision is confirmed or explicitly approved as an assumption and the acceptance criteria can distinguish success from failure. More questions are not evidence of a better interview.\\n\\nDo not stop merely because the interview is long, a nominal turn target has been reached, or most decisions are resolved. Seal the contract only when the material-blocker set is empty. Conversely, do not continue asking questions after that set is empty.\\n\\nReturn a compact contract containing:\\n\\n- outcome and success measure;\\n- in-scope and out-of-scope behavior;\\n- confirmed decisions and approved assumptions;\\n- failure, edge, and misuse behavior where relevant;\\n- constraints and executable acceptance checks;\\n- unresolved non-blocking items;\\n- whether implementation is authorized.\\n\\nUse [references/contract-template.md](references/contract-template.md) when a durable prose contract is requested.\\n\\nWhen the contract is implementation-ready, create `build-contract.json`. Make `implementation_agent_directive` the first top-level field. In that directive, require the implementing agent to append one JSON object per line to `decision.jsonl` before making any implementation decision forced by a specification gap. Require at least `timestamp`, `gap`, `options_considered`, `choice`, `reason`, `observable_impact`, and `reversibility`. The agent must not use the log to override confirmed requirements, and must stop for owner input instead of choosing when the gap is destructive, security-sensitive, irreversible, costly, or scope-changing.\\n\\nInclude requirements, non-goals, confirmed decisions, approved defaults, executable acceptance checks, remaining non-blocking gaps, evidence provenance, and implementation authorization in the JSON contract. Validate the JSON before presenting it.\\n\\nMake the best evidence-based readiness judgment; do not ask the user to approve whether the specification is sufficient. If a material decision remains open, continue the interview. Otherwise seal the contract and allow corrections without adding an approval gate. Label anything not confirmed by the user or authoritative evidence. Preserve the user's terminology and distinguish `must`, `should`, and `could`.\\n\\nAfter the interview is complete, print an implementation-start prompt that points to the contract path, declares it authoritative, repeats the `decision.jsonl` rule, forbids widening scope, names the required verification, and states whether implementation is authorized. If the original request explicitly included implementation, mark it authorized and proceed to the implementation handoff or active implementation workflow without asking again.\\n\",\"transcript\":[{\"answer\":\"Incomplete, before today\",\"open_material_decisions\":[\"CLI shape: whether --overdue is a boolean flag or accepts a value.\",\"Filter composition: whether --overdue combines conjunctively with --priority and --due, especially the meaning of --overdue plus an exact --due date.\",\"Overdue eligibility: whether due today qualifies and whether completed past-due tasks qualify.\",\"Reference date: which clock/timezone determines today and how tests inject or control it.\"],\"question\":{\"header\":\"Overdue rule\",\"options\":[{\"description\":\"Include only unfinished tasks whose due date is strictly earlier than today; due-today, completed, and undated tasks are excluded.\",\"label\":\"Incomplete, before today\",\"recommended\":true},{\"description\":\"Include completed and unfinished tasks whose due date is strictly earlier than today; due-today and undated tasks are excluded.\",\"label\":\"All before today\",\"recommended\":false},{\"description\":\"Include only unfinished tasks whose due date is today or earlier; completed and undated tasks are excluded.\",\"label\":\"Incomplete, due by today\",\"recommended\":false}],\"prompt\":\"Which tasks should `todo list --overdue` include? This determines the filter’s core observable behavior.\"},\"turn\":1},{\"answer\":\"Combine with both\",\"open_material_decisions\":[\"CLI shape: whether --overdue is a boolean flag or accepts a value.\",\"Filter composition: whether --overdue combines conjunctively with --priority and --due, especially the meaning of --overdue plus an exact --due date.\",\"Reference date: which clock/timezone determines today and how tests inject or control it.\"],\"question\":{\"header\":\"Combining\",\"options\":[{\"description\":\"Apply all supplied filters conjunctively; `--due DATE --overdue` matches only when that exact date is before today and the task is incomplete.\",\"label\":\"Combine with both\",\"recommended\":true},{\"description\":\"Allow `--overdue` with `--priority`, but reject its use with `--due` as a usage error.\",\"label\":\"Priority only\",\"recommended\":false},{\"description\":\"Reject `--overdue` whenever either existing filter is also supplied.\",\"label\":\"Use alone\",\"recommended\":false}],\"prompt\":\"How should `--overdue` interact with the existing `--priority` and `--due` filters?\"},\"turn\":2}],\"turn\":3}",
+  "prompt_sha256": "90477dba997eada33677bf921c26b2a5c26a026c6f21dee29c6ce21c84abceeb",
+  "input": {
+    "skill_md": "---\nname: clarify-requirements\ndescription: Turn ambiguous product, software, workflow, or change requests into an agreed and testable contract before planning or implementation. Use when requirements are vague, behavior or scope has multiple plausible interpretations, acceptance criteria are missing, consequential defaults would otherwise be invented, or the user asks for an interview, clarification, specification, PRD, or implementation handoff.\n---\n\n# Clarify Requirements\n\nResolve only ambiguity that can materially change the result. Do not implement unless the user authorizes implementation. Treat an explicit request to implement, build, fix, or change the system as implementation authorization; do not reopen authorization as a separate decision unless the user made it conditional or later withdrew it.\n\n## Build the decision map\n\n1. Restate the requested outcome in one sentence.\n2. Inspect user-authorized context for answers that are safely discoverable. Do not ask the user to repeat facts already established.\n3. List plausible interpretations privately. Treat a choice as material when it changes observable behavior, scope, safety, compatibility, cost, reversibility, or acceptance.\n4. Track each material decision as `confirmed`, `inferred`, or `open`, with its evidence. Never silently default an open material decision.\n\nConsider these lenses only when relevant: actors and permissions; inputs and outputs; happy path; edge, failure, and misuse behavior; data lifecycle; compatibility; operational constraints; rollout and rollback; acceptance evidence.\n\n## Interview\n\nAsk the highest-leverage open question first. Ask one bounded decision per turn unless the user explicitly prefers batching.\n\nUse an adaptive interview budget. Do not set or optimize for a predetermined number of questions or turns. After every answer, recompute the set of material blockers from the decision map, repository evidence, acceptance needs, and any contradictions exposed so far. Continue while at least one material blocker remains. Prefer the next question that resolves the most consequential blocker or unlocks several dependent decisions. Prioritize decisions required to make critical guarantees executable and internally consistent before secondary presentation preferences. A runtime safety ceiling is an emergency runaway guard, never an interview budget or a reason to claim readiness.\n\nAs the conversation grows, periodically consolidate confirmed decisions and remaining blockers so context size does not silently become the stopping condition. Reserve enough context to synthesize and challenge the final contract. If an operational limit is reached while a material blocker remains, return a non-ready contract that preserves confirmed decisions and names every remaining blocker; never compress an unresolved material choice into an assumption merely to finish.\n\nUse the runtime's structured question UI whenever it is available. Put the decision in a short header, state the material consequence in the prompt, provide two or three mutually exclusive choices, mark the recommended choice, give each choice a one-sentence tradeoff, and preserve a free-form answer path. Fall back to the same structure in plain text only when the runtime has no structured question mechanism.\n\nFor each question:\n\n- explain in one short sentence why the answer changes the result;\n- offer two or three concrete, mutually exclusive options when the space is known;\n- recommend one option and state its tradeoff when evidence supports a recommendation;\n- accept a free-form answer;\n- update the decision map before selecting the next question.\n\nDo not ask about low-impact preferences one at a time. When several low-risk choices are conventional, reversible, and do not alter the core outcome or safety posture, collect two to five recommended defaults into one structured approval question. Show the bundle explicitly, let the user approve all defaults or identify exceptions, and record the approved items separately. Never bundle a destructive, security-sensitive, irreversible, costly, or scope-changing decision.\n\nDo not convert examples into requirements, infer permission for destructive behavior, or widen the requested scope. If the user cannot decide, record an explicit assumption only after explaining its consequence and obtaining approval.\n\n## Challenge the emerging contract\n\nBefore closing, assess implementation readiness from multiple relevant angles: representative happy path, edge case, failure case, misuse case, data lifecycle, compatibility, operability, and acceptance evidence. Reopen only a material decision exposed by this challenge.\n\nPerform a coherence pass across interacting decisions. Every specified interruption, cancellation, revocation, retry, recovery, and resume action must map to an authoritative state, outcome, transition reason, and recovery path. If one decision introduces a cause or transition absent from the state model, or requires reviving work previously declared terminal or cancelled, keep the contract open until the mismatch is resolved. Do not invent a nearby but false state or cause during synthesis.\n\n## Make acceptance executable\n\nWrite acceptance checks as directly runnable or mechanically implementable scenarios, not instructions to define tests later. Each check must identify:\n\n- the fixture and relevant initial state;\n- the action, input, or injected failure;\n- the exact observable result, including persisted state and externally visible effects;\n- prohibited effects or invariants that must remain unchanged.\n\nFor policies with enumerated outcomes, boundaries, or retries, provide a table or explicit scenario per equivalence class and boundary. For cross-component guarantees, test the interaction rather than each component in isolation—for example commit versus rollback, send versus lost acknowledgement, crash recovery versus stale fencing, cancellation versus later resumption, and replay versus deduplication expiry.\n\nKeep superficially similar cases distinct when their identity or boundary is material, such as two byte-identical events with different IDs, a one-byte payload mutation, replay inside versus outside a deduplication window, retries before versus after configuration changes, and missing versus invalid authentication metadata. Never use phrases such as `define tests`, `test later`, or `after decisions are confirmed` in a sealed contract. If an exact expected result cannot yet be written, the underlying decision remains a material blocker.\n\n## Close\n\nStop when every material decision is confirmed or explicitly approved as an assumption and the acceptance criteria can distinguish success from failure. More questions are not evidence of a better interview.\n\nDo not stop merely because the interview is long, a nominal turn target has been reached, or most decisions are resolved. Seal the contract only when the material-blocker set is empty. Conversely, do not continue asking questions after that set is empty.\n\nReturn a compact contract containing:\n\n- outcome and success measure;\n- in-scope and out-of-scope behavior;\n- confirmed decisions and approved assumptions;\n- failure, edge, and misuse behavior where relevant;\n- constraints and executable acceptance checks;\n- unresolved non-blocking items;\n- whether implementation is authorized.\n\nUse [references/contract-template.md](references/contract-template.md) when a durable prose contract is requested.\n\nWhen the contract is implementation-ready, create `build-contract.json`. Make `implementation_agent_directive` the first top-level field. In that directive, require the implementing agent to append one JSON object per line to `decision.jsonl` before making any implementation decision forced by a specification gap. Require at least `timestamp`, `gap`, `options_considered`, `choice`, `reason`, `observable_impact`, and `reversibility`. The agent must not use the log to override confirmed requirements, and must stop for owner input instead of choosing when the gap is destructive, security-sensitive, irreversible, costly, or scope-changing.\n\nInclude requirements, non-goals, confirmed decisions, approved defaults, executable acceptance checks, remaining non-blocking gaps, evidence provenance, and implementation authorization in the JSON contract. Validate the JSON before presenting it.\n\nMake the best evidence-based readiness judgment; do not ask the user to approve whether the specification is sufficient. If a material decision remains open, continue the interview. Otherwise seal the contract and allow corrections without adding an approval gate. Label anything not confirmed by the user or authoritative evidence. Preserve the user's terminology and distinguish `must`, `should`, and `could`.\n\nAfter the interview is complete, print an implementation-start prompt that points to the contract path, declares it authoritative, repeats the `decision.jsonl` rule, forbids widening scope, names the required verification, and states whether implementation is authorized. If the original request explicitly included implementation, mark it authorized and proceed to the implementation handoff or active implementation workflow without asking again.\n",
+    "public_request": "Preserve all existing behavior while adding an optional --overdue filter to the todo list command.",
+    "audited_repository_evidence": {
+      "scope_summary": "The repository is a single-module, standard-library Python todo CLI. The requested change is localized primarily to list-command argument parsing, task filtering, documentation, and regression tests. No existing --overdue option or overdue-domain definition is present.",
+      "facts": [
+        {
+          "id": "F2",
+          "claim": "Due dates are validated as exact YYYY-MM-DD calendar dates using date.fromisoformat and an ISO round trip; invalid or datetime-like values are rejected.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "todo_cli.py",
+              "line_start": 66,
+              "line_end": 83,
+              "quoted_text": "def parse_due(value: str | None) -> str | None:\n    \"\"\"Validate an exact ISO ``YYYY-MM-DD`` date, or ``None``.\n\n    Rejects datetime-like strings and invalid calendar dates by requiring a\n    round-trip through :func:`datetime.date.fromisoformat` /\n    :meth:`datetime.date.isoformat`.\n    \"\"\"\n    if value is None:\n        return None\n    if not isinstance(value, str):\n        raise ValueError(f\"invalid date: {value!r}\")\n    try:\n        parsed = date.fromisoformat(value)\n    except ValueError as exc:\n        raise ValueError(f\"invalid date: {value!r}\") from exc\n    if parsed.isoformat() != value:\n        raise ValueError(f\"invalid date: {value!r}\")\n    return value",
+              "quoted_text_sha256": "ac20b48fc0179ef88c51c2247789aad5528f2e8ee7ca2b6c784d3f4bfe062b26"
+            }
+          ]
+        },
+        {
+          "id": "F3",
+          "claim": "The persisted task schema permits exactly id, title, done, due, and priority fields, so overdue is not currently stored as task state.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "todo_cli.py",
+              "line_start": 96,
+              "line_end": 127,
+              "quoted_text": "def task_from_dict(raw: object) -> Task:\n    if not isinstance(raw, dict):\n        raise StoreError(\"task entry must be an object\")\n\n    allowed = {\"id\", \"title\", \"done\", \"due\", \"priority\"}\n    extra = set(raw.keys()) - allowed\n    if extra:\n        raise StoreError(f\"unexpected task fields: {sorted(extra)}\")\n\n    task_id = raw.get(\"id\")\n    if not isinstance(task_id, int) or isinstance(task_id, bool) or task_id <= 0:\n        raise StoreError(f\"invalid task id: {task_id!r}\")\n\n    title = raw.get(\"title\")\n    if not isinstance(title, str) or title.strip() == \"\":\n        raise StoreError(f\"invalid task title: {title!r}\")\n\n    done = raw.get(\"done\", False)\n    if not isinstance(done, bool):\n        raise StoreError(f\"invalid task done flag: {done!r}\")\n\n    due_raw = raw.get(\"due\", None)\n    if due_raw is not None and not isinstance(due_raw, str):\n        raise StoreError(f\"invalid task due: {due_raw!r}\")\n    try:\n        due = parse_due(due_raw)\n    except ValueError as exc:\n        raise StoreError(str(exc)) from exc\n\n    priority = validate_priority(raw.get(\"priority\", DEFAULT_PRIORITY))\n\n    return Task(id=task_id, title=title, done=done, due=due, priority=priority)",
+              "quoted_text_sha256": "c38f1dc3a4ba203331a85b3663b57938c464b0fc843341057089aceec2d138b5"
+            }
+          ]
+        },
+        {
+          "id": "F4",
+          "claim": "The existing pure filter_tasks operation accepts only optional priority and due filters. Both are exact-match filters and, when combined, are applied conjunctively. It does not currently consider completion state or the current date.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "todo_cli.py",
+              "line_start": 268,
+              "line_end": 276,
+              "quoted_text": "def filter_tasks(\n    tasks: list[Task], priority: str | None = None, due: str | None = None\n) -> list[Task]:\n    result = list(tasks)\n    if priority is not None:\n        result = [t for t in result if t.priority == priority]\n    if due is not None:\n        result = [t for t in result if t.due == due]\n    return result",
+              "quoted_text_sha256": "62622254c1d7000e5d65017d72aa2d8a34c250ef3a7a5bfcd73263a04052799a"
+            }
+          ]
+        },
+        {
+          "id": "F5",
+          "claim": "The list parser currently exposes only --priority and --due options; --overdue is not recognized.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "todo_cli.py",
+              "line_start": 309,
+              "line_end": 335,
+              "quoted_text": "def build_parser() -> argparse.ArgumentParser:\n    parser = argparse.ArgumentParser(prog=\"todo\", description=\"Simple todo CLI.\")\n    subparsers = parser.add_subparsers(dest=\"command\", required=True)\n\n    add_p = subparsers.add_parser(\"add\", help=\"add a task\")\n    add_p.add_argument(\"title\", help=\"task title\")\n    add_p.add_argument(\"--due\", type=parse_due_arg, default=None, help=\"YYYY-MM-DD\")\n    add_p.add_argument(\n        \"--priority\",\n        choices=tuple(PRIORITIES.keys()),\n        default=DEFAULT_PRIORITY,\n        help=\"task priority\",\n    )\n\n    list_p = subparsers.add_parser(\"list\", help=\"list tasks\")\n    list_p.add_argument(\n        \"--priority\", choices=tuple(PRIORITIES.keys()), default=None\n    )\n    list_p.add_argument(\"--due\", type=parse_due_arg, default=None, help=\"YYYY-MM-DD\")\n\n    done_p = subparsers.add_parser(\"done\", help=\"mark a task done\")\n    done_p.add_argument(\"id\", type=positive_int_arg, help=\"task id\")\n\n    rm_p = subparsers.add_parser(\"rm\", help=\"remove a task\")\n    rm_p.add_argument(\"id\", type=positive_int_arg, help=\"task id\")\n\n    return parser",
+              "quoted_text_sha256": "ef553e72f86a8c3ed66807280dbc0a2cbd1d245089fcce39b949f79938316e0a"
+            }
+          ]
+        },
+        {
+          "id": "F6",
+          "claim": "The list command loads the store, filters tasks, applies the established sort, prints each formatted row, and returns exit code 0 without saving the store.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "todo_cli.py",
+              "line_start": 338,
+              "line_end": 359,
+              "quoted_text": "def _format_row(task: Task) -> str:\n    status = \"[x]\" if task.done else \"[ ]\"\n    due = task.due if task.due is not None else \"-\"\n    return f\"{task.id}\\t{status}\\t{task.priority}\\t{due}\\t{task.title}\"\n\n\ndef _cmd_add(args: argparse.Namespace) -> int:\n    path = get_store_path()\n    store = load_store(path)\n    new_store, task = add_task(store, args.title, args.due, args.priority)\n    save_store(new_store, path)\n    print(f\"added {task.id}\")\n    return EXIT_OK\n\n\ndef _cmd_list(args: argparse.Namespace) -> int:\n    path = get_store_path()\n    store = load_store(path)\n    tasks = filter_tasks(store.tasks, priority=args.priority, due=args.due)\n    for task in sort_tasks(tasks):\n        print(_format_row(task))\n    return EXIT_OK",
+              "quoted_text_sha256": "5c7b96f9898da112b426e08581dd1c94beae0011b146009ee1a5c979821e9a5e"
+            }
+          ]
+        },
+        {
+          "id": "F7",
+          "claim": "Existing list output includes both incomplete and completed tasks, displaying [ ] or [x], and preserves the row format id, status, priority, due-or-dash, and title.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "todo_cli.py",
+              "line_start": 338,
+              "line_end": 341,
+              "quoted_text": "def _format_row(task: Task) -> str:\n    status = \"[x]\" if task.done else \"[ ]\"\n    due = task.due if task.due is not None else \"-\"\n    return f\"{task.id}\\t{status}\\t{task.priority}\\t{due}\\t{task.title}\"",
+              "quoted_text_sha256": "6c6c4a9adf3f01e0bf99c733302e2f1aeab83ddeb2aa40d5b77700c8ff2d8bdf"
+            }
+          ]
+        },
+        {
+          "id": "F8",
+          "claim": "The established list sort order is completion state first, then descending priority, ascending due date with undated tasks last, and ascending id.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "todo_cli.py",
+              "line_start": 279,
+              "line_end": 284,
+              "quoted_text": "def sort_tasks(tasks: list[Task]) -> list[Task]:\n    def key(task: Task) -> tuple[bool, int, date, int]:\n        due_date = date.fromisoformat(task.due) if task.due is not None else date.max\n        return (task.done, -PRIORITIES[task.priority], due_date, task.id)\n\n    return sorted(tasks, key=key)",
+              "quoted_text_sha256": "f17bb60b5d9036693cd4b0ec48f7f794bc86400de03fcb8f2ece24ee37131627"
+            }
+          ]
+        },
+        {
+          "id": "F10",
+          "claim": "Tests lock exact-match priority and due filtering and their conjunctive combination.",
+          "authority": "test",
+          "evidence": [
+            {
+              "path": "tests/test_todo.py",
+              "line_start": 156,
+              "line_end": 181,
+              "quoted_text": "# --------------------------------------------------------------------------\n# AC4 filters\n# --------------------------------------------------------------------------\ndef test_list_filter_priority(todo_file, capsys):\n    todo_cli.main([\"add\", \"h\", \"--priority\", \"high\"])\n    todo_cli.main([\"add\", \"l\", \"--priority\", \"low\"])\n    capsys.readouterr()\n    assert todo_cli.main([\"list\", \"--priority\", \"high\"]) == 0\n    assert _list_ids(capsys) == [1]\n\n\ndef test_list_filter_due(todo_file, capsys):\n    todo_cli.main([\"add\", \"a\", \"--due\", \"2026-07-10\"])\n    todo_cli.main([\"add\", \"b\", \"--due\", \"2026-07-11\"])\n    capsys.readouterr()\n    assert todo_cli.main([\"list\", \"--due\", \"2026-07-10\"]) == 0\n    assert _list_ids(capsys) == [1]\n\n\ndef test_list_filter_priority_and_due_combined(todo_file, capsys):\n    todo_cli.main([\"add\", \"a\", \"--priority\", \"high\", \"--due\", \"2026-07-10\"])\n    todo_cli.main([\"add\", \"b\", \"--priority\", \"high\", \"--due\", \"2026-07-11\"])\n    todo_cli.main([\"add\", \"c\", \"--priority\", \"low\", \"--due\", \"2026-07-10\"])\n    capsys.readouterr()\n    assert todo_cli.main([\"list\", \"--priority\", \"high\", \"--due\", \"2026-07-10\"]) == 0\n    assert _list_ids(capsys) == [1]",
+              "quoted_text_sha256": "be44c1de437028a9a656e56f9835128ce8e4a8fe331bb5767ed7eb0ff40e870a"
+            }
+          ]
+        },
+        {
+          "id": "F11",
+          "claim": "Listing a missing store produces no stdout or stderr, returns 0, and does not create the store file.",
+          "authority": "test",
+          "evidence": [
+            {
+              "path": "tests/test_todo.py",
+              "line_start": 43,
+              "line_end": 48,
+              "quoted_text": "def test_missing_file_list_empty_exit0_no_create(todo_file, capsys):\n    assert todo_cli.main([\"list\"]) == 0\n    out = capsys.readouterr()\n    assert out.out == \"\"\n    assert out.err == \"\"\n    assert not todo_file.exists()",
+              "quoted_text_sha256": "c9dd732f8a6cf6f305d02cf78febe18195d11f003c09fadfd8c61ed001fb9bf7"
+            }
+          ]
+        },
+        {
+          "id": "F12",
+          "claim": "The documented list contract currently advertises only --priority and --due, says filters can be combined, requires empty results to print nothing and exit 0, and documents the existing post-filter sort order.",
+          "authority": "documentation",
+          "evidence": [
+            {
+              "path": "README.md",
+              "line_start": 59,
+              "line_end": 81,
+              "quoted_text": "### list\n\n```bash\ntodo list [--priority {low,medium,high}] [--due YYYY-MM-DD]\n```\n\n- Prints one row per task:\n\n  ```\n  {id}\\t{[ ]|[x]}\\t{priority}\\t{due|-}\\t{title}\n  ```\n\n  where the status is `[ ]` for incomplete and `[x]` for done, and the due\n  column shows `-` when there is no due date.\n- Filters (`--priority`, `--due`) are exact matches and can be combined.\n- An empty list prints nothing and exits 0.\n\n**Default sort order** (applied after filtering):\n\n1. incomplete tasks before done tasks,\n2. higher priority first (`high` > `medium` > `low`),\n3. nearer due date first (tasks with no due date sort *after* any dated task),\n4. lower id first as a deterministic tiebreaker.",
+              "quoted_text_sha256": "a85e551dfd4e002b6df9bab97ed98eaaa99fcc010dc7aadf0c4ab20993288bc5"
+            }
+          ]
+        },
+        {
+          "id": "F13",
+          "claim": "Invalid list due-date input is expected to return usage exit code 2 rather than propagating SystemExit.",
+          "authority": "test",
+          "evidence": [
+            {
+              "path": "tests/test_todo.py",
+              "line_start": 215,
+              "line_end": 223,
+              "quoted_text": "def test_add_invalid_due_returns_2_no_systemexit_no_write(todo_file, capsys):\n    assert todo_cli.main([\"add\", \"x\", \"--due\", \"2026-02-30\"]) == 2\n    err = capsys.readouterr().err\n    assert \"invalid date\" in err.lower() or \"2026-02-30\" in err\n    assert not todo_file.exists()\n\n\ndef test_list_invalid_due_returns_2_no_systemexit(todo_file):\n    assert todo_cli.main([\"list\", \"--due\", \"2026-02-30\"]) == 2",
+              "quoted_text_sha256": "57a35ae68aa7b4a003143ec648f08311f6b87131842a841f634a2fa6f687de87"
+            }
+          ]
+        },
+        {
+          "id": "F14",
+          "claim": "The CLI converts argparse SystemExit into return codes and maps storage and domain failures to exit codes 3 and 1 with stderr messages.",
+          "authority": "code",
+          "evidence": [
+            {
+              "path": "todo_cli.py",
+              "line_start": 391,
+              "line_end": 410,
+              "quoted_text": "def main(argv: list[str] | None = None) -> int:\n    parser = build_parser()\n    try:\n        args = parser.parse_args(argv)\n    except SystemExit as exc:\n        if isinstance(exc.code, int):\n            return exc.code\n        if exc.code is None:\n            return EXIT_OK\n        return EXIT_USAGE\n\n    handler = _HANDLERS[args.command]\n    try:\n        return handler(args)\n    except StoreError as exc:\n        print(f\"error: {exc}\", file=sys.stderr)\n        return EXIT_STORAGE\n    except TodoError as exc:\n        print(f\"error: {exc}\", file=sys.stderr)\n        return EXIT_DOMAIN",
+              "quoted_text_sha256": "e1f5bec1061465f588f6961cbd64f92154e2dc8613daef79f212d7ae81d69555"
+            }
+          ]
+        },
+        {
+          "id": "F15",
+          "claim": "The project has no runtime dependencies and requires Python 3.10 or newer.",
+          "authority": "configuration",
+          "evidence": [
+            {
+              "path": "pyproject.toml",
+              "line_start": 5,
+              "line_end": 13,
+              "quoted_text": "[project]\nname = \"todo-cli-deep-interview\"\nversion = \"0.1.0\"\ndescription = \"A 4-command (add/list/done/rm) standard-library-only todo CLI.\"\nrequires-python = \">=3.10\"\ndependencies = []\n\n[project.optional-dependencies]\ntest = [\"pytest\"]",
+              "quoted_text_sha256": "5b87550b7b1eedd1ed6a15d09b13d2456d4ae4c38ac023adb52ecc750021cc6f"
+            }
+          ]
+        },
+        {
+          "id": "F16",
+          "claim": "The checked-in test report records 145 passing tests for the combined primary and red-team suites, with zero failures; this is a historical artifact rather than a fresh execution for the requested change.",
+          "authority": "runtime-artifact",
+          "evidence": [
+            {
+              "path": "artifacts/redteam-report.json",
+              "line_start": 5,
+              "line_end": 7,
+              "quoted_text": "  \"invocation\": \"python -m pytest tests/test_todo.py tests/test_redteam.py\",\n  \"totalPassed\": 145,\n  \"totalFailed\": 0,",
+              "quoted_text_sha256": "0456eed07b63971ca6fbd121c6be7bf6cd7a217501f11d96e89b2facba21cc3b"
+            },
+            {
+              "path": "artifacts/redteam-report.json",
+              "line_start": 47,
+              "line_end": 47,
+              "quoted_text": "  \"rawSummaryLine\": \"145 passed in 0.29s\"",
+              "quoted_text_sha256": "6ac4df4127263d10b2e572ebd54e08ce72355f4673bd9ed093094b8a536ed6ea"
+            }
+          ]
+        }
+      ],
+      "unknowns": [
+        "The repository does not define whether a task due today is overdue or only dates strictly before today are overdue.",
+        "The repository does not define whether completed tasks with past due dates should be included by --overdue.",
+        "The repository does not specify whether --overdue may be combined with --due and, if so, what that combination means; combination with --priority is likewise undocumented for the new filter.",
+        "The repository does not define the clock or timezone used to determine the current date, nor a date-injection mechanism for deterministic tests.",
+        "The public request names --overdue but does not explicitly state whether it is a boolean flag or accepts a value."
+      ],
+      "unresolved_conflicts": [],
+      "resolved_conflicts": [],
+      "audit_summary": "Reopened all cited files. Their SHA-256 hashes and repository HEAD match the supplied snapshot. Fourteen facts are directly supported; F1 and F9 contain unsupported overclaims. No conflicts were reported, so none required disposition.",
+      "repository_snapshot": {
+        "git_head": "2753f9dc12efb3cadfea9aa9751289fd397d749e",
+        "git_status_sha256": "108363946fc2de95ffa696432807881ca6089c5b705c5bdefa1a8aabfe156add",
+        "cited_file_sha256": {
+          "todo_cli.py": "aab51fc04d2c069ef749a7c8667212c18419144559a21285af5da497b8901567",
+          "tests/test_todo.py": "6a388c86d1f961c8b6e6e814d2815b20d10225aa252998c71930a18abad92375",
+          "README.md": "fa0dc77f0025340f0a8109bcc27aab2185a1bb225feaccb4b998dd4c88f78307",
+          "pyproject.toml": "75cbfd0b6b9b8d3c42429bc9f4784dea7c008e6991578a1788ea091119d1f92d",
+          "artifacts/redteam-report.json": "a78f8b9c69231b82c34e3301ba2df5be6a6d11e79254975afa02c66e792b3899"
+        }
+      }
+    },
+    "transcript": [
+      {
+        "turn": 1,
+        "open_material_decisions": [
+          "CLI shape: whether --overdue is a boolean flag or accepts a value.",
+          "Filter composition: whether --overdue combines conjunctively with --priority and --due, especially the meaning of --overdue plus an exact --due date.",
+          "Overdue eligibility: whether due today qualifies and whether completed past-due tasks qualify.",
+          "Reference date: which clock/timezone determines today and how tests inject or control it."
+        ],
+        "question": {
+          "header": "Overdue rule",
+          "prompt": "Which tasks should `todo list --overdue` include? This determines the filter’s core observable behavior.",
+          "options": [
+            {
+              "label": "Incomplete, before today",
+              "description": "Include only unfinished tasks whose due date is strictly earlier than today; due-today, completed, and undated tasks are excluded.",
+              "recommended": true
+            },
+            {
+              "label": "All before today",
+              "description": "Include completed and unfinished tasks whose due date is strictly earlier than today; due-today and undated tasks are excluded.",
+              "recommended": false
+            },
+            {
+              "label": "Incomplete, due by today",
+              "description": "Include only unfinished tasks whose due date is today or earlier; completed and undated tasks are excluded.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Incomplete, before today"
+      },
+      {
+        "turn": 2,
+        "open_material_decisions": [
+          "CLI shape: whether --overdue is a boolean flag or accepts a value.",
+          "Filter composition: whether --overdue combines conjunctively with --priority and --due, especially the meaning of --overdue plus an exact --due date.",
+          "Reference date: which clock/timezone determines today and how tests inject or control it."
+        ],
+        "question": {
+          "header": "Combining",
+          "prompt": "How should `--overdue` interact with the existing `--priority` and `--due` filters?",
+          "options": [
+            {
+              "label": "Combine with both",
+              "description": "Apply all supplied filters conjunctively; `--due DATE --overdue` matches only when that exact date is before today and the task is incomplete.",
+              "recommended": true
+            },
+            {
+              "label": "Priority only",
+              "description": "Allow `--overdue` with `--priority`, but reject its use with `--due` as a usage error.",
+              "recommended": false
+            },
+            {
+              "label": "Use alone",
+              "description": "Reject `--overdue` whenever either existing filter is also supplied.",
+              "recommended": false
+            }
+          ]
+        },
+        "answer": "Combine with both"
+      }
+    ],
+    "turn": 3,
+    "force_close": false
+  },
+  "output": {
+    "action": "question",
+    "reason": "The overdue eligibility rule and conjunctive filter composition are confirmed. The reference date remains material because it determines boundary behavior near midnight and the deterministic test contract.",
+    "open_material_decisions": [
+      "Reference date: whether “today” is the machine-local calendar date or UTC, and how tests control it deterministically.",
+      "CLI shape: whether `--overdue` is a value-free boolean flag or accepts a value."
+    ],
+    "question": {
+      "header": "Today source",
+      "prompt": "Which calendar date should define “before today” for `--overdue`? This changes results around timezone boundaries and determines the test seam.",
+      "options": [
+        {
+          "label": "Local date + seam",
+          "description": "Use the machine-local calendar date in production and an internal injectable/patchable date provider for deterministic tests.",
+          "recommended": true
+        },
+        {
+          "label": "UTC date + seam",
+          "description": "Use the UTC calendar date in production and an internal injectable/patchable date provider for deterministic tests.",
+          "recommended": false
+        },
+        {
+          "label": "Local date direct",
+          "description": "Call the machine-local date directly and rely on process-level clock control or patching the imported date in tests.",
+          "recommended": false
+        }
+      ]
+    },
+    "contract": null
+  }
+}

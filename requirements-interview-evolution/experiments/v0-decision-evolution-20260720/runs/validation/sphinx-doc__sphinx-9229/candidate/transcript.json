@@ -1,0 +1,322 @@
+[
+  {
+    "answer": "Docstring only",
+    "open_material_decisions": [
+      "Define the content precedence when a type alias has source-level variable documentation."
+    ],
+    "question": {
+      "header": "Alias output",
+      "options": [
+        {
+          "description": "Render the source documentation and suppress the generated “alias of …” text for that alias.",
+          "label": "Docstring only",
+          "recommended": true
+        },
+        {
+          "description": "Render the source documentation followed by the generated “alias of …” text, matching the existing Python 3.7+ expectation.",
+          "label": "Docstring plus alias",
+          "recommended": false
+        },
+        {
+          "description": "Add a setting that lets projects choose whether documented aliases also show the generated alias text.",
+          "label": "Configurable behavior",
+          "recommended": false
+        }
+      ],
+      "prompt": "When autodoc finds next-line source documentation for a type alias, what should it render?"
+    },
+    "turn": 1
+  },
+  {
+    "answer": "Both paths",
+    "open_material_decisions": [
+      "Define whether the fix must cover both automatic member discovery and explicit autodata directives."
+    ],
+    "question": {
+      "header": "Fix scope",
+      "options": [
+        {
+          "description": "Cover aliases discovered by automodule/autoclass and aliases named explicitly with autodata, with regression tests for both.",
+          "label": "Both paths",
+          "recommended": true
+        },
+        {
+          "description": "Fix the sphinx-apidoc/automodule reproduction while leaving explicit autodata behavior unchanged.",
+          "label": "Automatic only",
+          "recommended": false
+        },
+        {
+          "description": "Apply the behavior only to explicitly named autodata directives, outside the reported sphinx-apidoc path.",
+          "label": "Explicit only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which autodoc entry points must apply the docstring-only behavior for documented type aliases?"
+    },
+    "turn": 2
+  },
+  {
+    "answer": "All source docs",
+    "open_material_decisions": [
+      "Define which source-documentation syntaxes trigger docstring-only rendering for type aliases."
+    ],
+    "question": {
+      "header": "Doc syntax",
+      "options": [
+        {
+          "description": "Apply the rule to next-line strings and recognized #: variable comments, keeping behavior consistent across ModuleAnalyzer documentation forms.",
+          "label": "All source docs",
+          "recommended": true
+        },
+        {
+          "description": "Fix only the reported assignment-followed-by-string syntax and preserve existing #: comment behavior.",
+          "label": "Next-line only",
+          "recommended": false
+        },
+        {
+          "description": "Apply the rule only to multiline next-line strings, leaving one-line strings and #: comments unchanged.",
+          "label": "Multiline only",
+          "recommended": false
+        }
+      ],
+      "prompt": "Which source-level documentation forms should suppress the generated “alias of …” text for a documented type alias?"
+    },
+    "turn": 3
+  },
+  {
+    "answer": "All supported versions",
+    "open_material_decisions": [
+      "Define the Python-version scope of the docstring-only rule for documented type aliases."
+    ],
+    "question": {
+      "header": "Versions",
+      "options": [
+        {
+          "description": "Apply one consistent rule on every Python version supported by this Sphinx release, including Python 3.6 and 3.7+.",
+          "label": "All supported versions",
+          "recommended": true
+        },
+        {
+          "description": "Fix the reported legacy-runtime behavior while preserving Python 3.7+ output that includes both documentation and “alias of …”.",
+          "label": "Python 3.6 only",
+          "recommended": false
+        },
+        {
+          "description": "Apply the rule only to the runtime range relevant to this release and leave newer generic-alias implementations unchanged.",
+          "label": "Python 3.6–3.8",
+          "recommended": false
+        }
+      ],
+      "prompt": "Across which Python versions should documented type aliases render only their source documentation?"
+    },
+    "turn": 4
+  },
+  {
+    "answer": "Keep alias text",
+    "open_material_decisions": [
+      "Define the output for a type alias that has no recognized source-level variable documentation."
+    ],
+    "question": {
+      "header": "No source doc",
+      "options": [
+        {
+          "description": "Preserve the existing generated “alias of …” output for undocumented aliases; only documented aliases suppress it.",
+          "label": "Keep alias text",
+          "recommended": true
+        },
+        {
+          "description": "Remove the generated “alias of …” output from undocumented aliases as well.",
+          "label": "Suppress alias text",
+          "recommended": false
+        },
+        {
+          "description": "Prefer the alias object's runtime docstring when available, then fall back to generated alias text.",
+          "label": "Show runtime doc",
+          "recommended": false
+        }
+      ],
+      "prompt": "What should autodoc render for a type alias when ModuleAnalyzer finds no source-level documentation?"
+    },
+    "turn": 5
+  },
+  {
+    "answer": "Module and class",
+    "open_material_decisions": [
+      "Define whether documented type aliases assigned as class attributes must also use docstring-only rendering."
+    ],
+    "question": {
+      "header": "Class aliases",
+      "options": [
+        {
+          "description": "Apply the same source-documentation precedence to module-level aliases and class attributes, with regression tests for both.",
+          "label": "Module and class",
+          "recommended": true
+        },
+        {
+          "description": "Limit the fix to the reported module-level aliases and leave ClassDocumenter behavior unchanged.",
+          "label": "Module only",
+          "recommended": false
+        },
+        {
+          "description": "Design the module-level fix so class aliases can be addressed separately without changing their current output now.",
+          "label": "Class later",
+          "recommended": false
+        }
+      ],
+      "prompt": "Should the docstring-only rule also apply to documented type aliases assigned inside classes?"
+    },
+    "turn": 6
+  },
+  {
+    "answer": "All class aliases",
+    "open_material_decisions": [
+      "Define which alias-like objects receive source-documentation precedence when the runtime does not recognize them as GenericAlias."
+    ],
+    "question": {
+      "header": "Alias scope",
+      "options": [
+        {
+          "description": "Give recognized source documentation precedence for every object marked as a class alias, including Python 3.6 typing aliases and ordinary renamed classes.",
+          "label": "All class aliases",
+          "recommended": true
+        },
+        {
+          "description": "Add legacy-runtime detection so only aliases created from typing constructs receive the new precedence.",
+          "label": "Typing aliases only",
+          "recommended": false
+        },
+        {
+          "description": "Limit legacy handling to Dict, Union, and Callable aliases matching the reproduction.",
+          "label": "Reported forms only",
+          "recommended": false
+        }
+      ],
+      "prompt": "When an object is documented under an assigned name and autodoc treats it as a class alias, which objects should use source documentation instead of generated “alias of …” text?"
+    },
+    "turn": 7
+  },
+  {
+    "answer": "Body only",
+    "open_material_decisions": [
+      "Define whether user-supplied content inside an explicit autodoc directive also suppresses the generated “alias of …” text."
+    ],
+    "question": {
+      "header": "Directive body",
+      "options": [
+        {
+          "description": "Treat explicit directive body content like source documentation and suppress the generated “alias of …” text.",
+          "label": "Body only",
+          "recommended": true
+        },
+        {
+          "description": "Preserve the generated “alias of …” text alongside explicit directive body content; suppression applies only to ModuleAnalyzer source docs.",
+          "label": "Body plus alias",
+          "recommended": false
+        },
+        {
+          "description": "Keep the current class-alias behavior that replaces explicit directive body content with the generated alias text.",
+          "label": "Alias only",
+          "recommended": false
+        }
+      ],
+      "prompt": "If an explicit autodoc directive supplies body content for an alias but ModuleAnalyzer finds no source-level variable documentation, what should autodoc render?"
+    },
+    "turn": 8
+  },
+  {
+    "answer": "Source then body",
+    "open_material_decisions": [
+      "Define how recognized source-level variable documentation and explicit autodoc directive body content combine when both exist for the same alias."
+    ],
+    "question": {
+      "header": "Both sources",
+      "options": [
+        {
+          "description": "Render the source documentation followed by the directive body, while suppressing the generated “alias of …” text.",
+          "label": "Source then body",
+          "recommended": true
+        },
+        {
+          "description": "Render only the source documentation and ignore the explicit directive body.",
+          "label": "Source only",
+          "recommended": false
+        },
+        {
+          "description": "Render only the explicit directive body and ignore the source documentation.",
+          "label": "Body only",
+          "recommended": false
+        }
+      ],
+      "prompt": "If an alias has recognized source-level documentation and the explicit autodoc directive also supplies body content, what should autodoc render?"
+    },
+    "turn": 9
+  },
+  {
+    "answer": "Body only",
+    "open_material_decisions": [
+      "Define header/value rendering for documented aliases after the generated “alias of …” body is suppressed."
+    ],
+    "question": {
+      "header": "Alias header",
+      "options": [
+        {
+          "description": "Suppress only the generated “alias of …” content; preserve the directive kind, header, and any value/signature currently emitted for that runtime and entry point.",
+          "label": "Body only",
+          "recommended": true
+        },
+        {
+          "description": "Also hide the alias value/signature wherever autodoc currently displays it, leaving only the source documentation and optional directive body.",
+          "label": "Suppress value too",
+          "recommended": false
+        },
+        {
+          "description": "Make documented aliases use one consistent directive/header form across automatic discovery, explicit autodata, module attributes, and class attributes.",
+          "label": "Normalize headers",
+          "recommended": false
+        }
+      ],
+      "prompt": "For a documented alias, should the fix change only the content body, or also suppress any existing directive value/signature display?"
+    },
+    "turn": 10
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "Add a regression fixture containing module-level Dict, Union, and Callable aliases documented with multiline next-line strings, matching the reported failure shape.",
+          "Verify automatic module-member documentation emits each alias’s complete source documentation and does not emit “alias of …”.",
+          "Verify explicit autodata documentation emits recognized source documentation and does not emit “alias of …”.",
+          "Verify documented aliases using #: comments follow the same docstring-only behavior as next-line string documentation.",
+          "Verify documented class-attribute aliases emit their source documentation without generated alias text.",
+          "Verify an ordinary renamed class handled as a class alias follows the same source-documentation precedence.",
+          "Verify explicit directive body content is preserved and suppresses generated alias text when source documentation is absent.",
+          "Verify that when source documentation and explicit directive body content coexist, source documentation appears first, directive body content appears second, and generated alias text is absent.",
+          "Verify aliases with neither recognized source documentation nor explicit directive body content retain the existing generated “alias of …” output.",
+          "Verify existing directive kinds, headers, values, and signatures remain unchanged for each tested runtime and entry point.",
+          "Update version-conditional expectations so documented aliases follow the same content rule on all supported Python versions while preserving legitimate runtime-specific header/value differences.",
+          "Run the targeted pycode parser and autodoc test suites, including automatic module documentation and explicit autodata tests, with no regressions."
+        ],
+        "confirmed_decisions": [
+          "Documented aliases render documentation without the generated “alias of …” body.",
+          "The behavior covers both automatic member discovery and explicit autodata-style documentation paths.",
+          "Both next-line string documentation and recognized #: variable comments trigger suppression of generated alias text.",
+          "The rule applies consistently across every Python version supported by the target Sphinx release, including Python 3.6 and Python 3.7+.",
+          "Undocumented aliases retain the existing generated “alias of …” content.",
+          "The rule covers module-level aliases and aliases assigned as class attributes.",
+          "Every object treated by autodoc as a class alias receives the same documentation precedence, including typing aliases and ordinary renamed classes.",
+          "Explicit directive body content suppresses generated alias text even when no source-level variable documentation exists.",
+          "When source documentation and directive body content both exist, output order is source documentation followed by directive body content.",
+          "The change affects body-content selection only; existing directive type, header, value, and signature rendering remain unchanged."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Change autodoc content precedence so recognized documentation for an alias replaces the generated “alias of …” body. This applies on every Python version supported by this Sphinx release, through automatic member discovery and explicit autodata-style directives, for module attributes and class attributes. Recognized source documentation includes all ModuleAnalyzer variable-documentation forms, including next-line strings and #: comments. Explicit directive body content also counts as documentation. If both source documentation and directive body content exist, render the source documentation first and the directive body second. Preserve existing directive kinds, headers, values, and signatures. Generate “alias of …” only when neither recognized source documentation nor directive body content exists. For objects handled as class aliases, apply this precedence to all such aliases, including legacy Python typing aliases and ordinary renamed classes."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested behavior, scope, precedence, compatibility boundaries, and regression expectations are fully specified; no material implementation decision remains open."
+    },
+    "turn": 11
+  }
+]

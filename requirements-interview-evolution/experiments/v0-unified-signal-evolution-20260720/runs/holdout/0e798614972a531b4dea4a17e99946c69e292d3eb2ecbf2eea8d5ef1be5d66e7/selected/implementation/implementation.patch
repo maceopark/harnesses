@@ -1,0 +1,141 @@
+diff --git a/pylint/lint/expand_modules.py b/pylint/lint/expand_modules.py
+index 5cacc03..fb44e86 100644
+--- a/pylint/lint/expand_modules.py
++++ b/pylint/lint/expand_modules.py
+@@ -7,7 +7,7 @@ from __future__ import annotations
+ import os
+ import sys
+ from collections.abc import Sequence
+-from re import Pattern
++from re import Match, Pattern, sub
+ 
+ from astroid import modutils
+ 
+@@ -46,6 +46,32 @@ def _is_in_ignore_list_re(element: str, ignore_list_re: list[Pattern[str]]) -> b
+     return any(file_pattern.match(element) for file_pattern in ignore_list_re)
+ 
+ 
++def _is_in_ignore_list_re_paths(
++    element: str, ignore_list_re: list[Pattern[str]]
++) -> bool:
++    """Determine if a path is matched in a regex ignore-list.
++
++    Paths can contain mixed separators when a user-supplied path is combined with
++    paths discovered by the operating system. Keep the original representation
++    for backwards compatibility and also try consistently separated forms.
++    """
++    def _replace_separator(match: Match[str], separator: str) -> str:
++        if match.start() == 0 and len(match.group()) > 1:
++            return separator * 2
++        return separator
++
++    candidates = (
++        element,
++        sub(r"[\\/]+", lambda match: _replace_separator(match, "/"), element),
++        sub(r"[\\/]+", lambda match: _replace_separator(match, "\\"), element),
++    )
++    return any(
++        file_pattern.match(candidate)
++        for file_pattern in ignore_list_re
++        for candidate in candidates
++    )
++
++
+ def _is_ignored_file(
+     element: str,
+     ignore_list: list[str],
+@@ -56,7 +82,7 @@ def _is_ignored_file(
+     return (
+         basename in ignore_list
+         or _is_in_ignore_list_re(basename, ignore_list_re)
+-        or _is_in_ignore_list_re(element, ignore_list_paths_re)
++        or _is_in_ignore_list_re_paths(element, ignore_list_paths_re)
+     )
+ 
+ 
+@@ -142,7 +168,7 @@ def expand_modules(
+                     continue
+                 if _is_in_ignore_list_re(
+                     os.path.basename(subfilepath), ignore_list_re
+-                ) or _is_in_ignore_list_re(subfilepath, ignore_list_paths_re):
++                ) or _is_in_ignore_list_re_paths(subfilepath, ignore_list_paths_re):
+                     continue
+ 
+                 modpath = _modpath_from_file(
+diff --git a/tests/lint/unittest_expand_modules.py b/tests/lint/unittest_expand_modules.py
+index 15f72d0..e79e9c7 100644
+--- a/tests/lint/unittest_expand_modules.py
++++ b/tests/lint/unittest_expand_modules.py
+@@ -10,7 +10,11 @@ from pathlib import Path
+ import pytest
+ 
+ from pylint.checkers import BaseChecker
+-from pylint.lint.expand_modules import _is_in_ignore_list_re, expand_modules
++from pylint.lint.expand_modules import (
++    _is_in_ignore_list_re,
++    _is_in_ignore_list_re_paths,
++    expand_modules,
++)
+ from pylint.testutils import CheckerTestCase, set_config
+ from pylint.typing import MessageDefinitionTuple
+ 
+@@ -26,6 +30,26 @@ def test__is_in_ignore_list_re_match() -> None:
+     assert _is_in_ignore_list_re("src/tests/whatever.xml", patterns)
+ 
+ 
++@pytest.mark.parametrize(
++    "pattern",
++    [
++        re.compile(r"^src/gen/.*$"),
++        re.compile(r"^src\\gen\\.*$"),
++        re.compile(r"^src/\\gen\\about\.py$"),
++    ],
++)
++def test__is_in_ignore_list_re_paths_matches_mixed_separators(
++    pattern: re.Pattern[str],
++) -> None:
++    assert _is_in_ignore_list_re_paths(r"src/\gen\about.py", [pattern])
++
++
++@pytest.mark.parametrize("path", [r"src/\gen\about.py", r"C:\src/\gen\about.py"])
++def test__is_in_ignore_list_re_paths_preserves_path_kind(path: str) -> None:
++    prefix = r"C:" if path.startswith("C:") else "src"
++    assert _is_in_ignore_list_re_paths(path, [re.compile(f"^{re.escape(prefix)}")])
++
++
+ TEST_DIRECTORY = Path(__file__).parent.parent
+ INIT_PATH = str(TEST_DIRECTORY / "lint/__init__.py")
+ EXPAND_MODULES = str(TEST_DIRECTORY / "lint/unittest_expand_modules.py")
+diff --git a/tests/lint/unittest_lint.py b/tests/lint/unittest_lint.py
+index 3dbde39..d5d1d3f 100644
+--- a/tests/lint/unittest_lint.py
++++ b/tests/lint/unittest_lint.py
+@@ -912,6 +912,28 @@ def test_recursive_ignore(ignore_parameter, ignore_parameter_value) -> None:
+     assert module in linted_file_paths
+ 
+ 
++def test_recursive_ignore_paths_with_mixed_separators(
++    initialized_linter: PyLinter, monkeypatch: pytest.MonkeyPatch
++) -> None:
++    initialized_linter.config.ignore_paths = [re.compile(r"^src/gen/.*$")]
++    monkeypatch.setattr(os.path, "isdir", lambda path: path == "src/")
++    monkeypatch.setattr(os.path, "isfile", lambda _: False)
++    monkeypatch.setattr(
++        os,
++        "walk",
++        lambda _: iter(
++            [
++                (r"src/\gen", [], ["about.py"]),
++                ("src", [], ["region_selection.py"]),
++            ]
++        ),
++    )
++
++    discovered_files = list(initialized_linter._discover_files(["src/"]))
++
++    assert discovered_files == [os.path.join("src", "region_selection.py")]
++
++
+ def test_import_sibling_module_from_namespace(initialized_linter: PyLinter) -> None:
+     """If the parent directory above `namespace` is on sys.path, ensure that
+     modules under `namespace` can import each other without raising `import-error`."""

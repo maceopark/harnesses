@@ -1,0 +1,72 @@
+diff --git a/astropy/utils/introspection.py b/astropy/utils/introspection.py
+index 3e784f9..f34444e 100644
+--- a/astropy/utils/introspection.py
++++ b/astropy/utils/introspection.py
+@@ -6,6 +6,8 @@
+ import inspect
+ import types
+ import importlib
++import re
++
+ from distutils.version import LooseVersion
+ 
+ 
+@@ -16,6 +18,13 @@ __all__ = ['resolve_name', 'minversion', 'find_current_module',
+ __doctest_skip__ = ['find_current_module']
+ 
+ 
++def _version_to_loose(version):
++    # Avoid comparing an integer component with the ``dev`` string component
++    # (e.g. 1.14.3 and 1.14dev), which raises TypeError on Python 3.
++    version = re.sub(r'^(\d+\.\d+)dev', r'\1.0dev', version)
++    return LooseVersion(version)
++
++
+ def resolve_name(name, *additional_parts):
+     """Resolve a name like ``module.object`` to an object and return it.
+ 
+@@ -140,9 +149,9 @@ def minversion(module, version, inclusive=True, version_path='__version__'):
+         have_version = resolve_name(module.__name__, version_path)
+ 
+     if inclusive:
+-        return LooseVersion(have_version) >= LooseVersion(version)
++        return _version_to_loose(have_version) >= _version_to_loose(version)
+     else:
+-        return LooseVersion(have_version) > LooseVersion(version)
++        return _version_to_loose(have_version) > _version_to_loose(version)
+ 
+ 
+ def find_current_module(depth=1, finddiff=False):
+diff --git a/astropy/utils/tests/test_introspection.py b/astropy/utils/tests/test_introspection.py
+index d8262d4..3c90364 100644
+--- a/astropy/utils/tests/test_introspection.py
++++ b/astropy/utils/tests/test_introspection.py
+@@ -63,8 +63,8 @@ def test_find_mod_objs():
+     assert namedtuple not in objs
+ 
+ 
+-def test_minversion():
+-    from types import ModuleType
++def test_minversion(monkeypatch):
++    from types import ModuleType, SimpleNamespace
+     test_module = ModuleType(str("test_module"))
+     test_module.__version__ = '0.12.2'
+     good_versions = ['0.12', '0.12.1', '0.12.0.dev']
+@@ -73,3 +73,17 @@ def test_minversion():
+         assert minversion(test_module, version)
+     for version in bad_versions:
+         assert not minversion(test_module, version)
++
++    test_module.__version__ = '1.14.3'
++    assert minversion(test_module, '1.14dev')
++    assert minversion(test_module, '1.14dev', inclusive=False)
++    assert minversion(test_module, '1.14.3')
++    assert not minversion(test_module, '1.14.3', inclusive=False)
++
++    monkeypatch.setattr(introspection, '__version__', '1.14.3', raising=False)
++    assert minversion('astropy.utils.introspection', '1.14dev')
++
++    monkeypatch.setattr(introspection, '_test_version',
++                        SimpleNamespace(value='1.14.3'), raising=False)
++    assert minversion(introspection, '1.14dev',
++                      version_path='_test_version.value')

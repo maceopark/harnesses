@@ -1,0 +1,23 @@
+{
+  "acceptance_checks": [
+    "Construct an Annotation through Axes.annotate with a mutable ndarray xy, mutate that ndarray after construction, draw or update positions, and verify the annotated point and arrow endpoint remain at the original coordinates.",
+    "Repeat the Annotation regression with a mutable list xy and verify later outer-container mutation does not affect the stored position.",
+    "Verify Annotation.xy is an immutable two-element tuple containing the original two coordinate element objects or values.",
+    "Construct AnnotationBbox with mutable xy and xybox=None, mutate the original container, and verify neither the annotated anchor nor the defaulted box position moves.",
+    "Construct AnnotationBbox with separate mutable xy and xybox containers, mutate both after construction, and verify both stored positions remain at their construction-time values.",
+    "Verify AnnotationBbox stores xy and xybox as immutable two-element tuples and that defaulted xybox does not retain the caller-owned outer container.",
+    "Verify shallow-copy behavior with nontrivial coordinate element objects: the outer pair is snapshotted without recursively copying or coercing its elements.",
+    "Run the relevant text, annotation, offsetbox, and Axes annotation tests and confirm existing immutable tuple inputs and coordinate transformation behavior remain unchanged."
+  ],
+  "confirmed_decisions": [
+    "Apply immutable-at-construction coordinate semantics to all _AnnotationBase consumers, including Annotation and AnnotationBbox.",
+    "Store xy as a new immutable two-element tuple.",
+    "Use a shallow container snapshot; do not deep-copy coordinate element objects.",
+    "When AnnotationBbox xybox is omitted, snapshot the original coordinate values independently for both xy and xybox.",
+    "When AnnotationBbox xybox is explicitly supplied, snapshot it as a separate immutable two-element tuple.",
+    "Preserve existing coordinate interpretation, transformations, drawing behavior, and support for unit-aware, datetime-like, categorical, and custom coordinate element objects."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "At construction, every _AnnotationBase consumer must snapshot each supplied coordinate pair into a new immutable two-element tuple. Annotation/Axes.annotate must therefore retain construction-time xy values rather than a caller-owned mutable container. AnnotationBbox must apply the same rule to xy and to xybox, whether xybox is explicitly supplied or defaults from xy. The snapshot is shallow: coordinate element objects are preserved rather than recursively copied. Later replacement or mutation of elements in the caller’s outer list or ndarray must not move the annotation anchor, arrow endpoint, or AnnotationBbox box position."
+}

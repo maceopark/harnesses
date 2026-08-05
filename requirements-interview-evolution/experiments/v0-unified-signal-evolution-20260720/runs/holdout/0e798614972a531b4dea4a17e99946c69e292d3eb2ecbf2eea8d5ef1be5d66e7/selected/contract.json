@@ -1,0 +1,25 @@
+{
+  "acceptance_checks": [
+    "On Windows, recursive linting of target `src/` with `ignore-paths = [\"^src/gen/.*$\"]` excludes files under `src\\gen\\` while continuing to lint non-matching files such as `src\\region_selection.py`.",
+    "A mixed path such as `src/\\gen\\about.py` matches a Posix-anchored pattern such as `^src/gen/.*$`.",
+    "The same mixed path matches an equivalent Windows-separator pattern.",
+    "A pattern written specifically for the original raw mixed-separator string continues to match that raw candidate.",
+    "Relative paths remain relative and absolute paths remain absolute during matching.",
+    "Direct file inputs, recursive discovery roots and files, package submodules, and namespace submodules use the same canonical `ignore-paths` comparison behavior.",
+    "Existing `ignore` and `ignore-patterns` basename tests remain unchanged and pass.",
+    "Add regression coverage for mixed-separator paths to the ignore-path normalization/matching unit tests.",
+    "Add an end-to-end or lint-level regression test covering the reported anchored pattern with recursive target spelling `src/` under Windows-style path construction.",
+    "Run the targeted configuration and recursive-lint test suites successfully."
+  ],
+  "confirmed_decisions": [
+    "Apply the fix centrally to all full-path `ignore-paths` comparisons, not only recursively discovered paths.",
+    "Normalize separators only; do not resolve, absolutize, relativize, or otherwise rewrite paths.",
+    "Limit the behavior change to `ignore-paths`; retain existing basename behavior for `ignore` and `ignore-patterns`.",
+    "Evaluate each `ignore-paths` regex against both fully Posix and fully Windows separator forms.",
+    "Also evaluate against the original raw path string for backward compatibility with patterns that intentionally match an existing mixed-separator representation.",
+    "Preserve existing regex `match` behavior and configured-pattern parsing semantics."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Fix `ignore-paths` so every full-path comparison is robust to mixed separators. For each path evaluated by `ignore-paths`, preserve its relative or absolute form and evaluate the configured regex against three candidates: the original raw string, a fully Posix-separator form, and a fully Windows-separator form. Apply this centrally to all `ignore-paths` comparisons, including recursive discovery, direct inputs, packages, and namespace-module expansion. Do not change basename extraction or the behavior of `ignore` and `ignore-patterns`. Existing regex matching semantics remain unchanged."
+}

@@ -1,0 +1,22 @@
+{
+  "acceptance_checks": [
+    "For `DataArray([1.0, 1.0, 1.0]).weighted(DataArray([True, True, False])).mean()`, the result equals scalar `1.0`, not `2.0`.",
+    "For boolean weights `[True, True, False]` over three non-null values, `sum_of_weights()` equals scalar `2` numerically rather than boolean `True`.",
+    "Boolean weights continue to be accepted as a `DataArray`; construction does not coerce or reject them.",
+    "Weighted sums and other weighted reductions retain their existing behavior because coercion is confined to `_sum_of_weights`.",
+    "Missing data remains excluded from the denominator through the non-null mask.",
+    "All-false boolean weights preserve the existing zero-weight result of missing/NaN for `sum_of_weights()` and `mean()`.",
+    "Existing integer- and floating-weight tests continue to pass.",
+    "The focused weighted test module passes after the change."
+  ],
+  "confirmed_decisions": [
+    "Apply boolean-to-numeric coercion only to the sum-of-weights denominator path, not during weighted-object construction and not across all weighted operations.",
+    "In `_sum_of_weights`, cast the `da.notnull()` mask to an integer before passing it with `self.weights` to `_reduce`.",
+    "Preserve the stored weight DataArray and its dtype.",
+    "Preserve existing zero-denominator behavior: a zero sum of weights remains invalid and is returned as missing.",
+    "Add focused regression tests for boolean weights rather than changing the public API documentation or rejecting boolean weights."
+  ],
+  "implementation_ready": true,
+  "open_material_decisions": [],
+  "summary": "Fix boolean-weighted means by changing `Weighted._sum_of_weights` in `xarray/core/weighted.py` so the `da.notnull()` mask is cast to an integer dtype before it is reduced with the stored weights. Keep the original weights unchanged and do not alter weighted-sum or other weighted-reduction semantics. Add regression coverage in `xarray/tests/test_weighted.py` proving that boolean weights are counted numerically in both `sum_of_weights()` and `mean()`, including the reported `[True, True, False]` case."
+}

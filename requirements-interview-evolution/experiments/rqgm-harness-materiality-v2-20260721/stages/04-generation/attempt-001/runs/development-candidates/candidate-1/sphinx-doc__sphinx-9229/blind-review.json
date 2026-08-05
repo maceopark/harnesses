@@ -1,0 +1,65 @@
+{
+  "findings": [
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/implementation_ready",
+          "quoted_value": true
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/5",
+          "quoted_value": "The documented-alias outcomes do not vary between supported Python-version-specific documenter selections."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/unknowns/0",
+          "quoted_value": "The base repository has no test using the exact Dict[str, Any], Union[str, None], and Callable[[...], ...] trio from the report, so their individual Python 3.6 documenter selections are not directly asserted in repository tests."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/5/statement",
+          "quoted_value": "Generic-alias recognition explicitly supports typing._GenericAlias only for Python 3.7+, types.GenericAlias only for Python 3.9+, and typing._SpecialGenericAlias only for Python 3.9+; otherwise it returns false."
+        }
+      ],
+      "description": "The requirement may be implementable, but the supplied contract is not yet verification-ready: “supported Python-version-specific documenter selections” is not enumerated, and the audited evidence specifically leaves the Python 3.6 selection behavior of Dict, Union, and Callable unknown. A concrete version/path matrix is needed before implementation_ready can be asserted.",
+      "failure_class": "unverifiable-acceptance",
+      "general_cause": "The contract declares cross-version readiness without defining a concrete supported-version and documenter-selection test matrix, despite audited uncertainty about the reported aliases on Python 3.6.",
+      "id": "F-1",
+      "material": true,
+      "observable_signal": "A universal version-independence acceptance check coexists with repository evidence stating that the exact aliases’ Python 3.6 documenter selections are not directly established."
+    },
+    {
+      "citations": [
+        {
+          "artifact": "contract",
+          "pointer": "/confirmed_decisions/5",
+          "quoted_value": "Existing autodoc behavior for objects that are not type aliases remains unchanged."
+        },
+        {
+          "artifact": "contract",
+          "pointer": "/acceptance_checks/4",
+          "quoted_value": "An undocumented type alias still renders its generated “alias of …” description."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/2/statement",
+          "quoted_value": "The generic Documenter content path prefers analyzer attribute documentation when the current object path has a matching attr_docs key, suppresses the runtime docstring, and then appends additional supplied content."
+        },
+        {
+          "artifact": "evidence",
+          "pointer": "/facts/7/statement",
+          "quoted_value": "When ClassDocumenter has doc_as_attr set, it replaces the supplied additional content with a newly constructed single “alias of …” message before delegating to the generic content path."
+        }
+      ],
+      "description": "The implementation can satisfy all listed checks while regressing ordinary data, attribute, or class documentation. This is material because the relevant content-rendering paths are shared with generic documenters and ClassDocumenter; the stated non-alias compatibility requirement therefore needs an explicit regression check.",
+      "failure_class": "omission",
+      "general_cause": "A confirmed compatibility boundary was not translated into an acceptance check.",
+      "id": "F-2",
+      "material": true,
+      "observable_signal": "The contract promises unchanged behavior for non-type-alias objects, while every acceptance check is limited to type aliases."
+    }
+  ],
+  "summary": "The contract is not materially implementation-ready: its cross-version acceptance target lacks a concrete verifiable matrix, and it omits regression coverage for the expressly preserved behavior of non-type-alias objects."
+}

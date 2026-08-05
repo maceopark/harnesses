@@ -1,0 +1,59 @@
+[
+  {
+    "answer": "Restore parse_version",
+    "open_material_decisions": [
+      "Choose the version-comparison behavior and implementation strategy for non-PEP-440 strings such as `1.14dev`."
+    ],
+    "question": {
+      "header": "Version rules",
+      "options": [
+        {
+          "description": "Use `pkg_resources.parse_version` again so this comparison returns `True`, preserves inclusive/exclusive modes, and adds regression coverage for the reported case.",
+          "label": "Restore parse_version",
+          "recommended": true
+        },
+        {
+          "description": "Keep `LooseVersion` but preprocess problematic version strings so comparisons do not raise and the reported case returns `True`.",
+          "label": "Normalize for LooseVersion",
+          "recommended": false
+        },
+        {
+          "description": "Define a fallback that avoids `TypeError` without requiring packaging-style ordering for all nonstandard version strings.",
+          "label": "Only prevent exception",
+          "recommended": false
+        }
+      ],
+      "prompt": "What result and success criterion should govern `minversion` comparisons such as installed `1.14.3` versus required `1.14dev`?"
+    },
+    "turn": 1
+  },
+  {
+    "interviewer": {
+      "action": "complete",
+      "contract": {
+        "acceptance_checks": [
+          "A synthetic module with `__version__ = '1.14.3'` satisfies `minversion(module, '1.14dev')` and no `TypeError` is raised.",
+          "Existing `test_minversion` good-version and bad-version expectations continue to pass.",
+          "Inclusive mode still accepts equal versions; exclusive mode still rejects equal versions.",
+          "The targeted introspection test module passes.",
+          "The implementation no longer imports or uses `distutils.version.LooseVersion` for `minversion` comparisons."
+        ],
+        "confirmed_decisions": [
+          "Replace the `LooseVersion` comparison path in `astropy/utils/introspection.py` with `pkg_resources.parse_version`.",
+          "For installed `1.14.3` and required `1.14dev`, inclusive `minversion` returns `True` and does not raise.",
+          "Preserve inclusive comparison as `>=` and exclusive comparison as `>`.",
+          "Preserve support for module objects and module-name strings, including returning `False` when a named module cannot be imported.",
+          "Preserve direct and dotted `version_path` resolution and existing invalid-module `ValueError` behavior.",
+          "Add focused regression coverage in `astropy/utils/tests/test_introspection.py`; no new dependency is required because the repository setup already uses setuptools."
+        ],
+        "implementation_ready": true,
+        "open_material_decisions": [],
+        "summary": "Restore `pkg_resources.parse_version` in `astropy.utils.introspection.minversion` so version comparisons use packaging-style ordering instead of `distutils.version.LooseVersion`. Preserve all existing module resolution, version-path lookup, missing-module, argument-validation, and inclusive/exclusive behavior. Add regression coverage proving that an installed version of `1.14.3` satisfies a required version of `1.14dev` without raising `TypeError`."
+      },
+      "open_material_decisions": [],
+      "question": null,
+      "reason": "The requested behavior and success criterion are resolved: restore `pkg_resources.parse_version` for `minversion` comparisons and cover the reported regression. Repository evidence identifies the exact implementation and test surfaces, so no material blocker remains."
+    },
+    "turn": 2
+  }
+]
